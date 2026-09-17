@@ -81,3 +81,7 @@ npm run preview
 Abrir la dirección indicada por preview. La compilación no incluye `/demo`; necesita configuración y una cuenta autorizada. Mantener `dist` mientras se use preview o se sirva esa carpeta. Para instalar en otra máquina, conservar `package-lock.json` y ejecutar `npm ci`.
 
 La publicación requiere un hosting HTTPS con fallback SPA a `index.html`. Las pruebas locales no sustituyen la aceptación con cuentas reales, conteos físicos ni cámaras de teléfonos. No se han emitido documentos ni alterado inventario real durante esta revisión.
+
+## Códigos de barras externos
+
+El [auditor de Open Beauty Facts](docs/open-beauty-facts.md) consulta marcas y alias, compara los perfumes y genera un informe privado de EAN/UPC candidatos. Respeta los límites de la API, conserva caché y atribución y no asigna códigos automáticamente. Ejecutar `node scripts/audit_openbeautyfacts.mjs`; los resultados quedan en `private-data/openbeautyfacts/`.
