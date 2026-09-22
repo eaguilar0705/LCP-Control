@@ -10,6 +10,7 @@ import './app/catalog-documents.css'
 import './app/workspace-polish.css'
 import './app/brand-accents.css'
 import './app/selects.css'
+import './app/login.css'
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>

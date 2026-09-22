@@ -50,58 +50,65 @@ export function LoginPage() {
     }
   }
   return (
-    <main className="login-layout">
+    <main className="login-layout login-page">
       <section className="login-story">
         <div className="login-brand-panel">
-          <Brand wordmark />
+          <Brand wordmark gold />
+          <span className="login-brand-caption">PERFUMERÍA · NICARAGUA</span>
         </div>
-        <div>
+        <div className="login-welcome">
           <h1>Bienvenido a tu tienda.</h1>
           <Reflection />
         </div>
-        <span className="login-footer">La Casa del Perfume · Nicaragua</span>
+        <span className="login-footer">
+          <span /> La Casa del Perfume · Managua
+        </span>
       </section>
-      <section className="login-form">
-        <Brand wordmark className="login-mobile-brand" />
-        <span className="eyebrow">LA CASA DEL PERFUME</span>
-        <h2>Iniciar sesión</h2>
-        <p className="muted">Ingresa con la cuenta de tu tienda.</p>
-        <form onSubmit={submit}>
-          <Input
-            label="Correo electrónico"
-            name="email"
-            type="email"
-            placeholder="tu@correo.com"
-            autoComplete="username"
-            required
-          />
-          <Input
-            label="Contraseña"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            placeholder="Tu contraseña"
-            required
-          />
-          {error && (
-            <p className="inline-error" role="alert">
-              {error}
-            </p>
+      <section className="login-access">
+        <div className="login-form">
+          <span className="login-access-mark" aria-hidden="true">
+            <ShieldCheck size={22} strokeWidth={1.5} />
+          </span>
+          <span className="eyebrow">ACCESO AL SISTEMA</span>
+          <h2>Iniciar sesión</h2>
+          <p className="muted">Ingresa con la cuenta de tu tienda.</p>
+          <form onSubmit={submit}>
+            <Input
+              label="Correo electrónico"
+              name="email"
+              type="email"
+              placeholder="tu@correo.com"
+              autoComplete="username"
+              required
+            />
+            <Input
+              label="Contraseña"
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              placeholder="Tu contraseña"
+              required
+            />
+            {error && (
+              <p className="inline-error" role="alert">
+                {error}
+              </p>
+            )}
+            <Button type="submit" disabled={busy}>
+              {busy ? 'Iniciando sesión…' : 'Iniciar sesión'}
+              <ArrowRight size={18} />
+            </Button>
+          </form>
+          {authConfigured && (
+            <Link className="demo-link" to="/activate">
+              Activar mi cuenta
+            </Link>
           )}
-          <Button type="submit" disabled={busy}>
-            {busy ? 'Iniciando sesión…' : 'Iniciar sesión'}
-            <ArrowRight size={18} />
-          </Button>
-        </form>
-        {authConfigured && (
-          <Link className="demo-link" to="/activate">
-            Activar mi cuenta
-          </Link>
-        )}
-        <p className="login-note">
-          <ShieldCheck size={16} /> Acceso privado. Solicita tu cuenta al
-          administrador.
-        </p>
+          <p className="login-note">
+            <ShieldCheck size={16} /> Acceso privado. Solicita tu cuenta al
+            administrador.
+          </p>
+        </div>
       </section>
     </main>
   )
