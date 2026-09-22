@@ -1,12 +1,7 @@
+import { ScanButton } from '../scanner/ScanButton'
 import { ProductStockEditor } from './ProductStockEditor'
 import { can } from '../../lib/permissions'
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type FormEvent,
-} from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   Button,
@@ -21,11 +16,7 @@ import { useAccess } from '../../app/AccessContext'
 import { useServices } from '../../services/useServices'
 import { useQuery } from '../../lib/useQuery'
 import { errorMessage } from '../../lib/errors'
-import {
-  labels,
-  type Product,
-  type PriceTier,
-} from '../../lib/domain'
+import { labels, type Product, type PriceTier } from '../../lib/domain'
 import { marginRate, priceTierLabels } from '../../lib/pricing'
 import {
   nioFromUsd,
@@ -331,14 +322,22 @@ function ProductForm({
                 <option value="oz">Onzas (oz)</option>
                 <option value="ml">Mililitros (ml)</option>
               </Select>
-              <Input
-                label="Código del fabricante (EAN / UPC)"
-                error={fieldErrors.manufacturerBarcode}
-                inputMode="numeric"
-                maxLength={14}
-                value={value.manufacturerBarcode}
-                onChange={(e) => update('manufacturerBarcode', e.target.value)}
-              />
+              <div className="search-with-scan">
+                <Input
+                  label="Código del fabricante (EAN / UPC)"
+                  error={fieldErrors.manufacturerBarcode}
+                  inputMode="numeric"
+                  maxLength={14}
+                  value={value.manufacturerBarcode}
+                  onChange={(e) =>
+                    update('manufacturerBarcode', e.target.value)
+                  }
+                />
+                <ScanButton
+                  manufacturer
+                  onCode={(code) => update('manufacturerBarcode', code)}
+                />
+              </div>
               <Input
                 label="Mínimo de inventario"
                 error={fieldErrors.minimumStock}

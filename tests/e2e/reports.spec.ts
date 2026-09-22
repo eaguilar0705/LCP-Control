@@ -93,10 +93,10 @@ test('la portada resume el mes y ya no ofrece el atajo del lector', async ({
   await expect(
     page.getByRole('heading', { name: 'Buscar por código' }),
   ).toHaveCount(0)
-  // El lector sigue accesible desde la navegación.
+  // El lector ahora acompaña las búsquedas, no ocupa una pestaña.
   await expect(
-    page.locator('a:visible').filter({ hasText: 'Escanear' }).first(),
-  ).toBeVisible()
+    page.getByRole('link', { name: 'Escanear', exact: true }),
+  ).toHaveCount(0)
 })
 
 test('muestra la variación contra el periodo anterior y los indicadores de seguimiento', async ({

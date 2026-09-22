@@ -70,8 +70,8 @@ try {
     create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
     grant usage on schema auth to authenticated,anon; grant execute on function auth.uid() to authenticated,anon;
     create schema storage;
-    create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
-    create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text,name text,unique(bucket_id,name));
+    create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[],owner uuid references auth.users(id),owner_id text);
+    create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text,name text,owner uuid references auth.users(id),owner_id text,unique(bucket_id,name));
     alter table storage.objects enable row level security;
     grant usage on schema storage to authenticated,anon;
     grant select,insert,delete on storage.objects to authenticated;
@@ -395,6 +395,33 @@ try {
       await assert.rejects(db.query('select * from public.list_price_changes($1::uuid)', [id]), /insufficient|denied/i)
     }
     await identity(admin)
+  })
+  await check('deleting a registered author retains all financial records, price history and product photos', async () => {
+    await db.exec('reset role')
+    await db.query("update auth.users set email='removed@example.test' where id=$1", [admin])
+    await db.query("update public.staff_members set role='superadmin' where user_id=$1", [viewer])
+    await db.query("insert into storage.objects(bucket_id,name,owner,owner_id) values('product-images','historic/photo.webp',$1::uuid,$1::uuid::text)", [admin])
+    const tables = ['documents','inventory_movements','purchase_shipments','opening_cost_records','expense_records','inventory_balances','products','product_prices','document_item_costs']
+    const before = {}
+    for (const t of tables) before[t] = await rows(t)
+    const changes = (await db.query('select * from private.catalog_changes')).rows
+    await identity(viewer)
+    await db.query("select public.delete_staff_account('removed@example.test',$1,'admin')", [admin])
+    await db.exec('reset role')
+    assert.equal((await db.query('select * from auth.users where id=$1', [admin])).rows.length,0)
+    assert.equal((await db.query('select * from public.staff_members where user_id=$1', [admin])).rows.length,0)
+    for (const t of tables) assert.deepEqual(await rows(t),before[t],t)
+    assert.deepEqual((await db.query('select * from private.catalog_changes')).rows,changes)
+    const photo = (await db.query("select * from storage.objects where name='historic/photo.webp'")).rows[0]
+    assert.equal(photo.owner,viewer)
+    assert.equal(photo.owner_id,viewer)
+    await identity(viewer)
+    const history = (await db.query("select * from public.list_price_changes('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee')")).rows
+    assert.ok(history.length > 0)
+    assert.equal(history[0].actor,'Admin')
+    await identity(admin)
+    assert.equal((await rows('products')).length,0)
+    await assert.rejects(db.query('select * from public.list_staff_accounts()'), /insufficient/)
   })
   console.log(`${checks} accounting PostgreSQL checks passed. No deployed database was accessed.`)
 } finally {

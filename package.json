@@ -17,7 +17,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "test:db": "node tests/database/catalog.mjs && node tests/database/accounting.mjs",
+    "test:db": "node tests/database/catalog.mjs && node tests/database/accounting.mjs && node tests/database/staff.mjs",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {

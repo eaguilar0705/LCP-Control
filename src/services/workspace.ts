@@ -17,6 +17,7 @@ export type ContactRecord = {
   priceTier?: string
 }
 export type StaffAccount = {
+  user_id?: string | null
   email: string
   display_name: string
   role: UserRole
@@ -60,6 +61,12 @@ export const saveContact = (
     p_payload: record,
   })
 export const listStaff = () => rpc<StaffAccount[]>('list_staff_accounts', {})
+export const deleteStaff = (record: StaffAccount) =>
+  rpc('delete_staff_account', {
+    p_email: record.email,
+    p_user_id: record.user_id ?? null,
+    p_role: record.role,
+  })
 export const saveStaff = (record: StaffAccount) =>
   rpc('save_staff_account', {
     p_email: record.email,

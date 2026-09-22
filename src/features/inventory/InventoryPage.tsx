@@ -1,9 +1,9 @@
+import { ScanButton } from '../scanner/ScanButton'
 import { WorkspaceHeading } from '../../components/WorkspacePresentation'
 import { can } from '../../lib/permissions'
 import { useCallback, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
-  ScanLine,
   ArrowLeft,
   ArrowRight,
   Package,
@@ -74,7 +74,8 @@ export function InventoryPage() {
   )
   // El guion sólo necesita explicarse cuando aparece en pantalla.
   const uncounted = items.some(
-    ({ quantities }) => quantities.store === null || quantities.warehouse === null,
+    ({ quantities }) =>
+      quantities.store === null || quantities.warehouse === null,
   )
   const perPage = 24
   const pages = Math.max(1, Math.ceil(items.length / perPage))
@@ -116,9 +117,6 @@ export function InventoryPage() {
               <Plus size={18} /> Nuevo perfume
             </Link>
           )}
-          <Link className="button button-secondary" to={`${base}/scanner`}>
-            <ScanLine size={18} /> Escanear producto
-          </Link>
         </div>
       </WorkspaceHeading>
       {state?.message && (
@@ -146,13 +144,22 @@ export function InventoryPage() {
             />
           </div>
           <div className="filter-grid">
-            <Input
-              label="Buscar producto"
-              type="search"
-              placeholder="Nombre, marca o código…"
-              value={filters.search}
-              onChange={(e) => change({ search: e.target.value })}
-            />
+            <div className="search-with-scan">
+              <Input
+                label="Buscar producto"
+                type="search"
+                placeholder="Nombre, marca o código…"
+                value={filters.search}
+                onChange={(e) => change({ search: e.target.value })}
+              />
+              <ScanButton
+                onCode={(code) => {
+                  setFilters({ ...emptyFilters, search: code })
+                  setStatus(manage ? 'all' : 'active')
+                  setPage(1)
+                }}
+              />
+            </div>
             <Select
               label="Categoría"
               value={filters.category}

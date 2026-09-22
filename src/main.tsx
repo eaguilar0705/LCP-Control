@@ -8,6 +8,7 @@ import './app/styles.css'
 import './app/identity.css'
 import './app/catalog-documents.css'
 import './app/workspace-polish.css'
+import './app/brand-accents.css'
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>

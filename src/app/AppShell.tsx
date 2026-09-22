@@ -3,7 +3,6 @@ import { Link, NavLink, Outlet } from 'react-router-dom'
 import {
   LayoutDashboard,
   Package,
-  ScanLine,
   ShoppingBag,
   FileText,
   Layers3,
@@ -24,7 +23,6 @@ import { can, roleLabels, type Capability } from '../lib/permissions'
 const links = [
   ['', 'Inicio', LayoutDashboard],
   ['/inventory', 'Inventario', Package],
-  ['/scanner', 'Escanear', ScanLine],
   ['/sales', 'Facturación', ShoppingBag],
   ['/proformas', 'Proformas', FileText],
   ['/reports', 'Reportes', ChartColumn],
@@ -116,7 +114,6 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
                 >
                   <Icon size={19} />
                   {label}
-                  {path === '/scanner' && <span className="nav-key">QR</span>}
                 </NavLink>
               ))}
           </nav>

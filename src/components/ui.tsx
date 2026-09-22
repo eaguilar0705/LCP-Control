@@ -172,12 +172,20 @@ export function Dialog({
       ref={ref}
       className="dialog"
       aria-labelledby={titleId}
-      onCancel={onClose}
+      onCancel={(event) => {
+        event.preventDefault()
+        onClose()
+      }}
       onClose={onClose}
     >
       <div className="section-heading">
         <h2 id={titleId}>{title}</h2>
-        <Button variant="ghost" aria-label="Cerrar" onClick={onClose}>
+        <Button
+          type="button"
+          variant="ghost"
+          aria-label="Cerrar"
+          onClick={onClose}
+        >
           <X size={20} />
         </Button>
       </div>

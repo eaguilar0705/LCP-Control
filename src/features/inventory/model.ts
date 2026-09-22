@@ -48,7 +48,7 @@ export function filterInventory(
       ? item.quantities[filters.location]
       : totalStock(item)
     return (
-      `${product.name} ${product.brand} ${product.barcode}`
+      `${product.name} ${product.brand} ${product.barcode} ${product.manufacturerBarcode ?? ''}`
         .toLocaleLowerCase('es')
         .includes(query) &&
       (!filters.category || product.category === filters.category) &&

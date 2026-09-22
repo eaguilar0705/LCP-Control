@@ -9,6 +9,22 @@ import { browserChannel } from '../../playwright.config'
 
 const CODE = 'DEMO-0003'
 
+test('context camera returns the product to inventory and releases the camera', async ({
+  page,
+}) => {
+  await page.goto('/demo/inventory')
+  await page.getByRole('button', { name: 'Escanear', exact: true }).click()
+  await page.getByRole('button', { name: 'Activar cámara' }).click()
+  await expect(page.getByLabel('Buscar producto')).toHaveValue(CODE, {
+    timeout: 45000,
+  })
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page.locator('video')).toHaveCount(0)
+  await expect(
+    page.getByRole('button', { name: 'Vainilla 03', exact: true }),
+  ).toBeVisible()
+})
+
 test.setTimeout(90000)
 
 test.use({

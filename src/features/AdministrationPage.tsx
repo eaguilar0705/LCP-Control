@@ -1,3 +1,4 @@
+import { useAuth } from './auth/AuthContext'
 import {
   UsersRound,
   ShieldCheck,
@@ -5,6 +6,7 @@ import {
   UserPlus,
   Pencil,
   Coins,
+  Trash2,
 } from 'lucide-react'
 import {
   WorkspaceHeading,
@@ -13,6 +15,7 @@ import {
 import { Brand } from '../components/Brand'
 import { useState, useCallback, type FormEvent } from 'react'
 import {
+  Dialog,
   Button,
   Card,
   Input,
@@ -27,6 +30,7 @@ import { errorMessage } from '../lib/errors'
 import { formatDate } from '../lib/format'
 import {
   listStaff,
+  deleteStaff,
   saveStaff,
   rpc,
   type StaffAccount,
@@ -34,6 +38,10 @@ import {
 import { useServices } from '../services/useServices'
 import type { UserRole } from '../lib/domain'
 export function StaffPage() {
+  const { user } = useAuth()
+  const [removing, setRemoving] = useState<StaffAccount | null>(null)
+  const [confirmation, setConfirmation] = useState('')
+  const [deleteError, setDeleteError] = useState('')
   const { demo, role } = useAccess()
   const permitted = !demo && can(role, 'staff.manage')
   const load = useCallback(
@@ -49,6 +57,28 @@ export function StaffPage() {
     return (
       <ErrorState message="Solo los administradores pueden gestionar usuarios." />
     )
+  async function removeAccount(e: FormEvent) {
+    e.preventDefault()
+    if (
+      !removing ||
+      busy ||
+      confirmation.trim().toLowerCase() !== removing.email.toLowerCase()
+    )
+      return
+    setBusy(true)
+    setDeleteError('')
+    try {
+      await deleteStaff(removing)
+      if (form?.email === removing.email) setForm(null)
+      setMessage(`Cuenta de ${removing.display_name} eliminada.`)
+      setRemoving(null)
+      retry()
+    } catch (error) {
+      setDeleteError(errorMessage(error))
+    } finally {
+      setBusy(false)
+    }
+  }
   async function submit(e: FormEvent) {
     e.preventDefault()
     if (!form || busy || !permitted) return
@@ -196,6 +226,31 @@ export function StaffPage() {
                 <Pencil size={14} /> Editar permisos
               </Button>
             )}
+            {(r.role !== 'superadmin' || role === 'superadmin') && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="button-delete"
+                disabled={
+                  busy ||
+                  demo ||
+                  r.email.toLowerCase() === user?.email?.toLowerCase() ||
+                  (r.registered && !r.user_id)
+                }
+                title={
+                  r.email.toLowerCase() === user?.email?.toLowerCase()
+                    ? 'No puedes eliminar tu propia cuenta'
+                    : undefined
+                }
+                onClick={() => {
+                  setRemoving(r)
+                  setConfirmation('')
+                  setDeleteError('')
+                }}
+              >
+                <Trash2 size={15} /> Eliminar usuario
+              </Button>
+            )}
           </Card>
         ))}
       </div>
@@ -206,6 +261,65 @@ export function StaffPage() {
           description="Las cuentas autorizadas aparecerán con su rol y estado de activación."
         />
       )}
+      <Dialog
+        open={!!removing}
+        title="Eliminar usuario"
+        onClose={() => {
+          if (!busy) setRemoving(null)
+        }}
+      >
+        {removing && (
+          <form onSubmit={removeAccount}>
+            <p>
+              Se eliminará{' '}
+              {removing.registered
+                ? 'la cuenta y su acceso al sistema'
+                : 'la autorización de acceso'}{' '}
+              de <strong>{removing.display_name}</strong>. Esta acción no se
+              puede deshacer.
+            </p>
+            <p className="muted">
+              Sus facturas, movimientos y fotografías del catálogo se
+              conservarán.
+            </p>
+            <Input
+              label="Escribe el correo para confirmar"
+              type="email"
+              autoComplete="off"
+              required
+              disabled={busy}
+              value={confirmation}
+              onChange={(e) => setConfirmation(e.target.value)}
+              placeholder={removing.email}
+            />
+            {deleteError && (
+              <p role="alert" className="error">
+                {deleteError}
+              </p>
+            )}
+            <div className="form-actions">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={busy}
+                onClick={() => setRemoving(null)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={
+                  busy ||
+                  confirmation.trim().toLowerCase() !==
+                    removing.email.toLowerCase()
+                }
+              >
+                {busy ? 'Eliminando…' : 'Eliminar definitivamente'}
+              </Button>
+            </div>
+          </form>
+        )}
+      </Dialog>
       <div className="role-guide">
         {[
           ['Administración', 'Catálogo, ventas, inventario y equipo.'],

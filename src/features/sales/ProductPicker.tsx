@@ -1,3 +1,4 @@
+import { ScanButton } from '../scanner/ScanButton'
 import { useState } from 'react'
 import {
   Check,
@@ -53,15 +54,23 @@ export function ProductPicker({
   const current = Math.min(page, pages - 1)
   return (
     <div className="product-picker">
-      <div className="picker-search">
-        <Search size={19} />
-        <Input
-          label="Buscar en catálogo"
-          type="search"
-          placeholder="Nombre, marca o código del perfume…"
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value)
+      <div className="search-with-scan">
+        <div className="picker-search">
+          <Search size={19} />
+          <Input
+            label="Buscar en catálogo"
+            type="search"
+            placeholder="Nombre, marca o código del perfume…"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value)
+              setPage(0)
+            }}
+          />
+        </div>
+        <ScanButton
+          onCode={(code) => {
+            setSearch(code)
             setPage(0)
           }}
         />

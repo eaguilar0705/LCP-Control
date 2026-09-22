@@ -1,0 +1,100 @@
+/* Wine red anchors navigation and actions; neutral surfaces keep the catalog calm. */
+:root {
+  --brand-red: #8d2534;
+  --brand-red-soft: #faeef0;
+}
+@media screen {
+  .sidebar nav a.active {
+    background: var(--brand-red);
+    color: #fff;
+    box-shadow: 0 4px 12px #8d253419;
+  }
+  .sidebar nav a:not(.active):hover {
+    background: var(--brand-red-soft);
+    color: var(--brand-red);
+  }
+  .bottom-nav a.active {
+    color: var(--brand-red);
+    background: var(--brand-red-soft);
+  }
+  .workspace-heading {
+    border-bottom-color: #d8a4ad;
+  }
+  .workspace-heading-icon {
+    color: var(--brand-red);
+    background: var(--brand-red-soft);
+    border-color: #e8c1c8;
+  }
+  .inventory-view-switch button[aria-pressed='true'],
+  .record-avatar {
+    color: var(--brand-red);
+    background: var(--brand-red-soft);
+  }
+  .inventory-toolbar,
+  .record-form {
+    border-top: 3px solid var(--brand-red);
+  }
+  .main-content
+    .button-primary:not(.button-whatsapp):not(.button-whatsapp-outline) {
+    background: var(--brand-red);
+    border-color: var(--brand-red);
+  }
+  .main-content
+    .button-primary:not(.button-whatsapp):not(
+      .button-whatsapp-outline
+    ):hover:not(:disabled) {
+    background: #721b29;
+  }
+  .scan-search-button {
+    color: var(--brand-red);
+    border-color: #d8a4ad;
+    background: #fff8f9;
+    white-space: nowrap;
+  }
+  .scan-search-button:hover {
+    background: var(--brand-red-soft);
+  }
+  .picker-product.is-added {
+    border-color: #c9818e;
+  }
+}
+.search-with-scan {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  min-width: 0;
+}
+.search-with-scan > .field,
+.search-with-scan > .picker-search {
+  flex: 1;
+  min-width: 0;
+}
+.search-with-scan > .button {
+  flex-shrink: 0;
+  min-height: 43px;
+}
+.scan-manual {
+  display: grid;
+  gap: 12px;
+  margin-top: 22px;
+}
+.button-delete {
+  color: #a12435;
+}
+.button-delete:hover:not(:disabled) {
+  background: var(--brand-red-soft);
+}
+@media (max-width: 760px) {
+  .filter-grid > .search-with-scan {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 480px) {
+  .search-with-scan {
+    flex-wrap: wrap;
+  }
+  .search-with-scan > .field,
+  .search-with-scan > .picker-search {
+    flex-basis: 190px;
+  }
+}
