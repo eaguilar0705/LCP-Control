@@ -1,3 +1,4 @@
+import { ProductSelect } from '../../components/ProductSelect'
 import { useState, type FormEvent } from 'react'
 import { Button, Dialog, Input, Select } from '../../components/ui'
 import { useAccess } from '../../app/AccessContext'
@@ -144,20 +145,12 @@ export function InventoryMovements({
         >
           <form onSubmit={submit} className="movement-form">
             <fieldset disabled={busy} className="form-fields">
-              <Select
+              <ProductSelect
                 label="Producto del movimiento"
-                required
+                products={items.map(({ product }) => product)}
                 value={productId}
-                onChange={(event) => setProductId(event.target.value)}
-              >
-                <option value="">Selecciona un producto</option>
-                {items.map(({ product }) => (
-                  <option key={product.id} value={product.id}>
-                    {product.brand} · {product.name} · {product.size ?? '?'}{' '}
-                    {product.unit}
-                  </option>
-                ))}
-              </Select>
+                onChange={setProductId}
+              />
               <Select
                 label="Ubicación"
                 value={location}

@@ -183,7 +183,11 @@ test('entry, exit and damage are pending drafts and never change stock', async (
   await page.goto('/demo/inventory')
   for (const title of ['Entrada', 'Salida', 'Dañado']) {
     await page.getByRole('button', { name: title, exact: true }).click()
-    await page.getByLabel('Producto del movimiento').selectOption('demo-0001')
+    await page.getByRole('button', { name: /Producto del movimiento/ }).click()
+    await page
+      .getByRole('combobox', { name: /Buscar perfume/ })
+      .fill('DEMO-0001')
+    await page.getByRole('option', { name: /Cedro 01/ }).click()
     await page.getByLabel('Cantidad', { exact: true }).fill('2')
     await page
       .getByLabel(
@@ -203,7 +207,9 @@ test('entry, exit and damage are pending drafts and never change stock', async (
   // Los borradores no tocan las existencias: el catálogo local sigue contado.
   await page.getByLabel('Existencias', { exact: true }).selectOption('unknown')
   await expect(page.getByText('0 de 30 productos')).toBeVisible()
-  await page.getByLabel('Existencias', { exact: true }).selectOption('available')
+  await page
+    .getByLabel('Existencias', { exact: true })
+    .selectOption('available')
   await expect(page.getByText('30 de 30 productos')).toBeVisible()
 })
 test('a new visit rotates the reflection without consuming two entries in StrictMode', async ({

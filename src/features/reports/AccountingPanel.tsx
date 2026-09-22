@@ -1,3 +1,4 @@
+import { ProductSelect } from '../../components/ProductSelect'
 import { useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { ArrowDownToLine, BadgeDollarSign, BookOpen, Coins, PackagePlus, Plus, ReceiptText, Trash2, Upload, Wallet } from 'lucide-react'
 import { Badge, Button, Card, Dialog, EmptyState, Input, Select } from '../../components/ui'
@@ -340,7 +341,7 @@ function ShipmentDialog({ source, writable, defaultRate, onClose, onRecorded }: 
     <div className="accounting-lines">
       <div className="section-heading"><div><h4>Perfumes de la caja</h4><p className="accounting-note">El envío se reparte por igual entre todas las unidades del pedido.</p></div><Button type="button" variant="secondary" onClick={() => setLines((current) => [...current, { ...blankLine }])}><Plus size={17} />Agregar perfume</Button></div>
       {rows.map((row, index) => <div className="accounting-line" key={index}>
-        <Select label="Perfume" required value={row.productId} onChange={(event) => update(index, { productId: event.target.value })}><option value="">Selecciona un producto</option>{source.inventory.map((item) => <option key={item.product.id} value={item.product.id}>{item.product.brand} {item.product.name} · {item.product.barcode}</option>)}</Select>
+        <ProductSelect label="Perfume" products={source.inventory.map(({ product }) => product)} value={row.productId} onChange={(productId) => update(index, { productId })} />
         <Select label="Recibido en" value={row.location} onChange={(event) => update(index, { location: event.target.value as InventoryLocation })}>{Object.entries(labels.location).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</Select>
         <Input label="Unidades" type="number" min={1} max={999999} step={1} required value={row.quantity} onChange={(event) => update(index, { quantity: event.target.value })} />
         <Input label={`Precio unitario (${currency})`} type="number" min={0} max={10000000} step="0.01" required value={row.unitPrice} onChange={(event) => update(index, { unitPrice: event.target.value })} />
@@ -406,7 +407,7 @@ function AccountingAction({ action, source, writable, defaultRate, onClose, onRe
 
   return <Dialog open title={titles[action.kind]} onClose={() => { if (!busy) onClose() }}><form className="accounting-form" onSubmit={submit}><fieldset disabled={busy}>
     {isVoid ? <><p>La anulación excluye este gasto del resultado y conserva el comprobante en el historial.</p><Input label="Motivo de anulación" required minLength={5} maxLength={500} value={note} onChange={(event) => setNote(event.target.value)} /></> : <>
-      {isOpening && <Select label="Producto" required value={productId} onChange={(event) => setProductId(event.target.value)}><option value="">Selecciona un producto</option>{products.map((item) => <option key={item.product.id} value={item.product.id}>{item.product.brand} {item.product.name} · {item.product.barcode}</option>)}</Select>}
+      {isOpening && <ProductSelect label="Producto" products={products.map(({ product }) => product)} value={productId} onChange={setProductId} />}
       {!isOpening && !isVoid && account === 'prestamos' && <p className="accounting-callout">Una cuota de préstamo devuelve capital: se registra y se ve en su cuenta, pero no baja el resultado del período. Lo que sí cuesta es el interés, y ése se registra en <strong>Gastos financieros</strong>.</p>}
       {isOpening && <p className="accounting-callout">Asigna el costo de compra documentado a las {stock ?? '—'} unidades actuales. No modifica cantidades ni recalcula ventas pasadas. Incluye en este costo unitario la parte del envío que le tocó al perfume.</p>}
       <div className="form-grid">

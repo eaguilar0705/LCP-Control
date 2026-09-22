@@ -1,3 +1,4 @@
+import { ProductSelect } from '../../components/ProductSelect'
 import { useState, type FormEvent } from 'react'
 import { z } from 'zod'
 import { ArrowDownLeft, ArrowUpRight, TriangleAlert } from 'lucide-react'
@@ -123,19 +124,12 @@ function MovementForm({
       onClose={onClose}
     >
       <form onSubmit={submit} className="movement-form">
-        <Select
+        <ProductSelect
           label="Producto del movimiento"
+          products={items.map(({ product }) => product)}
           value={productId}
-          required
-          onChange={(e) => setProductId(e.target.value)}
-        >
-          <option value="">Selecciona un producto</option>
-          {items.map(({ product: p }) => (
-            <option key={p.id} value={p.id}>
-              {p.brand} · {p.name} · {p.size ?? '?'} {p.unit}
-            </option>
-          ))}
-        </Select>
+          onChange={setProductId}
+        />
         <div className="form-grid">
           <Select label="Ubicación" name="location">
             <option value="warehouse">Bodega</option>
