@@ -4,7 +4,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useLocation } from 'react-router-dom'
 import { ArrowRight, ShieldCheck } from 'lucide-react'
 import { useAuth } from './AuthContext'
-import { Button, Feedback, Input, LoadingState } from '../../components/ui'
+import { Button, Input, LoadingState } from '../../components/ui'
 import { loginSchema } from '../../lib/validation'
 import { errorMessage } from '../../lib/errors'
 import { authConfigured } from '../../lib/supabase'
@@ -97,19 +97,6 @@ export function LoginPage() {
           <Link className="demo-link" to="/activate">
             Activar mi cuenta
           </Link>
-        )}
-        {import.meta.env.DEV && (
-          <>
-            {!authConfigured && (
-              <Feedback>
-                Puedes consultar el catálogo de prueba y preparar borradores sin
-                iniciar sesión.
-              </Feedback>
-            )}
-            <Link className="demo-link" to="/demo">
-              Abrir vista local <ArrowRight size={16} />
-            </Link>
-          </>
         )}
         <p className="login-note">
           <ShieldCheck size={16} /> Acceso privado. Solicita tu cuenta al
