@@ -50,6 +50,7 @@ function mount(service: AuthService, initial = '/inventory') {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route element={<ProtectedRoute />}>
+            <Route path="/" element={<h1>Inicio</h1>} />
             <Route path="/inventory" element={<PrivatePage />} />
           </Route>
         </Routes>
@@ -69,6 +70,30 @@ describe('auth flow', () => {
     mount(serviceFor(profile))
     expect(await screen.findByText('Private')).toBeInTheDocument()
   })
+  it.each(['/login', '/inventory'])(
+    'opens home after signing in from %s',
+    async (initial) => {
+      const service = serviceFor(null)
+      let callback!: (user: UserProfile | null) => void
+      service.subscribe = (handler) => {
+        callback = handler
+        return () => {}
+      }
+      service.signIn = vi.fn(async () => callback(profile))
+      mount(service, initial)
+      const user = userEvent.setup()
+      await user.type(
+        await screen.findByLabelText('Correo electrónico'),
+        'test@example.test',
+      )
+      await user.type(screen.getByLabelText('Contraseña'), 'test-password')
+      await user.click(screen.getByRole('button', { name: 'Iniciar sesión' }))
+      expect(
+        await screen.findByRole('heading', { name: 'Inicio' }),
+      ).toBeInTheDocument()
+      expect(screen.queryByText('Private')).not.toBeInTheDocument()
+    },
+  )
   it('shows loading until restoration completes', async () => {
     const service = serviceFor(null)
     service.getSession = () => new Promise(() => {})

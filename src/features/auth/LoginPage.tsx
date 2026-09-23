@@ -1,7 +1,7 @@
 import { Brand } from '../../components/Brand'
 import { Reflection } from '../dashboard/Reflection'
 import { useState, type FormEvent } from 'react'
-import { Link, Navigate, useLocation } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { ArrowRight, ShieldCheck } from 'lucide-react'
 import { useAuth } from './AuthContext'
 import { Button, Input, LoadingState } from '../../components/ui'
@@ -10,24 +10,10 @@ import { errorMessage } from '../../lib/errors'
 import { authConfigured } from '../../lib/supabase'
 export function LoginPage() {
   const { user, loading, service } = useAuth()
-  const location = useLocation()
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   if (loading) return <LoadingState />
-  const from: unknown = location.state?.from
-  if (user)
-    return (
-      <Navigate
-        to={
-          typeof from === 'string' &&
-          /^\/(?!\/)/.test(from) &&
-          from !== '/login'
-            ? from
-            : '/'
-        }
-        replace
-      />
-    )
+  if (user) return <Navigate to="/" replace />
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const data = new FormData(event.currentTarget)
