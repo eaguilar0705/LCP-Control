@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "clean": "node scripts/clean.mjs",
+    "clean": "node scripts/dev/clean.mjs",
     "check": "npm run lint && npm test && npm run build",
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b",
@@ -16,8 +16,9 @@
     "format": "prettier --write src tests *.json *.ts *.js *.md",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:scripts": "node --test \"tests/scripts/*.test.mjs\"",
     "test:e2e": "playwright test",
-    "test:db": "node tests/database/catalog.mjs && node tests/database/accounting.mjs && node tests/database/staff.mjs",
+    "test:db": "node tests/database/catalog.mjs && node tests/database/accounting.mjs && node tests/database/staff.mjs && node tests/database/contacts.mjs",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {

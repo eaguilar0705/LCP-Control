@@ -1,0 +1,190 @@
+/* Inventario por ubicación.
+   Bodega = dorado, Tienda = verde salvia, Total consolidado = vino y en negrita.
+   Los tres colores se repiten en el resumen, la tabla, las tarjetas y la ficha
+   para que la ubicación se reconozca sin leer el rótulo. */
+:root {
+  --stock-warehouse-ink: #7a5a1f;
+  --stock-warehouse-bg: #f8f0df;
+  --stock-warehouse-line: #e9d9b5;
+  --stock-store-ink: #45633c;
+  --stock-store-bg: #eef3e8;
+  --stock-store-line: #d4e0c8;
+  --stock-total-ink: #57171c;
+  --stock-total-bg: #f4e6e4;
+  --stock-total-line: #e3c8c4;
+}
+
+/* Resumen de la lista filtrada */
+.inventory-totals {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 20px 24px 4px;
+}
+.inventory-total {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 10px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid;
+}
+.inventory-total svg {
+  grid-row: span 2;
+}
+.inventory-total span {
+  font-size: 11px;
+  font-weight: 500;
+}
+.inventory-total strong {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+.inventory-total-warehouse {
+  color: var(--stock-warehouse-ink);
+  background: var(--stock-warehouse-bg);
+  border-color: var(--stock-warehouse-line);
+}
+.inventory-total-store {
+  color: var(--stock-store-ink);
+  background: var(--stock-store-bg);
+  border-color: var(--stock-store-line);
+}
+.inventory-total-sum {
+  color: var(--stock-total-ink);
+  background: var(--stock-total-bg);
+  border-color: var(--stock-total-line);
+}
+.inventory-totals-note {
+  grid-column: 1 / -1;
+  font-size: 11px;
+  color: var(--muted, #8a7d78);
+}
+
+/* Bloque por producto: tarjetas, móvil y ficha */
+.stock-by-location {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin: 14px 0;
+}
+.stock-tile {
+  margin: 0;
+  padding: 8px 9px;
+  border-radius: 8px;
+  border: 1px solid;
+  min-width: 0;
+}
+.stock-tile dt {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.stock-tile dd {
+  margin: 4px 0 0;
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.stock-tile-warehouse {
+  color: var(--stock-warehouse-ink);
+  background: var(--stock-warehouse-bg);
+  border-color: var(--stock-warehouse-line);
+}
+.stock-tile-store {
+  color: var(--stock-store-ink);
+  background: var(--stock-store-bg);
+  border-color: var(--stock-store-line);
+}
+.stock-tile-total {
+  color: var(--stock-total-ink);
+  background: var(--stock-total-bg);
+  border-color: var(--stock-total-line);
+}
+.stock-tile-total dd {
+  font-weight: 800;
+}
+.stock-by-location-compact .stock-tile {
+  padding: 6px 8px;
+}
+.stock-by-location-compact .stock-tile dd {
+  font-size: 15px;
+}
+.product-detail .stock-by-location {
+  max-width: 340px;
+}
+
+/* Tabla: grupo «Existencias» con tres columnas diferenciadas */
+.inventory-table .stock-group-heading {
+  text-align: center;
+  color: var(--stock-total-ink);
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+.inventory-table th.qty-col,
+.inventory-table td.qty-col {
+  text-align: right;
+  padding-left: 14px;
+  padding-right: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.inventory-table th.qty-col svg {
+  vertical-align: -2px;
+  margin-right: 3px;
+}
+.inventory-table .qty-warehouse {
+  color: var(--stock-warehouse-ink);
+  background: color-mix(in srgb, var(--stock-warehouse-bg) 55%, transparent);
+}
+.inventory-table .qty-store {
+  color: var(--stock-store-ink);
+  background: color-mix(in srgb, var(--stock-store-bg) 55%, transparent);
+}
+.inventory-table .qty-total {
+  color: var(--stock-total-ink);
+  background: color-mix(in srgb, var(--stock-total-bg) 70%, transparent);
+  font-weight: 700;
+}
+.inventory-table td.qty-col {
+  font-size: 13px;
+}
+.inventory-table tfoot th,
+.inventory-table tfoot td {
+  font-size: 12px;
+  font-weight: 700;
+  border-top: 2px solid var(--stock-total-line);
+  border-bottom: 0;
+}
+.inventory-table tfoot th {
+  color: var(--stock-total-ink);
+  background: #fbf7f3;
+}
+
+@media (max-width: 760px) {
+  .inventory-totals {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    padding: 14px 16px 2px;
+  }
+  .inventory-total {
+    grid-template-columns: 1fr;
+    padding: 9px 10px;
+  }
+  .inventory-total svg {
+    display: none;
+  }
+  .inventory-total span {
+    font-size: 10px;
+  }
+  .inventory-total strong {
+    font-size: 17px;
+  }
+}

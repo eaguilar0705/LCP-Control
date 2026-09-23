@@ -1,0 +1,387 @@
+/* Facturas y proformas (DocumentPrint).
+   Una sola maqueta para pantalla, impresión y «Guardar como PDF» del
+   navegador. Se diseña para la intersección de carta y A4 —210 mm de ancho
+   (A4) por 279,4 mm de alto (carta)— para que el mismo documento quepa en una
+   hoja con cualquiera de los dos papeles.
+
+   Presupuesto vertical del modo denso (px a 96 ppp, alto útil ≈ 995 px):
+   encabezado 70 · cliente 56 · cabecera de tabla 18 · 40 renglones × 16 = 640
+   · totales 76 · firmas 40 · pie 38  →  ≈ 938 px, con margen para algún
+   nombre largo en dos líneas.
+
+   Legibilidad: el cuerpo de la tabla no baja de 11 px (≈ 8,3 pt), en negrita
+   y negro puro. Las líneas de la tabla son de 1 px en gris medio: los grises
+   claros desaparecen en impresoras térmicas y de tinta con poco tóner. */
+
+.letter-document {
+  --document-accent: #57171c;
+  --document-ink: #1d1714;
+  --document-muted: #5c514a;
+  --document-rule: #b9ada3;
+  --row-font: 12.5px;
+  --row-line: 1.35;
+  --row-pad-y: 6px;
+  --row-pad-x: 8px;
+  --head-pad-y: 7px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  width: 816px;
+  min-height: 1056px;
+  padding: 36px 44px;
+  margin: 0 auto;
+  background: white;
+  color: var(--document-ink);
+  font:
+    12px/1.4 Arial,
+    'Helvetica Neue',
+    Helvetica,
+    sans-serif;
+}
+.letter-proforma {
+  --document-accent: #7a5512;
+}
+.letter-density-compact {
+  --row-font: 12px;
+  --row-line: 1.25;
+  --row-pad-y: 2.5px;
+  --row-pad-x: 7px;
+  --head-pad-y: 5px;
+}
+.letter-density-dense {
+  --row-font: 11px;
+  --row-line: 1.15;
+  --row-pad-y: 1px;
+  --row-pad-x: 6px;
+  --head-pad-y: 3px;
+}
+
+/* Encabezado: logo y datos del negocio a la izquierda, sello a la derecha */
+.letter-header {
+  border-top: 4px solid var(--document-accent);
+  padding-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  align-items: start;
+}
+.letter-issuer {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 14px;
+  align-items: end;
+}
+.letter-issuer .brand-wordmark {
+  display: block;
+  grid-row: span 2;
+  width: 170px;
+  height: auto;
+  align-self: center;
+}
+.letter-density-dense .letter-issuer .brand-wordmark {
+  width: 125px;
+}
+.letter-issuer p {
+  margin: 2px 0 0;
+  font-size: 10px;
+  line-height: 1.3;
+  color: var(--document-muted);
+}
+.letter-issuer p:last-child {
+  align-self: start;
+}
+.letter-stamp {
+  min-width: 210px;
+  background: #f6f1ea;
+  border-left: 3px solid var(--document-accent);
+  text-align: right;
+  border-radius: 4px;
+  padding: 8px 12px;
+  color: var(--document-accent);
+}
+.letter-stamp strong,
+.letter-stamp b,
+.letter-stamp span {
+  display: block;
+}
+.letter-stamp strong {
+  font-size: 20px;
+  line-height: 1.1;
+  letter-spacing: 2px;
+}
+.letter-stamp b {
+  font-size: 14px;
+  margin: 2px 0;
+}
+.letter-stamp span {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.letter-stamp p {
+  margin: 2px 0 0;
+  font-size: 10px;
+  color: var(--document-ink);
+}
+.letter-density-dense .letter-header {
+  padding-top: 6px;
+}
+.letter-density-dense .letter-stamp {
+  padding: 4px 10px;
+}
+.letter-density-dense .letter-stamp strong {
+  font-size: 17px;
+}
+.letter-density-dense .letter-stamp b {
+  font-size: 13px;
+  margin: 0;
+}
+
+/* Cliente: rejilla de 3 columnas, «ETIQUETA dato» en una línea */
+.letter-client {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr;
+  gap: 2px 14px;
+  border: 1px solid var(--document-rule);
+  border-radius: 4px;
+  padding: 6px 10px;
+  margin: 10px 0 8px;
+}
+.letter-client p {
+  margin: 0;
+  line-height: 1.3;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 10.5px;
+}
+.letter-client small,
+.letter-summary small {
+  font-size: 8px;
+  letter-spacing: 0.8px;
+  font-weight: 700;
+  color: var(--document-muted);
+}
+.letter-client small {
+  margin-right: 5px;
+}
+.letter-client-name strong {
+  font-size: 12px;
+}
+.letter-client-address {
+  grid-column: span 2;
+}
+.letter-density-dense .letter-client {
+  padding: 4px 10px;
+  margin: 6px 0;
+}
+
+/* Tabla de productos */
+.letter-items {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+}
+.letter-col-line {
+  width: 5%;
+}
+.letter-col-quantity {
+  width: 7%;
+}
+.letter-col-description {
+  width: 56%;
+}
+.letter-col-money {
+  width: 16%;
+}
+.letter-items th {
+  background: var(--document-accent);
+  color: white;
+  padding: var(--head-pad-y) var(--row-pad-x);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-align: left;
+}
+.letter-items td {
+  padding: var(--row-pad-y) var(--row-pad-x);
+  border-bottom: 1px solid var(--document-rule);
+  font-size: var(--row-font);
+  line-height: var(--row-line);
+  font-weight: 700;
+  color: #000;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.letter-items tbody tr:nth-child(even) td {
+  background: #f7f3ee;
+}
+.letter-items th:nth-child(1),
+.letter-items th:nth-child(2),
+.letter-items .letter-line,
+.letter-items .letter-quantity {
+  text-align: center;
+}
+.letter-items .letter-line {
+  font-weight: 400;
+  color: var(--document-muted);
+  font-size: calc(var(--row-font) - 1.5px);
+}
+.letter-items th:nth-child(n + 4),
+.letter-items .letter-money {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.letter-items tbody tr:last-child td {
+  border-bottom: 2px solid var(--document-accent);
+}
+
+/* Totales y observaciones */
+.letter-summary {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  gap: 20px;
+  margin-top: 8px;
+  break-inside: avoid;
+}
+.letter-notes p {
+  margin: 2px 0 4px;
+  font-size: 10.5px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.letter-notes .letter-count {
+  font-weight: 700;
+  font-size: 10.5px;
+  margin-bottom: 6px;
+}
+.letter-totals p {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 3px;
+  font-size: 11px;
+}
+.letter-totals b {
+  font-weight: 700;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.letter-totals .letter-grand-total {
+  background: var(--document-accent);
+  color: white;
+  padding: 7px 10px;
+  border-radius: 4px;
+  align-items: center;
+  margin-top: 4px;
+  font-weight: 700;
+}
+.letter-grand-total b {
+  font-size: 17px;
+}
+/* El mismo total en la otra moneda: el cliente que paga en dólares ve las dos
+   cifras y la tasa con la que se cotizó. */
+.letter-totals .letter-equivalent {
+  align-items: baseline;
+  margin-top: 3px;
+  color: var(--document-muted);
+}
+.letter-equivalent b {
+  text-align: right;
+}
+.letter-equivalent small {
+  display: block;
+  font-weight: 400;
+  font-size: 9px;
+  letter-spacing: 0;
+}
+
+/* Firmas y pie: siempre al final de la hoja */
+.letter-signatures {
+  display: flex;
+  justify-content: space-around;
+  gap: 60px;
+  margin: auto 25px 0;
+  padding-top: 34px;
+  text-align: center;
+  font-size: 10px;
+  break-inside: avoid;
+}
+.letter-signatures span {
+  border-top: 1px solid var(--document-muted);
+  padding-top: 4px;
+  width: 220px;
+}
+.letter-footer {
+  border-top: 2px solid var(--document-accent);
+  padding-top: 5px;
+  margin-top: 10px;
+  break-inside: avoid;
+}
+.letter-footer strong {
+  color: var(--document-accent);
+  font-size: 11px;
+}
+.letter-footer p {
+  margin: 1px 0 0;
+  font-size: 8.5px;
+  line-height: 1.3;
+  color: var(--document-muted);
+}
+.letter-density-dense .letter-summary {
+  margin-top: 6px;
+}
+.letter-density-dense .letter-totals p {
+  margin-bottom: 1px;
+}
+.letter-density-dense .letter-totals .letter-grand-total {
+  padding: 4px 10px;
+  margin-top: 2px;
+}
+.letter-density-dense .letter-grand-total b {
+  font-size: 15px;
+}
+.letter-density-dense .letter-equivalent small {
+  display: inline;
+  margin-left: 6px;
+}
+.letter-density-dense .letter-notes p {
+  margin-bottom: 2px;
+}
+.letter-density-dense .letter-signatures {
+  padding-top: 20px;
+}
+.letter-density-dense .letter-footer {
+  margin-top: 6px;
+}
+
+@media print {
+  /* Sin «size»: se usa el papel elegido (carta o A4); la maqueta cabe en
+     ambos. Márgenes pequeños que admiten todas las impresoras láser/tinta. */
+  @page {
+    margin: 8mm 9mm;
+  }
+  .letter-document {
+    width: 100%;
+    /* Alto útil de carta (279,4 mm − 16 mm) con 2 mm de holgura para el
+       redondeo del navegador: nunca provoca una hoja en blanco. */
+    min-height: 261mm;
+    padding: 0;
+    margin: 0;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .letter-items thead {
+    display: table-header-group;
+  }
+  .letter-items tr {
+    break-inside: avoid;
+  }
+  .letter-header,
+  .letter-client,
+  .letter-signatures,
+  .letter-footer {
+    break-inside: avoid;
+  }
+}

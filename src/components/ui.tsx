@@ -2,18 +2,26 @@ import {
   useEffect,
   useId,
   useRef,
+  useState,
   type ButtonHTMLAttributes,
   type InputHTMLAttributes,
   type ReactNode,
   type SelectHTMLAttributes,
 } from 'react'
-import { AlertCircle, LoaderCircle, PackageOpen, X } from 'lucide-react'
+import {
+  AlertCircle,
+  Eye,
+  EyeOff,
+  LoaderCircle,
+  PackageOpen,
+  X,
+} from 'lucide-react'
 export function Button({
   className = '',
   variant = 'primary',
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: 'primary' | 'secondary' | 'ghost'
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger'
 }) {
   return (
     <button className={`button button-${variant} ${className}`} {...props} />
@@ -42,6 +50,57 @@ export function Input({
         aria-describedby={error ? `${id}-error` : undefined}
         {...props}
       />
+      {error && (
+        <small className="field-error" id={`${id}-error`}>
+          {error}
+        </small>
+      )}
+    </label>
+  )
+}
+// Campo de contraseña con botón para mostrarla u ocultarla. El botón es
+// type="button" para no enviar el formulario, anuncia su estado con
+// aria-pressed y no roba el foco del campo al pulsarlo con el ratón.
+export function PasswordInput({
+  label,
+  error,
+  ...props
+}: Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> & {
+  label: string
+  error?: string
+}) {
+  const id = useId()
+  const [visible, setVisible] = useState(false)
+  return (
+    <label
+      className={`field password-field ${error ? 'field-invalid' : ''}`}
+      htmlFor={id}
+    >
+      <span id={`${id}-label`}>{label}</span>
+      <span className="password-control">
+        <input
+          id={id}
+          type={visible ? 'text' : 'password'}
+          aria-labelledby={`${id}-label`}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? `${id}-error` : undefined}
+          autoCapitalize="none"
+          spellCheck={false}
+          {...props}
+        />
+        <button
+          type="button"
+          className="password-toggle"
+          aria-label={visible ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+          aria-pressed={visible}
+          aria-controls={id}
+          title={visible ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => setVisible((value) => !value)}
+        >
+          {visible ? <EyeOff size={18} /> : <Eye size={18} />}
+        </button>
+      </span>
       {error && (
         <small className="field-error" id={`${id}-error`}>
           {error}
@@ -154,11 +213,13 @@ export function Dialog({
   title,
   onClose,
   children,
+  className = '',
 }: {
   open: boolean
   title: string
   onClose: () => void
   children: ReactNode
+  className?: string
 }) {
   const ref = useRef<HTMLDialogElement>(null)
   const titleId = useId()
@@ -170,7 +231,7 @@ export function Dialog({
   return (
     <dialog
       ref={ref}
-      className="dialog"
+      className={`dialog ${className}`}
       aria-labelledby={titleId}
       onCancel={(event) => {
         event.preventDefault()
@@ -191,5 +252,70 @@ export function Dialog({
       </div>
       {children}
     </dialog>
+  )
+}
+
+/**
+ * Confirmación previa a una acción irreversible. El foco inicial queda en
+ * «Cancelar» (el botón seguro), Escape y el botón de cierre cancelan salvo
+ * mientras la acción está en curso, y el error se anuncia sin cerrar el diálogo.
+ */
+export function ConfirmDialog({
+  open,
+  title,
+  children,
+  confirmLabel,
+  busyLabel = 'Procesando…',
+  busy = false,
+  error,
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean
+  title: string
+  children: ReactNode
+  confirmLabel: string
+  busyLabel?: string
+  busy?: boolean
+  error?: string
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  return (
+    <Dialog
+      open={open}
+      title={title}
+      className="confirm-dialog"
+      onClose={() => {
+        if (!busy) onCancel()
+      }}
+    >
+      <div className="confirm-dialog-body">{children}</div>
+      {error && (
+        <p role="alert" className="inline-error">
+          {error}
+        </p>
+      )}
+      <div className="form-actions">
+        <Button
+          type="button"
+          variant="secondary"
+          autoFocus
+          disabled={busy}
+          onClick={onCancel}
+        >
+          Cancelar
+        </Button>
+        <Button
+          type="button"
+          variant="danger"
+          disabled={busy}
+          aria-busy={busy}
+          onClick={onConfirm}
+        >
+          {busy ? busyLabel : confirmLabel}
+        </Button>
+      </div>
+    </Dialog>
   )
 }

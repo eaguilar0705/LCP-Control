@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { writeQrVideo } from './fakeCamera'
+import { writeQrVideo } from './support/fakeCamera'
 import { browserChannel } from '../../playwright.config'
 
 // The camera lifecycle is covered in foundation.spec.ts. This checks the step
@@ -33,7 +33,7 @@ test.use({
     args: [
       '--use-fake-device-for-media-stream',
       '--use-fake-ui-for-media-stream',
-      `--use-file-for-fake-video-capture=${writeQrVideo(CODE, 'test-results/fake-camera/known-qr.y4m')}`,
+      `--use-file-for-fake-video-capture=${writeQrVideo(CODE, 'output/test-results/fake-camera/known-qr.y4m')}`,
     ],
   },
 })
@@ -64,7 +64,7 @@ test('the camera reads a registered code and shows the product', async ({
   await expect(page.locator('video')).toHaveCount(0)
 
   await page.screenshot({
-    path: `test-results/scanner-decoded-${info.project.name}.png`,
+    path: `output/test-results/scanner-decoded-${info.project.name}.png`,
     fullPage: true,
   })
   expect(errors).toEqual([])

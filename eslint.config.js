@@ -30,7 +30,12 @@ export default tseslint.config(
     },
   },
   {
-    files: ['*.js', 'scripts/*.mjs', 'tests/database/*.mjs'],
+    files: [
+      '*.js',
+      'scripts/**/*.mjs',
+      'tests/database/*.mjs',
+      'tests/scripts/*.mjs',
+    ],
     languageOptions: { globals: globals.node },
   },
 )

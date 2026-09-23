@@ -1,3 +1,4 @@
+import { Sigma, Store, Warehouse } from 'lucide-react'
 import { Badge } from '../../components/ui'
 import { ProductImage } from '../../components/ProductImage'
 import type { InventoryItem, Currency, PriceTier } from '../../lib/domain'
@@ -27,6 +28,51 @@ export function StockBadge({ item }: { item: InventoryItem }) {
             ? 'Stock bajo'
             : 'Disponible'}
     </Badge>
+  )
+}
+/**
+ * Existencias por ubicación con la misma lectura en tarjetas, móvil y ficha:
+ * Bodega y Tienda con su color e icono, y el total consolidado destacado.
+ */
+export function StockByLocation({
+  item,
+  compact = false,
+}: {
+  item: InventoryItem
+  compact?: boolean
+}) {
+  const total = totalStock(item)
+  return (
+    <dl
+      className={`stock-by-location ${compact ? 'stock-by-location-compact' : ''}`}
+      aria-label="Existencias por ubicación"
+    >
+      <div className="stock-tile stock-tile-warehouse">
+        <dt>
+          <Warehouse size={14} aria-hidden="true" /> Bodega
+        </dt>
+        <dd>{item.quantities.warehouse ?? '—'}</dd>
+      </div>
+      <div className="stock-tile stock-tile-store">
+        <dt>
+          <Store size={14} aria-hidden="true" /> Tienda
+        </dt>
+        <dd>{item.quantities.store ?? '—'}</dd>
+      </div>
+      <div
+        className="stock-tile stock-tile-total"
+        title={
+          total === null
+            ? 'Falta registrar el conteo de una ubicación'
+            : 'Bodega + Tienda'
+        }
+      >
+        <dt>
+          <Sigma size={14} aria-hidden="true" /> Total
+        </dt>
+        <dd>{total ?? '—'}</dd>
+      </div>
+    </dl>
   )
 }
 export function ProductIdentity({ item }: { item: InventoryItem }) {
@@ -72,17 +118,7 @@ export function ProductCard({
             : formatCurrency(price, currency)}
         </strong>
       </div>
-      <div className="location-strip">
-        <span>
-          Bodega <b>{item.quantities.warehouse ?? '—'}</b>
-        </span>
-        <span>
-          Tienda <b>{item.quantities.store ?? '—'}</b>
-        </span>
-        <span>
-          Total <b>{totalStock(item) ?? '—'}</b>
-        </span>
-      </div>
+      <StockByLocation item={item} compact />
       <small className="internal-code">
         Código interno: {item.product.barcode}
       </small>

@@ -31,6 +31,7 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
   const [selected, setSelected] = useState<DocumentRecord | null>(null)
   const [search, setSearch] = useState('')
   const [failure, setFailure] = useState('')
+  const [downloading, setDownloading] = useState(false)
   return (
     <>
       <div className="no-print">
@@ -115,20 +116,33 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
           )}
         {selected && (
           <div className="form-actions">
-            <Button onClick={() => window.print()}>Imprimir en carta</Button>
+            <Button type="button" onClick={() => window.print()}>
+              Imprimir (carta o A4)
+            </Button>
             <Button
+              type="button"
               variant="secondary"
+              disabled={downloading}
+              aria-busy={downloading}
               onClick={async () => {
+                setDownloading(true)
+                setFailure('')
                 try {
                   await downloadDocumentPdf(selected)
                 } catch (e) {
                   setFailure(errorMessage(e))
+                } finally {
+                  setDownloading(false)
                 }
               }}
             >
-              Descargar PDF
+              {downloading ? 'Generando PDF…' : 'Descargar PDF'}
             </Button>
-            <Button variant="ghost" onClick={() => setSelected(null)}>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setSelected(null)}
+            >
               Cerrar documento
             </Button>
           </div>

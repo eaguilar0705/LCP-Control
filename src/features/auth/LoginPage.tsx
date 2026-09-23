@@ -4,7 +4,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { ArrowRight, ShieldCheck } from 'lucide-react'
 import { useAuth } from './AuthContext'
-import { Button, Input, LoadingState } from '../../components/ui'
+import { Button, Input, LoadingState, PasswordInput } from '../../components/ui'
 import { loginSchema } from '../../lib/validation'
 import { errorMessage } from '../../lib/errors'
 import { authConfigured } from '../../lib/supabase'
@@ -67,10 +67,9 @@ export function LoginPage() {
               autoComplete="username"
               required
             />
-            <Input
+            <PasswordInput
               label="Contraseña"
               name="password"
-              type="password"
               autoComplete="current-password"
               placeholder="Tu contraseña"
               required
@@ -80,7 +79,7 @@ export function LoginPage() {
                 {error}
               </p>
             )}
-            <Button type="submit" disabled={busy}>
+            <Button type="submit" disabled={busy} aria-busy={busy}>
               {busy ? 'Iniciando sesión…' : 'Iniciar sesión'}
               <ArrowRight size={18} />
             </Button>

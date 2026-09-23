@@ -60,6 +60,20 @@ export const saveContact = (
   rpc<string>(kind === 'customers' ? 'save_customer' : 'save_supplier', {
     p_payload: record,
   })
+export type ContactDeletion = 'deleted' | 'archived'
+/**
+ * Elimina un cliente o proveedor. Un cliente con facturas o proformas se
+ * archiva en lugar de borrarse, para conservar los documentos emitidos.
+ * La revisión evita borrar datos que otra persona acaba de cambiar.
+ */
+export const deleteContact = (
+  kind: 'customers' | 'suppliers',
+  record: Pick<ContactRecord, 'id' | 'revision'>,
+) =>
+  rpc<ContactDeletion>(
+    kind === 'customers' ? 'delete_customer' : 'delete_supplier',
+    { p_id: record.id, p_revision: record.revision },
+  )
 export const listStaff = () => rpc<StaffAccount[]>('list_staff_accounts', {})
 export const deleteStaff = (record: StaffAccount) =>
   rpc('delete_staff_account', {

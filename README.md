@@ -2,7 +2,7 @@
 
 Aplicación de inventario, facturación y proformas con React, TypeScript, Vite y Supabase.
 
-El proyecto activo ya tiene catálogo, precios, fotos privadas y persistencia de clientes, proveedores, documentos y permisos. El estado de la base y los pasos pendientes de activación están en [docs/database.md](docs/database.md); edición e impresión carta, en [docs/catalog-and-printing.md](docs/catalog-and-printing.md). Guardar código en Git no aplica migraciones automáticamente en otros proyectos.
+El proyecto activo ya tiene catálogo, precios, fotos privadas y persistencia de clientes, proveedores, documentos y permisos. El estado de la base y los pasos pendientes de activación están en [docs/guides/database.md](docs/guides/database.md); edición e impresión carta, en [docs/guides/catalog-and-printing.md](docs/guides/catalog-and-printing.md). Guardar código en Git no aplica migraciones automáticamente en otros proyectos.
 
 ## Abrir la aplicación
 
@@ -13,7 +13,7 @@ npm ci
 npm run dev
 ```
 
-Abrir **http://127.0.0.1:5173/login**. Para trabajar con datos reales, configurar `.env.local` según `.env.example` y disponer de una cuenta activa en `staff_members`. Las instrucciones de la base están en [docs/database.md](docs/database.md).
+Abrir **http://127.0.0.1:5173/login**. Para trabajar con datos reales, configurar `.env.local` según `.env.example` y disponer de una cuenta activa en `staff_members`. Las instrucciones de la base están en [docs/guides/database.md](docs/guides/database.md).
 
 **http://127.0.0.1:5173/demo** permite explorar 30 productos inventados, con códigos `DEMO-0001` a `DEMO-0030`. Esta vista existe únicamente en desarrollo y pruebas. Siempre usa datos sintéticos, incluso si `.env.local` configura una base real. Permite preparar borradores; no emite documentos ni modifica existencias.
 
@@ -48,10 +48,55 @@ Borradores de facturas y proformas se guardan por cuenta en Supabase y se sincro
 El catálogo real no se incluye en `src/data/catalog.json` ni en la compilación. El importador genera un archivo privado:
 
 ```sh
-python scripts/import_catalog.py RUTA_A_LA_CARPETA_CON_LOS_EXCEL
+python scripts/catalog/import_catalog.py RUTA_A_LA_CARPETA_CON_LOS_EXCEL
 ```
 
 La salida es `private-data/catalog.json`, ignorada por Git. Este script no carga los datos a Supabase por sí solo. El análisis de origen está en [docs/discovery/catalog-import.md](docs/discovery/catalog-import.md). Las fotos se sirven desde Storage privado después de importarlas. Las pendientes muestran una alternativa y conservan el enlace original para abrirlo manualmente.
+
+## Estructura del proyecto
+
+```text
+LCP-Control/
+├── index.html              Punto de entrada de Vite
+├── package.json            Dependencias y comandos npm
+├── *.config.ts / .js       Vite, Playwright, ESLint, TypeScript, Prettier
+├── public/
+│   └── brand/              Logotipos (imágenes servidas tal cual)
+├── src/                    Código de la aplicación (sin pruebas)
+│   ├── main.tsx            Arranque: monta la app y carga los estilos
+│   ├── app/                Enrutado, layout, contexto de acceso y ErrorBoundary
+│   ├── components/         Componentes reutilizables
+│   ├── features/           Una carpeta por módulo (sales, inventory, reports…)
+│   ├── lib/                Utilidades y reglas de dominio
+│   ├── services/           Acceso a datos y adaptadores (Supabase, demo, local)
+│   ├── styles/             Todas las hojas CSS
+│   └── types/              Declaraciones de tipos
+├── supabase/
+│   └── migrations/         Migraciones SQL en orden cronológico
+├── scripts/                Herramientas de línea de comandos
+│   ├── catalog/            Importación de catálogo e imágenes
+│   ├── openbeautyfacts/    Auditoría de códigos EAN/UPC
+│   └── dev/                Limpieza y PDF de ejemplo
+├── tests/                  Todas las pruebas
+│   ├── unit/               Vitest; replica la estructura de src/ (importa con `@/`)
+│   ├── e2e/                Playwright; `support/` contiene la cámara falsa
+│   ├── database/           Suites contra PostgreSQL desechable
+│   └── scripts/            Pruebas de los scripts (node --test)
+├── docs/
+│   ├── guides/             Guías de operación y referencia
+│   ├── discovery/          Análisis de origen del negocio y del catálogo
+│   └── reports/            Revisiones fechadas
+├── output/                 Generado, ignorado por Git: se borra con npm run clean
+│   ├── dist/               Compilación de producción
+│   ├── cache/              Cachés de TypeScript y Vite
+│   ├── test-results/       Capturas y trazas de Playwright
+│   ├── playwright-report/  Informe HTML de Playwright
+│   ├── coverage/           Cobertura de Vitest
+│   └── pdf/                PDF de ejemplo (npm run clean no los borra)
+└── private-data/           Datos privados del negocio, ignorados por Git
+```
+
+Las pruebas unitarias importan el código con el alias `@/`, que apunta a `src/` (configurado en `vite.config.ts` y `tsconfig.json`).
 
 ## Comprobación y mantenimiento
 
@@ -59,6 +104,7 @@ La salida es `private-data/catalog.json`, ignorada por Git. Este script no carga
 npm run check
 npm run test:db
 npm run test:e2e
+npm run test:scripts
 ```
 
 `check` ejecuta lint, pruebas unitarias/integración y compilación. `test:db` ejecuta las suites de catálogo y contabilidad en PostgreSQL desechable, incluidas las migraciones de precios en dólares. Playwright utiliza Chrome instalado y prueba escritorio y móvil con un servidor propio en el puerto 5174 y credenciales vacías. El puerto debe estar libre. Las pruebas de interfaz no realizan operaciones contra la base real.
@@ -69,7 +115,7 @@ Para limpiar salidas generadas, detener antes las pruebas y el servidor de previ
 npm run clean
 ```
 
-Elimina únicamente `dist`, `test-results`, `playwright-report`, `coverage` y la antigua caché `tsconfig.tsbuildinfo`. Conserva dependencias, fuentes, configuración, migraciones y datos. La caché actual de TypeScript está en `node_modules/.cache`.
+Elimina únicamente `output/dist`, `output/test-results`, `output/playwright-report`, `output/coverage` y `output/cache` (y esas mismas carpetas si quedaron en la raíz por versiones anteriores). Conserva dependencias, fuentes, configuración, migraciones, datos y los PDF de ejemplo de `output/pdf`.
 
 Para reconstruir y revisar la versión compilada:
 
@@ -78,10 +124,10 @@ npm run build
 npm run preview
 ```
 
-Abrir la dirección indicada por preview. La compilación no incluye `/demo`; necesita configuración y una cuenta autorizada. Mantener `dist` mientras se use preview o se sirva esa carpeta. Para instalar en otra máquina, conservar `package-lock.json` y ejecutar `npm ci`.
+Abrir la dirección indicada por preview. La compilación no incluye `/demo`; necesita configuración y una cuenta autorizada. Mantener `output/dist` mientras se use preview o se sirva esa carpeta. Para instalar en otra máquina, conservar `package-lock.json` y ejecutar `npm ci`.
 
 La publicación requiere un hosting HTTPS con fallback SPA a `index.html`. Las pruebas locales no sustituyen la aceptación con cuentas reales, conteos físicos ni cámaras de teléfonos. No se han emitido documentos ni alterado inventario real durante esta revisión.
 
 ## Códigos de barras externos
 
-El [auditor de Open Beauty Facts](docs/open-beauty-facts.md) consulta marcas y alias, compara los perfumes y genera un informe privado de EAN/UPC candidatos. Respeta los límites de la API, conserva caché y atribución y no asigna códigos automáticamente. Ejecutar `node scripts/audit_openbeautyfacts.mjs`; los resultados quedan en `private-data/openbeautyfacts/`.
+El [auditor de Open Beauty Facts](docs/guides/open-beauty-facts.md) consulta marcas y alias, compara los perfumes y genera un informe privado de EAN/UPC candidatos. Respeta los límites de la API, conserva caché y atribución y no asigna códigos automáticamente. Ejecutar `node scripts/openbeautyfacts/audit_openbeautyfacts.mjs`; los resultados quedan en `private-data/openbeautyfacts/`.

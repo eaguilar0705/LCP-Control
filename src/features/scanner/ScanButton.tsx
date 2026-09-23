@@ -111,8 +111,15 @@ function ScanCapture({
             type="button"
             variant="secondary"
             onClick={async () => {
-              await controller.current?.cancel()
-              setState({ status: 'idle' })
+              // Aunque la cámara no responda al detenerse, la pantalla vuelve
+              // a su estado inicial en lugar de quedar con el botón inservible.
+              try {
+                await controller.current?.cancel()
+              } catch {
+                // El lector ya se había detenido o perdió el permiso.
+              } finally {
+                setState({ status: 'idle' })
+              }
             }}
           >
             Detener cámara

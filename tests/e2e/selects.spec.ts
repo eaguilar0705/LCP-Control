@@ -14,7 +14,7 @@ test('product dropdown searches inside the inventory dialog and Escape keeps the
     'Cedro 01',
   )
   await dialog.screenshot({
-    path: `test-results/product-dropdown-${info.project.name}.png`,
+    path: `output/test-results/product-dropdown-${info.project.name}.png`,
   })
   await search.press('Escape')
   await expect(dialog).toBeVisible()
@@ -44,7 +44,7 @@ test('short dropdowns use brand styling and retain selection behavior', async ({
   await currency.click()
   await expect(currency.getByRole('option', { name: /Dólares/ })).toBeVisible()
   await page.screenshot({
-    path: `test-results/currency-dropdown-${info.project.name}.png`,
+    path: `output/test-results/currency-dropdown-${info.project.name}.png`,
   })
   await currency.getByRole('option', { name: /Dólares/ }).click()
   await expect(currency).toHaveValue('USD')

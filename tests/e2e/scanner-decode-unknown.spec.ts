@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { writeBarcodeVideo } from './fakeCamera'
+import { writeBarcodeVideo } from './support/fakeCamera'
 import { browserChannel } from '../../playwright.config'
 
 // Separate file because Playwright only allows one launchOptions per worker.
@@ -16,7 +16,7 @@ test.use({
     args: [
       '--use-fake-device-for-media-stream',
       '--use-fake-ui-for-media-stream',
-      `--use-file-for-fake-video-capture=${writeBarcodeVideo(CODE, 'test-results/fake-camera/unknown-code128.y4m')}`,
+      `--use-file-for-fake-video-capture=${writeBarcodeVideo(CODE, 'output/test-results/fake-camera/unknown-code128.y4m')}`,
     ],
   },
 })

@@ -12,7 +12,7 @@ test('inventory combines photos, table, product editing and quantity controls', 
     page.getByRole('link', { name: 'Catálogo', exact: true }),
   ).toHaveCount(0)
   await page.getByLabel('Buscar producto').fill('Cedro 01')
-  await expect(page.locator('.catalog-stock')).toContainText('Bodega')
+  await expect(page.locator('.stock-by-location').first()).toContainText('Bodega')
   await page.getByRole('button', { name: 'Tabla', exact: true }).click()
   await expect(
     page.getByRole('button', { name: 'Tabla', exact: true }),
@@ -49,7 +49,7 @@ test('inventory combines photos, table, product editing and quantity controls', 
   await page
     .locator('.product-stock-editor')
     .screenshot({
-      path: `test-results/quantity-editor-${info.project.name}.png`,
+      path: `output/test-results/quantity-editor-${info.project.name}.png`,
     })
   await page.getByRole('link', { name: 'Volver al inventario' }).click()
   await page.getByLabel('Mostrar perfumes').selectOption('inactive')

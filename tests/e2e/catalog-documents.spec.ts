@@ -36,7 +36,7 @@ test('product editor exposes all fields and photo replacement without real write
     ),
   ).toBe(true)
   await page.screenshot({
-    path: `test-results/product-editor-${info.project.name}.png`,
+    path: `output/test-results/product-editor-${info.project.name}.png`,
     fullPage: true,
   })
   await page.getByRole('button', { name: 'Quitar foto' }).click()
@@ -55,7 +55,7 @@ test('letter examples download a PDF and print only the business document', asyn
     expect(result.suggestedFilename()).toContain(
       kind === 'invoice' ? 'FAC-EJEMPLO' : 'PRO-EJEMPLO',
     )
-    await result.saveAs(`test-results/${kind}-${info.project.name}.pdf`)
+    await result.saveAs(`output/test-results/${kind}-${info.project.name}.pdf`)
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -68,12 +68,12 @@ test('letter examples download a PDF and print only the business document', asyn
     ).toBeHidden()
     if (info.project.name === 'desktop')
       await page.pdf({
-        path: `test-results/${kind}-browser-print.pdf`,
+        path: `output/test-results/${kind}-browser-print.pdf`,
         preferCSSPageSize: true,
         printBackground: true,
       })
     await page.screenshot({
-      path: `test-results/${kind}-letter-${info.project.name}.png`,
+      path: `output/test-results/${kind}-letter-${info.project.name}.png`,
       fullPage: true,
     })
     await page.emulateMedia({ media: 'screen' })

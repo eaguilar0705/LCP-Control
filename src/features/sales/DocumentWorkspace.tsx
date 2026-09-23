@@ -120,6 +120,10 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
   const [message, setMessage] = useState('')
   const [failure, setFailure] = useState('')
   const [busy, setBusy] = useState(false)
+  // Guardar y compartir tienen su propio estado: el botón muestra qué ocurre
+  // y un doble clic no envía dos veces la misma revisión de borradores.
+  const [savingDraft, setSavingDraft] = useState(false)
+  const [sharing, setSharing] = useState(false)
 
   const exchangeField =
     exchangeText ?? (savedRate ? String(savedRate.usdToNio) : '')
@@ -249,18 +253,24 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
       setMessage('Agrega productos y revisa las cantidades, tasa de impuesto y tipo de cambio.')
       return
     }
-    if (
-      await save([
-        result.data,
-        ...drafts.filter((item) => item.id !== stamp.id),
-      ])
-    ) {
-      setCurrent(stamp)
-      setMessage(
-        demo
-          ? 'Borrador guardado en este navegador.'
-          : 'Borrador guardado en tu cuenta.',
-      )
+    if (savingDraft) return
+    setSavingDraft(true)
+    try {
+      if (
+        await save([
+          result.data,
+          ...drafts.filter((item) => item.id !== stamp.id),
+        ])
+      ) {
+        setCurrent(stamp)
+        setMessage(
+          demo
+            ? 'Borrador guardado en este navegador.'
+            : 'Borrador guardado en tu cuenta.',
+        )
+      }
+    } finally {
+      setSavingDraft(false)
     }
   }
 
@@ -393,8 +403,9 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
   }
 
   async function sharePdf() {
-    if (!shareable) return
+    if (!shareable || sharing) return
     setBusy(true)
+    setSharing(true)
     try {
       const outcome = await shareDocumentPdf(shareable)
       setMessage(
@@ -408,6 +419,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
       setFailure(errorMessage(shareError))
     } finally {
       setBusy(false)
+      setSharing(false)
     }
   }
 
@@ -836,14 +848,24 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
                   : `Emitir ${copy.singular}`}
             </Button>
             <Button
+              type="button"
               variant="secondary"
-              onClick={saveDraft}
-              disabled={!ready || busy || !!issued || draftsLoading || !!error}
+              onClick={() => void saveDraft()}
+              disabled={
+                !ready ||
+                busy ||
+                savingDraft ||
+                !!issued ||
+                draftsLoading ||
+                !!error
+              }
+              aria-busy={savingDraft}
             >
               <Save size={17} />
-              Guardar borrador
+              {savingDraft ? 'Guardando…' : 'Guardar borrador'}
             </Button>
             <Button
+              type="button"
               variant="secondary"
               onClick={() => window.print()}
               disabled={!ready}
@@ -862,12 +884,14 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
               Enviar por WhatsApp
             </Button>
             <Button
+              type="button"
               className="button-whatsapp-outline"
-              onClick={sharePdf}
+              onClick={() => void sharePdf()}
               disabled={!shareable || busy}
+              aria-busy={sharing}
             >
               <FileDown size={17} />
-              Compartir PDF
+              {sharing ? 'Generando PDF…' : 'Compartir PDF'}
             </Button>
           </div>
           <p className="whatsapp-hint no-print">

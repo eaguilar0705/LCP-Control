@@ -24,7 +24,7 @@ test('inventory scanning filters here and clears conflicting filters', async ({
     ),
   ).toBe(true)
   await page.screenshot({
-    path: `test-results/context-inventory-${info.project.name}.png`,
+    path: `output/test-results/context-inventory-${info.project.name}.png`,
     fullPage: true,
   })
 })
@@ -53,7 +53,7 @@ for (const route of ['sales', 'proformas']) {
     await expect(page.locator('.main-content')).toContainText('Cedro 01')
     await expect(page).toHaveURL(new RegExp(`/demo/${route}$`))
     await page.screenshot({
-      path: `test-results/context-${route}-${info.project.name}.png`,
+      path: `output/test-results/context-${route}-${info.project.name}.png`,
       fullPage: true,
     })
     await page.getByRole('button', { name: 'Escanear', exact: true }).click()

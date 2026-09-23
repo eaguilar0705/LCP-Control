@@ -1,4 +1,6 @@
 node_modules
 dist
 .tools
+output
+private-data
 package-lock.json

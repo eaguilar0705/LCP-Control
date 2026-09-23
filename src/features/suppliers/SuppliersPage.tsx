@@ -1,10 +1,16 @@
 import { useState, type FormEvent } from 'react'
 import { z } from 'zod'
-import { Plus, Pencil, Truck } from 'lucide-react'
-import { Button, Card, Input, EmptyState } from '../../components/ui'
+import { Plus, Pencil, Trash2, Truck } from 'lucide-react'
+import {
+  Button,
+  Card,
+  ConfirmDialog,
+  Input,
+  EmptyState,
+} from '../../components/ui'
 import { useLocalDrafts } from '../../lib/localDrafts'
 import { useAccess } from '../../app/AccessContext'
-import { ContactsPage } from '../ContactsPage'
+import { ContactsPage } from '../contacts/ContactsPage'
 const supplierSchema = z.object({
   id: z.string(),
   name: z.string().trim().min(1).max(160),
@@ -46,6 +52,18 @@ function LocalSuppliersPage() {
   const [editing, setEditing] = useState(false)
   const [search, setSearch] = useState('')
   const [message, setMessage] = useState('')
+  const [removing, setRemoving] = useState<SupplierDraft | null>(null)
+  function remove() {
+    if (!removing) return
+    if (save(items.filter((item) => item.id !== removing.id))) {
+      setMessage(`${removing.name} se eliminó de este navegador.`)
+      if (form.id === removing.id) {
+        setForm(blank)
+        setEditing(false)
+      }
+      setRemoving(null)
+    }
+  }
   function submit(event: FormEvent) {
     event.preventDefault()
     const result = supplierSchema.safeParse({
@@ -79,6 +97,7 @@ function LocalSuppliersPage() {
           <p className="muted">Contactos, marcas y condiciones de compra.</p>
         </div>
         <Button
+          type="button"
           onClick={() => {
             setForm(blank)
             setEditing(true)
@@ -180,18 +199,35 @@ function LocalSuppliersPage() {
             <Card className="supplier-card" key={item.id}>
               <div className="section-heading">
                 <Truck size={23} />
-                <Button
-                  variant="ghost"
-                  aria-label={`Editar ${item.name}`}
-                  onClick={() => {
-                    setForm(item)
-                    setEditing(true)
-                    setMessage('')
-                  }}
-                >
-                  <Pencil size={16} />
-                  Editar
-                </Button>
+                <div className="record-actions">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="supplier-edit"
+                    aria-label={`Editar ${item.name}`}
+                    onClick={() => {
+                      setForm(item)
+                      setEditing(true)
+                      setMessage('')
+                    }}
+                  >
+                    <Pencil size={16} />
+                    Editar
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="record-delete"
+                    aria-label={`Eliminar ${item.name}`}
+                    onClick={() => {
+                      setMessage('')
+                      setRemoving(item)
+                    }}
+                  >
+                    <Trash2 size={16} />
+                    Eliminar
+                  </Button>
+                </div>
               </div>
               <h2>{item.name}</h2>
               <p>{item.contact || 'Contacto pendiente'}</p>
@@ -225,6 +261,18 @@ function LocalSuppliersPage() {
           />
         </Card>
       )}
+      <ConfirmDialog
+        open={!!removing}
+        title="Eliminar proveedor"
+        confirmLabel="Eliminar"
+        onConfirm={remove}
+        onCancel={() => setRemoving(null)}
+      >
+        <p>
+          ¿Eliminar a <strong>{removing?.name}</strong> de este navegador? Esta
+          acción no se puede deshacer.
+        </p>
+      </ConfirmDialog>
     </>
   )
 }

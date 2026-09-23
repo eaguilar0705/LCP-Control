@@ -42,7 +42,7 @@ test('catalog categories, variant filters, unavailable photos and internal barco
     ),
   ).toBe(true)
   await page.screenshot({
-    path: `test-results/catalog-${info.project.name}.png`,
+    path: `output/test-results/catalog-${info.project.name}.png`,
     fullPage: true,
   })
 })
@@ -82,7 +82,7 @@ test('the invoice screen recalculates every tier and currency, saves and reopens
     ),
   ).toBe(true)
   await page.screenshot({
-    path: `test-results/invoice-${info.project.name}.png`,
+    path: `output/test-results/invoice-${info.project.name}.png`,
     fullPage: true,
   })
   await page.emulateMedia({ media: 'print' })
@@ -91,7 +91,7 @@ test('the invoice screen recalculates every tier and currency, saves and reopens
     page.getByRole('heading', { name: 'Facturación', exact: true }),
   ).not.toBeVisible()
   await page.screenshot({
-    path: `test-results/invoice-print-${info.project.name}.png`,
+    path: `output/test-results/invoice-print-${info.project.name}.png`,
     fullPage: true,
   })
 })
@@ -132,7 +132,7 @@ test('proformas are a separate screen and never share drafts with invoices', asy
   await page.getByRole('button', { name: 'Guardar borrador' }).click()
   await expect(page.getByRole('status')).toContainText('Borrador guardado')
   await page.screenshot({
-    path: `test-results/proforma-${info.project.name}.png`,
+    path: `output/test-results/proforma-${info.project.name}.png`,
     fullPage: true,
   })
   // De vuelta en Facturación sólo está el borrador de factura, con su sello.
@@ -173,7 +173,7 @@ test('supplier registration and edits survive refresh', async ({
     ),
   ).toBe(true)
   await page.screenshot({
-    path: `test-results/suppliers-${info.project.name}.png`,
+    path: `output/test-results/suppliers-${info.project.name}.png`,
     fullPage: true,
   })
 })

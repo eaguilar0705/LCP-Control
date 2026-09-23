@@ -1,4 +1,4 @@
-import { Link, Navigate, Route, Routes } from 'react-router-dom'
+import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
 import { AppShell } from './AppShell'
 import { LoginPage } from '../features/auth/LoginPage'
@@ -11,8 +11,10 @@ import { ProductEditorPage } from '../features/products/ProductEditorPage'
 import { AccountPage } from '../features/auth/AccountPage'
 import { DocumentExamplePage } from '../features/sales/DocumentExamplePage'
 import { SuppliersPage } from '../features/suppliers/SuppliersPage'
-import { ContactsPage } from '../features/ContactsPage'
+import { ContactsPage } from '../features/contacts/ContactsPage'
 import { ActivatePage } from '../features/auth/ActivatePage'
+import { AuthCallbackPage } from '../features/auth/AuthCallbackPage'
+import { AUTH_CALLBACK_PATH, hasAuthLink } from '../features/auth/authLink'
 import { MovementHistory } from '../features/inventory/MovementHistory'
 import { DocumentHistory } from '../features/sales/DocumentHistory'
 import { useAccess } from './AccessContext'
@@ -53,12 +55,12 @@ const ReportsPage = lazy(() =>
   })),
 )
 const StaffPage = lazy(() =>
-  import('../features/AdministrationPage').then((page) => ({
+  import('../features/administration/AdministrationPage').then((page) => ({
     default: page.StaffPage,
   })),
 )
 const BusinessPage = lazy(() =>
-  import('../features/AdministrationPage').then((page) => ({
+  import('../features/administration/AdministrationPage').then((page) => ({
     default: page.BusinessPage,
   })),
 )
@@ -81,6 +83,17 @@ const ProformaPage = lazy(() =>
     default: page.ProformaPage,
   })),
 )
+// La «Site URL» de Supabase puede devolver al inicio o a /login con los datos del
+// enlace en la dirección. ProtectedRoute redirigiría a /login y el fragmento
+// (#access_token=…) se perdería; por eso se desvía antes a /auth/callback.
+function AuthLinkGate({ children }: { children: React.ReactNode }) {
+  const { pathname, search, hash } = useLocation()
+  if (pathname === AUTH_CALLBACK_PATH || !hasAuthLink(pathname, search, hash))
+    return children
+  return (
+    <Navigate to={{ pathname: AUTH_CALLBACK_PATH, search, hash }} replace />
+  )
+}
 export function App() {
   const pages = (
     <>
@@ -143,22 +156,25 @@ export function App() {
   )
   return (
     <Suspense fallback={<LoadingState />}>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/activate" element={<ActivatePage />} />
-        <Route element={<ProtectedRoute />}>
-          <Route path="/" element={<AppShell />}>
-            {pages}
+      <AuthLinkGate>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/activate" element={<ActivatePage />} />
+          <Route path={AUTH_CALLBACK_PATH} element={<AuthCallbackPage />} />
+          <Route element={<ProtectedRoute />}>
+            <Route path="/" element={<AppShell />}>
+              {pages}
+            </Route>
           </Route>
-        </Route>
-        {/* Vista local con datos sintéticos: sólo existe en desarrollo y pruebas. */}
-        {import.meta.env.DEV && (
-          <Route path="/demo" element={<AppShell demo />}>
-            {pages}
-          </Route>
-        )}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+          {/* Vista local con datos sintéticos: sólo existe en desarrollo y pruebas. */}
+          {import.meta.env.DEV && (
+            <Route path="/demo" element={<AppShell demo />}>
+              {pages}
+            </Route>
+          )}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </AuthLinkGate>
     </Suspense>
   )
 }

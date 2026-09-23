@@ -11,6 +11,9 @@ import {
   Pencil,
   LayoutGrid,
   List,
+  Sigma,
+  Store,
+  Warehouse,
 } from 'lucide-react'
 import {
   Button,
@@ -34,17 +37,24 @@ import {
   type PriceTier,
   type Category,
   type Gender,
+  type InventoryLocation,
 } from '../../lib/domain'
 import { formatCurrency } from '../../lib/format'
 import { productPrice } from '../../lib/pricing'
 import {
   emptyFilters,
   filterInventory,
+  locationTotals,
   totalStock,
   type InventoryFilters,
   type StockFilter,
 } from './model'
-import { ProductCard, ProductIdentity, StockBadge } from './ProductCard'
+import {
+  ProductCard,
+  ProductIdentity,
+  StockBadge,
+  StockByLocation,
+} from './ProductCard'
 import { useAccess } from '../../app/AccessContext'
 import { MovementDrafts } from './MovementDrafts'
 import { InventoryMovements } from './InventoryMovements'
@@ -77,6 +87,10 @@ export function InventoryPage() {
     ({ quantities }) =>
       quantities.store === null || quantities.warehouse === null,
   )
+  const totals = locationTotals(items)
+  const detail = selected
+    ? data?.find((item) => item.product.id === selected.id)
+    : undefined
   const perPage = 24
   const pages = Math.max(1, Math.ceil(items.length / perPage))
   const currentPage = Math.min(page, pages)
@@ -133,6 +147,7 @@ export function InventoryPage() {
         />
       )}
       <Card>
+        <InventoryTotals totals={totals} count={items.length} />
         <div className="inventory-toolbar">
           <div className="catalog-toolbar-heading">
             <h2>{data?.length ?? '—'} referencias</h2>
@@ -225,6 +240,17 @@ export function InventoryPage() {
               </Select>
             )}
             <Select
+              label="Ubicación"
+              value={filters.location}
+              onChange={(e) =>
+                change({ location: e.target.value as InventoryLocation | '' })
+              }
+            >
+              <option value="">Total consolidado</option>
+              <option value="warehouse">Solo Bodega</option>
+              <option value="store">Solo Tienda</option>
+            </Select>
+            <Select
               label="Existencias"
               value={filters.stock}
               onChange={(e) => change({ stock: e.target.value as StockFilter })}
@@ -307,14 +333,7 @@ export function InventoryPage() {
                       · {labels.category[p.category]}
                     </p>
                     <strong className="catalog-price">{price(p)}</strong>
-                    <div className="catalog-stock">
-                      <span>
-                        Bodega <b>{item.quantities.warehouse ?? '—'}</b>
-                      </span>
-                      <span>
-                        Tienda <b>{item.quantities.store ?? '—'}</b>
-                      </span>
-                    </div>
+                    <StockByLocation item={item} />
                     {!p.active && (
                       <span className="record-badge">Inactivo</span>
                     )}
@@ -337,13 +356,24 @@ export function InventoryPage() {
               <table>
                 <thead>
                   <tr>
-                    <th>Producto</th>
-                    <th>Bodega</th>
-                    <th>Tienda</th>
-                    <th>Total</th>
-                    <th>Precio</th>
-                    <th>Estado</th>
-                    {manage && <th>Acciones</th>}
+                    <th rowSpan={2}>Producto</th>
+                    <th colSpan={3} className="stock-group-heading">
+                      Existencias
+                    </th>
+                    <th rowSpan={2}>Precio</th>
+                    <th rowSpan={2}>Estado</th>
+                    {manage && <th rowSpan={2}>Acciones</th>}
+                  </tr>
+                  <tr>
+                    <th className="qty-col qty-warehouse">
+                      <Warehouse size={14} aria-hidden="true" /> Bodega
+                    </th>
+                    <th className="qty-col qty-store">
+                      <Store size={14} aria-hidden="true" /> Tienda
+                    </th>
+                    <th className="qty-col qty-total">
+                      <Sigma size={14} aria-hidden="true" /> Total consolidado
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -360,9 +390,15 @@ export function InventoryPage() {
                           Interno: {item.product.barcode}
                         </span>
                       </td>
-                      <td>{item.quantities.warehouse ?? '—'}</td>
-                      <td>{item.quantities.store ?? '—'}</td>
-                      <td>{totalStock(item) ?? '—'}</td>
+                      <td className="qty-col qty-warehouse">
+                        {item.quantities.warehouse ?? '—'}
+                      </td>
+                      <td className="qty-col qty-store">
+                        {item.quantities.store ?? '—'}
+                      </td>
+                      <td className="qty-col qty-total">
+                        {totalStock(item) ?? '—'}
+                      </td>
                       <td>{price(item.product)}</td>
                       <td>
                         {item.product.active ? (
@@ -384,6 +420,19 @@ export function InventoryPage() {
                     </tr>
                   ))}
                 </tbody>
+                <tfoot>
+                  <tr>
+                    <th scope="row">
+                      Total de la lista ({items.length} productos)
+                    </th>
+                    <td className="qty-col qty-warehouse">
+                      {totals.warehouse}
+                    </td>
+                    <td className="qty-col qty-store">{totals.store}</td>
+                    <td className="qty-col qty-total">{totals.total}</td>
+                    <td colSpan={manage ? 3 : 2} />
+                  </tr>
+                </tfoot>
               </table>
             </div>
             <div className="inventory-cards">
@@ -443,6 +492,7 @@ export function InventoryPage() {
             <div>
               <p>{selected.brand}</p>
               <h3>{price(selected)}</h3>
+              {detail && <StockByLocation item={detail} />}
               <p>
                 {selected.size === null
                   ? 'Tamaño por confirmar'
@@ -481,5 +531,38 @@ export function InventoryPage() {
         </Dialog>
       )}
     </>
+  )
+}
+
+function InventoryTotals({
+  totals,
+  count,
+}: {
+  totals: ReturnType<typeof locationTotals>
+  count: number
+}) {
+  return (
+    <div className="inventory-totals" aria-label="Existencias de la lista">
+      <div className="inventory-total inventory-total-warehouse">
+        <Warehouse size={18} aria-hidden="true" />
+        <span>En Bodega</span>
+        <strong>{totals.warehouse.toLocaleString('es-NI')}</strong>
+      </div>
+      <div className="inventory-total inventory-total-store">
+        <Store size={18} aria-hidden="true" />
+        <span>En Tienda</span>
+        <strong>{totals.store.toLocaleString('es-NI')}</strong>
+      </div>
+      <div className="inventory-total inventory-total-sum">
+        <Sigma size={18} aria-hidden="true" />
+        <span>Total consolidado</span>
+        <strong>{totals.total.toLocaleString('es-NI')}</strong>
+      </div>
+      <p className="inventory-totals-note">
+        Unidades de los {count} productos que muestran los filtros.
+        {totals.uncounted > 0 &&
+          ` ${totals.uncounted} sin conteo completo no suman al total.`}
+      </p>
+    </div>
   )
 }

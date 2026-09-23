@@ -24,7 +24,7 @@ test('visual picker searches as you type and adds the chosen perfume without a d
     ),
   ).toBe(true)
   await page.screenshot({
-    path: `test-results/visual-picker-${info.project.name}.png`,
+    path: `output/test-results/visual-picker-${info.project.name}.png`,
     fullPage: true,
   })
 })
@@ -41,7 +41,7 @@ test('new management screens share the brand presentation and fit the viewport',
       ),
     ).toBe(true)
     await page.screenshot({
-      path: `test-results/workspace-${route.replace('/', '-')}-${info.project.name}.png`,
+      path: `output/test-results/workspace-${route.replace('/', '-')}-${info.project.name}.png`,
       fullPage: true,
     })
   }

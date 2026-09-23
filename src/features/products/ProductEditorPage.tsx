@@ -441,7 +441,7 @@ function ProductForm({
           </p>
         )}
         <div className="form-actions">
-          <Button disabled={busy || demo}>
+          <Button type="submit" disabled={busy || demo} aria-busy={busy}>
             {busy ? 'Guardando…' : 'Guardar perfume'}
           </Button>
           {product && (

@@ -15,7 +15,7 @@ import { totalStock } from '../inventory/model'
 import { accountOf, accountingByMonth, accountingSummary, belowCostSales, catalogMargins, categoriesOf, emptyAccounting, expenseAccountOrder, expenseAccounts, expenseLabel, inventoryTurnover, marginRate, operatingLines, roundMoney, type ExpenseAccount, type ExpenseCategory, type ExpenseInput, type OpeningCostInput, type ShipmentInput, type ShipmentLineInput } from './accounting'
 import { parseOpeningCosts, type OpeningCostParse } from './openingCostImport'
 import { localDay, type ReportRange, type ReportSource } from './model'
-import './accounting.css'
+import '../../styles/accounting.css'
 
 const money = (amount: number) => formatCurrency(amount, 'NIO')
 /**

@@ -10,6 +10,12 @@ export const supabase = authConfigured
       auth: {
         persistSession: true,
         autoRefreshToken: true,
+        // Flujo implícito: el enlace del correo funciona aunque se abra en otro
+        // dispositivo (PKCE exige el mismo navegador del registro).
+        flowType: 'implicit',
+        // Sólo /auth/callback canjea credenciales de la dirección, de forma
+        // explícita (services/auth.ts → confirmAuthLink). Así ninguna otra
+        // pantalla consume un enlace ni deja tokens en el historial.
         detectSessionInUrl: false,
       },
     })

@@ -31,7 +31,7 @@ test('muestra indicadores, gráficos y el detalle del periodo', async ({
   ).toBeVisible()
 
   await page.screenshot({
-    path: `test-results/reportes-${info.project.name}.png`,
+    path: `output/test-results/reportes-${info.project.name}.png`,
     fullPage: true,
   })
   expect(errors).toEqual([])

@@ -5,6 +5,11 @@ import { defineConfig, devices } from '@playwright/test'
 export const browserChannel = process.env.PLAYWRIGHT_CHANNEL || 'chrome'
 export default defineConfig({
   testDir: './tests/e2e',
+  outputDir: './output/test-results',
+  reporter: [
+    ['list'],
+    ['html', { outputFolder: './output/playwright-report', open: 'never' }],
+  ],
   fullyParallel: true,
   workers: 2,
   use: {

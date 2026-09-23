@@ -106,7 +106,7 @@ test('demo dashboard, responsive layout, inventory filters and navigation', asyn
     ),
   ).toBe(true)
   await page.screenshot({
-    path: `test-results/dashboard-${info.project.name}.png`,
+    path: `output/test-results/dashboard-${info.project.name}.png`,
     fullPage: true,
   })
   await page.goto('/demo/inventory')
@@ -124,7 +124,7 @@ test('demo dashboard, responsive layout, inventory filters and navigation', asyn
     ),
   ).toBe(true)
   await page.screenshot({
-    path: `test-results/inventory-${info.project.name}.png`,
+    path: `output/test-results/inventory-${info.project.name}.png`,
     fullPage: true,
   })
   for (const [path, title] of [
@@ -154,7 +154,7 @@ test('manual scanner identifies known and unknown products', async ({
   await page.getByRole('button', { name: 'Entendido' }).click()
   await expect(page.getByRole('dialog')).not.toBeVisible()
   await page.screenshot({
-    path: `test-results/scanner-${info.project.name}.png`,
+    path: `output/test-results/scanner-${info.project.name}.png`,
     fullPage: true,
   })
   await page.getByLabel('Código del producto').fill('UNKNOWN')

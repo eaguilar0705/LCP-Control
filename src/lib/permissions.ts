@@ -12,8 +12,10 @@ export type Capability =
   | 'finance.read'
   | 'customer.read'
   | 'customer.manage'
+  | 'customer.delete'
   | 'supplier.read'
   | 'supplier.manage'
+  | 'supplier.delete'
   | 'staff.manage'
   | 'settings.manage'
 const common: Capability[] = [
@@ -35,6 +37,8 @@ const permissions: Record<UserRole, readonly Capability[]> = {
     'finance.read',
     'supplier.read',
     'supplier.manage',
+    'customer.delete',
+    'supplier.delete',
     'staff.manage',
     'settings.manage',
   ],
@@ -47,6 +51,8 @@ const permissions: Record<UserRole, readonly Capability[]> = {
     'finance.read',
     'supplier.read',
     'supplier.manage',
+    'customer.delete',
+    'supplier.delete',
     'staff.manage',
     'settings.manage',
   ],

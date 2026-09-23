@@ -3,6 +3,11 @@ import { supabase } from '../lib/supabase'
 import { AppError } from '../lib/errors'
 import { parseRole } from '../lib/permissions'
 import type { UserProfile, UserRole } from '../lib/domain'
+import {
+  AUTH_CALLBACK_PATH,
+  authLinkErrorMessage,
+  type AuthLink,
+} from '../features/auth/authLink'
 export interface AuthService {
   getSession(): Promise<UserProfile | null>
   signIn(email: string, password: string): Promise<void>
@@ -70,9 +75,11 @@ export const authService: AuthService = {
     if (error)
       throw new AppError(
         error.status === 400 ? 'unauthorized' : 'network',
-        error.status === 400
-          ? 'Correo o contraseña incorrectos, o cuenta no habilitada.'
-          : 'No pudimos iniciar sesión. Revisa tu conexión e inténtalo de nuevo.',
+        error.code === 'email_not_confirmed'
+          ? 'Tu correo aún no está confirmado. Abre el enlace que te enviamos o solicita uno nuevo desde «Activar mi cuenta».'
+          : error.status === 400
+            ? 'Correo o contraseña incorrectos, o cuenta no habilitada.'
+            : 'No pudimos iniciar sesión. Revisa tu conexión e inténtalo de nuevo.',
       )
   },
   async signOut() {
@@ -125,4 +132,99 @@ export const authService: AuthService = {
       data.subscription.unsubscribe()
     }
   },
+}
+
+/**
+ * Dirección a la que Supabase devuelve a la persona después de abrir el enlace
+ * del correo. Sin `emailRedirectTo`, Supabase usa la «Site URL» del proyecto,
+ * que hoy apunta al equipo de desarrollo (127.0.0.1) y no existe en el
+ * teléfono ni en otra computadora. Debe figurar en Authentication → URL
+ * Configuration → Redirect URLs; si no, Supabase vuelve a la Site URL.
+ * `VITE_AUTH_REDIRECT_URL` fija el dominio publicado cuando el origen actual no
+ * es el definitivo.
+ */
+export function authRedirectUrl(origin = globalThis.location?.origin ?? '') {
+  const configured = import.meta.env.VITE_AUTH_REDIRECT_URL?.trim()
+  const parsed = configured ? URL.parse(configured) : null
+  if (parsed && (parsed.protocol === 'https:' || isLoopback(parsed.hostname)))
+    return parsed.href
+  return `${origin}${AUTH_CALLBACK_PATH}`
+}
+function isLoopback(hostname: string) {
+  return hostname === 'localhost' || /^127(?:\.\d{1,3}){3}$/.test(hostname)
+}
+
+export type SignUpResult = 'confirmation_sent' | 'already_registered'
+
+function signUpError(error: { code?: string; status?: number }) {
+  return new AppError(
+    'validation',
+    error.code === 'email_address_not_authorized'
+      ? 'Falta habilitar el envío de correos de acceso para esta dirección. Comunícalo al administrador.'
+      : error.code === 'over_email_send_rate_limit' || error.status === 429
+        ? 'Se alcanzó el límite temporal de correos. Espera unos minutos antes de intentarlo otra vez.'
+        : error.code === 'weak_password'
+          ? 'La contraseña es demasiado débil. Usa al menos 12 caracteres combinando letras y números.'
+          : error.code === 'user_already_exists'
+            ? 'Este correo ya tiene acceso. Inicia sesión.'
+            : 'No se pudo activar la cuenta. Verifica que el administrador haya autorizado tu correo; si ya te registraste, inicia sesión.',
+  )
+}
+
+/**
+ * Crea el acceso de una persona autorizada en `private.pending_staff`. Con la
+ * confirmación de correo activa, Supabase no devuelve error si el correo ya
+ * estaba confirmado: responde con un usuario sin identidades para no revelar
+ * qué cuentas existen. Esa respuesta se distingue para no decir «revisa tu
+ * correo» cuando ningún correo va a llegar.
+ */
+export async function signUpStaff(
+  email: string,
+  password: string,
+): Promise<SignUpResult> {
+  const { data, error } = await client().auth.signUp({
+    email: email.trim().toLowerCase(),
+    password,
+    options: { emailRedirectTo: authRedirectUrl() },
+  })
+  if (error) throw signUpError(error)
+  if (data.session) return 'confirmation_sent'
+  return data.user && data.user.identities?.length === 0
+    ? 'already_registered'
+    : 'confirmation_sent'
+}
+
+/** Reenvía el correo de confirmación, con la misma dirección de regreso. */
+export async function resendConfirmation(email: string) {
+  const { error } = await client().auth.resend({
+    type: 'signup',
+    email: email.trim().toLowerCase(),
+    options: { emailRedirectTo: authRedirectUrl() },
+  })
+  if (error) throw signUpError(error)
+}
+
+/**
+ * Canjea el enlace del correo por una sesión. El cliente se crea con
+ * `detectSessionInUrl: false` para que ninguna pantalla consuma credenciales de
+ * la dirección por accidente: sólo `/auth/callback` lo hace, y de forma
+ * explícita para los tres formatos que Supabase puede enviar.
+ */
+export async function confirmAuthLink(link: AuthLink) {
+  // Un aviso sin sesión (primer enlace de un cambio de correo) no se canjea.
+  if (link.kind === 'notice') return
+  if (link.kind === 'error')
+    throw new AppError('unauthorized', authLinkErrorMessage(link.code))
+  const auth = client().auth
+  const { error } =
+    link.kind === 'tokens'
+      ? await auth.setSession({
+          access_token: link.accessToken,
+          refresh_token: link.refreshToken,
+        })
+      : link.kind === 'token_hash'
+        ? await auth.verifyOtp({ token_hash: link.tokenHash, type: link.type })
+        : await auth.exchangeCodeForSession(link.code)
+  if (error)
+    throw new AppError('unauthorized', authLinkErrorMessage(error.code ?? null))
 }

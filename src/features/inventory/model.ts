@@ -27,6 +27,35 @@ export function totalStock(item: InventoryItem) {
   const { store, warehouse } = item.quantities
   return store === null || warehouse === null ? null : store + warehouse
 }
+export interface LocationTotals {
+  warehouse: number
+  store: number
+  /** Suma consolidada Bodega + Tienda de los productos con ambos conteos. */
+  total: number
+  /** Productos con al menos una ubicación sin conteo registrado. */
+  uncounted: number
+}
+/**
+ * Totales por ubicación de la lista visible. Cada ubicación suma sólo los
+ * conteos registrados; el consolidado suma únicamente los productos con ambos
+ * conteos, igual que `totalStock`, para no presentar una cifra parcial como
+ * total. `uncounted` avisa cuántos productos quedan fuera.
+ */
+export function locationTotals(items: InventoryItem[]): LocationTotals {
+  return items.reduce<LocationTotals>(
+    (sum, item) => {
+      const { warehouse, store } = item.quantities
+      const total = totalStock(item)
+      return {
+        warehouse: sum.warehouse + (warehouse ?? 0),
+        store: sum.store + (store ?? 0),
+        total: sum.total + (total ?? 0),
+        uncounted: sum.uncounted + (total === null ? 1 : 0),
+      }
+    },
+    { warehouse: 0, store: 0, total: 0, uncounted: 0 },
+  )
+}
 export function stockStatus(item: InventoryItem) {
   const total = totalStock(item)
   return total === null

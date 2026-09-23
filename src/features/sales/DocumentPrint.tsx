@@ -3,17 +3,33 @@ import { documentCopy, labels, type DocumentRecord } from '../../lib/domain'
 import { formatCurrency, formatDate } from '../../lib/format'
 import { equivalentAmount, priceTierLabels } from '../../lib/pricing'
 import { includedTax } from './document'
+import { printDensity } from './printDensity'
+
+/**
+ * Factura o proforma en tamaño carta/A4. La densidad se ajusta sola al número
+ * de renglones para que hasta 40 productos quepan en una hoja; los precios,
+ * cantidades y descripciones van en negrita para que se lean en cualquier
+ * impresora. La misma maqueta se ve en pantalla y en papel.
+ */
 export function DocumentPrint({ document: d }: { document: DocumentRecord }) {
   const copy = documentCopy[d.kind]
-  const tax = d.taxRate === undefined || d.taxRate === null ? null : includedTax(d.total, d.taxRate)
+  const density = printDensity(d)
+  const tax =
+    d.taxRate === undefined || d.taxRate === null
+      ? null
+      : includedTax(d.total, d.taxRate)
   // La tasa con la que se cotizó el documento. Una factura vieja conserva la
   // suya: el equivalente impreso es el de su día, no el del dólar de hoy.
   const rate = d.catalogRate ?? (d.currency === 'USD' ? d.exchangeRate : null)
   const equivalent = equivalentAmount(d.total, d.currency, rate)
+  const units = d.items.reduce((sum, item) => sum + item.quantity, 0)
   return (
-    <article className={`letter-document letter-${d.kind}`}>
+    <article
+      className={`letter-document letter-${d.kind} letter-density-${density}`}
+      data-density={density}
+    >
       <header className="letter-header">
-        <div>
+        <div className="letter-issuer">
           <Brand wordmark />
           <p>
             {d.issuer.address ||
@@ -22,9 +38,9 @@ export function DocumentPrint({ document: d }: { document: DocumentRecord }) {
           <p>
             {d.issuer.phone
               ? `Tel. ${d.issuer.phone}`
-              : 'Teléfono: __________________________________'}
+              : 'Teléfono: ______________'}
+            {' · '}RUC: ______________
           </p>
-          <p>RUC del negocio: ____________________________</p>
         </div>
         <div className="letter-stamp">
           <strong>{copy.stamp}</strong>
@@ -39,74 +55,95 @@ export function DocumentPrint({ document: d }: { document: DocumentRecord }) {
           <p>Fecha: {formatDate(d.createdAt)}</p>
         </div>
       </header>
-      <section className="letter-client">
-        <div>
+      <section className="letter-client" aria-label="Datos del cliente">
+        <p className="letter-client-name">
           <small>CLIENTE / RAZÓN SOCIAL</small>
           <strong>{d.customerName}</strong>
+        </p>
+        <p>
+          <small>RUC / ID</small>
+          <span>{d.customerTaxId || '______________'}</span>
+        </p>
+        <p>
+          <small>TELÉFONO</small>
+          <span>{d.customerPhone || '______________'}</span>
+        </p>
+        <p>
+          <small>LISTA · MONEDA</small>
           <span>
-            RUC / Identificación:{' '}
-            {d.customerTaxId || '________________________'}
+            {priceTierLabels[d.tier]} ·{' '}
+            {d.currency === 'NIO' ? 'Córdobas (C$)' : 'Dólares (US$)'}
           </span>
-          <span>Dirección: __________________________________________</span>
-        </div>
-        <div>
-          <span>Teléfono: {d.customerPhone || '________________'}</span>
-          <span>Lista: {priceTierLabels[d.tier]}</span>
-          <span>
-            Moneda: {d.currency === 'NIO' ? 'Córdobas (C$)' : 'Dólares (US$)'}
-          </span>
-          {d.currency === 'USD' && d.exchangeRate != null && <span>Tipo de cambio: {d.exchangeRate} NIO por USD</span>}
+        </p>
+        <p>
+          <small>{d.kind === 'proforma' ? 'VIGENCIA' : 'PAGO'}</small>
           <span>
             {d.kind === 'proforma'
-              ? `Vigencia: ${d.validUntil ? formatDate(d.validUntil) : '____________'}`
-              : `Pago: ${d.paymentMethod && d.paymentMethod !== 'pending' ? labels.payment[d.paymentMethod] : 'Pendiente'}`}
+              ? d.validUntil
+                ? formatDate(d.validUntil)
+                : '____________'
+              : d.paymentMethod && d.paymentMethod !== 'pending'
+                ? labels.payment[d.paymentMethod]
+                : 'Pendiente'}
           </span>
-        </div>
+        </p>
+        {d.currency === 'USD' && d.exchangeRate != null && (
+          <p>
+            <small>TIPO DE CAMBIO</small>
+            <span>{d.exchangeRate} NIO por USD</span>
+          </p>
+        )}
+        <p className="letter-client-address">
+          <small>DIRECCIÓN</small>
+          <span>________________________________________</span>
+        </p>
       </section>
       <table className="letter-items">
         <colgroup>
-          <col style={{ width: '9%' }} />
-          <col style={{ width: '53%' }} />
-          <col style={{ width: '19%' }} />
-          <col style={{ width: '19%' }} />
+          <col className="letter-col-line" />
+          <col className="letter-col-quantity" />
+          <col className="letter-col-description" />
+          <col className="letter-col-money" />
+          <col className="letter-col-money" />
         </colgroup>
         <thead>
           <tr>
-            <th>CANT.</th>
-            <th>DESCRIPCIÓN</th>
-            <th>PRECIO UNIT.</th>
-            <th>IMPORTE</th>
+            <th scope="col">N.º</th>
+            <th scope="col">CANT.</th>
+            <th scope="col">DESCRIPCIÓN</th>
+            <th scope="col">PRECIO UNIT.</th>
+            <th scope="col">IMPORTE</th>
           </tr>
         </thead>
         <tbody>
-          {d.items.map((item) => (
+          {d.items.map((item, index) => (
             <tr key={item.id}>
-              <td>{item.quantity}</td>
-              <td>{item.description}</td>
-              <td>{formatCurrency(item.unitPrice, d.currency)}</td>
-              <td>{formatCurrency(item.lineTotal, d.currency)}</td>
+              <td className="letter-line">{index + 1}</td>
+              <td className="letter-quantity">{item.quantity}</td>
+              <td className="letter-description">{item.description}</td>
+              <td className="letter-money">
+                {formatCurrency(item.unitPrice, d.currency)}
+              </td>
+              <td className="letter-money">
+                {formatCurrency(item.lineTotal, d.currency)}
+              </td>
             </tr>
           ))}
-          <tr
-            className="letter-spacer"
-            style={d.items.length > 6 ? { height: 0 } : undefined}
-          >
-            <td></td>
-            <td></td>
-            <td></td>
-            <td></td>
-          </tr>
         </tbody>
       </table>
       <section className="letter-summary">
-        <div>
+        <div className="letter-notes">
+          <p className="letter-count">
+            {d.items.length} {d.items.length === 1 ? 'producto' : 'productos'} ·{' '}
+            {units} {units === 1 ? 'unidad' : 'unidades'}
+          </p>
           <small>OBSERVACIONES</small>
           <p>{d.notes || 'Gracias por elegir La Casa del Perfume.'}</p>
           {d.kind === 'invoice' && d.location && (
             <p>Entrega desde: {labels.location[d.location]}</p>
           )}
         </div>
-        <div>
+        <div className="letter-totals">
           <p>
             <span>{tax ? 'Subtotal sin impuesto' : 'Subtotal (sin desglose)'}</span>
             <b>{formatCurrency(tax?.net ?? d.total, d.currency)}</b>

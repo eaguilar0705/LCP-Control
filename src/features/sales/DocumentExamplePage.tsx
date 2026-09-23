@@ -1,12 +1,22 @@
 import { useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { Button } from '../../components/ui'
-import { exampleDocument } from './example'
+import { useParams, useSearchParams } from 'react-router-dom'
+import { Button, Select } from '../../components/ui'
+import { exampleDocument, exampleItemCounts } from './example'
 import { DocumentPrint } from './DocumentPrint'
 import { downloadDocumentPdf } from './pdf'
 export function DocumentExamplePage() {
   const { kind } = useParams()
-  const record = exampleDocument(kind === 'proforma' ? 'proforma' : 'invoice')
+  const [params, setParams] = useSearchParams()
+  const requested = Number(params.get('productos'))
+  const count = exampleItemCounts.includes(
+    requested as (typeof exampleItemCounts)[number],
+  )
+    ? requested
+    : 3
+  const record = exampleDocument(
+    kind === 'proforma' ? 'proforma' : 'invoice',
+    count,
+  )
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
   return (
@@ -18,15 +28,36 @@ export function DocumentExamplePage() {
               ? 'Ejemplo de factura'
               : 'Ejemplo de proforma'}
           </h1>
-          <p className="muted">Tamaño carta · datos de muestra · sin emisión</p>
+          <p className="muted">
+            Carta o A4 · datos de muestra · sin emisión. Hasta 40 productos
+            caben en una hoja.
+          </p>
         </div>
         <div className="form-actions">
-          <Button onClick={() => window.print()}>Imprimir ejemplo</Button>
+          <Select
+            label="Productos de muestra"
+            value={String(count)}
+            onChange={(e) =>
+              setParams({ productos: e.target.value }, { replace: true })
+            }
+          >
+            {exampleItemCounts.map((value) => (
+              <option key={value} value={value}>
+                {value} productos
+              </option>
+            ))}
+          </Select>
+          <Button type="button" onClick={() => window.print()}>
+            Imprimir ejemplo
+          </Button>
           <Button
+            type="button"
             variant="secondary"
             disabled={busy}
+            aria-busy={busy}
             onClick={async () => {
               setBusy(true)
+              setMessage('')
               try {
                 await downloadDocumentPdf(record)
               } catch {
@@ -36,7 +67,7 @@ export function DocumentExamplePage() {
               }
             }}
           >
-            Descargar PDF
+            {busy ? 'Generando PDF…' : 'Descargar PDF'}
           </Button>
         </div>
       </div>

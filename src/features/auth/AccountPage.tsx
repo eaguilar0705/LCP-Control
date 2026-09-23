@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react'
 import { useAuth } from './AuthContext'
 import { useAccess } from '../../app/AccessContext'
 import { supabase } from '../../lib/supabase'
+import { authRedirectUrl } from '../../services/auth'
 import { useQuery } from '../../lib/useQuery'
 import {
   Button,
@@ -10,7 +11,9 @@ import {
   Input,
   LoadingState,
   ErrorState,
+  PasswordInput,
 } from '../../components/ui'
+const MIN_PASSWORD = 12
 async function getProfile() {
   if (!supabase) throw new Error('Falta configurar Supabase.')
   const { data: auth, error: authError } = await supabase.auth.getUser()
@@ -57,9 +60,11 @@ function AccountForm({ initialName }: { initialName: string }) {
     setError('')
     if (
       section === 'password' &&
-      (password.length < 10 || password !== repeat)
+      (password.length < MIN_PASSWORD || password !== repeat)
     ) {
-      setError('Usa al menos 10 caracteres y repite la misma contraseña.')
+      setError(
+        `Usa al menos ${MIN_PASSWORD} caracteres y repite la misma contraseña.`,
+      )
       return
     }
     setBusy(true)
@@ -67,9 +72,14 @@ function AccountForm({ initialName }: { initialName: string }) {
       const result =
         section === 'name'
           ? await supabase.rpc('update_my_profile', { p_name: name.trim() })
-          : await supabase.auth.updateUser(
-              section === 'email' ? { email: email.trim() } : { password },
-            )
+          : section === 'email'
+            ? // Sin emailRedirectTo el enlace de confirmación volvería a la
+              // «Site URL» del proyecto (el equipo de desarrollo).
+              await supabase.auth.updateUser(
+                { email: email.trim() },
+                { emailRedirectTo: authRedirectUrl() },
+              )
+            : await supabase.auth.updateUser({ password })
       if (result.error) {
         setError(
           'No se pudo completar el cambio. Revisa los datos; si tu sesión venció, vuelve a entrar.',
@@ -125,7 +135,9 @@ function AccountForm({ initialName }: { initialName: string }) {
                   ? roleLabels[user.role]
                   : 'Sin permisos'}
             </p>
-            <Button disabled={busy || demo}>Guardar nombre</Button>
+            <Button type="submit" disabled={busy || demo} aria-busy={busy}>
+              Guardar nombre
+            </Button>
           </form>
         </Card>
         <Card className="form-card">
@@ -142,7 +154,11 @@ function AccountForm({ initialName }: { initialName: string }) {
             <p className="muted">
               El cambio puede requerir confirmación por correo.
             </p>
-            <Button disabled={busy || demo || email === user?.email}>
+            <Button
+              type="submit"
+              disabled={busy || demo || email === user?.email}
+              aria-busy={busy}
+            >
               Cambiar correo
             </Button>
           </form>
@@ -150,25 +166,25 @@ function AccountForm({ initialName }: { initialName: string }) {
         <Card className="form-card">
           <form onSubmit={(e) => void save(e, 'password')}>
             <h2>Contraseña</h2>
-            <Input
+            <PasswordInput
               label="Nueva contraseña"
-              type="password"
               autoComplete="new-password"
               required
-              minLength={10}
+              minLength={MIN_PASSWORD}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
-            <Input
+            <PasswordInput
               label="Repetir contraseña"
-              type="password"
               autoComplete="new-password"
               required
-              minLength={10}
+              minLength={MIN_PASSWORD}
               value={repeat}
               onChange={(e) => setRepeat(e.target.value)}
             />
-            <Button disabled={busy || demo}>Cambiar contraseña</Button>
+            <Button type="submit" disabled={busy || demo} aria-busy={busy}>
+              Cambiar contraseña
+            </Button>
           </form>
         </Card>
       </div>
