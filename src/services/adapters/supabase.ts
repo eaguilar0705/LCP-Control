@@ -485,6 +485,42 @@ export const supabaseAdapter: DataProvider = {
     if (result.error) fail(result.error)
     return ((result.data ?? []) as unknown as DocumentRow[]).map(toDocument)
   },
+  // Paginado igual que los reportes: PostgREST entrega como mucho mil filas por
+  // consulta y una exportación tiene que llevar todas las facturas.
+  async exportDocuments(kind) {
+    const query = (selection: string) =>
+      readReportPages<DocumentRow>((start, end) =>
+        client()
+          .from('documents')
+          .select(selection, { count: 'exact' })
+          .eq('kind', kind)
+          .order('created_at')
+          .order('id')
+          .range(start, end),
+      )
+    let result
+    try {
+      result = await query(documentSelect + documentAccountingColumns)
+    } catch (error) {
+      if (!missingDocumentColumns(error as { code?: string }))
+        fail(error as { message?: string; code?: string })
+      result = await query(documentSelect)
+    }
+    return { documents: result.rows.map(toDocument), truncated: result.truncated }
+  },
+  async deleteInvoice(id, reason) {
+    const { data, error } = await client().rpc('delete_invoice', {
+      p_id: id,
+      p_reason: reason,
+    })
+    if (error?.code === 'PGRST202')
+      throw new AppError(
+        'configuration',
+        'Falta aplicar la actualización para eliminar facturas en Supabase (20260924120000_invoice_deletion.sql).',
+      )
+    if (error) fail(error)
+    return data as string
+  },
   async createDocument(input: NewDocument) {
     // requestId makes the call idempotent: a retry returns the same document
     // instead of issuing a second one or discounting stock twice.

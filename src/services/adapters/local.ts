@@ -45,6 +45,8 @@ export const unconfiguredAdapter: DataProvider = {
   saveExchangeRate: async () => missingConfiguration(),
   listCustomers: async () => missingConfiguration(),
   listDocuments: async () => missingConfiguration(),
+  exportDocuments: async () => missingConfiguration(),
+  deleteInvoice: async () => missingConfiguration(),
   createDocument: async () => missingConfiguration(),
   recordMovement: async () => missingConfiguration(),
   getReportSource: async () => missingConfiguration(),
@@ -83,6 +85,11 @@ export const localWrites = {
     void _limit
     return []
   },
+  async exportDocuments(_kind: DocumentKind) {
+    void _kind
+    return { documents: [], truncated: false }
+  },
+  deleteInvoice: async () => unavailable(),
   createDocument: async () => unavailable(),
   recordMovement: async () => unavailable(),
   recordShipment: async () => unavailable(),

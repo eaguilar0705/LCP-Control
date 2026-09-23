@@ -76,6 +76,9 @@ export function createServices(provider: DataProvider) {
       listCustomers: () => provider.listCustomers(),
       listDocuments: (kind: DocumentKind, limit?: number) =>
         provider.listDocuments(kind, limit),
+      exportDocuments: (kind: DocumentKind) => provider.exportDocuments(kind),
+      deleteInvoice: (id: string, reason: string) =>
+        provider.deleteInvoice(id, reason),
       createDocument: (input: NewDocument) => provider.createDocument(input),
     },
   }

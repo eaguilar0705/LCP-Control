@@ -1,4 +1,4 @@
-import { FileText, Plus, ArrowUpRight } from 'lucide-react'
+import { FileText, Plus, ArrowUpRight, Trash2 } from 'lucide-react'
 import {
   WorkspaceHeading,
   WorkspaceEmpty,
@@ -11,18 +11,21 @@ import { useQuery } from '../../lib/useQuery'
 import {
   Button,
   Card,
+  ConfirmDialog,
   Input,
   ErrorState,
   LoadingState,
 } from '../../components/ui'
+import { can } from '../../lib/permissions'
 import { formatCurrency, formatDate } from '../../lib/format'
 import { errorMessage } from '../../lib/errors'
 import type { DocumentKind, DocumentRecord } from '../../lib/domain'
 import { DocumentPrint } from './DocumentPrint'
 import { downloadDocumentPdf } from './pdf'
+import { ExportDocumentsButton } from './ExportDocumentsButton'
 export function DocumentHistory({ kind }: { kind: DocumentKind }) {
   const { salesService } = useServices()
-  const { base } = useAccess()
+  const { base, demo, role } = useAccess()
   const load = useCallback(
     () => salesService.listDocuments(kind, 200),
     [salesService, kind],
@@ -32,6 +35,37 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
   const [search, setSearch] = useState('')
   const [failure, setFailure] = useState('')
   const [downloading, setDownloading] = useState(false)
+  const [removing, setRemoving] = useState<DocumentRecord | null>(null)
+  const [reason, setReason] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const [removeError, setRemoveError] = useState('')
+  const [notice, setNotice] = useState('')
+  // Sólo facturas: las proformas no mueven inventario ni contabilidad.
+  const removable = kind === 'invoice' && !demo && can(role, 'document.delete')
+  function askRemove(record: DocumentRecord) {
+    setReason('')
+    setRemoveError('')
+    setNotice('')
+    setRemoving(record)
+  }
+  async function confirmRemove() {
+    if (!removing || deleting) return
+    setDeleting(true)
+    setRemoveError('')
+    try {
+      const number = await salesService.deleteInvoice(removing.id, reason.trim())
+      if (selected?.id === removing.id) setSelected(null)
+      setRemoving(null)
+      setNotice(
+        `Factura ${number} eliminada. Sus productos volvieron al inventario de ${removing.location === 'warehouse' ? 'Bodega' : 'Tienda'}.`,
+      )
+      retry()
+    } catch (e) {
+      setRemoveError(errorMessage(e))
+    } finally {
+      setDeleting(false)
+    }
+  }
   return (
     <>
       <div className="no-print">
@@ -50,6 +84,7 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
             <Plus size={17} />
             Crear {kind === 'invoice' ? 'factura' : 'proforma'}
           </Link>
+          {kind === 'invoice' && <ExportDocumentsButton kind="invoice" />}
         </WorkspaceHeading>
         <div className="directory-toolbar">
           <Input
@@ -63,6 +98,11 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
             {data?.length ?? 0} documentos recientes
           </span>
         </div>
+        {notice && (
+          <p role="status" className="page-feedback">
+            {notice}
+          </p>
+        )}
         {loading && <LoadingState />}
         {error && <ErrorState message={error} retry={retry} />}
         <div className="record-grid">
@@ -90,6 +130,18 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
                 <Button variant="secondary" onClick={() => setSelected(d)}>
                   Ver documento <ArrowUpRight size={16} />
                 </Button>
+                {removable && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="record-delete"
+                    aria-label={`Eliminar factura ${d.number}`}
+                    onClick={() => askRemove(d)}
+                  >
+                    <Trash2 size={14} />
+                    Eliminar
+                  </Button>
+                )}
               </Card>
             ))}
         </div>
@@ -138,6 +190,17 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
             >
               {downloading ? 'Generando PDF…' : 'Descargar PDF'}
             </Button>
+            {removable && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="record-delete"
+                onClick={() => askRemove(selected)}
+              >
+                <Trash2 size={16} />
+                Eliminar factura
+              </Button>
+            )}
             <Button
               type="button"
               variant="ghost"
@@ -148,6 +211,40 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
           </div>
         )}
         {failure && <ErrorState message={failure} />}
+        <ConfirmDialog
+          open={!!removing}
+          title="Eliminar factura"
+          confirmLabel="Eliminar factura"
+          busyLabel="Eliminando…"
+          busy={deleting}
+          error={removeError}
+          onConfirm={() => void confirmRemove()}
+          onCancel={() => setRemoving(null)}
+        >
+          {removing && (
+            <>
+              <p>
+                ¿Eliminar la factura <strong>{removing.number}</strong> de{' '}
+                {removing.customerName} por{' '}
+                <strong>{formatCurrency(removing.total, removing.currency)}</strong>?
+                Esta acción no se puede deshacer.
+              </p>
+              <p className="muted">
+                Los productos vuelven al inventario de{' '}
+                {removing.location === 'warehouse' ? 'Bodega' : 'Tienda'} y la
+                venta deja de contar en reportes y contabilidad. El número no se
+                vuelve a usar.
+              </p>
+              <Input
+                label="Motivo (opcional)"
+                maxLength={500}
+                value={reason}
+                disabled={deleting}
+                onChange={(e) => setReason(e.target.value)}
+              />
+            </>
+          )}
+        </ConfirmDialog>
       </div>
       {selected && (
         <>

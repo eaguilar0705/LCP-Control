@@ -39,6 +39,18 @@ export interface DataProvider {
   saveExchangeRate(rate: number): Promise<void>
   listCustomers(): Promise<CustomerRecord[]>
   listDocuments(kind: DocumentKind, limit?: number): Promise<DocumentRecord[]>
+  /**
+   * Todos los documentos de un tipo, del más antiguo al más reciente, para
+   * exportarlos. `truncated` avisa si se alcanzó el tope de filas.
+   */
+  exportDocuments(
+    kind: DocumentKind,
+  ): Promise<{ documents: DocumentRecord[]; truncated: boolean }>
+  /**
+   * Elimina una factura emitida: devuelve sus unidades al inventario y la saca
+   * de reportes y contabilidad. Sólo Administración. Devuelve el número.
+   */
+  deleteInvoice(id: string, reason: string): Promise<string>
   createDocument(input: NewDocument): Promise<DocumentRecord>
   recordMovement(input: MovementRequest): Promise<string>
   /** Filas crudas del periodo; los reportes se calculan sobre ellas. */
