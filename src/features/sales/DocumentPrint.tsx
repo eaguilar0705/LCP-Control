@@ -1,5 +1,10 @@
 import { Brand } from '../../components/Brand'
-import { documentCopy, labels, type DocumentRecord } from '../../lib/domain'
+import {
+  documentCopy,
+  labels,
+  returnPolicy,
+  type DocumentRecord,
+} from '../../lib/domain'
 import { formatCurrency, formatDate } from '../../lib/format'
 import { equivalentAmount, priceTierLabels } from '../../lib/pricing'
 import { includedTax } from './document'
@@ -145,10 +150,17 @@ export function DocumentPrint({ document: d }: { document: DocumentRecord }) {
         </div>
         <div className="letter-totals">
           <p>
-            <span>{tax ? 'Subtotal sin impuesto' : 'Subtotal (sin desglose)'}</span>
+            <span>
+              {tax ? 'Subtotal sin impuesto' : 'Subtotal (sin desglose)'}
+            </span>
             <b>{formatCurrency(tax?.net ?? d.total, d.currency)}</b>
           </p>
-          {tax && <p><span>Impuesto incluido ({d.taxRate} %)</span><b>{formatCurrency(tax.tax, d.currency)}</b></p>}
+          {tax && (
+            <p>
+              <span>Impuesto incluido ({d.taxRate} %)</span>
+              <b>{formatCurrency(tax.tax, d.currency)}</b>
+            </p>
+          )}
           <p className="letter-grand-total">
             <span>TOTAL {d.currency}</span>
             <b>{formatCurrency(d.total, d.currency)}</b>
@@ -172,6 +184,11 @@ export function DocumentPrint({ document: d }: { document: DocumentRecord }) {
       </div>
       <footer className="letter-footer">
         <strong>Gracias por tu confianza.</strong>
+        {d.kind === 'invoice' && (
+          <p className="letter-policy">
+            <b>{returnPolicy.title}</b> {returnPolicy.text}
+          </p>
+        )}
         <p>
           {d.previewKind === 'example'
             ? 'Ejemplo de diseño. No registra una venta ni modifica inventario. '

@@ -1,5 +1,10 @@
 import { jsPDF } from 'jspdf'
-import { documentCopy, labels, type DocumentRecord } from '../../lib/domain'
+import {
+  documentCopy,
+  labels,
+  returnPolicy,
+  type DocumentRecord,
+} from '../../lib/domain'
 import { formatCurrency, formatDate } from '../../lib/format'
 import { equivalentAmount, priceTierLabels } from '../../lib/pricing'
 import { includedTax } from './document'
@@ -12,6 +17,9 @@ import { includedTax } from './document'
  * negrita) con el que todos los renglones caben en la hoja junto con el
  * resumen, las firmas y el pie. Si ni con 8 pt caben, el documento continúa
  * en otra hoja con el encabezado de la tabla repetido.
+ *
+ * Las facturas llevan además la política de cambios en el pie; para hacerle
+ * sitio, sus firmas y su pie suben unos puntos (ver `BOTTOM`).
  */
 type RGB = [number, number, number]
 const PAGE = { left: 30, right: 582, width: 552 }
@@ -24,14 +32,19 @@ const COLUMNS = {
 }
 const DESCRIPTION_WIDTH = COLUMNS.unit - COLUMNS.description - 10
 const FONT_SIZES = [10, 9.5, 9, 8.5, 8] as const
-const MIN_PAD = 2.4
+const MIN_PAD = 2.2
 const MAX_PAD = 9
-/** Última línea útil de la tabla en hojas que continúan. */
-const CONTINUED_BOTTOM = 742
-/** Límite inferior del resumen: deja espacio para firmar. */
-const SUMMARY_BOTTOM = 700
-const SIGNATURE_Y = 728
-const FOOTER_Y = 756
+/**
+ * Posiciones del final de la hoja. `continued`: última línea útil de la tabla
+ * en hojas que continúan; `summary`: límite inferior del resumen (deja
+ * espacio para firmar). La factura sube 16 pt para la política de cambios.
+ */
+const BOTTOM = {
+  proforma: { continued: 742, summary: 700, signature: 728, footer: 756 },
+  invoice: { continued: 726, summary: 692, signature: 718, footer: 740 },
+} as const
+/** Interlineado de la política de cambios (letra de 6,8 pt). */
+const POLICY_LINE = 8.2
 
 const INK: RGB = [20, 16, 14]
 const MUTED: RGB = [92, 81, 74]
@@ -77,6 +90,12 @@ export function layoutDocumentPdf(d: DocumentRecord, logo: Uint8Array): jsPDF {
   const pdf = new jsPDF({ unit: 'pt', format: 'letter', compress: true })
   const accent: RGB = d.kind === 'invoice' ? [87, 23, 28] : [122, 85, 18]
   const { left, right, width } = PAGE
+  const {
+    continued: CONTINUED_BOTTOM,
+    summary: SUMMARY_BOTTOM,
+    signature: SIGNATURE_Y,
+    footer: FOOTER_Y,
+  } = BOTTOM[d.kind]
   const money = (n: number) => formatCurrency(n, d.currency).replace(/\s/g, ' ')
   const clean = (s: string) => s.replace(/\s/g, ' ').trim()
 
@@ -357,6 +376,18 @@ export function layoutDocumentPdf(d: DocumentRecord, logo: Uint8Array): jsPDF {
     false,
     'center',
   )
+  /** Política de cambios: título en negrita y texto en la misma línea. */
+  function policy(y: number) {
+    const title = returnPolicy.title.toUpperCase()
+    pdf.setFont('helvetica', 'bold').setFontSize(6.8)
+    const titleWidth = pdf.getTextWidth(title) + 3
+    const [first, ...rest] = wrap(returnPolicy.text, width - titleWidth, 6.8)
+    text(title, left, y, 6.8, true)
+    text(first, left + titleWidth, y, 6.8)
+    const tail = wrap(rest.join(' '), width, 6.8)
+    if (rest.length) text(tail, left, y + POLICY_LINE, 6.8)
+    return y + POLICY_LINE * (1 + (rest.length ? tail.length : 0))
+  }
   const pageCount = pdf.getNumberOfPages()
   const notice = `${d.previewKind === 'example' ? 'Ejemplo de diseño; no registra una venta. ' : d.previewKind === 'draft' ? 'Borrador sin emitir. ' : ''}${d.kind === 'invoice' ? 'Documento de control administrativo. No es comprobante fiscal. Desglose según la tasa de impuesto registrada.' : 'Cotización sujeta a disponibilidad. No constituye factura ni comprobante de pago.'}`
   for (let page = 1; page <= pageCount; page++) {
@@ -383,15 +414,9 @@ export function layoutDocumentPdf(d: DocumentRecord, logo: Uint8Array): jsPDF {
       'right',
       MUTED,
     )
-    text(
-      wrap(notice, width, 6.5),
-      left,
-      FOOTER_Y + 21,
-      6.5,
-      false,
-      'left',
-      MUTED,
-    )
+    const noticeY =
+      d.kind === 'invoice' ? policy(FOOTER_Y + 20) + 0.8 : FOOTER_Y + 21
+    text(wrap(notice, width, 6.5), left, noticeY, 6.5, false, 'left', MUTED)
   }
   return pdf
 }

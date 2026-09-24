@@ -204,6 +204,15 @@ export const labels = {
   },
   documentKind: { invoice: 'Factura', proforma: 'Proforma' },
 }
+/**
+ * Política de cambios y devoluciones que se imprime al pie de cada factura
+ * (no en proformas), en la vista HTML y en el PDF.
+ */
+export const returnPolicy = {
+  title: 'Política de cambios y devoluciones:',
+  text: 'No se hacen devoluciones de dinero. Se aceptan cambios dentro de los 7 días posteriores a la compra, sujetos a la evaluación del producto. Revise su producto antes de salir de la tienda.',
+} as const
+
 export const documentCopy: Record<
   DocumentKind,
   {

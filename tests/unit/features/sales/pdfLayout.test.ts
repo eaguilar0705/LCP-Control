@@ -25,6 +25,21 @@ describe('PDF comprimido de facturas y proformas', () => {
     }))
     expect(layoutDocumentPdf(document, logo).getNumberOfPages()).toBe(2)
   })
+  it('imprime la política de cambios sólo en facturas', () => {
+    const content = (kind: 'invoice' | 'proforma') =>
+      (
+        layoutDocumentPdf(exampleDocument(kind, 3), logo)
+          .internal as unknown as {
+          pages: string[][]
+        }
+      ).pages
+        .flat()
+        .join('\n')
+    expect(content('invoice')).toContain('POL')
+    expect(content('invoice')).toContain('No se hacen devoluciones de dinero.')
+    expect(content('invoice')).toContain('7 d')
+    expect(content('proforma')).not.toContain('No se hacen devoluciones')
+  })
   it('usa la letra más grande que cabe y nunca baja de 8 pt', () => {
     const few = planPdfRows(() => [1, 1, 1], 450)
     expect(few).toMatchObject({ fontSize: 10, singlePage: true })

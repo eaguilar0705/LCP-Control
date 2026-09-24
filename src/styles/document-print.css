@@ -329,6 +329,17 @@
   line-height: 1.3;
   color: var(--document-muted);
 }
+/* Política de cambios: en tinta, no en gris, porque el cliente debe leerla. */
+.letter-footer .letter-policy {
+  margin: 2px 0 1px;
+  font-size: 8.5px;
+  line-height: 1.25;
+  color: var(--document-ink);
+}
+.letter-policy b {
+  font-weight: 700;
+  text-transform: uppercase;
+}
 .letter-density-dense .letter-summary {
   margin-top: 6px;
 }
@@ -354,6 +365,18 @@
 }
 .letter-density-dense .letter-footer {
   margin-top: 6px;
+}
+/* La política de cambios ocupa dos líneas del pie: en el modo denso la
+   factura recorta ese alto del aire alrededor del resumen y las firmas para
+   que 40 productos sigan cabiendo en una hoja. */
+.letter-invoice.letter-density-dense .letter-summary {
+  margin-top: 4px;
+}
+.letter-invoice.letter-density-dense .letter-signatures {
+  padding-top: 14px;
+}
+.letter-invoice.letter-density-dense .letter-footer {
+  margin-top: 4px;
 }
 
 @media print {
