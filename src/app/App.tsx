@@ -41,7 +41,8 @@ function AccessGate({
 function NotFound() {
   return (
     <div className="state">
-      <h3>Página no encontrada</h3>
+      {/* Es el único encabezado de la página: h1, no h3. */}
+      <h1>Página no encontrada</h1>
       <p>La dirección no existe o la pantalla cambió de lugar.</p>
       <Link className="button button-secondary" to="/">
         Ir al inicio

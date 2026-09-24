@@ -6,14 +6,15 @@ import { AppError } from '@/lib/errors'
 import type { UserRole } from '@/lib/domain'
 import { StaffPage } from '@/features/administration/AdministrationPage'
 
-const { listStaff, deleteStaff } = vi.hoisted(() => ({
+const { listStaff, deleteStaff, saveStaff } = vi.hoisted(() => ({
   listStaff: vi.fn(),
   deleteStaff: vi.fn(),
+  saveStaff: vi.fn(),
 }))
 vi.mock('@/services/workspace', () => ({
   listStaff,
   deleteStaff,
-  saveStaff: vi.fn(),
+  saveStaff,
   rpc: vi.fn(),
 }))
 vi.mock('@/features/auth/AuthContext', () => ({
@@ -29,6 +30,7 @@ const target = {
 }
 beforeEach(() => {
   deleteStaff.mockReset().mockResolvedValue(undefined)
+  saveStaff.mockReset().mockResolvedValue(undefined)
   listStaff.mockReset().mockResolvedValue([
     {
       user_id: 'self',
@@ -123,4 +125,25 @@ it('leaves the account and confirmation visible if the database refuses deletion
   expect(screen.getByRole('dialog')).toBeVisible()
   expect(screen.getByRole('heading', { name: 'Vendedor' })).toBeInTheDocument()
   expect(listStaff).toHaveBeenCalledTimes(1)
+})
+
+it('muestra el error de guardado dentro del formulario, como error y con sus datos', async () => {
+  saveStaff.mockRejectedValue(
+    new AppError('validation', 'Revisa los datos de la cuenta.'),
+  )
+  const user = await mount()
+  await user.click(
+    card('Vendedor').getByRole('button', { name: 'Editar permisos' }),
+  )
+  const nameField = screen.getByLabelText('Nombre')
+  // El foco entra en el formulario (el correo de una cuenta existente no se edita).
+  await waitFor(() => expect(nameField).toHaveFocus())
+  await user.clear(nameField)
+  await user.type(nameField, 'Vendedora')
+  await user.click(screen.getByRole('button', { name: 'Guardar' }))
+  const alert = await screen.findByRole('alert')
+  expect(alert).toHaveTextContent('Revisa los datos de la cuenta.')
+  expect(alert.closest('form')).not.toBeNull()
+  expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  expect(screen.getByLabelText('Nombre')).toHaveValue('Vendedora')
 })

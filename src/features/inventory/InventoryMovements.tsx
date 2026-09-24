@@ -12,15 +12,43 @@ import { can, type Capability } from '../../lib/permissions'
 import { errorMessage } from '../../lib/errors'
 import { createIdempotentOperation } from '../../lib/idempotentOperation'
 
+// `title` y `done` se escriben enteros: «Dañado» y «Ajuste» no concuerdan con
+// «de inventario … registrada» como sí lo hacen «Entrada» y «Salida».
 const actions: {
   type: MovementRequest['type']
   label: string
+  title: string
+  done: string
   capability: Capability
 }[] = [
-  { type: 'ENTRY', label: 'Entrada', capability: 'inventory.create_entry' },
-  { type: 'EXIT', label: 'Salida', capability: 'inventory.create_exit' },
-  { type: 'DAMAGED', label: 'Dañado', capability: 'inventory.create_damage' },
-  { type: 'ADJUSTMENT', label: 'Ajuste', capability: 'inventory.adjust' },
+  {
+    type: 'ENTRY',
+    label: 'Entrada',
+    title: 'Entrada de inventario',
+    done: 'Entrada registrada',
+    capability: 'inventory.create_entry',
+  },
+  {
+    type: 'EXIT',
+    label: 'Salida',
+    title: 'Salida de inventario',
+    done: 'Salida registrada',
+    capability: 'inventory.create_exit',
+  },
+  {
+    type: 'DAMAGED',
+    label: 'Dañado',
+    title: 'Producto dañado',
+    done: 'Producto dañado registrado',
+    capability: 'inventory.create_damage',
+  },
+  {
+    type: 'ADJUSTMENT',
+    label: 'Ajuste',
+    title: 'Ajuste de inventario',
+    done: 'Ajuste registrado',
+    capability: 'inventory.adjust',
+  },
 ]
 
 export function InventoryMovements({
@@ -93,7 +121,7 @@ export function InventoryMovements({
         quantity: nextQuantity,
         note,
       })
-      setMessage(`${action.label} registrada. Inventario actualizado.`)
+      setMessage(`${action.done}. Inventario actualizado.`)
       setAction(null)
       operation.reset()
       onRecorded()
@@ -138,7 +166,7 @@ export function InventoryMovements({
       {action && (
         <Dialog
           open
-          title={`${action.label} de inventario`}
+          title={action.title}
           onClose={() => {
             if (!busy) setAction(null)
           }}

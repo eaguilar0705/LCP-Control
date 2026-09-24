@@ -4,6 +4,7 @@ import type {
   Gender,
   InventoryLocation,
 } from '../../lib/domain'
+import { matchesSearch } from '../../lib/search'
 export type StockFilter = '' | 'low' | 'out' | 'available' | 'unknown'
 export interface InventoryFilters {
   search: string
@@ -56,6 +57,17 @@ export function locationTotals(items: InventoryItem[]): LocationTotals {
     { warehouse: 0, store: 0, total: 0, uncounted: 0 },
   )
 }
+/** Perfumes con conteo completo cuyo total está por debajo de su mínimo. */
+export function lowStockItems(items: InventoryItem[]) {
+  return items.filter((item) => {
+    const total = totalStock(item)
+    return (
+      total !== null &&
+      item.product.minimumStock !== null &&
+      total < item.product.minimumStock
+    )
+  })
+}
 export function stockStatus(item: InventoryItem) {
   const total = totalStock(item)
   return total === null
@@ -70,16 +82,16 @@ export function filterInventory(
   items: InventoryItem[],
   filters: InventoryFilters,
 ) {
-  const query = filters.search.toLocaleLowerCase('es').trim()
   return items.filter((item) => {
     const product = item.product
     const quantity = filters.location
       ? item.quantities[filters.location]
       : totalStock(item)
     return (
-      `${product.name} ${product.brand} ${product.barcode} ${product.manufacturerBarcode ?? ''}`
-        .toLocaleLowerCase('es')
-        .includes(query) &&
+      matchesSearch(
+        `${product.name} ${product.brand} ${product.barcode} ${product.manufacturerBarcode ?? ''}`,
+        filters.search,
+      ) &&
       (!filters.category || product.category === filters.category) &&
       (!filters.gender || product.gender === filters.gender) &&
       (!filters.brand || product.brand === filters.brand) &&

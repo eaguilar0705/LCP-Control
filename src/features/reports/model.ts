@@ -103,6 +103,21 @@ export function daysInRange({ from, to }: ReportRange): string[] {
   return days
 }
 
+/**
+ * Cambia un extremo del periodo sin dejarlo invertido: si «Desde» pasa de
+ * «Hasta» (o al revés), el otro extremo se mueve al mismo día. Un rango
+ * invertido no traía datos y la pantalla lo presentaba como un periodo en cero.
+ */
+export function adjustRange(
+  range: ReportRange,
+  edge: 'from' | 'to',
+  day: string,
+): ReportRange {
+  const next = { ...range, [edge]: day }
+  // Invertido: el extremo que no se tocó se alinea con el día elegido.
+  return next.from <= next.to ? next : { from: day, to: day }
+}
+
 export function presetRange(preset: Preset, today = localDay(new Date())) {
   const spans: Record<Preset, number> = {
     '7d': 6,

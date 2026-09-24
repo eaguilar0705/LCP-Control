@@ -3,7 +3,7 @@ import {
   useId,
   useRef,
   useState,
-  type ButtonHTMLAttributes,
+  type ComponentProps,
   type InputHTMLAttributes,
   type ReactNode,
   type SelectHTMLAttributes,
@@ -16,11 +16,13 @@ import {
   PackageOpen,
   X,
 } from 'lucide-react'
+// ComponentProps<'button'> incluye `ref`: en React 19 llega como una prop más y
+// el botón nativo la recibe, para poder llevarle el foco (p. ej. al abrir un menú).
 export function Button({
   className = '',
   variant = 'primary',
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & {
+}: ComponentProps<'button'> & {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger'
 }) {
   return (

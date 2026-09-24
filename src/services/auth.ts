@@ -56,6 +56,48 @@ function client() {
     )
   return supabase
 }
+/**
+ * Un 429 no es un problema de conexión: es el bloqueo temporal por intentos
+ * fallidos (gancho `hook_password_verification_attempt`, que ya trae el aviso
+ * en español con los minutos de espera) o el límite de peticiones de Supabase.
+ * Antes ambos terminaban en «Revisa tu conexión».
+ */
+export function signInError(error: {
+  status?: number
+  code?: string
+  message?: string
+}) {
+  if (error.code === 'email_not_confirmed')
+    return new AppError(
+      'unauthorized',
+      'Tu correo aún no está confirmado. Abre el enlace que te enviamos o solicita uno nuevo desde «Activar mi cuenta».',
+    )
+  if (error.status === 429) {
+    const message = error.message?.trim() ?? ''
+    // El mensaje propio del bloqueo está en español; el del límite general de
+    // Supabase viene en inglés y se sustituye.
+    const own =
+      error.code !== 'over_request_rate_limit' &&
+      message.length > 0 &&
+      message.length <= 200 &&
+      /intentos|bloquead/i.test(message)
+    return new AppError(
+      'rate_limited',
+      own
+        ? message
+        : 'Demasiados intentos seguidos. Espera unos minutos antes de volver a intentarlo.',
+    )
+  }
+  if (error.status === 400)
+    return new AppError(
+      'unauthorized',
+      'Correo o contraseña incorrectos, o cuenta no habilitada.',
+    )
+  return new AppError(
+    'network',
+    'No pudimos iniciar sesión. Revisa tu conexión e inténtalo de nuevo.',
+  )
+}
 export const authService: AuthService = {
   async getSession() {
     if (!supabase) return null
@@ -72,15 +114,7 @@ export const authService: AuthService = {
       email,
       password,
     })
-    if (error)
-      throw new AppError(
-        error.status === 400 ? 'unauthorized' : 'network',
-        error.code === 'email_not_confirmed'
-          ? 'Tu correo aún no está confirmado. Abre el enlace que te enviamos o solicita uno nuevo desde «Activar mi cuenta».'
-          : error.status === 400
-            ? 'Correo o contraseña incorrectos, o cuenta no habilitada.'
-            : 'No pudimos iniciar sesión. Revisa tu conexión e inténtalo de nuevo.',
-      )
+    if (error) throw signInError(error)
   },
   async signOut() {
     const { error } = await client().auth.signOut({ scope: 'local' })

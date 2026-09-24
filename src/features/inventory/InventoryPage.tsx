@@ -500,8 +500,10 @@ export function InventoryPage() {
                 · {labels.gender[selected.gender]}
               </p>
               <p>
-                {labels.category[selected.category]} ·{' '}
-                {selected.availabilityNote}
+                {/* Sin nota de disponibilidad no queda un «·» colgando. */}
+                {[labels.category[selected.category], selected.availabilityNote]
+                  .filter(Boolean)
+                  .join(' · ')}
               </p>
               {selected.imageSource && (
                 <a

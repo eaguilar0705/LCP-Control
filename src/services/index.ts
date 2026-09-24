@@ -5,7 +5,7 @@ import { barcodeSchema } from '../lib/validation'
 import { AppError } from '../lib/errors'
 import { authConfigured } from '../lib/supabase'
 import type { DataProvider } from './contracts'
-import { totalStock } from '../features/inventory/model'
+import { lowStockItems } from '../features/inventory/model'
 import type { DocumentKind, MovementRequest, NewDocument } from '../lib/domain'
 import {
   productInputSchema,
@@ -43,14 +43,7 @@ export function createServices(provider: DataProvider) {
       recordMovement: (input: MovementRequest) =>
         provider.recordMovement(input),
       async getLowStock() {
-        return (await provider.getInventory()).filter((item) => {
-          const total = totalStock(item)
-          return (
-            total !== null &&
-            item.product.minimumStock !== null &&
-            total < item.product.minimumStock
-          )
-        })
+        return lowStockItems(await provider.getInventory())
       },
     },
     reportService: {

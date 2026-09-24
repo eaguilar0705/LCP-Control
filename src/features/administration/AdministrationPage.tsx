@@ -13,8 +13,9 @@ import {
   WorkspaceEmpty,
 } from '../../components/WorkspacePresentation'
 import { Brand } from '../../components/Brand'
-import { useState, useCallback, type FormEvent } from 'react'
+import { useState, useCallback, useRef, type FormEvent } from 'react'
 import {
+  ConfirmDialog,
   Dialog,
   Button,
   Card,
@@ -52,7 +53,24 @@ export function StaffPage() {
   const [form, setForm] = useState<StaffAccount | null>(null)
   const [editingEmail, setEditingEmail] = useState(false)
   const [message, setMessage] = useState('')
+  const [formError, setFormError] = useState('')
   const [busy, setBusy] = useState(false)
+  // El formulario se dibuja arriba de la lista: al abrirlo desde una tarjeta
+  // de más abajo quedaba fuera de la pantalla. Se lleva a la vista y el foco
+  // entra en el primer campo que se puede escribir.
+  const formRef = useRef<HTMLDivElement>(null)
+  function openStaffForm(record: StaffAccount, editing: boolean) {
+    setEditingEmail(editing)
+    setForm(record)
+    setFormError('')
+    setMessage('')
+    requestAnimationFrame(() => {
+      formRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+      formRef.current
+        ?.querySelector<HTMLInputElement>('input:not(:disabled)')
+        ?.focus({ preventScroll: true })
+    })
+  }
   if (!permitted && !demo)
     return (
       <ErrorState message="Solo los administradores pueden gestionar usuarios." />
@@ -83,6 +101,7 @@ export function StaffPage() {
     e.preventDefault()
     if (!form || busy || !permitted) return
     setBusy(true)
+    setFormError('')
     try {
       await saveStaff(form)
       setForm(null)
@@ -91,7 +110,9 @@ export function StaffPage() {
         'Acceso guardado. Las cuentas nuevas se activan desde la pantalla de acceso.',
       )
     } catch (e) {
-      setMessage(errorMessage(e))
+      // El error queda dentro del formulario, con sus datos, y se anuncia
+      // como error: antes salía arriba con el mismo aspecto que un «guardado».
+      setFormError(errorMessage(e))
     } finally {
       setBusy(false)
     }
@@ -105,17 +126,20 @@ export function StaffPage() {
         icon={UsersRound}
       >
         <Button
+          type="button"
           disabled={demo}
-          onClick={() => {
-            setEditingEmail(false)
-            setForm({
-              email: '',
-              display_name: '',
-              role: 'operator',
-              active: true,
-              registered: false,
-            })
-          }}
+          onClick={() =>
+            openStaffForm(
+              {
+                email: '',
+                display_name: '',
+                role: 'operator',
+                active: true,
+                registered: false,
+              },
+              false,
+            )
+          }
         >
           <UserPlus size={17} /> Autorizar correo
         </Button>
@@ -127,76 +151,89 @@ export function StaffPage() {
       )}
       {loading && <LoadingState />}
       {error && <ErrorState message={error} retry={retry} />}
-      {form && (
-        <Card className="form-card record-form">
-          <div className="section-heading">
-            <div>
-              <span className="section-kicker">ACCESO DEL PERSONAL</span>
-              <h2>
-                {editingEmail ? 'Editar permisos' : 'Autorizar una cuenta'}
-              </h2>
+      <div ref={formRef}>
+        {form && (
+          <Card className="form-card record-form">
+            <div className="section-heading">
+              <div>
+                <span className="section-kicker">ACCESO DEL PERSONAL</span>
+                <h2>
+                  {editingEmail ? 'Editar permisos' : 'Autorizar una cuenta'}
+                </h2>
+              </div>
             </div>
-          </div>
-          <form onSubmit={submit}>
-            <div className="form-grid">
-              <Input
-                label="Correo"
-                type="email"
-                required
-                value={form.email}
-                disabled={editingEmail}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-              />
-              <Input
-                label="Nombre"
-                required
-                maxLength={100}
-                value={form.display_name}
-                onChange={(e) =>
-                  setForm({ ...form, display_name: e.target.value })
-                }
-              />
-              <Select
-                label="Permisos"
-                value={form.role}
-                onChange={(e) =>
-                  setForm({ ...form, role: e.target.value as UserRole })
-                }
-              >
-                {Object.entries(roleLabels)
-                  .filter(([r]) => r !== 'superadmin' || role === 'superadmin')
-                  .map(([r, label]) => (
-                    <option key={r} value={r}>
-                      {label}
-                    </option>
-                  ))}
-              </Select>
-              <Select
-                label="Estado"
-                value={String(form.active)}
-                onChange={(e) =>
-                  setForm({ ...form, active: e.target.value === 'true' })
-                }
-              >
-                <option value="true">Activo</option>
-                <option value="false">Deshabilitado</option>
-              </Select>
-            </div>
-            <div className="form-actions">
-              <Button type="submit" disabled={busy || demo} aria-busy={busy}>
-                {busy ? 'Guardando…' : 'Guardar'}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => setForm(null)}
-              >
-                Cancelar
-              </Button>
-            </div>
-          </form>
-        </Card>
-      )}
+            <form onSubmit={submit}>
+              <div className="form-grid">
+                <Input
+                  label="Correo"
+                  type="email"
+                  required
+                  value={form.email}
+                  disabled={editingEmail}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                />
+                <Input
+                  label="Nombre"
+                  required
+                  maxLength={100}
+                  value={form.display_name}
+                  onChange={(e) =>
+                    setForm({ ...form, display_name: e.target.value })
+                  }
+                />
+                <Select
+                  label="Permisos"
+                  value={form.role}
+                  onChange={(e) =>
+                    setForm({ ...form, role: e.target.value as UserRole })
+                  }
+                >
+                  {Object.entries(roleLabels)
+                    .filter(
+                      ([r]) => r !== 'superadmin' || role === 'superadmin',
+                    )
+                    .map(([r, label]) => (
+                      <option key={r} value={r}>
+                        {label}
+                      </option>
+                    ))}
+                </Select>
+                <Select
+                  label="Estado"
+                  value={String(form.active)}
+                  onChange={(e) =>
+                    setForm({ ...form, active: e.target.value === 'true' })
+                  }
+                >
+                  <option value="true">Activo</option>
+                  <option value="false">Deshabilitado</option>
+                </Select>
+              </div>
+              {formError && (
+                <p role="alert" className="inline-error">
+                  {formError}
+                </p>
+              )}
+              <div className="form-actions">
+                <Button type="submit" disabled={busy || demo} aria-busy={busy}>
+                  {busy ? 'Guardando…' : 'Guardar'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={busy}
+                  onClick={() => {
+                    setForm(null)
+                    setFormError('')
+                  }}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </form>
+          </Card>
+        )}
+      </div>
       <div className="record-grid">
         {data?.map((r) => (
           <Card key={r.email} className="record-card staff-card">
@@ -219,11 +256,9 @@ export function StaffPage() {
             <span className="role-pill">{roleLabels[r.role]}</span>
             {(r.role !== 'superadmin' || role === 'superadmin') && (
               <Button
+                type="button"
                 variant="secondary"
-                onClick={() => {
-                  setEditingEmail(true)
-                  setForm(r)
-                }}
+                onClick={() => openStaffForm(r, true)}
               >
                 <Pencil size={14} /> Editar permisos
               </Button>
@@ -343,6 +378,7 @@ export function BusinessPage() {
   const { salesService } = useServices()
   const { data, error, loading, retry } = useQuery(salesService.getBusiness)
   const [message, setMessage] = useState('')
+  const [failure, setFailure] = useState('')
   const [busy, setBusy] = useState(false)
   if (!demo && !can(role, 'settings.manage'))
     return (
@@ -353,16 +389,18 @@ export function BusinessPage() {
     if (demo || busy || !can(role, 'settings.manage')) return
     const f = new FormData(e.currentTarget)
     setBusy(true)
+    setMessage('')
+    setFailure('')
     try {
       await rpc('save_business_settings', {
-        p_name: f.get('name'),
-        p_address: f.get('address'),
-        p_phone: f.get('phone'),
+        p_name: String(f.get('name') ?? '').trim(),
+        p_address: String(f.get('address') ?? '').trim(),
+        p_phone: String(f.get('phone') ?? '').trim(),
       })
       setMessage('Datos del negocio guardados.')
       retry()
     } catch (e) {
-      setMessage(errorMessage(e))
+      setFailure(errorMessage(e))
     } finally {
       setBusy(false)
     }
@@ -433,6 +471,11 @@ export function BusinessPage() {
               {message}
             </p>
           )}
+          {failure && (
+            <p role="alert" className="inline-error">
+              {failure}
+            </p>
+          )}
         </Card>
         <ExchangeRateCard />
       </div>
@@ -454,25 +497,41 @@ function ExchangeRateCard() {
   )
   const [rate, setRate] = useState('')
   const [message, setMessage] = useState('')
+  const [failure, setFailure] = useState('')
   const [busy, setBusy] = useState(false)
+  // Tasa escrita que espera confirmación. Cambiarla reprecia todo el catálogo
+  // en córdobas: un dedo de más (3.66 en vez de 36.6) bajaría los precios a la
+  // décima parte, así que se pide confirmar viendo la tasa anterior y el cambio.
+  const [pending, setPending] = useState<number | null>(null)
   const editable = !demo && can(role, 'settings.manage')
   const value = Number(rate)
   const valid = Number.isFinite(value) && value > 0 && value <= 1000000
+  const current = data?.usdToNio ?? null
+  const change =
+    pending !== null && current ? (pending - current) / current : null
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
+  function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!editable || busy || !valid) return
-    setBusy(true)
     setMessage('')
+    setFailure('')
+    setPending(Math.round(value * 1e6) / 1e6)
+  }
+
+  async function confirmRate() {
+    if (!editable || busy || pending === null) return
+    setBusy(true)
+    setFailure('')
     try {
-      await settingsService.saveExchangeRate(Math.round(value * 1e6) / 1e6)
+      await settingsService.saveExchangeRate(pending)
+      setPending(null)
       setMessage(
         'Tipo de cambio actualizado. Los precios en córdobas del catálogo se recalcularon con la nueva tasa.',
       )
       setRate('')
       retry()
     } catch (saveError) {
-      setMessage(errorMessage(saveError))
+      setFailure(errorMessage(saveError))
     } finally {
       setBusy(false)
     }
@@ -553,6 +612,40 @@ function ExchangeRateCard() {
             </p>
           )}
         </>
+      )}
+      {pending !== null && (
+        <ConfirmDialog
+          open
+          title="Cambiar el tipo de cambio"
+          confirmLabel="Actualizar tasa"
+          busyLabel="Guardando…"
+          busy={busy}
+          error={failure}
+          onConfirm={() => void confirmRate()}
+          onCancel={() => {
+            setPending(null)
+            setFailure('')
+          }}
+        >
+          <p>
+            {current
+              ? `De ${current} C$ a ${pending} C$ por dólar`
+              : `Primera tasa: ${pending} C$ por dólar`}
+            {change !== null &&
+              ` (${change > 0 ? '+' : ''}${(change * 100).toLocaleString('es-NI', { maximumFractionDigits: 1 })} %)`}
+            .
+          </p>
+          <p className="muted">
+            Se recalculará el precio en córdobas de todos los perfumes del
+            catálogo. Lo ya emitido conserva su tasa.
+          </p>
+          {change !== null && Math.abs(change) >= 0.1 && (
+            <p className="inline-error">
+              Es un cambio de más del 10 %. Revisa que la tasa esté bien escrita
+              antes de confirmar.
+            </p>
+          )}
+        </ConfirmDialog>
       )}
     </Card>
   )

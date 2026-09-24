@@ -16,6 +16,7 @@ import {
 import {
   Button,
   Card,
+  ConfirmDialog,
   Input,
   Select,
   ErrorState,
@@ -58,6 +59,9 @@ const paymentOptions = {
   pending: 'Pendiente de pago',
   ...labels.payment,
 }
+// Tope de PostgreSQL para el nombre del cliente al emitir (create_document).
+const MAX_CUSTOMER_NAME = 160
+const DAY_ONLY = /^\d{4}-\d{2}-\d{2}$/
 
 export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
   const { inventoryService, salesService } = useServices()
@@ -125,6 +129,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
   // y un doble clic no envía dos veces la misma revisión de borradores.
   const [savingDraft, setSavingDraft] = useState(false)
   const [sharing, setSharing] = useState(false)
+  const [confirmDiscard, setConfirmDiscard] = useState(false)
 
   const exchangeField =
     exchangeText ?? (savedRate ? String(savedRate.usdToNio) : '')
@@ -163,6 +168,33 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
       : undefined
   }
   const shortages = lines.filter((line) => quantityIssue(line)).length
+  /**
+   * Datos del cliente y de la vigencia que la base rechazaría al emitir. Se
+   * avisan junto al campo: antes el nombre vacío o de más de 160 letras se
+   * descubría al final, un teléfono mal escrito se descartaba sin decir nada y
+   * una vigencia borrada volvía como «No pudimos completar la operación».
+   * Los borradores sí pueden quedar incompletos.
+   */
+  const customerIssue = customerId
+    ? undefined
+    : !customer.trim()
+      ? 'Escribe el nombre del cliente o elige uno registrado.'
+      : customer.trim().length > MAX_CUSTOMER_NAME
+        ? `Usa ${MAX_CUSTOMER_NAME} caracteres como máximo.`
+        : undefined
+  const phoneIssue =
+    !customerId && phone.trim() && !whatsappNumber(phone)
+      ? 'Revisa el número: 8 dígitos, o completo con el código del país.'
+      : undefined
+  const validityIssue =
+    kind !== 'proforma'
+      ? undefined
+      : !DAY_ONLY.test(validUntil)
+        ? 'Elige hasta qué fecha es válida la proforma.'
+        : validUntil < isoDate(new Date())
+          ? 'La vigencia no puede ser anterior a hoy.'
+          : undefined
+  const dataIssues = !!(customerIssue || phoneIssue || validityIssue)
   const draft: DocumentDraft | null =
     lines.length && valid && validTax
       ? {
@@ -275,6 +307,25 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
     }
   }
 
+  /**
+   * Quita de la lista el borrador abierto. Sin esto los borradores sólo salían
+   * al emitirse y se acumulaban hasta el tope de 1 MB por cuenta, a partir del
+   * cual ya no se podía guardar ninguno.
+   */
+  async function discardDraft() {
+    if (!current || issued || savingDraft) return
+    setSavingDraft(true)
+    try {
+      if (await save(drafts.filter((item) => item.id !== current.id))) {
+        setConfirmDiscard(false)
+        clear()
+        setMessage('Borrador eliminado.')
+      }
+    } finally {
+      setSavingDraft(false)
+    }
+  }
+
   async function issue() {
     // Las existencias también se comprueban aquí, no sólo al pintar el aviso:
     // emitir con un renglón sin producto termina en un error de la base y el
@@ -284,6 +335,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
       !valid ||
       !validTax ||
       shortages > 0 ||
+      dataIssues ||
       (kind === 'invoice' && !validExchange) ||
       busy ||
       issued ||
@@ -432,7 +484,13 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
   // Guardar un borrador o imprimirlo no toca el inventario; emitir sí, así que
   // sólo la emisión exige que cada renglón tenga existencias suficientes.
   const issuable =
-    ready && shortages === 0 && (kind !== 'invoice' || validExchange)
+    ready &&
+    shortages === 0 &&
+    !dataIssues &&
+    (kind !== 'invoice' || validExchange)
+  // El borrador abierto sigue en la lista: se puede eliminar.
+  const discardable =
+    !!current && !issued && drafts.some((item) => item.id === current.id)
   const displayedTotal = issued?.total ?? total
   /**
    * El catálogo se cotiza en dólares y el precio en córdobas sale de la tasa
@@ -559,7 +617,10 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
             <div className="form-grid">
               <Input
                 label="Cliente"
-                maxLength={200}
+                maxLength={MAX_CUSTOMER_NAME}
+                // Con el formulario en blanco no se marca nada; en cuanto hay
+                // productos, el documento necesita a quién va dirigido.
+                error={issued || !lines.length ? undefined : customerIssue}
                 value={customer}
                 disabled={!!customerId}
                 onChange={(e) => setCustomer(e.target.value)}
@@ -570,6 +631,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
                 type="tel"
                 inputMode="tel"
                 maxLength={40}
+                error={issued ? undefined : phoneIssue}
                 value={phone}
                 disabled={!!customerId}
                 onChange={(e) => setPhone(e.target.value)}
@@ -614,7 +676,9 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
                 <Input
                   label="Válida hasta"
                   type="date"
+                  required
                   min={isoDate(new Date())}
+                  error={issued ? undefined : validityIssue}
                   value={validUntil}
                   onChange={(e) => setValidUntil(e.target.value)}
                 />
@@ -837,6 +901,11 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
                 : `No se puede emitir: ${shortages} renglones necesitan revisión, mira los avisos bajo sus cantidades.`}
             </p>
           )}
+          {!issued && lines.length > 0 && dataIssues && (
+            <p className="inline-error no-print" role="status">
+              {`No se puede emitir: revisa los datos marcados en «Datos de la ${copy.singular}».`}
+            </p>
+          )}
           <div className="form-actions no-print">
             <Button
               onClick={issue}
@@ -866,6 +935,18 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
               <Save size={17} />
               {savingDraft ? 'Guardando…' : 'Guardar borrador'}
             </Button>
+            {discardable && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="record-delete"
+                onClick={() => setConfirmDiscard(true)}
+                disabled={busy || savingDraft || draftsLoading || !!error}
+              >
+                <Trash2 size={17} />
+                Eliminar borrador
+              </Button>
+            )}
             <Button
               type="button"
               variant="secondary"
@@ -920,6 +1001,23 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
           )}
         </Card>
       </div>
+      {confirmDiscard && (
+        <ConfirmDialog
+          open
+          title="Eliminar borrador"
+          confirmLabel="Eliminar borrador"
+          busyLabel="Eliminando…"
+          busy={savingDraft}
+          error={error}
+          onConfirm={() => void discardDraft()}
+          onCancel={() => setConfirmDiscard(false)}
+        >
+          <p>
+            ¿Eliminar el borrador <strong>{current?.reference}</strong>? No
+            afecta al inventario ni a los documentos emitidos.
+          </p>
+        </ConfirmDialog>
+      )}
       {shareable && (
         <div className="document-print-root" aria-hidden="true">
           <DocumentPrint document={shareable} />

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -34,6 +34,20 @@ const links = [
   ['/staff', 'Usuarios', UserRound],
   ['/settings', 'Negocio', Layers3],
 ] as const
+// Pantallas que exigen un permiso. El menú lateral y la barra inferior del
+// teléfono usan la misma regla: un enlace que sólo lleva a «No tienes permiso»
+// no se muestra en ninguno de los dos.
+const linkPermission: Record<string, Capability> = {
+  '/sales': 'sale.create',
+  '/proformas': 'sale.create',
+  '/customers': 'customer.read',
+  '/suppliers': 'supplier.read',
+  '/reports': 'finance.read',
+  '/staff': 'staff.manage',
+  '/settings': 'settings.manage',
+}
+// Mismo corte que la hoja de estilos: por encima, el menú lateral es fijo.
+const DESKTOP_QUERY = '(min-width: 761px)'
 export function AppShell({ demo = false }: { demo?: boolean }) {
   const { user, service } = useAuth()
   const base = demo ? '/demo' : ''
@@ -41,6 +55,44 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [menu, setMenu] = useState(false)
+  const closeButton = useRef<HTMLButtonElement>(null)
+  // Quien abrió el menú recupera el foco al cerrarlo.
+  const opener = useRef<HTMLElement | null>(null)
+  function openMenu() {
+    opener.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null
+    setMenu(true)
+  }
+  // En el teléfono el menú es un panel sobre la pantalla: el foco entra en él,
+  // Escape lo cierra y, si la ventana pasa a tamaño de escritorio, se cierra
+  // solo para no dejar el contenido bloqueado detrás de un panel invisible.
+  useEffect(() => {
+    if (!menu) {
+      // Ya sin `inert` en la página: el botón que abrió el menú vuelve a
+      // recibir el foco (un elemento inerte no puede recibirlo).
+      opener.current?.focus()
+      opener.current = null
+      return
+    }
+    closeButton.current?.focus()
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      setMenu(false)
+    }
+    const desktop = window.matchMedia?.(DESKTOP_QUERY)
+    const onResize = () => {
+      if (desktop?.matches) setMenu(false)
+    }
+    document.addEventListener('keydown', onKey)
+    desktop?.addEventListener?.('change', onResize)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      desktop?.removeEventListener?.('change', onResize)
+    }
+  }, [menu])
   useEffect(() => {
     const update = () => setOnline(navigator.onLine)
     window.addEventListener('online', update)
@@ -62,6 +114,10 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
     }
   }
   const role = demo ? 'operator' : (user?.role ?? null)
+  const visibleLinks = links.filter(
+    ([path]) =>
+      demo || !linkPermission[path] || can(role, linkPermission[path]),
+  )
   return (
     <AccessContext.Provider
       value={{
@@ -75,7 +131,20 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
         Saltar al contenido
       </a>
       <div className="app-layout">
-        <aside className={`sidebar ${menu ? 'sidebar-open' : ''}`}>
+        {/* Velo del menú del teléfono. Antes era una sombra sobre la página: el
+            toque pasaba a lo que había debajo y podía pulsar un botón oculto
+            (abrir un movimiento, emitir una factura). Ahora el toque cierra. */}
+        {menu && (
+          <div
+            className="sidebar-backdrop"
+            aria-hidden="true"
+            onClick={() => setMenu(false)}
+          />
+        )}
+        <aside
+          id="app-sidebar"
+          className={`sidebar ${menu ? 'sidebar-open' : ''}`}
+        >
           <Link className="brand" to={base || '/'}>
             <Brand />
             <span>
@@ -83,6 +152,8 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
             </span>
           </Link>
           <Button
+            ref={closeButton}
+            type="button"
             className="close-menu"
             variant="ghost"
             aria-label="Cerrar menú"
@@ -92,30 +163,20 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
           </Button>
           <span className="nav-label">MI TIENDA</span>
           <nav aria-label="Navegación principal">
-            {links
-              .filter(([path]) => {
-                const permission: Record<string, Capability> = {
-                  '/sales': 'sale.create',
-                  '/proformas': 'sale.create',
-                  '/customers': 'customer.read',
-                  '/suppliers': 'supplier.read',
-                  '/reports': 'finance.read',
-                  '/staff': 'staff.manage',
-                  '/settings': 'settings.manage',
-                }
-                return demo || !permission[path] || can(role, permission[path])
-              })
-              .map(([path, label, Icon]) => (
-                <NavLink
-                  key={path}
-                  end
-                  to={base + path || '/'}
-                  onClick={() => setMenu(false)}
-                >
-                  <Icon size={19} />
-                  {label}
-                </NavLink>
-              ))}
+            {visibleLinks.map(([path, label, Icon]) => (
+              <NavLink
+                key={path}
+                end
+                to={base + path || '/'}
+                onClick={() => {
+                  opener.current = null
+                  setMenu(false)
+                }}
+              >
+                <Icon size={19} />
+                {label}
+              </NavLink>
+            ))}
           </nav>
           <div className="sidebar-bottom">
             <div className="user-block">
@@ -150,14 +211,19 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
             )}
           </div>
         </aside>
-        <div className="workspace">
+        {/* Con el menú abierto, el contenido y la barra inferior quedan fuera
+            del recorrido del teclado y del lector de pantalla. */}
+        <div className="workspace" inert={menu || undefined}>
           <header className="topbar">
             <div className="topbar-label">
               <Button
+                type="button"
                 className="mobile-menu"
                 variant="ghost"
                 aria-label="Abrir menú"
-                onClick={() => setMenu(true)}
+                aria-expanded={menu}
+                aria-controls="app-sidebar"
+                onClick={openMenu}
               >
                 <Menu size={20} />
               </Button>
@@ -197,14 +263,23 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
             La Casa del Perfume<span>Managua, Nicaragua</span>
           </footer>
         </div>
-        <nav className="bottom-nav" aria-label="Navegación móvil">
-          {links.slice(0, 4).map(([path, label, Icon]) => (
+        <nav
+          className="bottom-nav"
+          aria-label="Navegación móvil"
+          inert={menu || undefined}
+        >
+          {visibleLinks.slice(0, 4).map(([path, label, Icon]) => (
             <NavLink key={path} end to={base + path || '/'}>
               <Icon size={22} />
               <span>{label}</span>
             </NavLink>
           ))}
-          <button onClick={() => setMenu(true)}>
+          <button
+            type="button"
+            aria-expanded={menu}
+            aria-controls="app-sidebar"
+            onClick={openMenu}
+          >
             <Menu size={22} />
             <span>Más</span>
           </button>

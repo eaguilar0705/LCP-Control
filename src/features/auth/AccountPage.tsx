@@ -5,6 +5,7 @@ import { useAccess } from '../../app/AccessContext'
 import { supabase } from '../../lib/supabase'
 import { authRedirectUrl } from '../../services/auth'
 import { useQuery } from '../../lib/useQuery'
+import { AppError } from '../../lib/errors'
 import {
   Button,
   Card,
@@ -14,16 +15,22 @@ import {
   PasswordInput,
 } from '../../components/ui'
 const MIN_PASSWORD = 12
+// Límite de Supabase Auth para contraseñas.
+const MAX_PASSWORD = 72
+// AppError: los mensajes llegan a la pantalla tal cual. Con un Error común
+// useQuery los cambiaba por «No pudimos completar la operación».
 async function getProfile() {
-  if (!supabase) throw new Error('Falta configurar Supabase.')
+  if (!supabase)
+    throw new AppError('configuration', 'Falta configurar Supabase.')
   const { data: auth, error: authError } = await supabase.auth.getUser()
-  if (authError || !auth.user) throw new Error('Vuelve a iniciar sesión.')
+  if (authError || !auth.user)
+    throw new AppError('unauthorized', 'Vuelve a iniciar sesión.')
   const { data, error } = await supabase
     .from('staff_members')
     .select('display_name')
     .eq('user_id', auth.user.id)
     .single()
-  if (error) throw new Error('No pudimos leer tu perfil.')
+  if (error) throw new AppError('network', 'No pudimos leer tu perfil.')
   return data.display_name as string
 }
 export function AccountPage() {
@@ -40,6 +47,7 @@ function AccountLoader() {
   if (error) return <ErrorState message={error} retry={retry} />
   return <AccountForm initialName={data ?? ''} />
 }
+type Section = 'name' | 'email' | 'password'
 function AccountForm({ initialName }: { initialName: string }) {
   const { user } = useAuth()
   const { demo } = useAccess()
@@ -48,22 +56,34 @@ function AccountForm({ initialName }: { initialName: string }) {
   const [password, setPassword] = useState('')
   const [repeat, setRepeat] = useState('')
   const [busy, setBusy] = useState(false)
-  const [message, setMessage] = useState('')
-  const [error, setError] = useState('')
-  async function save(
-    event: FormEvent,
-    section: 'name' | 'email' | 'password',
-  ) {
+  // El aviso se muestra en la tarjeta que lo produjo. Antes aparecía al final
+  // de la página, debajo de las tres tarjetas: en el teléfono quedaba fuera de
+  // la pantalla y parecía que el botón no había hecho nada.
+  const [feedback, setFeedback] = useState<{
+    section: Section
+    tone: 'status' | 'alert'
+    text: string
+  } | null>(null)
+  const report = (section: Section, tone: 'status' | 'alert', text: string) =>
+    setFeedback({ section, tone, text })
+  async function save(event: FormEvent, section: Section) {
     event.preventDefault()
     if (busy || demo || !supabase) return
-    setMessage('')
-    setError('')
+    setFeedback(null)
+    if (section === 'name' && !name.trim()) {
+      report('name', 'alert', 'Escribe tu nombre.')
+      return
+    }
     if (
       section === 'password' &&
-      (password.length < MIN_PASSWORD || password !== repeat)
+      (password.length < MIN_PASSWORD ||
+        password.length > MAX_PASSWORD ||
+        password !== repeat)
     ) {
-      setError(
-        `Usa al menos ${MIN_PASSWORD} caracteres y repite la misma contraseña.`,
+      report(
+        'password',
+        'alert',
+        `Usa de ${MIN_PASSWORD} a ${MAX_PASSWORD} caracteres y repite la misma contraseña.`,
       )
       return
     }
@@ -81,12 +101,16 @@ function AccountForm({ initialName }: { initialName: string }) {
               )
             : await supabase.auth.updateUser({ password })
       if (result.error) {
-        setError(
+        report(
+          section,
+          'alert',
           'No se pudo completar el cambio. Revisa los datos; si tu sesión venció, vuelve a entrar.',
         )
         return
       }
-      setMessage(
+      report(
+        section,
+        'status',
         section === 'email'
           ? 'Solicitud enviada. Revisa los correos de confirmación para completar el cambio de dirección.'
           : section === 'password'
@@ -96,10 +120,22 @@ function AccountForm({ initialName }: { initialName: string }) {
       setPassword('')
       setRepeat('')
     } catch {
-      setError('No pudimos conectar. Inténtalo de nuevo.')
+      report(section, 'alert', 'No pudimos conectar. Inténtalo de nuevo.')
     } finally {
       setBusy(false)
     }
+  }
+  function notice(section: Section) {
+    if (feedback?.section !== section) return null
+    return feedback.tone === 'alert' ? (
+      <p role="alert" className="inline-error">
+        {feedback.text}
+      </p>
+    ) : (
+      <p role="status" className="page-feedback">
+        {feedback.text}
+      </p>
+    )
   }
   return (
     <>
@@ -135,6 +171,7 @@ function AccountForm({ initialName }: { initialName: string }) {
                   ? roleLabels[user.role]
                   : 'Sin permisos'}
             </p>
+            {notice('name')}
             <Button type="submit" disabled={busy || demo} aria-busy={busy}>
               Guardar nombre
             </Button>
@@ -148,15 +185,21 @@ function AccountForm({ initialName }: { initialName: string }) {
               type="email"
               autoComplete="email"
               required
+              maxLength={254}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
             <p className="muted">
               El cambio puede requerir confirmación por correo.
             </p>
+            {notice('email')}
             <Button
               type="submit"
-              disabled={busy || demo || email === user?.email}
+              disabled={
+                busy ||
+                demo ||
+                email.trim().toLowerCase() === user?.email?.toLowerCase()
+              }
               aria-busy={busy}
             >
               Cambiar correo
@@ -171,6 +214,7 @@ function AccountForm({ initialName }: { initialName: string }) {
               autoComplete="new-password"
               required
               minLength={MIN_PASSWORD}
+              maxLength={MAX_PASSWORD}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -179,25 +223,17 @@ function AccountForm({ initialName }: { initialName: string }) {
               autoComplete="new-password"
               required
               minLength={MIN_PASSWORD}
+              maxLength={MAX_PASSWORD}
               value={repeat}
               onChange={(e) => setRepeat(e.target.value)}
             />
+            {notice('password')}
             <Button type="submit" disabled={busy || demo} aria-busy={busy}>
               Cambiar contraseña
             </Button>
           </form>
         </Card>
       </div>
-      {message && (
-        <p role="status" className="page-feedback">
-          {message}
-        </p>
-      )}
-      {error && (
-        <p role="alert" className="inline-error">
-          {error}
-        </p>
-      )}
     </>
   )
 }

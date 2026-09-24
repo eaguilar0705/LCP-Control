@@ -36,6 +36,7 @@ import {
   type ContactRecord,
 } from '../../services/workspace'
 import { whatsappNumber } from '../sales/whatsapp'
+import { matchesSearch } from '../../lib/search'
 const empty: ContactRecord = {
   id: '',
   revision: 0,
@@ -133,13 +134,13 @@ export function ContactsPage({ kind }: { kind: Kind }) {
       setBusy(false)
     }
   }
-  const query = search.toLocaleLowerCase('es').trim()
   const visible = (data ?? []).filter(
     (r) =>
       (status === 'all' || r.active === (status === 'active')) &&
-      `${r.name} ${r.phone} ${r.email} ${r.taxId ?? ''} ${r.contact ?? ''} ${r.brands ?? ''}`
-        .toLocaleLowerCase('es')
-        .includes(query),
+      matchesSearch(
+        `${r.name} ${r.phone} ${r.email} ${r.taxId ?? ''} ${r.contact ?? ''} ${r.brands ?? ''}`,
+        search,
+      ),
   )
   return (
     <>

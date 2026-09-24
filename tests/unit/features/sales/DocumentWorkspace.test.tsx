@@ -1,6 +1,6 @@
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { DocumentWorkspace } from '@/features/sales/DocumentWorkspace'
 import { AccessContext } from '@/app/AccessContext'
@@ -12,7 +12,10 @@ import type { DocumentDraft } from '@/features/sales/document'
 
 const { createDocument, draftStore } = vi.hoisted(() => ({
   createDocument: vi.fn(),
-  draftStore: { items: [] as DocumentDraft[] },
+  draftStore: {
+    items: [] as DocumentDraft[],
+    saved: null as DocumentDraft[] | null,
+  },
 }))
 vi.mock('@/services/useServices', () => ({ useServices: () => services }))
 vi.mock('@/services/workspace', () => ({ listContacts: async () => [] }))
@@ -21,7 +24,10 @@ vi.mock('@/lib/workspaceDrafts', () => ({
     items: draftStore.items,
     error: '',
     loading: false,
-    save: async () => true,
+    save: async (items: DocumentDraft[]) => {
+      draftStore.saved = items
+      return true
+    },
     retry: vi.fn(),
   }),
 }))
@@ -58,6 +64,13 @@ beforeEach(() => {
   localStorage.clear()
   createDocument.mockReset()
   draftStore.items = []
+  draftStore.saved = null
+  HTMLDialogElement.prototype.showModal = function () {
+    this.setAttribute('open', '')
+  }
+  HTMLDialogElement.prototype.close = function () {
+    this.removeAttribute('open')
+  }
   services.inventoryService.getInventory = catalogAdapter.getInventory
 })
 async function prepare(demo = false, kind: DocumentKind = 'invoice') {
@@ -271,4 +284,86 @@ it('deja el campo vacío si se borra la tasa, en vez de reponerla sola', async (
   await user.clear(rate)
   expect(rate).toHaveValue(null)
   expect(screen.getByRole('button', { name: 'Emitir factura' })).toBeDisabled()
+})
+
+it('marca la vigencia vacía o pasada de una proforma y no deja emitirla', async () => {
+  await prepare(false, 'proforma')
+  const validity = screen.getByLabelText('Válida hasta')
+  const emit = screen.getByRole('button', { name: 'Emitir proforma' })
+  expect(emit).toBeEnabled()
+  // Borrada: antes llegaba a la base como '' y volvía un error genérico.
+  fireEvent.change(validity, { target: { value: '' } })
+  expect(validity).toHaveAccessibleDescription(
+    'Elige hasta qué fecha es válida la proforma.',
+  )
+  expect(emit).toBeDisabled()
+  // Un borrador de hace días puede traer una fecha ya vencida.
+  fireEvent.change(validity, { target: { value: '2020-01-01' } })
+  expect(validity).toHaveAccessibleDescription(
+    'La vigencia no puede ser anterior a hoy.',
+  )
+  expect(emit).toBeDisabled()
+  fireEvent.change(validity, { target: { value: '2099-01-01' } })
+  expect(validity).not.toHaveAttribute('aria-invalid')
+  expect(emit).toBeEnabled()
+  expect(createDocument).not.toHaveBeenCalled()
+})
+
+it('exige el nombre del cliente y un WhatsApp válido antes de emitir', async () => {
+  createDocument.mockResolvedValue(issued)
+  const user = await prepare()
+  const name = screen.getByLabelText('Cliente')
+  const emit = screen.getByRole('button', { name: 'Emitir factura' })
+  await user.clear(name)
+  expect(name).toHaveAccessibleDescription(
+    'Escribe el nombre del cliente o elige uno registrado.',
+  )
+  expect(emit).toBeDisabled()
+  expect(screen.getByText(/revisa los datos marcados/)).toBeInTheDocument()
+  await user.type(name, 'Ana')
+  // Un número incompleto ya no se descarta en silencio al emitir.
+  const phone = screen.getByLabelText('WhatsApp del cliente')
+  await user.type(phone, '123')
+  expect(phone).toHaveAccessibleDescription(/8 dígitos/)
+  expect(emit).toBeDisabled()
+  await user.clear(phone)
+  await user.type(phone, '8888 0000')
+  expect(emit).toBeEnabled()
+  await user.click(emit)
+  await waitFor(() => expect(createDocument).toHaveBeenCalledOnce())
+  expect(createDocument.mock.calls[0][0]).toMatchObject({
+    customerName: 'Ana',
+    customerPhone: '50588880000',
+  })
+})
+
+it('el nombre del cliente admite hasta 160 caracteres, el tope de la base', async () => {
+  await prepare()
+  expect(screen.getByLabelText('Cliente')).toHaveAttribute('maxlength', '160')
+})
+
+it('elimina el borrador abierto después de confirmarlo', async () => {
+  draftStore.items = [
+    savedDraft('invoice'),
+    { ...savedDraft('invoice'), id: 'otro', reference: 'Otro borrador' },
+  ]
+  const user = await prepare()
+  // Sin un borrador abierto no hay nada que eliminar.
+  expect(
+    screen.queryByRole('button', { name: 'Eliminar borrador' }),
+  ).not.toBeInTheDocument()
+  await user.click(
+    document.querySelector('.saved-drafts button') as HTMLButtonElement,
+  )
+  await user.click(screen.getByRole('button', { name: 'Eliminar borrador' }))
+  const dialog = screen.getByRole('dialog', { name: 'Eliminar borrador' })
+  expect(within(dialog).getByText('Borrador anterior')).toBeInTheDocument()
+  await user.click(
+    within(dialog).getByRole('button', { name: 'Eliminar borrador' }),
+  )
+  await waitFor(() =>
+    expect(draftStore.saved?.map((draft) => draft.id)).toEqual(['otro']),
+  )
+  expect(await screen.findByText('Borrador eliminado.')).toBeInTheDocument()
+  expect(createDocument).not.toHaveBeenCalled()
 })

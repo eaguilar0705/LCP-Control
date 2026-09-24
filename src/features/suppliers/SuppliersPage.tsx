@@ -11,6 +11,7 @@ import {
 import { useLocalDrafts } from '../../lib/localDrafts'
 import { useAccess } from '../../app/AccessContext'
 import { ContactsPage } from '../contacts/ContactsPage'
+import { matchesSearch } from '../../lib/search'
 const supplierSchema = z.object({
   id: z.string(),
   name: z.string().trim().min(1).max(160),
@@ -85,9 +86,7 @@ function LocalSuppliersPage() {
     }
   }
   const filtered = items.filter((item) =>
-    `${item.name} ${item.contact} ${item.brands}`
-      .toLocaleLowerCase('es')
-      .includes(search.toLocaleLowerCase('es')),
+    matchesSearch(`${item.name} ${item.contact} ${item.brands}`, search),
   )
   return (
     <>

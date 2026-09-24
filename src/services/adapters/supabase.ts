@@ -538,7 +538,9 @@ export const supabaseAdapter: DataProvider = {
         taxRate: input.taxRate ?? 0,
         location: input.location ?? null,
         paymentMethod: input.paymentMethod ?? null,
-        validUntil: input.validUntil ?? null,
+        // Una fecha borrada llega como '': la base la recibe como nula y
+        // responde «Revisa la vigencia» en lugar de un error de conversión.
+        validUntil: input.validUntil || null,
         notes: input.notes,
         items: input.items,
       },

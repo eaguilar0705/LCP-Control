@@ -43,6 +43,7 @@ import {
   movementSummary,
   movementsInRange,
   paymentBreakdown,
+  adjustRange,
   presetLabels,
   presetRange,
   previousRange,
@@ -93,7 +94,8 @@ export function ReportsPage() {
 
 function Reports() {
   const { reportService, salesService } = useServices()
-  const [preset, setPreset] = useState<Preset>('30d')
+  // `null`: fechas elegidas a mano, ningún botón de periodo queda marcado.
+  const [preset, setPreset] = useState<Preset | null>('30d')
   const [range, setRange] = useState<ReportRange>(() => presetRange('30d'))
   const [tier, setTier] = useState<PriceTier>('emprendedor')
   const [exporting, setExporting] = useState('')
@@ -112,8 +114,11 @@ function Reports() {
   }
   function chooseDay(edge: 'from' | 'to', value: string) {
     if (!value) return
-    setPreset('30d')
-    setRange((current) => ({ ...current, [edge]: value }))
+    // Antes una fecha a mano dejaba marcado «Últimos 30 días» aunque el
+    // periodo fuera otro, y un «Desde» posterior al «Hasta» (tecleado, el
+    // calendario no lo permite) mostraba todo en cero sin explicación.
+    setPreset(null)
+    setRange((current) => adjustRange(current, edge, value))
   }
 
   async function exportAs(format: 'pdf' | 'excel') {

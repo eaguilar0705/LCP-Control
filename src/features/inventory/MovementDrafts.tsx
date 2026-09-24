@@ -18,6 +18,11 @@ const movementSchema = z.object({
 })
 type DraftMovementType = z.infer<typeof movementSchema>['type']
 const movementLabels = { ENTRY: 'Entrada', EXIT: 'Salida', DAMAGED: 'Dañado' }
+const movementTitles = {
+  ENTRY: 'Entrada de inventario',
+  EXIT: 'Salida de inventario',
+  DAMAGED: 'Producto dañado',
+}
 export function MovementDrafts({ items }: { items: InventoryItem[] }) {
   const [type, setType] = useState<DraftMovementType | null>(null)
   const {
@@ -118,11 +123,7 @@ function MovementForm({
     onSave(result.data)
   }
   return (
-    <Dialog
-      open
-      title={`${movementLabels[type]} de inventario`}
-      onClose={onClose}
-    >
+    <Dialog open title={movementTitles[type]} onClose={onClose}>
       <form onSubmit={submit} className="movement-form">
         <ProductSelect
           label="Producto del movimiento"

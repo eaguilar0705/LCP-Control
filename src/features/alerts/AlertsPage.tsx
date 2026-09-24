@@ -5,10 +5,46 @@ import { useServices } from '../../services/useServices'
 import { useQuery } from '../../lib/useQuery'
 import { ProductCard } from '../inventory/ProductCard'
 import { useAccess } from '../../app/AccessContext'
+import type { InventoryItem } from '../../lib/domain'
+import { lowStockItems, totalStock } from '../inventory/model'
+
+/**
+ * Por qué la lista está vacía. Antes siempre decía «Conteos pendientes», aunque
+ * todo estuviera contado y simplemente nada bajara del mínimo; y no avisaba de
+ * que, con los mínimos en cero, ninguna alerta puede aparecer nunca.
+ */
+function emptyReason(items: InventoryItem[]) {
+  const uncounted = items.filter((item) => totalStock(item) === null).length
+  const withMinimum = items.filter(
+    (item) => (item.product.minimumStock ?? 0) > 0,
+  ).length
+  const notes: string[] = []
+  if (uncounted)
+    notes.push(
+      `${uncounted} ${uncounted === 1 ? 'perfume no tiene' : 'perfumes no tienen'} conteo completo en Tienda y Bodega y no se pueden evaluar.`,
+    )
+  if (!withMinimum)
+    notes.push(
+      'Ningún perfume tiene un mínimo de inventario mayor que cero: defínelo al editar cada perfume para recibir alertas.',
+    )
+  if (!notes.length)
+    return {
+      title: 'Sin alertas',
+      description: 'Ningún perfume está por debajo de su mínimo.',
+    }
+  return {
+    title: uncounted ? 'Conteos pendientes' : 'Sin mínimos configurados',
+    description: notes.join(' '),
+  }
+}
+
 export function AlertsPage() {
   const { inventoryService } = useServices()
-  const { data, error, loading, retry } = useQuery(inventoryService.getLowStock)
+  const { data, error, loading, retry } = useQuery(
+    inventoryService.getInventory,
+  )
   const { base } = useAccess()
+  const low = data ? lowStockItems(data) : []
   return (
     <>
       <div className="page-heading">
@@ -28,13 +64,10 @@ export function AlertsPage() {
           <LoadingState />
         ) : error ? (
           <ErrorState message={error} retry={retry} />
-        ) : !data?.length ? (
-          <EmptyState
-            title="Conteos pendientes"
-            description="Las alertas estarán disponibles al registrar existencias y mínimos."
-          />
+        ) : !low.length ? (
+          <EmptyState {...emptyReason(data ?? [])} />
         ) : (
-          data.map((item) => <ProductCard item={item} key={item.product.id} />)
+          low.map((item) => <ProductCard item={item} key={item.product.id} />)
         )}
       </Card>
     </>

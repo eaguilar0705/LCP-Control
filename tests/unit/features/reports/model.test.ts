@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  adjustRange,
   change,
   concentration,
   currenciesWithSales,
@@ -476,5 +477,29 @@ describe('la ventana ampliada no infla el periodo', () => {
     expect(sumOfDays).toBe(totals.revenue)
     // Y el descarte es deliberado: sin acotar, la cifra saldría inflada.
     expect(summary(documents, 'NIO').revenue).toBe(8777)
+  })
+})
+
+describe('fechas elegidas a mano', () => {
+  const range = { from: '2026-09-01', to: '2026-09-23' }
+  it('cambia un extremo y deja el otro', () => {
+    expect(adjustRange(range, 'from', '2026-08-01')).toEqual({
+      from: '2026-08-01',
+      to: '2026-09-23',
+    })
+    expect(adjustRange(range, 'to', '2026-09-10')).toEqual({
+      from: '2026-09-01',
+      to: '2026-09-10',
+    })
+  })
+  it('nunca deja el periodo invertido', () => {
+    expect(adjustRange(range, 'from', '2026-12-31')).toEqual({
+      from: '2026-12-31',
+      to: '2026-12-31',
+    })
+    expect(adjustRange(range, 'to', '2026-08-15')).toEqual({
+      from: '2026-08-15',
+      to: '2026-08-15',
+    })
   })
 })

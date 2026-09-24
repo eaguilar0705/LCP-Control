@@ -3,7 +3,7 @@ import {
   WorkspaceHeading,
   WorkspaceEmpty,
 } from '../../components/WorkspacePresentation'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useServices } from '../../services/useServices'
 import { useAccess } from '../../app/AccessContext'
@@ -23,6 +23,7 @@ import type { DocumentKind, DocumentRecord } from '../../lib/domain'
 import { DocumentPrint } from './DocumentPrint'
 import { downloadDocumentPdf } from './pdf'
 import { ExportDocumentsButton } from './ExportDocumentsButton'
+import { matchesSearch } from '../../lib/search'
 export function DocumentHistory({ kind }: { kind: DocumentKind }) {
   const { salesService } = useServices()
   const { base, demo, role } = useAccess()
@@ -40,6 +41,19 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
   const [deleting, setDeleting] = useState(false)
   const [removeError, setRemoveError] = useState('')
   const [notice, setNotice] = useState('')
+  // El documento abierto se dibuja debajo de la lista: con 200 tarjetas quedaba
+  // fuera de la pantalla y parecía que «Ver documento» no hacía nada.
+  const viewer = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!selected) return
+    viewer.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+    viewer.current
+      ?.querySelector<HTMLButtonElement>('button')
+      ?.focus({ preventScroll: true })
+  }, [selected])
+  const matches = (data ?? []).filter((d) =>
+    matchesSearch(`${d.number} ${d.customerName}`, search),
+  )
   // Sólo facturas: las proformas no mueven inventario ni contabilidad.
   const removable = kind === 'invoice' && !demo && can(role, 'document.delete')
   function askRemove(record: DocumentRecord) {
@@ -95,7 +109,9 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
             onChange={(e) => setSearch(e.target.value)}
           />
           <span className="directory-count">
-            {data?.length ?? 0} documentos recientes
+            {search.trim()
+              ? `${matches.length} de ${data?.length ?? 0} documentos recientes`
+              : `${data?.length ?? 0} documentos recientes`}
           </span>
         </div>
         {notice && (
@@ -106,68 +122,54 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
         {loading && <LoadingState />}
         {error && <ErrorState message={error} retry={retry} />}
         <div className="record-grid">
-          {data
-            ?.filter((d) =>
-              `${d.number} ${d.customerName}`
-                .toLowerCase()
-                .includes(search.toLowerCase()),
-            )
-            .map((d) => (
-              <Card key={d.id} className="record-card">
-                <div className="record-card-top">
-                  <span className="record-avatar">
-                    <FileText size={22} />
-                  </span>
-                  <span className="record-badge is-muted">{d.currency}</span>
-                </div>
-                <h2>{d.number}</h2>
-                <p>
-                  {d.customerName} · {formatDate(d.createdAt)}
-                </p>
-                <strong className="document-record-total">
-                  {formatCurrency(d.total, d.currency)}
-                </strong>
-                <Button variant="secondary" onClick={() => setSelected(d)}>
-                  Ver documento <ArrowUpRight size={16} />
+          {matches.map((d) => (
+            <Card key={d.id} className="record-card">
+              <div className="record-card-top">
+                <span className="record-avatar">
+                  <FileText size={22} />
+                </span>
+                <span className="record-badge is-muted">{d.currency}</span>
+              </div>
+              <h2>{d.number}</h2>
+              <p>
+                {d.customerName} · {formatDate(d.createdAt)}
+              </p>
+              <strong className="document-record-total">
+                {formatCurrency(d.total, d.currency)}
+              </strong>
+              <Button variant="secondary" onClick={() => setSelected(d)}>
+                Ver documento <ArrowUpRight size={16} />
+              </Button>
+              {removable && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="record-delete"
+                  aria-label={`Eliminar factura ${d.number}`}
+                  onClick={() => askRemove(d)}
+                >
+                  <Trash2 size={14} />
+                  Eliminar
                 </Button>
-                {removable && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="record-delete"
-                    aria-label={`Eliminar factura ${d.number}`}
-                    onClick={() => askRemove(d)}
-                  >
-                    <Trash2 size={14} />
-                    Eliminar
-                  </Button>
-                )}
-              </Card>
-            ))}
+              )}
+            </Card>
+          ))}
         </div>
-        {!loading &&
-          !error &&
-          !(data ?? []).some((d) =>
-            `${d.number} ${d.customerName}`
-              .toLowerCase()
-              .includes(search.toLowerCase()),
-          ) && (
-            <WorkspaceEmpty
-              icon={FileText}
-              title={
-                search
-                  ? 'No encontramos ese documento'
-                  : 'Tu archivo está listo'
-              }
-              description={
-                search
-                  ? 'Prueba con otro nombre o número.'
-                  : 'Los documentos que emitas aparecerán aquí con su detalle y su PDF.'
-              }
-            />
-          )}
+        {!loading && !error && !matches.length && (
+          <WorkspaceEmpty
+            icon={FileText}
+            title={
+              search ? 'No encontramos ese documento' : 'Tu archivo está listo'
+            }
+            description={
+              search
+                ? 'Prueba con otro nombre o número.'
+                : 'Los documentos que emitas aparecerán aquí con su detalle y su PDF.'
+            }
+          />
+        )}
         {selected && (
-          <div className="form-actions">
+          <div className="form-actions document-viewer-actions" ref={viewer}>
             <Button type="button" onClick={() => window.print()}>
               Imprimir (carta o A4)
             </Button>
@@ -248,7 +250,14 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
       </div>
       {selected && (
         <>
-          <div className="example-paper no-print">
+          {/* Región desplazable en el teléfono: enfocable para poder
+              recorrerla también con el teclado. */}
+          <div
+            className="example-paper no-print"
+            tabIndex={0}
+            role="region"
+            aria-label={`Documento ${selected.number}`}
+          >
             <DocumentPrint document={selected} />
           </div>
           <div className="document-print-root" aria-hidden="true">

@@ -72,7 +72,18 @@ export function DocumentExamplePage() {
         </div>
       </div>
       {message && <p role="alert">{message}</p>}
-      <div className="example-paper">
+      {/* En el teléfono la hoja se desplaza de lado: enfocable para poder
+          recorrerla también con el teclado. */}
+      <div
+        className="example-paper"
+        tabIndex={0}
+        role="region"
+        aria-label={
+          record.kind === 'invoice'
+            ? 'Hoja de la factura de ejemplo'
+            : 'Hoja de la proforma de ejemplo'
+        }
+      >
         <DocumentPrint document={record} />
       </div>
     </>

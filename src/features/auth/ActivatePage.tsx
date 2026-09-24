@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Button, Card, Input, PasswordInput } from '../../components/ui'
 import { Brand } from '../../components/Brand'
-import { errorMessage } from '../../lib/errors'
+import { AppError, errorMessage } from '../../lib/errors'
 import { authConfigured } from '../../lib/supabase'
 import {
   resendConfirmation,
@@ -55,8 +55,13 @@ export function ActivatePage({
     setBusy('signup')
     setMessage('')
     try {
+      // AppError: un Error común se mostraba como «No pudimos completar la
+      // operación» y el motivo real se perdía.
       if (!authConfigured)
-        throw Error('Configura Supabase para activar cuentas.')
+        throw new AppError(
+          'configuration',
+          'Configura Supabase para activar cuentas.',
+        )
       const result = await signUp(email, password)
       if (result === 'already_registered') {
         setSentTo('')
@@ -110,10 +115,12 @@ export function ActivatePage({
             required
             autoComplete="username"
           />
+          {/* Supabase no acepta contraseñas de más de 72 caracteres. */}
           <PasswordInput
             label="Contraseña"
             name="password"
             minLength={12}
+            maxLength={72}
             required
             autoComplete="new-password"
           />
@@ -121,10 +128,11 @@ export function ActivatePage({
             label="Repetir contraseña"
             name="repeat"
             minLength={12}
+            maxLength={72}
             required
             autoComplete="new-password"
           />
-          <p className="muted">Usa al menos 12 caracteres.</p>
+          <p className="muted">Usa de 12 a 72 caracteres.</p>
           <Button
             type="submit"
             disabled={busy !== null}

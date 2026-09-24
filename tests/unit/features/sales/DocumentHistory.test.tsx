@@ -75,3 +75,38 @@ it('Ventas, las proformas y la demostración no ven el botón', async () => {
   await screen.findByText('FAC-000007')
   expect(screen.queryByRole('button', { name: /Eliminar/ })).toBeNull()
 })
+
+it('al abrir un documento lleva la vista y el foco a sus acciones', async () => {
+  const scroll = vi.fn()
+  Element.prototype.scrollIntoView = scroll
+  const user = userEvent.setup()
+  renderHistory('operator')
+  await user.click(await screen.findByRole('button', { name: /Ver documento/ }))
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: 'Imprimir (carta o A4)' }),
+    ).toHaveFocus(),
+  )
+  expect(scroll).toHaveBeenCalled()
+  // La hoja desplazable del teléfono se puede recorrer con el teclado.
+  expect(
+    screen.getByRole('region', { name: 'Documento FAC-000007' }),
+  ).toHaveAttribute('tabindex', '0')
+})
+
+it('busca sin distinguir tildes y cuenta las coincidencias', async () => {
+  listDocuments.mockResolvedValue([
+    { ...invoice, customerName: 'María López' },
+    { ...invoice, id: 'doc-2', number: 'FAC-000008', customerName: 'José Pérez' },
+  ])
+  const user = userEvent.setup()
+  renderHistory('operator')
+  await screen.findByText('FAC-000008')
+  await user.type(
+    screen.getByLabelText('Buscar por número o cliente'),
+    'maria lopez',
+  )
+  expect(screen.getByText('FAC-000007')).toBeInTheDocument()
+  expect(screen.queryByText('FAC-000008')).not.toBeInTheDocument()
+  expect(screen.getByText('1 de 2 documentos recientes')).toBeInTheDocument()
+})
