@@ -8,6 +8,8 @@ import type {
   MovementRequest,
   NewDocument,
   PriceChange,
+  PricingInput,
+  PricingList,
   Product,
 } from '../lib/domain'
 import type { ProductInput } from '../features/products/product'
@@ -29,6 +31,12 @@ export interface DocumentPage {
   /** Documentos de todo el periodo, aunque la página traiga menos. */
   total: number
 }
+/** El precio de compra de un perfume, con la revisión con que se leyó. */
+export interface PricingSave {
+  productId: string
+  revision: number
+  pricing: PricingInput
+}
 export interface DataProvider {
   listProducts(): Promise<Product[]>
   saveProduct(input: ProductInput): Promise<string>
@@ -37,6 +45,17 @@ export interface DataProvider {
   listPriceChanges(productId: string): Promise<PriceChange[]>
   /** Costo promedio ponderado en córdobas; `null` mientras no se conozca. */
   getProductCost(productId: string): Promise<number | null>
+  /**
+   * Precio de compra y porcentajes de ganancia (de un perfume o de todos).
+   * Sólo los dueños reciben filas. `available` es falso mientras la base no
+   * tenga la actualización que los guarda.
+   */
+  listPricing(productId?: string): Promise<PricingList>
+  /**
+   * Guarda el precio de compra y los porcentajes de uno o varios perfumes y
+   * recalcula sus listas. Todo o nada. Devuelve cuántos perfumes guardó.
+   */
+  savePricing(rows: PricingSave[]): Promise<number>
   uploadProductImage(blob: Blob): Promise<string>
   readonly mode: 'demo' | 'supabase'
   getInventory(includeInactive?: boolean): Promise<InventoryItem[]>

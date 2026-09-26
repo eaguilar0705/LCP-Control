@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import type { Product } from '../../lib/domain'
+import type { Product, PricingInput } from '../../lib/domain'
+import { convertPrice, emptyPricing } from '../../lib/pricing'
 // Los mensajes se muestran junto al campo que los produce, así que se escriben
 // para quien llena el formulario, no para quien lee el código.
 const money = z
@@ -18,11 +19,37 @@ const money = z
  * que arreglar si saliera mal, y no al campo, que no se puede escribir.
  */
 const derived = z
-  .number({ error: 'Falta el tipo de cambio para calcular el precio en córdobas.' })
+  .number({
+    error: 'Falta el tipo de cambio para calcular el precio en córdobas.',
+  })
   .finite('Falta el tipo de cambio para calcular el precio en córdobas.')
   .positive('El precio en córdobas debe ser mayor que cero.')
   .max(10000000, 'El precio en córdobas es demasiado alto.')
 const pair = z.object({ NIO: derived, USD: money })
+const twoDecimals = (value: number) =>
+  Math.abs(value * 100 - Math.round(value * 100)) < 0.00001
+/**
+ * Precio de compra y porcentajes. Todo es opcional: una lista sin porcentaje
+ * (o un perfume sin precio de compra) conserva su precio a mano.
+ */
+const percent = z
+  .number({ error: 'Escribe el porcentaje o deja el campo vacío.' })
+  .finite('Escribe el porcentaje o deja el campo vacío.')
+  .min(0, 'El porcentaje no puede ser negativo.')
+  .max(1000, 'Usa un porcentaje de hasta 1000.')
+  .refine(twoDecimals, 'Usa hasta dos decimales.')
+  .nullable()
+export const pricingInputSchema = z.object({
+  purchasePrice: z
+    .number({ error: 'Escribe el precio de compra o deja el campo vacío.' })
+    .finite('Escribe el precio de compra o deja el campo vacío.')
+    .positive('El precio de compra debe ser mayor que cero.')
+    .max(10000000, 'El precio de compra es demasiado alto.')
+    .refine(twoDecimals, 'Usa hasta dos decimales.')
+    .nullable(),
+  purchaseCurrency: z.enum(['NIO', 'USD']),
+  markups: z.object({ emprendedor: percent, vip: percent, premium: percent }),
+})
 export const productInputSchema = z.object({
   id: z.uuid(),
   revision: z.number().int().min(0),
@@ -59,13 +86,28 @@ export const productInputSchema = z.object({
   active: z.boolean(),
   imagePath: z.string().max(250).nullable(),
   prices: z.object({ emprendedor: pair, vip: pair, premium: pair }),
+  /**
+   * Sólo viaja cuando quien edita es dueño y la base ya guarda precios de
+   * compra. Sin él, la base respeta lo que tenía guardado.
+   */
+  pricing: pricingInputSchema.optional(),
 })
 export type ProductInput = z.infer<typeof productInputSchema>
-/** Precio en córdobas del catálogo: el de dólares por la tasa vigente. */
+/**
+ * Precio en córdobas del catálogo: el de dólares por la tasa vigente, al
+ * centavo y con el mismo redondeo que la base.
+ */
 export function nioFromUsd(usd: number, rate: number | null): number {
-  if (rate === null || !Number.isFinite(rate) || rate <= 0 || !Number.isFinite(usd))
-    return NaN
-  return Math.max(Math.round(usd * rate * 100) / 100, 0.01)
+  return convertPrice(usd, 'USD', 'NIO', rate)
+}
+/** Copia editable del precio de compra (o uno vacío para un perfume nuevo). */
+export function pricingInput(pricing?: PricingInput | null): PricingInput {
+  if (!pricing) return emptyPricing()
+  return {
+    purchasePrice: pricing.purchasePrice,
+    purchaseCurrency: pricing.purchaseCurrency,
+    markups: { ...pricing.markups },
+  }
 }
 export function productInput(product?: Product): ProductInput {
   return {

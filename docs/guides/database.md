@@ -1,6 +1,6 @@
 # Base de datos del negocio
 
-Proyecto activo: **LCP-Control**, `xkpujpoocsbkychstrne`, el que configura `.env.local`. Es el que usa la aplicación; el identificador `vqicpwbwuatlyfdzpfne` que aparecía aquí antes no correspondía a este proyecto. **Las dieciséis migraciones de `supabase/migrations` están aplicadas**, verificado el 14 de septiembre de 2026, incluidas contabilidad, pedidos con envío, cuentas de gasto y precios del catálogo en dólares. Las de endurecimiento toleran que un proyecto nuevo no tenga la función histórica `rls_auto_enable`.
+Proyecto activo: **LCP-Control**, `xkpujpoocsbkychstrne`, el que configura `.env.local`. Es el que usa la aplicación; el identificador `vqicpwbwuatlyfdzpfne` que aparecía aquí antes no correspondía a este proyecto. **Las veintidós migraciones de `supabase/migrations` están aplicadas**, verificado el 26 de septiembre de 2026, incluidas contabilidad, pedidos con envío, cuentas de gasto, precios del catálogo en dólares, reportes calculados en la base y precio de compra con porcentaje de ganancia. Las de endurecimiento toleran que un proyecto nuevo no tenga la función histórica `rls_auto_enable`.
 
 Antes de dar por buena una actualización del código, comprobar que la base va a la par. Ya pasó dos veces que no lo estaba: primero cuatro migraciones aplicadas a otro proyecto, y después un primer intento de costos escrito directamente en la base y nunca guardado como archivo. La comprobación rápida:
 
@@ -8,7 +8,12 @@ Antes de dar por buena una actualización del código, comprobar que la base va 
 select version, name from supabase_migrations.schema_migrations order by version;
 ```
 
-Debe listar las dieciséis migraciones de `supabase/migrations`. En este proyecto los identificadores remotos difieren de los nombres locales porque las migraciones se aplicaron mediante MCP: se corresponden por nombre; la última figura como `catalog_priced_in_usd`.
+En este proyecto los identificadores remotos difieren de los nombres locales porque las migraciones se aplicaron mediante MCP: se corresponden por nombre; las últimas figuran como `report_digest` y `markup_pricing`. Estado al 26 de septiembre de 2026 (22 filas en el registro):
+
+- 20 archivos del repositorio aparecen en el registro por su nombre.
+- `20260923120000_contact_deletion` y `20260924120000_invoice_deletion` están aplicadas (sus tablas y funciones existen y coinciden con el repositorio), pero se ejecutaron sin dejar fila en el registro. No volver a ejecutarlas: fallarían porque las tablas ya existen. Si algún día se usa `supabase db push`, marcarlas antes como aplicadas con `supabase migration repair`.
+- `login_attempt_limits` y `promote_initial_superadmins` están en el registro, pero no hay archivo en `supabase/migrations`. En la base hay objetos que ningún archivo crea: la tabla `private.login_attempts`, la función `private.hook_password_verification_attempt` y otra versión de `private.is_superadmin()`, que con toda probabilidad vienen de esas dos. Conviene guardar su SQL en el repositorio para poder reconstruir otra base igual.
+- El resto de las funciones coincide con el repositorio. Varias se aplicaron con saltos de línea de Windows (CRLF) y `record_shipment` tiene menos comentarios; el código es el mismo.
 
 ## El intento de costos que se retiró
 
@@ -49,6 +54,7 @@ La salida en `private-data/database-import` está excluida de Git. No incorporar
 | Costos congelados  | `document_item_costs` guarda costo, tipo de cambio, tasa de impuesto y venta neta de cada renglón al emitir; `inventory_movement_costs` hace lo mismo con mermas, salidas y ajustes negativos. |
 | Gastos             | `expense_records`; categoría, comprobante e importe, repartidos en cinco cuentas. No se borran: se anulan con motivo y quedan en el historial.                                                 |
 | Tipo de cambio     | `exchange_rates`, una sola fila con la tasa vigente en córdobas por dólar y quién la cambió. Se edita en **Negocio** con `set_exchange_rate`; sólo propone un valor, nunca reescribe operaciones pasadas. |
+| Precio de compra   | `product_pricing`: precio de compra, su moneda y el porcentaje de ganancia de cada lista. Sólo lo leen Administrador y SuperAdmin (`owner_pricing_read`). Se escribe con `save_catalog_product` (ficha del perfume) o `save_product_pricing` (pantalla Precios y carga de archivos). |
 | Acceso             | Supabase Auth guarda las credenciales. `staff_members` es la única fuente de permisos. `private.pending_staff` reserva correos y roles antes de activar cuentas.     |
 
 La demostración de desarrollo conserva sus datos sintéticos y borradores/proveedores locales. Preferencias de interfaz y rotación de frases siguen en el navegador; no son registros del negocio.
@@ -126,7 +132,36 @@ La vista local (`/demo`) trae un libro contable inventado —costos, pedidos, ga
 - **Medición (PGlite, más lento que Supabase):** con 40,000 facturas, 120,000 renglones y 120,000 movimientos, 30 días tardan 0.24 s, 90 días 0.57 s y un año 2.2 s; la respuesta pesa unos 260 KB.
 - **Respaldo:** si la función no existe (`PGRST202`), la aplicación lee las filas como antes y muestra en Reportes que se están calculando en el equipo.
 
-Para aplicarla: en Supabase, **SQL Editor → New query**, pegar el contenido completo de `supabase/migrations/20260926120000_report_digest.sql` y ejecutar (o `supabase db push` con la CLI). Comprobación: `select to_regprocedure('public.report_digest(date,date)');` debe devolver el nombre de la función. En la aplicación, el aviso «Estos reportes se están calculando en este equipo…» deja de aparecer.
+**Aplicada** el 26 de septiembre de 2026 (registro `report_digest`). La función quedó idéntica al archivo (misma huella MD5 que en PGlite), `SECURITY INVOKER`, ejecutable por `authenticated` y no por `anon`, con los dos índices. En otra base se aplica pegando el archivo completo en **SQL Editor → New query**. Comprobación: `select to_regprocedure('public.report_digest(date,date)');` debe devolver el nombre de la función, y en la aplicación deja de aparecer el aviso «Estos reportes se están calculando en este equipo…».
+
+## Precio de compra y porcentaje de ganancia
+
+Migración `20260926180000_markup_pricing.sql`. El dueño fija el precio de venta como «lo que me costó más un porcentaje»: un perfume que costó C$ 500 con 20 % de ganancia se vende en C$ 600 (ganancia C$ 100). Cada lista —Emprendedor, VIP y Premium— lleva su propio porcentaje.
+
+- **Dónde se guarda:** `public.product_pricing`, una fila por perfume: `purchase_price` (hasta 10,000,000, dos decimales), `purchase_currency` (`NIO` o `USD`), `markup_emprendedor`, `markup_vip` y `markup_premium` (0 a 1000 %, dos decimales), quién y cuándo. RLS: sólo `staff_role() = 'admin'` (Administrador y SuperAdmin) la lee; `anon` no tiene permisos. Nadie escribe directo en la tabla.
+- **Cálculo:** una lista con precio de compra **y** porcentaje se calcula: `venta = round(compra × (100 + %) / 100, 2)` en la moneda de la compra; la otra moneda sale de la tasa vigente (`round(venta × tasa, 2)` o `round(venta / tasa, 2)`). El resultado se escribe en `product_prices`, así que facturación, proformas, márgenes y reportes no cambian. La aplicación hace la misma cuenta en enteros para enseñar el precio antes de guardar; `tests/unit/database/pricingParity.test.ts` compara las dos versiones en miles de casos.
+- **Listas a mano:** una lista sin porcentaje (o un perfume sin precio de compra) conserva su precio en dólares, como antes. La migración no toca ningún precio: todo sigue igual hasta que el dueño cargue un precio de compra y un porcentaje. Si después se borra el porcentaje, la lista se queda con el último precio calculado, ya como precio a mano.
+- **Cambio de tasa:** `reprice_catalog` recalcula las dos clases de listas. Compradas en córdobas: el córdoba queda fijo y se mueve el dólar. Compradas en dólares (y las listas a mano): el dólar queda fijo y se mueve el córdoba.
+- **Escrituras:** `save_catalog_product` acepta `pricing` en el payload (la ficha del perfume lo manda sólo cuando la base ya tiene esta migración); si no llega, respeta lo guardado. `save_product_pricing(p_rows jsonb)` guarda entre 1 y 2000 perfumes a la vez, **todo o nada**, y exige la revisión con que se leyó cada perfume, para no pisar un cambio hecho mientras tanto; el mensaje de error nombra el perfume. Ambas exigen rol `admin`, usan el límite de 120 cambios por minuto y dejan el antes y el después en `private.catalog_changes`.
+- **Historial:** `list_price_changes` devuelve además el porcentaje y el precio de compra que produjeron cada precio, e incluye los cambios que sólo movieron el córdoba o el porcentaje.
+- **Carga desde archivo:** la pantalla **Precios** lee Excel (.xlsx) o CSV en el navegador (el archivo no se sube a ninguna parte), reconoce los encabezados (Código, o Marca y Perfume; Precio de compra; Moneda; % Emprendedor; % VIP; % Premium), resuelve cada fila a un perfume y enseña qué cambia y qué filas no se pueden usar antes de guardar. Una celda vacía no cambia nada. La plantilla que se descarga trae el catálogo activo y lo ya guardado; contiene precios de compra, así que debe guardarse en un lugar privado.
+
+**Aplicada** el 26 de septiembre de 2026 (registro `markup_pricing`), después de comparar la base con el repositorio: las funciones que reemplaza eran las mismas, salvo saltos de línea. Se verificó:
+
+- Las 13 funciones nuevas o reemplazadas quedaron idénticas al archivo (misma huella MD5 que en PGlite).
+- Los 1560 precios, las revisiones de los 260 perfumes y la tasa (36.6) siguen igual: la huella de `product_prices` es la misma antes y después.
+- `product_pricing` está vacía, con RLS y la política `owner_pricing_read`. `anon` no la lee y `authenticated` sólo puede leerla, sin insertar. La vista `private.markup_rules` y las funciones privadas de cálculo no están abiertas a nadie.
+- Los asesores no marcan nada nuevo. `save_product_pricing` se suma a las RPC `SECURITY DEFINER` con control interno de rol, y el índice nuevo aparece «sin uso» hasta que se guarde el primer precio.
+
+En otra base se aplica pegando el archivo completo en **SQL Editor → New query**. No depende de `20260926120000_report_digest.sql`; se pueden aplicar en cualquier orden. Comprobación:
+
+```sql
+select to_regclass('public.product_pricing') as tabla,
+       to_regprocedure('public.save_product_pricing(jsonb)') as carga,
+       (select count(*) from public.product_prices) as precios;  -- siguen siendo 1560
+```
+
+Mientras no se aplique, la ficha del perfume funciona como antes (precios a mano en dólares) y avisa que falta la actualización; la pantalla Precios dice lo mismo y no deja cargar archivos.
 
 ## Operación y comprobaciones
 
@@ -136,9 +171,11 @@ Las escrituras del negocio pasan por funciones con comprobaciones de rol, valida
 
 El historial de documentos consulta las facturas o proformas de un período (índice `documents(kind, created_at desc)`), de 100 en 100, y las reimprime en carta/PDF; el PDF del período junta hasta 2,000 documentos. Movimientos muestra los últimos 200 registros autorizados. Clientes/proveedores muestran hasta 2,000 registros por pantalla. Para volúmenes mayores, añadir paginación de servidor.
 
-`npm run test:db` incluye las 23 comprobaciones históricas de catálogo y las 21 de contabilidad y precios actuales. Comprueba permisos, revisiones, persistencia, instantáneas, costos, gastos y conversión de precios en PostgreSQL desechable. La revisión del 14 de septiembre consultó la base real sin escribir operaciones: 260 productos, 1,560 precios, cero precios inconsistentes, cero saldos negativos y 520 saldos todavía sin contar.
+`npm run test:flows` recorre la pantalla real en Chrome contra PGlite con todas las migraciones, detrás de una API de Supabase simulada (`tests/flows/pricing.mjs`, puerto 5177; no toca la base real). Son 34 comprobaciones: validaciones de la ficha y de la ficha del perfume, el ejemplo C$ 500 + 20 % = C$ 600 leído de vuelta en la base, la carga de un CSV de Windows con `;` y coma decimal, un cambio simultáneo que detiene la carga completa, el cambio de tasa, el historial, el uso sólo con teclado, el teléfono sin desbordes, y que Ventas no vea ni pueda guardar precios de compra (RLS y HTTP 403).
 
-El asesor de seguridad informa seis tablas privadas con RLS sin políticas: es intencional, no se consultan directamente desde la API. También advierte sobre diez RPC SECURITY DEFINER accesibles a authenticated —la décima es `set_exchange_rate`—; son las escrituras y consultas autorizadas del programa, con controles internos de rol y search_path vacío. Las cuatro RPC de contabilidad no aparecen en el aviso porque su envoltura pública es SECURITY INVOKER. [Detalle del aviso](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable). No se amplió el acceso público para ocultar estas advertencias.
+`npm run test:db` incluye las 23 comprobaciones históricas de catálogo, las de contabilidad, personal, contactos y eliminación de facturas, y las 16 de precio de compra y porcentaje de ganancia (`tests/database/pricing.mjs`: permisos, cálculo en las dos monedas, cambio de tasa, validaciones, carga de varios perfumes todo o nada, historial y retiro). Comprueba permisos, revisiones, persistencia, instantáneas, costos, gastos y conversión de precios en PostgreSQL desechable. La revisión del 14 de septiembre consultó la base real sin escribir operaciones: 260 productos, 1,560 precios, cero precios inconsistentes, cero saldos negativos y 520 saldos todavía sin contar.
+
+El asesor de seguridad informa once tablas privadas con RLS sin políticas: es intencional, no se consultan directamente desde la API. También advierte sobre quince RPC SECURITY DEFINER accesibles a authenticated —entre ellas `set_exchange_rate` y `save_product_pricing`—; son las escrituras y consultas autorizadas del programa, con controles internos de rol y search_path vacío (revisado el 26 de septiembre de 2026). Las cuatro RPC de contabilidad no aparecen en el aviso porque su envoltura pública es SECURITY INVOKER. [Detalle del aviso](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable). No se amplió el acceso público para ocultar estas advertencias.
 
 ## Configuración local
 

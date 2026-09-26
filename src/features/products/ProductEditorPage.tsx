@@ -2,7 +2,13 @@ import { ScanButton } from '../scanner/ScanButton'
 import { ProductStockEditor } from './ProductStockEditor'
 import { can } from '../../lib/permissions'
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import {
+  Link,
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from 'react-router-dom'
 import {
   Button,
   Card,
@@ -15,16 +21,29 @@ import {
 import { useAccess } from '../../app/AccessContext'
 import { useServices } from '../../services/useServices'
 import { useQuery } from '../../lib/useQuery'
-import { errorMessage } from '../../lib/errors'
-import { labels, type Product, type PriceTier } from '../../lib/domain'
-import { marginRate, priceTierLabels } from '../../lib/pricing'
+import { errorMessage, issuesByField } from '../../lib/errors'
+import {
+  labels,
+  type PricingInput,
+  type Product,
+  type PriceTier,
+} from '../../lib/domain'
+import {
+  applyPricing,
+  marginRate,
+  priceTierLabels,
+  priceTiers,
+  tierQuote,
+} from '../../lib/pricing'
 import {
   nioFromUsd,
   optimizeProductImage,
+  pricingInput,
   productInput,
   productInputSchema,
 } from './product'
 import { formatCurrency, formatDate } from '../../lib/format'
+import { PricingFields } from '../pricing/PricingFields'
 
 export function ProductEditorPage() {
   const { role, demo } = useAccess()
@@ -35,37 +54,59 @@ export function ProductEditorPage() {
     )
   return <ProductLoader key={id ?? 'new'} />
 }
+// Un perfume nuevo todavía no tiene precio de compra; la consulta sólo dice si
+// la base ya puede guardarlo.
+const NEW_PRODUCT = '00000000-0000-0000-0000-000000000000'
 function ProductLoader() {
   const { id } = useParams()
-  const { productService } = useServices()
-  const { data, loading, error, retry } = useQuery(productService.listProducts)
+  const { productService, settingsService } = useServices()
+  // El precio de compra y la tasa llegan junto con el perfume: el formulario
+  // arranca con todo lo que necesita para calcular, y nada se sobrescribe
+  // mientras alguien ya está escribiendo.
+  const load = useCallback(async () => {
+    const [products, pricing, rate] = await Promise.all([
+      productService.listProducts(),
+      productService.listPricing(id ?? NEW_PRODUCT),
+      settingsService.getExchangeRate(),
+    ])
+    return { products, pricing, rate: rate?.usdToNio ?? null }
+  }, [id, productService, settingsService])
+  const { data, loading, error, retry } = useQuery(load)
   if (loading) return <LoadingState />
   if (error) return <ErrorState message={error} retry={retry} />
-  const product = data?.find((p) => p.id === id)
+  const product = data?.products.find((p) => p.id === id)
   if (id && !product) return <ErrorState message="Producto no encontrado." />
+  const saved = data?.pricing.rows.find((row) => row.productId === id)
   return (
     <ProductForm
       key={`${id ?? 'new'}:${product?.revision}`}
       product={product}
-      brands={[...new Set(data?.map((p) => p.brand))]}
+      brands={[...new Set(data?.products.map((p) => p.brand))]}
+      pricing={data?.pricing.available ? pricingInput(saved) : null}
+      rate={data?.rate ?? null}
     />
   )
 }
 function ProductForm({
   product,
   brands,
+  pricing,
+  rate,
 }: {
   product?: Product
   brands: string[]
+  /** `null` mientras la base no guarde precios de compra. */
+  pricing: PricingInput | null
+  /**
+   * El precio en córdobas se calcula con esta tasa. Sin ella no se puede fijar
+   * un precio, así que el formulario lo dice y no deja guardar a ciegas.
+   */
+  rate: number | null
 }) {
   const { base, demo } = useAccess()
   const navigate = useNavigate()
   const [params] = useSearchParams()
-  const { productService, settingsService } = useServices()
-  // El precio en córdobas se calcula con esta tasa. Sin ella no se puede fijar
-  // un precio, así que el formulario lo dice y no deja guardar a ciegas.
-  const { data: savedRate } = useQuery(settingsService.getExchangeRate)
-  const rate = savedRate?.usdToNio ?? null
+  const { productService } = useServices()
   // El costo promedio decide si un precio deja margen. Un perfume recién creado
   // no lo tiene todavía, y quien no puede leer costos recibe nulo sin error.
   const productId = product?.id
@@ -81,21 +122,62 @@ function ProductForm({
     ...productInput(product),
     manufacturerBarcode:
       product?.manufacturerBarcode ?? params.get('barcode') ?? '',
+    ...(pricing ? { pricing } : {}),
   }))
+  // Lo que se ve y lo que se guarda: las listas con porcentaje ya calculadas.
+  const shownPrices = applyPricing(value.prices, value.pricing, rate)
+  /**
+   * Una lista que deja de tener porcentaje conserva el último precio
+   * calculado como precio a mano, en lugar de volver a uno viejo.
+   */
+  function changePricing(next: PricingInput) {
+    setValue((current) => {
+      const prices = applyPricing(current.prices, current.pricing, rate)
+      // A mano manda el dólar: el córdoba vuelve a salir de la tasa, igual
+      // que lo guardará la base.
+      for (const tier of priceTiers) {
+        if (tierQuote(next, tier, rate)) continue
+        // Sin tasa no hay dólar calculado: queda el que ya tenía la lista.
+        const usd = Number.isFinite(prices[tier].USD)
+          ? prices[tier].USD
+          : current.prices[tier].USD
+        prices[tier] = { USD: usd, NIO: nioFromUsd(usd, rate) }
+      }
+      return { ...current, prices, pricing: next }
+    })
+  }
   const [file, setFile] = useState<Blob | null>(null)
   const [preview, setPreview] = useState(product?.imageUrl ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   // Un aviso único no dice qué campo falta entre nueve datos y seis precios.
-  // La clave es la ruta del dato («name», «prices.vip.USD»).
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  // La clave es la ruta del dato («name», «prices.vip.USD»). Los avisos
+  // aparecen al intentar guardar y desde entonces siguen a lo que se escribe:
+  // se van en cuanto el dato se corrige, sin esperar a otro «Guardar».
+  const [checked, setChecked] = useState(false)
+  const parsed = productInputSchema.safeParse({
+    ...value,
+    prices: shownPrices,
+  })
+  const fieldErrors =
+    checked && !parsed.success ? issuesByField(parsed.error.issues) : {}
+  const invalid = Object.keys(fieldErrors).length
   const form = useRef<HTMLFormElement>(null)
   const [confirmRemove, setConfirmRemove] = useState(false)
+  // Quien llega desde la pantalla Precios vuelve a ella al guardar.
+  const fromPricing = params.get('volver') === 'precios'
+  const back = fromPricing ? `${base}/prices` : `${base}/inventory`
   useEffect(() => {
     return () => {
       if (preview.startsWith('blob:')) URL.revokeObjectURL(preview)
     }
   }, [preview])
+  // Desde Precios se llega directo a las listas de precios.
+  const { hash } = useLocation()
+  useEffect(() => {
+    if (hash === '#precios')
+      document.getElementById('precios')?.scrollIntoView?.({ block: 'start' })
+  }, [hash])
   function update<K extends keyof typeof value>(
     key: K,
     next: (typeof value)[K],
@@ -119,17 +201,9 @@ function ProductForm({
   async function save(event: FormEvent) {
     event.preventDefault()
     if (busy || demo) return
-    const parsed = productInputSchema.safeParse(value)
     if (!parsed.success) {
-      const found: Record<string, string> = {}
-      for (const issue of parsed.error.issues) {
-        const key = issue.path.join('.')
-        if (key && !found[key]) found[key] = issue.message
-      }
-      setFieldErrors(found)
-      setError(
-        `Revisa ${Object.keys(found).length === 1 ? 'el campo marcado' : 'los campos marcados'} antes de guardar.`,
-      )
+      setChecked(true)
+      setError('')
       // El primer campo con problema puede estar fuera de la pantalla.
       requestAnimationFrame(() =>
         form.current
@@ -138,7 +212,6 @@ function ProductForm({
       )
       return
     }
-    setFieldErrors({})
     setBusy(true)
     setError('')
     try {
@@ -152,12 +225,9 @@ function ProductForm({
         ...parsed.data,
         imagePath,
       })
-      navigate(
-        product ? `${base}/inventory` : `${base}/products/${savedId}/edit`,
-        {
-          state: { message: 'Perfume guardado.' },
-        },
-      )
+      navigate(product ? back : `${base}/products/${savedId}/edit`, {
+        state: { message: 'Perfume guardado.' },
+      })
     } catch (e) {
       setError(errorMessage(e))
     } finally {
@@ -197,8 +267,8 @@ function ProductForm({
             {product?.barcode ?? 'El código interno se asignará al guardar.'}
           </p>
         </div>
-        <Link className="button button-secondary" to={`${base}/inventory`}>
-          Volver al inventario
+        <Link className="button button-secondary" to={back}>
+          {fromPricing ? 'Volver a precios' : 'Volver al inventario'}
         </Link>
       </div>
       {demo && (
@@ -361,83 +431,157 @@ function ProductForm({
               </Select>
             </div>
           </Card>
-          <Card className="form-card product-prices">
+          <Card className="form-card product-prices" id="precios">
             <h2>Listas de precios</h2>
-            <p className="muted">
-              El precio se fija en dólares. El de córdobas sale de la tasa
-              vigente
-              {rate === null ? '' : ` de ${rate} C$ por dólar`} y se recalcula
-              solo cuando el dueño cambia la tasa en Negocio.
-            </p>
+            {value.pricing ? (
+              <p className="muted">
+                Escribe el precio de compra y el porcentaje de ganancia de cada
+                lista: el precio de venta se calcula solo. Una lista sin
+                porcentaje conserva su precio en dólares, que se fija a mano. El
+                precio de compra y los porcentajes sólo los ven Administración y
+                SuperAdmin.
+              </p>
+            ) : (
+              <>
+                <p className="muted">
+                  El precio se fija en dólares. El de córdobas sale de la tasa
+                  vigente
+                  {rate === null ? '' : ` de ${rate} C$ por dólar`} y se
+                  recalcula solo cuando el dueño cambia la tasa en Negocio.
+                </p>
+                <p className="muted pricing-unavailable">
+                  Para calcular precios con el precio de compra y un porcentaje
+                  de ganancia falta aplicar la actualización de precios en la
+                  base de datos.
+                </p>
+              </>
+            )}
             {rate === null && (
               <p className="inline-error" role="alert">
                 Todavía no hay tipo de cambio registrado. Regístralo en Negocio
                 antes de fijar precios.
               </p>
             )}
-            {product && (
+            {product && (averageCost !== null || !value.pricing) && (
               <p className="muted">
                 {averageCost === null
                   ? 'Este perfume todavía no tiene costo registrado: hasta que lo tenga no se puede saber qué margen deja cada precio.'
                   : `Costo promedio actual: ${formatCurrency(averageCost, 'NIO')} por unidad. Debajo de cada precio va lo que queda después del costo.`}
               </p>
             )}
-            {(Object.keys(priceTierLabels) as PriceTier[]).map((tier) => {
-              const nio = value.prices[tier].NIO
-              // Un dólar vacío ya deja su propio aviso en el campo; repetirlo
-              // bajo el córdoba sería marcar dos veces el mismo descuido.
-              const usdError = fieldErrors[`prices.${tier}.USD`]
-              const nioError = usdError
-                ? undefined
-                : fieldErrors[`prices.${tier}.NIO`]
-              return (
-                <div className="product-price-row" key={tier}>
-                  <h3>{priceTierLabels[tier]}</h3>
-                  <Input
-                    label={`${priceTierLabels[tier]} USD`}
-                    error={usdError}
-                    type="number"
-                    min={0.01}
-                    max={10000000}
-                    step={0.01}
-                    required
-                    value={
-                      Number.isNaN(value.prices[tier].USD)
-                        ? ''
-                        : value.prices[tier].USD
-                    }
-                    onChange={(e) => {
-                      const usd = e.target.valueAsNumber
-                      update('prices', {
-                        ...value.prices,
-                        [tier]: { USD: usd, NIO: nioFromUsd(usd, rate) },
-                      })
-                    }}
-                  />
-                  <div
-                    className={`product-price-derived ${nioError ? 'field-invalid' : ''}`}
-                  >
-                    <span>{priceTierLabels[tier]} NIO</span>
-                    <strong>
-                      {Number.isNaN(nio) ? '—' : formatCurrency(nio, 'NIO')}
-                    </strong>
-                    <small className={nioError ? 'field-error' : undefined}>
-                      {nioError ?? 'Calculado con la tasa vigente'}
-                    </small>
-                  </div>
+            {value.pricing ? (
+              <PricingFields
+                pricing={value.pricing}
+                onChange={changePricing}
+                rate={rate}
+                prices={shownPrices}
+                errors={fieldErrors}
+                manual={(tier) => {
+                  const nio = value.prices[tier].NIO
+                  // Un dólar vacío ya deja su propio aviso en el campo;
+                  // repetirlo bajo el córdoba sería marcar dos veces lo mismo.
+                  const usdError = fieldErrors[`prices.${tier}.USD`]
+                  const nioError = usdError
+                    ? undefined
+                    : fieldErrors[`prices.${tier}.NIO`]
+                  return (
+                    <div className="pricing-manual">
+                      <Input
+                        label={`${priceTierLabels[tier]} USD`}
+                        error={usdError}
+                        type="number"
+                        min={0.01}
+                        max={10000000}
+                        step={0.01}
+                        required
+                        value={
+                          Number.isNaN(value.prices[tier].USD)
+                            ? ''
+                            : value.prices[tier].USD
+                        }
+                        onChange={(e) => {
+                          const usd = e.target.valueAsNumber
+                          update('prices', {
+                            ...value.prices,
+                            [tier]: { USD: usd, NIO: nioFromUsd(usd, rate) },
+                          })
+                        }}
+                      />
+                      <small className={nioError ? 'field-error' : undefined}>
+                        {Number.isNaN(nio) ? '—' : formatCurrency(nio, 'NIO')}{' '}
+                        {nioError ?? '· con la tasa vigente'}
+                      </small>
+                    </div>
+                  )
+                }}
+                after={(_tier, priceNio) => (
                   <PriceMargin
-                    priceNio={Number.isNaN(nio) ? null : nio}
+                    priceNio={priceNio}
                     costNio={averageCost}
                     show={!!product}
                   />
-                </div>
-              )
-            })}
+                )}
+              />
+            ) : (
+              (Object.keys(priceTierLabels) as PriceTier[]).map((tier) => {
+                const nio = value.prices[tier].NIO
+                // Un dólar vacío ya deja su propio aviso en el campo; repetirlo
+                // bajo el córdoba sería marcar dos veces el mismo descuido.
+                const usdError = fieldErrors[`prices.${tier}.USD`]
+                const nioError = usdError
+                  ? undefined
+                  : fieldErrors[`prices.${tier}.NIO`]
+                return (
+                  <div className="product-price-row" key={tier}>
+                    <h3>{priceTierLabels[tier]}</h3>
+                    <Input
+                      label={`${priceTierLabels[tier]} USD`}
+                      error={usdError}
+                      type="number"
+                      min={0.01}
+                      max={10000000}
+                      step={0.01}
+                      required
+                      value={
+                        Number.isNaN(value.prices[tier].USD)
+                          ? ''
+                          : value.prices[tier].USD
+                      }
+                      onChange={(e) => {
+                        const usd = e.target.valueAsNumber
+                        update('prices', {
+                          ...value.prices,
+                          [tier]: { USD: usd, NIO: nioFromUsd(usd, rate) },
+                        })
+                      }}
+                    />
+                    <div
+                      className={`product-price-derived ${nioError ? 'field-invalid' : ''}`}
+                    >
+                      <span>{priceTierLabels[tier]} NIO</span>
+                      <strong>
+                        {Number.isNaN(nio) ? '—' : formatCurrency(nio, 'NIO')}
+                      </strong>
+                      <small className={nioError ? 'field-error' : undefined}>
+                        {nioError ?? 'Calculado con la tasa vigente'}
+                      </small>
+                    </div>
+                    <PriceMargin
+                      priceNio={Number.isNaN(nio) ? null : nio}
+                      costNio={averageCost}
+                      show={!!product}
+                    />
+                  </div>
+                )
+              })
+            )}
           </Card>
         </fieldset>
-        {error && (
+        {(invalid > 0 || error) && (
           <p role="alert" className="inline-error">
-            {error}
+            {invalid > 0
+              ? `Revisa ${invalid === 1 ? 'el campo marcado' : 'los campos marcados'} antes de guardar.`
+              : error}
           </p>
         )}
         <div className="form-actions">
@@ -522,8 +666,8 @@ function PriceMargin({
       className={`product-price-margin ${rate < 0.15 ? 'product-price-margin-thin' : ''}`}
     >
       {rate < 0
-        ? `Bajo el costo: pierde ${percentFormat.format(Math.abs(rate))}`
-        : `Margen ${percentFormat.format(rate)}`}
+        ? `Bajo el costo promedio: pierde ${percentFormat.format(Math.abs(rate))}`
+        : `Margen sobre el costo promedio: ${percentFormat.format(rate)}`}
     </p>
   )
 }
@@ -545,7 +689,8 @@ function PriceHistory({ productId }: { productId: string }) {
       <p className="muted">
         Cada cambio de precio de este perfume, del más reciente al más antiguo,
         con quién lo hizo. Los precios en córdobas son los que dejó la tasa de
-        ese día.
+        ese día. Un precio calculado dice con qué porcentaje y sobre qué precio
+        de compra.
       </p>
       {loading && <LoadingState />}
       {error && <ErrorState message={error} retry={retry} />}
@@ -568,16 +713,37 @@ function PriceHistory({ productId }: { productId: string }) {
               </p>
             </div>
             <div className="price-history-amounts">
-              <strong>
-                {change.beforeUsd === null
-                  ? formatCurrency(change.afterUsd, 'USD')
-                  : `${formatCurrency(change.beforeUsd, 'USD')} → ${formatCurrency(change.afterUsd, 'USD')}`}
-              </strong>
-              <small>
-                {change.beforeNio === null
-                  ? formatCurrency(change.afterNio, 'NIO')
-                  : `${formatCurrency(change.beforeNio, 'NIO')} → ${formatCurrency(change.afterNio, 'NIO')}`}
-              </small>
+              {/* Un precio calculado desde una compra en córdobas se lee
+                  primero en córdobas: es el que quedó fijo. */}
+              {(change.markup != null && change.purchaseCurrency === 'NIO'
+                ? (['NIO', 'USD'] as const)
+                : (['USD', 'NIO'] as const)
+              ).map((currency, index) => {
+                const before =
+                  currency === 'USD' ? change.beforeUsd : change.beforeNio
+                const after =
+                  currency === 'USD' ? change.afterUsd : change.afterNio
+                const text =
+                  before === null
+                    ? formatCurrency(after, currency)
+                    : `${formatCurrency(before, currency)} → ${formatCurrency(after, currency)}`
+                return index === 0 ? (
+                  <strong key={currency}>{text}</strong>
+                ) : (
+                  <small key={currency}>{text}</small>
+                )
+              })}
+              {change.markup != null &&
+                change.purchasePrice != null &&
+                change.purchaseCurrency && (
+                  <small className="price-history-markup">
+                    {change.markup} % sobre la compra de{' '}
+                    {formatCurrency(
+                      change.purchasePrice,
+                      change.purchaseCurrency,
+                    )}
+                  </small>
+                )}
               {change.beforeUsd === null && (
                 <span className="record-badge is-muted">Precio inicial</span>
               )}

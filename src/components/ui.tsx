@@ -153,11 +153,18 @@ export function Badge({
 export function Card({
   children,
   className = '',
+  id,
 }: {
   children: ReactNode
   className?: string
+  /** Para enlazar a la sección (`#precios`). */
+  id?: string
 }) {
-  return <section className={`card ${className}`}>{children}</section>
+  return (
+    <section className={`card ${className}`} id={id}>
+      {children}
+    </section>
+  )
 }
 export function LoadingState() {
   return (
@@ -224,11 +231,37 @@ export function Dialog({
   className?: string
 }) {
   const ref = useRef<HTMLDialogElement>(null)
+  // Lo que tenía el foco al abrir el diálogo (el botón que lo abrió).
+  const opener = useRef<Element | null>(null)
   const titleId = useId()
   useEffect(() => {
     const dialog = ref.current
-    if (open) dialog?.showModal()
-    else dialog?.close()
+    if (!dialog) return
+    if (!open) {
+      if (dialog.hasAttribute('open')) dialog.close()
+      return
+    }
+    if (!dialog.hasAttribute('open')) {
+      opener.current = document.activeElement
+      dialog.showModal()
+    }
+    return () => {
+      // Cerrarlo con close() ya devuelve el foco a quien lo abrió. Pero una
+      // pantalla que quita el diálogo abierto de la página deja el foco en
+      // <body>, y con el teclado hay que empezar otra vez desde arriba: se
+      // devuelve al botón que lo abrió, si sigue en la página.
+      const back = opener.current
+      queueMicrotask(() => {
+        const focused = document.activeElement
+        if (
+          !dialog.isConnected &&
+          back instanceof HTMLElement &&
+          back.isConnected &&
+          (focused === null || focused === document.body)
+        )
+          back.focus()
+      })
+    }
   }, [open])
   return (
     <dialog

@@ -4,6 +4,7 @@ import type {
   InventoryItem,
   PriceTier,
   Product,
+  ProductPricing,
 } from '../../lib/domain'
 import type { DataProvider } from '../contracts'
 import { DEMO_EXCHANGE_RATE, localWrites } from './local'
@@ -69,6 +70,34 @@ export const catalogProducts: Product[] = brands.flatMap(
       } satisfies Product
     }),
 )
+/**
+ * Precios de compra de muestra, elegidos para que el precio calculado coincida
+ * con el del catálogo de muestra: la vista local enseña listas calculadas en
+ * dólares y en córdobas, una con porcentaje sólo en Emprendedor, una con precio
+ * de compra sin porcentajes y otra con porcentajes sin precio de compra.
+ */
+const pricingSample = (
+  number: number,
+  purchasePrice: number | null,
+  purchaseCurrency: ProductPricing['purchaseCurrency'],
+  emprendedor: number | null,
+  vip: number | null,
+  premium: number | null,
+): ProductPricing => ({
+  productId: `demo-${String(number).padStart(4, '0')}`,
+  purchasePrice,
+  purchaseCurrency,
+  markups: { emprendedor, vip, premium },
+  updatedAt: null,
+})
+export const catalogPricing: ProductPricing[] = [
+  pricingSample(3, null, 'NIO', 20, 15, 10),
+  pricingSample(6, 25, 'USD', 20, 16, 8),
+  pricingSample(11, 1000, 'NIO', 28.1, 24.44, 17.12),
+  pricingSample(16, 20, 'USD', 100, 95, 85),
+  pricingSample(21, 1500, 'NIO', 9.8, null, null),
+  pricingSample(26, 30, 'USD', null, null, null),
+]
 /**
  * Existencias de muestra. La vista local las trae contadas para que el inicio,
  * el inventario y los reportes cuenten la misma historia: sin conteo no hay
@@ -175,5 +204,15 @@ export const catalogAdapter: DataProvider = {
   async getProductCost(productId: string) {
     const { demoAverageCost } = await import('./catalogSales')
     return demoAverageCost.get(productId) ?? null
+  },
+  async listPricing(productId?: string) {
+    return {
+      available: true,
+      rows: structuredClone(
+        catalogPricing.filter(
+          (row) => productId === undefined || row.productId === productId,
+        ),
+      ),
+    }
   },
 }

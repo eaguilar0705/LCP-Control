@@ -526,7 +526,7 @@ function ExchangeRateCard() {
       await settingsService.saveExchangeRate(pending)
       setPending(null)
       setMessage(
-        'Tipo de cambio actualizado. Los precios en córdobas del catálogo se recalcularon con la nueva tasa.',
+        'Tipo de cambio actualizado. Los precios del catálogo se recalcularon con la nueva tasa.',
       )
       setRate('')
       retry()
@@ -596,13 +596,16 @@ function ExchangeRateCard() {
           )}
           {editable && (
             <p className="exchange-rate-warning" role="note">
-              Cambiar la tasa recalcula el precio en córdobas de los perfumes
-              del catálogo. El precio en dólares que fijaste no se toca.
+              Cambiar la tasa recalcula la otra moneda de cada precio: el
+              córdoba de los perfumes con precio en dólares y el dólar de los
+              que se calculan desde una compra en córdobas. El precio que
+              fijaste no se toca.
             </p>
           )}
           <p className="muted exchange-rate-note">
-            El precio de cada perfume se fija en dólares y el de córdobas sale
-            de esta tasa. También se propone al facturar en dólares y al
+            El precio de cada perfume se fija en dólares —o se calcula desde su
+            precio de compra, en la moneda en que se compró— y la otra moneda
+            sale de esta tasa. También se propone al facturar en dólares y al
             registrar compras y gastos: cada operación guarda la tasa con la que
             se registró, así que cambiarla no altera nada de lo ya emitido.
           </p>
@@ -636,8 +639,9 @@ function ExchangeRateCard() {
             .
           </p>
           <p className="muted">
-            Se recalculará el precio en córdobas de todos los perfumes del
-            catálogo. Lo ya emitido conserva su tasa.
+            Se recalculará la otra moneda del precio de todos los perfumes: el
+            córdoba de los fijados en dólares y el dólar de los calculados desde
+            una compra en córdobas. Lo ya emitido conserva su tasa.
           </p>
           {change !== null && Math.abs(change) >= 0.1 && (
             <p className="inline-error">

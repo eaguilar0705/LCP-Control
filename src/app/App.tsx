@@ -65,6 +65,12 @@ const BusinessPage = lazy(() =>
     default: page.BusinessPage,
   })),
 )
+// El lector de Excel y la plantilla sólo se descargan si un dueño abre Precios.
+const PricingPage = lazy(() =>
+  import('../features/pricing/PricingPage').then((page) => ({
+    default: page.PricingPage,
+  })),
+)
 const ScannerPage = lazy(() =>
   import('../features/scanner/ScannerPage').then((page) => ({
     default: page.ScannerPage,
@@ -119,6 +125,7 @@ export function App() {
           </AccessGate>
         }
       />
+      <Route path="prices" element={<PricingPage />} />
       <Route path="customers" element={<ContactsPage kind="customers" />} />
       <Route path="staff" element={<StaffPage />} />
       <Route path="settings" element={<BusinessPage />} />

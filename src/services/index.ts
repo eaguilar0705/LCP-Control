@@ -4,10 +4,11 @@ import { unconfiguredAdapter } from './adapters/local'
 import { barcodeSchema } from '../lib/validation'
 import { AppError } from '../lib/errors'
 import { authConfigured } from '../lib/supabase'
-import type { DataProvider, DocumentQuery } from './contracts'
+import type { DataProvider, DocumentQuery, PricingSave } from './contracts'
 import { lowStockItems } from '../features/inventory/model'
 import type { DocumentKind, MovementRequest, NewDocument } from '../lib/domain'
 import {
+  pricingInputSchema,
   productInputSchema,
   type ProductInput,
 } from '../features/products/product'
@@ -29,6 +30,15 @@ export function createServices(provider: DataProvider) {
       listPriceChanges: (productId: string) =>
         provider.listPriceChanges(productId),
       getProductCost: (productId: string) => provider.getProductCost(productId),
+      listPricing: (productId?: string) => provider.listPricing(productId),
+      savePricing: (rows: PricingSave[]) =>
+        provider.savePricing(
+          rows.map((row) => ({
+            productId: row.productId,
+            revision: row.revision,
+            pricing: pricingInputSchema.parse(row.pricing),
+          })),
+        ),
       uploadProductImage: (blob: Blob) => provider.uploadProductImage(blob),
       async findByBarcode(code: string) {
         const parsed = barcodeSchema.safeParse(code)
@@ -55,8 +65,7 @@ export function createServices(provider: DataProvider) {
       },
     },
     accountingService: {
-      recordShipment: (input: ShipmentInput) =>
-        provider.recordShipment(input),
+      recordShipment: (input: ShipmentInput) => provider.recordShipment(input),
       setOpeningCost: (input: OpeningCostInput) =>
         provider.setOpeningCost(input),
       recordExpense: (input: ExpenseInput) => provider.recordExpense(input),

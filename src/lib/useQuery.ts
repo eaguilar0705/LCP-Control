@@ -27,5 +27,10 @@ export function useQuery<T>(load: () => Promise<T>) {
       setState({ data: null, error: null, loading: true })
       setAttempt((value) => value + 1)
     },
+    /**
+     * Vuelve a leer sin quitar lo que ya se ve: después de guardar, la lista
+     * no parpadea y el foco sigue en la fila que se editó.
+     */
+    refresh: () => setAttempt((value) => value + 1),
   }
 }

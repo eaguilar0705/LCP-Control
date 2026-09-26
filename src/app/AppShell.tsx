@@ -13,6 +13,7 @@ import {
   X,
   UserRound,
   ChartColumn,
+  BadgePercent,
 } from 'lucide-react'
 import { useAuth } from '../features/auth/AuthContext'
 import { AccessContext } from './AccessContext'
@@ -25,6 +26,7 @@ const links = [
   ['/inventory', 'Inventario', Package],
   ['/sales', 'Facturación', ShoppingBag],
   ['/proformas', 'Proformas', FileText],
+  ['/prices', 'Precios', BadgePercent],
   ['/reports', 'Reportes', ChartColumn],
   ['/alerts', 'Alertas', Bell],
   ['/suppliers', 'Proveedores', Truck],
@@ -40,6 +42,8 @@ const links = [
 const linkPermission: Record<string, Capability> = {
   '/sales': 'sale.create',
   '/proformas': 'sale.create',
+  // El precio de compra es de los dueños.
+  '/prices': 'product.edit_cost',
   '/customers': 'customer.read',
   '/suppliers': 'supplier.read',
   '/reports': 'finance.read',

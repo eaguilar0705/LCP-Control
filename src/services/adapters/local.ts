@@ -35,6 +35,8 @@ export const unconfiguredAdapter: DataProvider = {
   removeProduct: async () => missingConfiguration(),
   listPriceChanges: async () => missingConfiguration(),
   getProductCost: async () => missingConfiguration(),
+  listPricing: async () => missingConfiguration(),
+  savePricing: async () => missingConfiguration(),
   uploadProductImage: async () => missingConfiguration(),
   mode: 'demo',
   getInventory: async () => missingConfiguration(),
@@ -68,6 +70,10 @@ export const localWrites = {
   async getProductCost() {
     return null
   },
+  async listPricing() {
+    return { available: true, rows: [] }
+  },
+  savePricing: async () => unavailable(),
   async getBusiness(): Promise<BusinessSettings> {
     return { ...localBusiness }
   },

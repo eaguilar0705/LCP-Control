@@ -23,6 +23,38 @@ export interface PriceChange {
   beforeNio: number | null
   afterNio: number
   catalogRate: number | null
+  /**
+   * El porcentaje de ganancia y el precio de compra que produjeron el precio.
+   * Nulos cuando esa lista se fijó a mano.
+   */
+  markup?: number | null
+  purchasePrice?: number | null
+  purchaseCurrency?: Currency | null
+}
+/**
+ * Cómo sale el precio de venta de un perfume: lo que costó y cuánto se le gana
+ * en cada lista. Una lista con precio de compra y porcentaje se calcula; una
+ * sin porcentaje conserva su precio a mano. Sólo lo leen los dueños.
+ */
+export interface PricingInput {
+  /** Precio de compra; `null` mientras el dueño no lo haya cargado. */
+  purchasePrice: number | null
+  purchaseCurrency: Currency
+  /** Porcentaje de ganancia sobre el precio de compra, por lista. */
+  markups: Record<PriceTier, number | null>
+}
+export interface ProductPricing extends PricingInput {
+  productId: string
+  updatedAt: string | null
+}
+/**
+ * El precio de compra de todo el catálogo. `available` es falso mientras la
+ * base no tenga la actualización que lo guarda: la pantalla lo dice en lugar
+ * de fallar.
+ */
+export interface PricingList {
+  available: boolean
+  rows: ProductPricing[]
 }
 export type PaymentMethod = 'cash' | 'card_pos' | 'bank_transfer'
 export type Bank = 'BAC' | 'LAFISE' | 'FICOSA'

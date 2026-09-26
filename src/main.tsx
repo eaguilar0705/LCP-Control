@@ -13,6 +13,7 @@ import './styles/selects.css'
 import './styles/login.css'
 import './styles/inventory-locations.css'
 import './styles/document-print.css'
+import './styles/pricing.css'
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>

@@ -16,6 +16,7 @@ import type {
   PriceChange,
   PriceTier,
   Product,
+  ProductPricing,
 } from '../../lib/domain'
 import type { DataProvider } from '../contracts'
 import {
@@ -66,6 +67,43 @@ interface PriceChangeRow {
   before_nio: number | string | null
   after_nio: number | string
   catalog_rate: number | string | null
+  // Desde la migración del precio de compra; antes no venían.
+  purchase_price?: number | string | null
+  purchase_currency?: Currency | null
+  markup?: number | string | null
+}
+interface PricingRow {
+  product_id: string
+  purchase_price: number | string | null
+  purchase_currency: Currency
+  markup_emprendedor: number | string | null
+  markup_vip: number | string | null
+  markup_premium: number | string | null
+  updated_at: string | null
+}
+const pricingSelect =
+  'product_id,purchase_price,purchase_currency,markup_emprendedor,markup_vip,markup_premium,updated_at'
+function optionalNumber(value: number | string | null | undefined) {
+  if (value === null || value === undefined || value === '') return null
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+function toPricing(row: PricingRow): ProductPricing {
+  return {
+    productId: row.product_id,
+    purchasePrice: optionalNumber(row.purchase_price),
+    purchaseCurrency: row.purchase_currency === 'USD' ? 'USD' : 'NIO',
+    markups: {
+      emprendedor: optionalNumber(row.markup_emprendedor),
+      vip: optionalNumber(row.markup_vip),
+      premium: optionalNumber(row.markup_premium),
+    },
+    updatedAt: row.updated_at,
+  }
+}
+/** La tabla o la función del precio de compra todavía no existen. */
+function pricingSchemaMissing(error: { code?: string } | null) {
+  return ['42P01', '42883', 'PGRST202', 'PGRST205'].includes(error?.code ?? '')
 }
 interface ProductRow {
   revision: number
@@ -365,18 +403,54 @@ export const supabaseAdapter: DataProvider = {
       p_product: productId,
     })
     if (error) fail(error)
-    return ((data ?? []) as PriceChangeRow[]).map(
-      (row): PriceChange => ({
-        changedAt: row.changed_at,
-        actor: row.actor,
-        tier: row.tier,
-        beforeUsd: row.before_usd === null ? null : Number(row.before_usd),
-        afterUsd: Number(row.after_usd),
-        beforeNio: row.before_nio === null ? null : Number(row.before_nio),
-        afterNio: Number(row.after_nio),
-        catalogRate: row.catalog_rate === null ? null : Number(row.catalog_rate),
-      }),
-    )
+    return ((data ?? []) as PriceChangeRow[]).map((row): PriceChange => ({
+      changedAt: row.changed_at,
+      actor: row.actor,
+      tier: row.tier,
+      beforeUsd: row.before_usd === null ? null : Number(row.before_usd),
+      afterUsd: Number(row.after_usd),
+      beforeNio: row.before_nio === null ? null : Number(row.before_nio),
+      afterNio: Number(row.after_nio),
+      catalogRate: row.catalog_rate === null ? null : Number(row.catalog_rate),
+      markup: optionalNumber(row.markup),
+      purchasePrice: optionalNumber(row.purchase_price),
+      purchaseCurrency: row.purchase_currency ?? null,
+    }))
+  },
+  // Quien no es dueño no recibe filas (RLS), sin error: para esa cuenta no hay
+  // precios de compra que enseñar. Sin la migración, la pantalla lo avisa.
+  async listPricing(productId) {
+    const rows: ProductPricing[] = []
+    const page = 1000
+    for (let start = 0; ; start += page) {
+      let query = client().from('product_pricing').select(pricingSelect)
+      if (productId) query = query.eq('product_id', productId)
+      const { data, error } = await query
+        .order('product_id')
+        .range(start, start + page - 1)
+      if (error) {
+        if (pricingSchemaMissing(error)) return { available: false, rows: [] }
+        fail(error)
+      }
+      const batch = (data ?? []) as PricingRow[]
+      rows.push(...batch.map(toPricing))
+      if (batch.length < page) break
+    }
+    return { available: true, rows }
+  },
+  async savePricing(rows) {
+    const { data, error } = await client().rpc('save_product_pricing', {
+      p_rows: rows,
+    })
+    if (error) {
+      if (pricingSchemaMissing(error))
+        throw new AppError(
+          'configuration',
+          'Falta aplicar la actualización de precios de compra en Supabase. Contacta al administrador.',
+        )
+      fail(error)
+    }
+    return Number(data)
   },
   // El rol decide qué se ve: sin permiso sobre la tabla de costos la consulta
   // no falla, devuelve cero filas. El editor lo lee como «todavía sin costo».
@@ -440,7 +514,10 @@ export const supabaseAdapter: DataProvider = {
         .range(start, end),
     ).catch(fail)
     if (truncated)
-      throw new AppError('unexpected', 'El resumen diario supera el límite de consulta. Revisa las ventas en Reportes.')
+      throw new AppError(
+        'unexpected',
+        'El resumen diario supera el límite de consulta. Revisa las ventas en Reportes.',
+      )
     return {
       count: rows.length,
       totals: {
@@ -752,12 +829,14 @@ export const supabaseAdapter: DataProvider = {
       p_from: range.from,
       p_to: range.to,
     })
-    const { digestFromPayload, digestFromSource } = await import(
-      '../../features/reports/digest'
-    )
+    const { digestFromPayload, digestFromSource } =
+      await import('../../features/reports/digest')
     if (digest.error) {
       if (!digestMissing(digest.error)) throw toAppError(digest.error)
-      return digestFromSource(await supabaseAdapter.getReportSource(range), range)
+      return digestFromSource(
+        await supabaseAdapter.getReportSource(range),
+        range,
+      )
     }
     const results = await Promise.allSettled([
       reportInventoryRows(),

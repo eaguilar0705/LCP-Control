@@ -10,7 +10,8 @@ En **Editar → Cantidades del perfume**, seleccionar Tienda o Bodega, agregar/d
 
 ## Edición del catálogo
 
-- Datos: nombre, marca (existente o nueva), categoría Árabe/Diseñador/Nicho/Por confirmar, género, tamaño/unidad, EAN/UPC, mínimo, estado y seis precios independientes. Una marca nueva se crea al guardar el producto.
+- Datos: nombre, marca (existente o nueva), categoría Árabe/Diseñador/Nicho/Por confirmar, género, tamaño/unidad, EAN/UPC, mínimo, estado y los precios de las tres listas. Una marca nueva se crea al guardar el producto.
+- Precios: cada lista se calcula desde el **precio de compra** y su **porcentaje de ganancia** (venta = compra × (100 + %) / 100, al centavo, en la moneda de la compra) o, si no tiene porcentaje, se fija a mano en dólares. La pantalla **Precios** reúne todo el catálogo y carga precios de compra y porcentajes desde Excel o CSV. Detalle en [database.md](database.md#precio-de-compra-y-porcentaje-de-ganancia).
 - SKU correlativo `LCP-…` asignado por la base; el EAN/UPC se registra sólo si se conoce. No se deduce a partir del nombre.
 - Los dos saldos nuevos quedan sin contar. Editar el catálogo no altera existencias.
 - La revisión del producto evita sobrescribir cambios de otra persona: si aparece un conflicto, volver al catálogo y abrir de nuevo el perfume.
