@@ -4,7 +4,7 @@ import { unconfiguredAdapter } from './adapters/local'
 import { barcodeSchema } from '../lib/validation'
 import { AppError } from '../lib/errors'
 import { authConfigured } from '../lib/supabase'
-import type { DataProvider } from './contracts'
+import type { DataProvider, DocumentQuery } from './contracts'
 import { lowStockItems } from '../features/inventory/model'
 import type { DocumentKind, MovementRequest, NewDocument } from '../lib/domain'
 import {
@@ -47,7 +47,12 @@ export function createServices(provider: DataProvider) {
       },
     },
     reportService: {
-      getSource: (range: ReportRange) => provider.getReportSource(range),
+      /** El resumen del periodo: calculado en la base cuando se puede. */
+      async getSource(range: ReportRange) {
+        if (provider.getReport) return provider.getReport(range)
+        const { digestFromSource } = await import('../features/reports/digest')
+        return digestFromSource(await provider.getReportSource(range), range)
+      },
     },
     accountingService: {
       recordShipment: (input: ShipmentInput) =>
@@ -67,9 +72,10 @@ export function createServices(provider: DataProvider) {
       getBusiness: () => provider.getBusiness(),
       getExchangeRate: () => provider.getExchangeRate(),
       listCustomers: () => provider.listCustomers(),
-      listDocuments: (kind: DocumentKind, limit?: number) =>
-        provider.listDocuments(kind, limit),
-      exportDocuments: (kind: DocumentKind) => provider.exportDocuments(kind),
+      listDocuments: (kind: DocumentKind, query: DocumentQuery) =>
+        provider.listDocuments(kind, query),
+      exportDocuments: (kind: DocumentKind, range: ReportRange) =>
+        provider.exportDocuments(kind, range),
       deleteInvoice: (id: string, reason: string) =>
         provider.deleteInvoice(id, reason),
       createDocument: (input: NewDocument) => provider.createDocument(input),

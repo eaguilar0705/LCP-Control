@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf'
 import { formatCurrency, formatDate } from '../../lib/format'
-import { accountingByMonth, accountingSummary, belowCostSales, expenseAccounts, inventoryTurnover } from './accounting'
+import { accountingByMonth, accountingSummary, belowCostSummary, expenseAccounts, inventoryTurnover } from './accounting'
 import { priceTierLabels } from '../../lib/pricing'
 import { reportTables, type ReportContext } from './export'
 
@@ -134,11 +134,11 @@ export async function renderReportPdf(context: ReportContext): Promise<Blob> {
   y += 10
 
   heading('Contabilidad · costo promedio ponderado · NIO')
-  const accounting = accountingSummary(context.source, range)
+  const accounting = accountingSummary(context.report, range)
   const turnover = inventoryTurnover(accounting, range)
-  const losses = belowCostSales(context.source, range)
+  const losses = belowCostSummary(context.report, range)
   const nio = (amount: number | null) => amount === null ? 'Sin determinar' : formatCurrency(amount, 'NIO')
-  if (!context.source.accounting?.available) {
+  if (!context.report.accounting.available) {
     text('Sin fuente contable disponible. Los precios de venta no son costos de compra.', left, (y += 14), 9)
   } else {
     if (!accounting.complete) {
@@ -176,7 +176,7 @@ export async function renderReportPdf(context: ReportContext): Promise<Blob> {
       { label: 'MES', width: 65 }, { label: 'VENTA NETA*', width: 112, align: 'right' },
       { label: 'COSTO VENTAS*', width: 112, align: 'right' }, { label: 'GASTOS + SALIDAS*', width: 125, align: 'right' },
       { label: 'RESULTADO', width: 118, align: 'right' },
-    ], accountingByMonth(context.source, range).map(({ month, totals }) => [month, nio(totals.revenueNio), nio(totals.costOfSalesNio), nio(totals.expensesNio + totals.inventoryWriteOffNio), nio(totals.netProfitNio)]))
+    ], accountingByMonth(context.report, range).map(({ month, totals }) => [month, nio(totals.revenueNio), nio(totals.costOfSalesNio), nio(totals.expensesNio + totals.inventoryWriteOffNio), nio(totals.netProfitNio)]))
     text('* Parte documentada. Las cifras parciales no determinan una utilidad total.', left, (y += 13), 8)
     if (accounting.products.length) {
       heading('Rentabilidad por producto')
@@ -192,13 +192,13 @@ export async function renderReportPdf(context: ReportContext): Promise<Blob> {
         { label: 'COSTO*', width: 100, align: 'right' }, { label: 'UTILIDAD', width: 108, align: 'right' },
       ], accounting.tiers.map((row) => [priceTierLabels[row.tier], nio(row.netRevenueNio), nio(row.costNio), nio(row.profitNio)]))
     }
-    if (losses.length) {
+    if (losses.count) {
       heading('Ventas por debajo del costo')
       table([
         { label: 'DOCUMENTO', width: 96 }, { label: 'PRODUCTO', width: 190 },
         { label: 'VENTA NETA', width: 118, align: 'right' }, { label: 'PÉRDIDA', width: 128, align: 'right' },
-      ], losses.slice(0, 15).map((row) => [row.number, row.description.slice(0, 36), nio(row.netRevenueNio), nio(row.lossNio)]))
-      text(`${losses.length} renglón(es) se facturaron bajo su propio costo registrado.`, left, (y += 13), 8)
+      ], losses.rows.slice(0, 15).map((row) => [row.number, row.description.slice(0, 36), nio(row.netRevenueNio), nio(row.lossNio)]))
+      text(`${losses.count} renglón(es) se facturaron bajo su propio costo registrado (${nio(losses.lossNio)} de pérdida).`, left, (y += 13), 8)
     }
   }
 

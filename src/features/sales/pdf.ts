@@ -1,5 +1,7 @@
 import { documentCopy } from '../../lib/domain'
-import type { DocumentRecord } from '../../lib/domain'
+import type { DocumentKind, DocumentRecord } from '../../lib/domain'
+import type { ReportRange } from '../reports/model'
+import { periodFileName } from './period'
 
 // Escaped on purpose: literal combining marks are invisible and easy to break.
 const COMBINING_MARKS = new RegExp('[\\u0300-\\u036f]', 'g')
@@ -18,10 +20,7 @@ export function documentFileName(document: DocumentRecord) {
 /** jsPDF is loaded on demand: the invoice screens work without it until the
  * operator actually asks for a PDF. */
 let logoPromise: Promise<Uint8Array> | null = null
-export async function buildDocumentPdf(
-  document: DocumentRecord,
-): Promise<Blob> {
-  const { renderDocumentPdf } = await import('./pdfLayout')
+function loadLogo() {
   logoPromise ??= fetch('/brand/wordmark-wine.jpeg')
     .then(async (response) => {
       if (!response.ok) throw new Error('No pudimos cargar el logo.')
@@ -31,7 +30,30 @@ export async function buildDocumentPdf(
       logoPromise = null
       throw error
     })
-  return renderDocumentPdf(document, await logoPromise)
+  return logoPromise
+}
+export async function buildDocumentPdf(
+  document: DocumentRecord,
+): Promise<Blob> {
+  const { renderDocumentPdf } = await import('./pdfLayout')
+  return renderDocumentPdf(document, await loadLogo())
+}
+
+/** Listado del periodo seguido de cada documento completo, en un solo PDF. */
+export async function downloadPeriodPdf(
+  kind: DocumentKind,
+  range: ReportRange,
+  documents: DocumentRecord[],
+  onProgress?: (done: number, total: number) => void,
+): Promise<void> {
+  const [{ renderPeriodPdf }, logo] = await Promise.all([
+    import('./periodPdf'),
+    loadLogo(),
+  ])
+  const blob = await renderPeriodPdf(kind, range, documents, logo, {
+    onProgress,
+  })
+  downloadBlob(blob, periodFileName(kind, range))
 }
 
 export type ShareOutcome = 'shared' | 'downloaded' | 'cancelled'

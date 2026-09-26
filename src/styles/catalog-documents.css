@@ -198,28 +198,54 @@
   }
 }
 
-/* Exportar a Excel: el aviso queda debajo del botón sin mover el encabezado. */
-.export-documents {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  max-width: 280px;
+/* Historial: periodo, PDF del periodo y «Cargar más». */
+.history-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 190px)) 1fr;
+  gap: 14px;
+  align-items: end;
 }
-.export-documents small {
+/* Los campos de fecha tienen un ancho mínimo propio: sin esto, en el
+   teléfono empujaban la tarjeta más allá de su margen derecho. */
+.history-filter-grid > .field,
+.history-filter-grid input {
+  min-width: 0;
+  max-width: 100%;
+}
+.history-export {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  justify-self: end;
+  text-align: right;
+}
+.history-export small {
   font-size: 12px;
   line-height: 1.35;
 }
-.workspace-heading-action:has(.export-documents) {
+.history-filters > .page-feedback,
+.history-filters > .inline-error {
+  margin: 0;
+}
+.history-more {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 10px;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 0;
 }
 @media (max-width: 720px) {
-  .workspace-heading-action .export-documents,
-  .workspace-heading-action .export-documents > .button {
+  .history-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .history-export {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    align-items: stretch;
+    text-align: left;
+  }
+  .history-export > .button {
     width: 100%;
-    max-width: none;
   }
 }

@@ -30,6 +30,23 @@ import {
   type ReportRange,
   type ReportSource,
 } from '../../features/reports/model'
+import {
+  DOCUMENT_EXPORT_LIMIT,
+  HISTORY_PAGE_SIZE,
+  managuaBounds,
+} from '../../features/sales/period'
+
+const counts = new Intl.NumberFormat('es-NI')
+/** `found` se omite cuando sólo se sabe que pasan del tope. */
+function tooManyToExport(kind: DocumentKind, found?: number) {
+  const plural = kind === 'invoice' ? 'facturas' : 'proformas'
+  const limit = counts.format(DOCUMENT_EXPORT_LIMIT)
+  const amount = found ? counts.format(found) : `más de ${limit}`
+  return new AppError(
+    'validation',
+    `El período tiene ${amount} ${plural} y el PDF admite hasta ${limit}. Elige un rango más corto, por ejemplo un mes o una semana.`,
+  )
+}
 
 interface PriceRow {
   tier_code: PriceTier
@@ -293,6 +310,28 @@ function toDocument(row: DocumentRow): DocumentRecord {
 
 const accounting = createAccountingAdapter(client, toAppError)
 
+/** Catálogo con existencias para los reportes, con sus fotos ya firmadas. */
+async function reportInventoryRows() {
+  const query = (selection: string) =>
+    readReportPages<ProductRow>((start, end) =>
+      client()
+        .from('products')
+        .select(selection, { count: 'exact' })
+        .order('id')
+        .range(start, end),
+    )
+  try {
+    return await query(productSelect)
+  } catch (error) {
+    if (!missingDocumentColumns(error as { code?: string })) throw error
+    return query(productSelect.replace('image_path,revision,', ''))
+  }
+}
+/** La función de reportes todavía no está instalada en este proyecto. */
+function digestMissing(error: { code?: string } | null) {
+  return error?.code === 'PGRST202' || error?.code === '42883'
+}
+
 export const supabaseAdapter: DataProvider = {
   mode: 'supabase',
   async listProducts() {
@@ -471,32 +510,52 @@ export const supabaseAdapter: DataProvider = {
       priceTier: row.price_tier,
     })) satisfies CustomerRecord[]
   },
-  async listDocuments(kind, limit = 25) {
+  // El índice documents(kind, created_at desc) resuelve el filtro por fecha
+  // sin recorrer la tabla, aunque haya años de facturas.
+  async listDocuments(kind, { range, offset = 0, limit = HISTORY_PAGE_SIZE }) {
+    const { from, until } = managuaBounds(range)
     const query = (selection: string) =>
       client()
         .from('documents')
-        .select(selection)
+        .select(selection, { count: 'exact' })
         .eq('kind', kind)
+        .gte('created_at', from)
+        .lt('created_at', until)
         .order('created_at', { ascending: false })
-        .limit(limit)
+        .order('id', { ascending: false })
+        .range(offset, offset + limit - 1)
     let result = await query(documentSelect + documentAccountingColumns)
     if (missingDocumentColumns(result.error))
       result = await query(documentSelect)
     if (result.error) fail(result.error)
-    return ((result.data ?? []) as unknown as DocumentRow[]).map(toDocument)
+    const documents = ((result.data ?? []) as unknown as DocumentRow[]).map(
+      toDocument,
+    )
+    return { documents, total: result.count ?? offset + documents.length }
   },
   // Paginado igual que los reportes: PostgREST entrega como mucho mil filas por
-  // consulta y una exportación tiene que llevar todas las facturas.
-  async exportDocuments(kind) {
+  // consulta y el PDF tiene que llevar todas las del periodo.
+  async exportDocuments(kind, range) {
+    const { from, until } = managuaBounds(range)
+    const filtered = (selection: string) =>
+      client()
+        .from('documents')
+        .select(selection, { count: 'exact' })
+        .eq('kind', kind)
+        .gte('created_at', from)
+        .lt('created_at', until)
+    // Se cuenta primero: un periodo que pasa del tope no se descarga entero
+    // para después descartarlo.
+    const probe = await filtered('id').order('created_at').range(0, 0)
+    if (probe.error) fail(probe.error)
+    if (probe.count != null && probe.count > DOCUMENT_EXPORT_LIMIT)
+      throw tooManyToExport(kind, probe.count)
+    if (probe.count === 0) return []
     const query = (selection: string) =>
-      readReportPages<DocumentRow>((start, end) =>
-        client()
-          .from('documents')
-          .select(selection, { count: 'exact' })
-          .eq('kind', kind)
-          .order('created_at')
-          .order('id')
-          .range(start, end),
+      readReportPages<DocumentRow>(
+        (start, end) =>
+          filtered(selection).order('created_at').order('id').range(start, end),
+        DOCUMENT_EXPORT_LIMIT,
       )
     let result
     try {
@@ -506,7 +565,10 @@ export const supabaseAdapter: DataProvider = {
         fail(error as { message?: string; code?: string })
       result = await query(documentSelect)
     }
-    return { documents: result.rows.map(toDocument), truncated: result.truncated }
+    // Se emitieron más mientras se descargaba y ya no caben: mejor pedir un
+    // rango más corto que entregar un PDF sin las últimas.
+    if (result.truncated) throw tooManyToExport(kind)
+    return result.rows.map(toDocument)
   },
   async deleteInvoice(id, reason) {
     const { data, error } = await client().rpc('delete_invoice', {
@@ -583,22 +645,6 @@ export const supabaseAdapter: DataProvider = {
         return query(reportDocumentSelect)
       }
     }
-    async function inventoryRows() {
-      const query = (selection: string) =>
-        readReportPages<ProductRow>((start, end) =>
-          client()
-            .from('products')
-            .select(selection, { count: 'exact' })
-            .order('id')
-            .range(start, end),
-        )
-      try {
-        return await query(productSelect)
-      } catch (error) {
-        if (!missingDocumentColumns(error as { code?: string })) throw error
-        return query(productSelect.replace('image_path,revision,', ''))
-      }
-    }
     type CustomerRow = { id: string; name: string; created_at: string }
     type MovementRow = {
       id: string
@@ -631,7 +677,7 @@ export const supabaseAdapter: DataProvider = {
           .order('id')
           .range(start, end),
       ),
-      inventoryRows(),
+      reportInventoryRows(),
       accounting.getSource(window),
     ])
     for (const result of results) {
@@ -695,6 +741,47 @@ export const supabaseAdapter: DataProvider = {
         (result) => result.truncated,
       ),
     }
+  },
+  // Las ventas, los movimientos y el libro contable llegan ya sumados desde
+  // `public.report_digest`: pocos kilobytes aunque el periodo tenga miles de
+  // facturas. Sólo el catálogo y las filas contables chicas (costos promedio,
+  // pedidos y gastos) se leen tal cual. Si la función todavía no está
+  // instalada, se calcula como antes, en el navegador.
+  async getReport(range: ReportRange) {
+    const digest = await client().rpc('report_digest', {
+      p_from: range.from,
+      p_to: range.to,
+    })
+    const { digestFromPayload, digestFromSource } = await import(
+      '../../features/reports/digest'
+    )
+    if (digest.error) {
+      if (!digestMissing(digest.error)) throw toAppError(digest.error)
+      return digestFromSource(await supabaseAdapter.getReportSource(range), range)
+    }
+    const results = await Promise.allSettled([
+      reportInventoryRows(),
+      accounting.getSource(range, { lines: false }),
+    ])
+    for (const result of results)
+      if (result.status === 'rejected') {
+        if (result.reason instanceof AppError) throw result.reason
+        fail(result.reason)
+      }
+    const [inventory, financial] = results.map((result) => {
+      if (result.status === 'rejected') throw result.reason
+      return result.value
+    }) as [
+      Awaited<ReturnType<typeof reportInventoryRows>>,
+      Awaited<ReturnType<typeof accounting.getSource>>,
+    ]
+    await signImages(inventory.rows)
+    return digestFromPayload(digest.data, {
+      range,
+      inventory: inventory.rows.map(toItem),
+      accounting: financial,
+      truncated: inventory.truncated || financial.truncated,
+    })
   },
   async recordMovement(input: MovementRequest) {
     const { data, error } = await client().rpc('record_inventory_movement', {

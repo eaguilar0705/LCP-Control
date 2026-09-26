@@ -184,22 +184,42 @@ export interface DayPoint {
   revenue: number
   count: number
 }
+/** Sólo los días con ventas, en orden. La base de datos entrega lo mismo. */
+export function salesByDay(
+  documents: ReportDocument[],
+  currency: Currency,
+): DayPoint[] {
+  const byDay = new Map<string, DayPoint>()
+  for (const document of invoices(documents, currency)) {
+    const day = localDay(document.createdAt)
+    const point = byDay.get(day) ?? { day, revenue: 0, count: 0 }
+    point.revenue += document.total
+    point.count += 1
+    byDay.set(day, point)
+  }
+  return [...byDay.values()].sort((a, b) => compareText(a.day, b.day))
+}
 /** Serie diaria completa: los días sin ventas valen cero, no se omiten. */
+export function fillDays(points: DayPoint[], range: ReportRange): DayPoint[] {
+  const byDay = new Map(points.map((point) => [point.day, point]))
+  return daysInRange(range).map(
+    (day) => byDay.get(day) ?? { day, revenue: 0, count: 0 },
+  )
+}
 export function revenueByDay(
   documents: ReportDocument[],
   currency: Currency,
   range: ReportRange,
 ): DayPoint[] {
-  const byDay = new Map<string, DayPoint>()
-  for (const day of daysInRange(range))
-    byDay.set(day, { day, revenue: 0, count: 0 })
-  for (const document of invoices(documents, currency)) {
-    const point = byDay.get(localDay(document.createdAt))
-    if (!point) continue
-    point.revenue += document.total
-    point.count += 1
-  }
-  return [...byDay.values()]
+  return fillDays(salesByDay(documents, currency), range)
+}
+
+/**
+ * Desempate estable y el mismo que usa PostgreSQL al ordenar identificadores:
+ * con dos importes iguales, la lista sale igual se calcule donde se calcule.
+ */
+export function compareText(a: string, b: string) {
+  return a < b ? -1 : a > b ? 1 : 0
 }
 
 export interface ProductSales {
@@ -227,7 +247,12 @@ export function topProducts(
       byProduct.set(item.productId, current)
     }
   return [...byProduct.values()]
-    .sort((a, b) => b.revenue - a.revenue || b.quantity - a.quantity)
+    .sort(
+      (a, b) =>
+        b.revenue - a.revenue ||
+        b.quantity - a.quantity ||
+        compareText(a.productId, b.productId),
+    )
     .slice(0, limit)
 }
 
@@ -308,6 +333,7 @@ export function customerActivity(
   customers: ReportCustomer[],
   currency: Currency,
   range: ReportRange,
+  limit = 8,
 ): CustomerActivity {
   const created = new Map(
     customers.map((customer) => [customer.id, localDay(customer.createdAt)]),
@@ -336,8 +362,8 @@ export function customerActivity(
     newCustomers,
     returning: byCustomer.size - newCustomers,
     top: [...byCustomer.values()]
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 8),
+      .sort((a, b) => b.revenue - a.revenue || compareText(a.id, b.id))
+      .slice(0, limit),
   }
 }
 
@@ -428,7 +454,8 @@ export function proformaCount(documents: ReportDocument[], currency: Currency) {
 
 /** Periodo inmediatamente anterior, de la misma duración. */
 export function previousRange(range: ReportRange): ReportRange {
-  const length = daysInRange(range).length || 1
+  // Sin el tope de la serie diaria: un periodo largo compara contra otro igual.
+  const length = Math.max(1, daysBetween(range.from, range.to) + 1)
   return {
     from: addDays(range.from, -length),
     to: addDays(range.from, -1),
@@ -482,12 +509,20 @@ export function stockCoverage(
   currency: Currency,
   limit = 10,
 ): Coverage[] {
-  const days = daysInRange(range).length || 1
   const sold = new Map<string, number>()
   for (const document of invoices(documents, currency))
     for (const item of document.items)
       sold.set(item.productId, (sold.get(item.productId) ?? 0) + item.quantity)
-
+  return coverageFromSold(sold, inventory, range, limit)
+}
+/** Lo mismo, a partir de las unidades vendidas por producto ya sumadas. */
+export function coverageFromSold(
+  sold: Map<string, number>,
+  inventory: InventoryItem[],
+  range: ReportRange,
+  limit = 10,
+): Coverage[] {
+  const days = daysInRange(range).length || 1
   const rows: Coverage[] = []
   for (const item of inventory) {
     const units = sold.get(item.product.id)
@@ -522,7 +557,16 @@ export function idleStock(
   const sold = new Set<string>()
   for (const document of documents.filter((row) => row.kind === 'invoice'))
     for (const item of document.items) sold.add(item.productId)
-
+  return idleFromSold(sold, inventory, tier, currency, limit)
+}
+/** Lo mismo, a partir de los productos que se vendieron en cualquier moneda. */
+export function idleFromSold(
+  sold: Set<string>,
+  inventory: InventoryItem[],
+  tier: PriceTier,
+  currency: Currency,
+  limit = 10,
+): IdleProduct[] {
   const rows: IdleProduct[] = []
   for (const item of inventory) {
     const stock = totalStock(item)
@@ -593,7 +637,9 @@ export function lapsedCustomers(
   for (const customer of before.values())
     customer.daysSince = daysBetween(customer.lastPurchase, range.to)
   return [...before.values()]
-    .sort((a, b) => b.previousRevenue - a.previousRevenue)
+    .sort(
+      (a, b) => b.previousRevenue - a.previousRevenue || compareText(a.id, b.id),
+    )
     .slice(0, limit)
 }
 
@@ -630,6 +676,25 @@ export function purchaseFrequency(
   today: string,
   limit = 10,
 ): Frequency[] {
+  return customerVisits(documents, currency)
+    .slice(0, limit)
+    .map((visits) => frequencyOf(visits, today))
+}
+
+/** Compras de cada cliente en la ventana: lo que hace falta para su ritmo. */
+export interface CustomerVisits {
+  id: string
+  name: string
+  orders: number
+  firstDay: string
+  lastDay: string
+  /** Días distintos con compra: dos facturas el mismo día son una visita. */
+  distinctDays: number
+}
+export function customerVisits(
+  documents: ReportDocument[],
+  currency: Currency,
+): CustomerVisits[] {
   const byCustomer = new Map<string, { name: string; days: string[] }>()
   for (const document of invoices(documents, currency)) {
     const entry = byCustomer.get(document.customerId) ?? {
@@ -642,19 +707,29 @@ export function purchaseFrequency(
   return [...byCustomer.entries()]
     .map(([id, entry]) => {
       const days = [...new Set(entry.days)].sort()
-      const first = days[0]
-      const last = days[days.length - 1]
       return {
         id,
         name: entry.name,
         orders: entry.days.length,
-        averageDays:
-          days.length > 1 ? daysBetween(first, last) / (days.length - 1) : null,
-        daysSinceLast: daysBetween(last, today),
+        firstDay: days[0],
+        lastDay: days[days.length - 1],
+        distinctDays: days.length,
       }
     })
-    .sort((a, b) => b.orders - a.orders)
-    .slice(0, limit)
+    .sort((a, b) => b.orders - a.orders || compareText(a.id, b.id))
+}
+export function frequencyOf(visits: CustomerVisits, today: string): Frequency {
+  return {
+    id: visits.id,
+    name: visits.name,
+    orders: visits.orders,
+    averageDays:
+      visits.distinctDays > 1
+        ? daysBetween(visits.firstDay, visits.lastDay) /
+          (visits.distinctDays - 1)
+        : null,
+    daysSinceLast: daysBetween(visits.lastDay, today),
+  }
 }
 
 export const weekdayLabels = [
@@ -708,28 +783,57 @@ export function shrinkage(
   currency: Currency,
   limit = 8,
 ): Shrinkage[] {
+  return shrinkageFromUnits(
+    damagedUnits(movements),
+    inventory,
+    tier,
+    currency,
+    limit,
+  )
+}
+/** Unidades dañadas por producto. */
+export function damagedUnits(
+  movements: ReportMovement[],
+): { productId: string; units: number }[] {
+  const units = new Map<string, number>()
+  for (const movement of movements)
+    if (movement.type === 'DAMAGED')
+      units.set(
+        movement.productId,
+        (units.get(movement.productId) ?? 0) + Math.abs(movement.quantity),
+      )
+  return [...units]
+    .map(([productId, total]) => ({ productId, units: total }))
+    .sort((a, b) => compareText(a.productId, b.productId))
+}
+export function shrinkageFromUnits(
+  damaged: { productId: string; units: number }[],
+  inventory: InventoryItem[],
+  tier: PriceTier,
+  currency: Currency,
+  limit = 8,
+): Shrinkage[] {
   const catalogue = new Map(inventory.map((item) => [item.product.id, item]))
-  const rows = new Map<string, Shrinkage>()
-  for (const movement of movements) {
-    if (movement.type !== 'DAMAGED') continue
-    const item = catalogue.get(movement.productId)
-    const units = Math.abs(movement.quantity)
-    const current = rows.get(movement.productId) ?? {
-      productId: movement.productId,
-      description: item
-        ? `${item.product.brand} · ${item.product.name}`
-        : 'Producto retirado del catálogo',
-      units: 0,
-      listValue: 0,
-    }
-    current.units += units
-    current.listValue += item
-      ? (productPrice(item.product, tier, currency) ?? 0) * units
-      : 0
-    rows.set(movement.productId, current)
-  }
-  return [...rows.values()]
-    .sort((a, b) => b.listValue - a.listValue || b.units - a.units)
+  return damaged
+    .map(({ productId, units }) => {
+      const item = catalogue.get(productId)
+      return {
+        productId,
+        description: item
+          ? `${item.product.brand} · ${item.product.name}`
+          : 'Producto retirado del catálogo',
+        units,
+        listValue: item
+          ? (productPrice(item.product, tier, currency) ?? 0) * units
+          : 0,
+      }
+    })
+    .sort(
+      (a, b) =>
+        b.listValue - a.listValue ||
+        b.units - a.units ||
+        compareText(a.productId, b.productId),
+    )
     .slice(0, limit)
 }
 

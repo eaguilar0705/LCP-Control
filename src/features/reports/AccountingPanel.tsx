@@ -12,8 +12,9 @@ import { createIdempotentOperation } from '../../lib/idempotentOperation'
 import { type Currency } from '../../lib/domain'
 import { priceTierLabels } from '../../lib/pricing'
 import { totalStock } from '../inventory/model'
-import { accountOf, accountingByMonth, accountingSummary, belowCostSales, catalogMargins, categoriesOf, emptyAccounting, expenseAccountOrder, expenseAccounts, expenseLabel, inventoryTurnover, operatingLines, roundMoney, type ExpenseAccount, type ExpenseCategory, type ExpenseInput, type OpeningCostInput } from './accounting'
-import { localDay, type ReportRange, type ReportSource } from './model'
+import { accountOf, accountingByMonth, accountingSummary, belowCostSummary, catalogMargins, categoriesOf, emptyAccounting, expenseAccountOrder, expenseAccounts, expenseLabel, inventoryTurnover, operatingLines, roundMoney, type ExpenseAccount, type ExpenseCategory, type ExpenseInput, type OpeningCostInput } from './accounting'
+import { localDay, type ReportRange } from './model'
+import type { ReportData } from './digest'
 import '../../styles/accounting.css'
 
 const money = (amount: number) => formatCurrency(amount, 'NIO')
@@ -31,14 +32,15 @@ type Section = keyof typeof tabs
 type Action = { kind: 'opening' | 'expense'; productId?: string } | { kind: 'void'; expenseId: string }
 const inPeriod = (day: string, range: ReportRange) => day >= range.from && day <= range.to
 
-export function AccountingPanel({ source, range, onRecorded }: { source: ReportSource; range: ReportRange; onRecorded: () => void }) {
+export function AccountingPanel({ source, range, onRecorded }: { source: ReportData; range: ReportRange; onRecorded: () => void }) {
   const { demo, role } = useAccess()
   const { settingsService } = useServices()
   const { data: savedRate } = useQuery(settingsService.getExchangeRate)
   const ledger = source.accounting ?? emptyAccounting
   const summary = useMemo(() => accountingSummary(source, range), [source, range])
   const turnover = useMemo(() => inventoryTurnover(summary, range), [summary, range])
-  const losses = useMemo(() => belowCostSales(source, range), [source, range])
+  // La base manda las mayores y la cuenta completa; el total incluye todas.
+  const losses = useMemo(() => belowCostSummary(source, range), [source, range])
   const margins = useMemo(() => catalogMargins(source), [source])
   const months = useMemo(() => accountingByMonth(source, range), [source, range])
   const [section, setSection] = useState<Section>('summary')
@@ -73,11 +75,11 @@ export function AccountingPanel({ source, range, onRecorded }: { source: ReportS
           <Card className="accounting-card"><h3>Lo que costó traer la mercadería</h3><dl className="accounting-breakdown"><Line label="Precio de los perfumes" amount={value(summary.purchaseGoodsNio)} /><Line label="Envío cobrado por peso" amount={value(summary.purchaseShippingNio)} /><Line label="Total invertido en pedidos" amount={value(summary.purchasesNio)} /><Line label="Unidades recibidas" amount={String(summary.purchasedUnits)} /><Line label="Envío por unidad" amount={summary.purchasedUnits ? money(roundMoney(summary.purchaseShippingNio / summary.purchasedUnits)) : '—'} /></dl><p className="accounting-note">La agencia cobra el peso del paquete y nada más. Ese cobro se reparte por igual entre las unidades del pedido, así que el costo de cada perfume es su precio de compra más lo que pesó traerlo.</p></Card>
           <Card className="accounting-card"><h3>Capital en productos</h3><dl className="accounting-breakdown"><Line label="Inventario actual a costo conocido" amount={value(summary.inventoryCostNio)} /><Line label="Pedidos recibidos en el período" amount={value(summary.purchasesNio)} /><Line label="Productos sin valoración completa" amount={String(summary.unvaluedProducts)} /><Line label="Rotación anual del inventario" amount={turnover.turnoverPerYear === null ? 'Pendiente' : `${ratio.format(turnover.turnoverPerYear)} veces`} /><Line label="Días que dura el inventario" amount={turnover.daysOnHand === null ? 'Pendiente' : `${ratio.format(turnover.daysOnHand)} días`} /></dl><p className="accounting-note">El inventario muestra las existencias actuales. La rotación proyecta a un año el costo vendido del período y queda pendiente mientras haya productos sin costo.</p></Card>
         </div>
-        {losses.length > 0 && <Card className="accounting-card accounting-alert"><div className="section-heading"><div><h3>Ventas por debajo del costo</h3><p className="accounting-note">Renglones donde el costo congelado al emitir superó la venta neta. Sólo aparecen los que tienen ambas cifras registradas.</p></div><Badge tone="danger">{money(losses.reduce((total, row) => total + row.lossNio, 0))} de pérdida</Badge></div>
+        {losses.count > 0 && <Card className="accounting-card accounting-alert"><div className="section-heading"><div><h3>Ventas por debajo del costo</h3><p className="accounting-note">Renglones donde el costo congelado al emitir superó la venta neta. Sólo aparecen los que tienen ambas cifras registradas.</p></div><Badge tone="danger">{money(losses.lossNio)} de pérdida</Badge></div>
           <LedgerTable label="Ventas por debajo del costo" headings={['Documento', 'Producto', 'Unidades', 'Venta neta', 'Costo', 'Pérdida']} numeric={[2, 3, 4, 5]}>
-            {losses.slice(0, 25).map((row) => <tr key={`${row.documentId}:${row.productId}`}><th scope="row">{row.number}<small>{formatDate(row.createdAt)}</small></th><td>{row.description}</td><td className="num">{row.quantity}</td><td className="num">{money(row.netRevenueNio)}</td><td className="num">{money(row.costNio)}</td><td className="num">{money(row.lossNio)}</td></tr>)}
+            {losses.rows.slice(0, 25).map((row) => <tr key={`${row.documentId}:${row.productId}`}><th scope="row">{row.number}<small>{formatDate(row.createdAt)}</small></th><td>{row.description}</td><td className="num">{row.quantity}</td><td className="num">{money(row.netRevenueNio)}</td><td className="num">{money(row.costNio)}</td><td className="num">{money(row.lossNio)}</td></tr>)}
           </LedgerTable>
-          {losses.length > 25 && <p className="accounting-note">Se muestran las 25 mayores de {losses.length}. La exportación a Excel las incluye todas.</p>}
+          {losses.count > 25 && <p className="accounting-note">Se muestran las 25 mayores de {losses.count}. La exportación a Excel incluye hasta {Math.min(losses.count, losses.rows.length)}.</p>}
         </Card>}
         <Card className="accounting-card"><div className="section-heading"><div><h3>Rentabilidad por producto vendido</h3><p className="accounting-note">El costo histórico de una venta se conserva aunque cambie el precio de compra.</p></div><Badge tone={summary.complete ? 'success' : 'warning'}>{summary.coverage === null ? 'Sin ventas' : `${Math.round(summary.coverage * 100)} % con costo`}</Badge></div>
           {summary.products.length ? <LedgerTable label="Rentabilidad por producto" headings={['Producto', 'Unidades', 'Venta neta', 'Costo conocido', 'Margen bruto']} numeric={[1, 2, 3, 4]}>
@@ -144,7 +146,7 @@ function LedgerTable({ label, headings, numeric = [], columns, children }: { lab
 /** Las seis columnas de las cuentas tecleadas, iguales en las cuatro tablas. */
 const expenseColumns = ['21%', '25%', '15%', '14%', '13%', '12%']
 
-function AccountingAction({ action, source, writable, defaultRate, onClose, onRecorded }: { action: Action; source: ReportSource; writable: boolean; defaultRate: number | null; onClose: () => void; onRecorded: (message: string) => void }) {
+function AccountingAction({ action, source, writable, defaultRate, onClose, onRecorded }: { action: Action; source: ReportData; writable: boolean; defaultRate: number | null; onClose: () => void; onRecorded: (message: string) => void }) {
   const { accountingService } = useServices()
   const [openingOperation] = useState(() => createIdempotentOperation<Omit<OpeningCostInput, 'requestId'>, unknown>(accountingService.setOpeningCost))
   const [expenseOperation] = useState(() => createIdempotentOperation<Omit<ExpenseInput, 'requestId'>, unknown>(accountingService.recordExpense))

@@ -151,7 +151,14 @@ export function createAccountingAdapter(
       write('record_expense', { p_input: input }),
     voidExpense: (id: string, reason: string) =>
       write('void_expense', { p_id: id, p_reason: reason }),
-    async getSource(window: ReportRange): Promise<AccountingSource> {
+    /**
+     * `lines: false` omite los costos de cada renglón vendido y de cada salida:
+     * con el resumen de la base ya vienen sumados y son las tablas que crecen.
+     */
+    async getSource(
+      window: ReportRange,
+      { lines = true }: { lines?: boolean } = {},
+    ): Promise<AccountingSource> {
       const { data: auth, error: authError } = await client().auth.getUser()
       if (authError) throw errorToApp(authError)
       if (!auth.user)
@@ -210,7 +217,7 @@ export function createAccountingAdapter(
             .order('id')
             .range(start, end),
         ),
-        readReportPages<AccountingRow>((start, end) =>
+        lines ? readReportPages<AccountingRow>((start, end) =>
           client()
             .from('document_item_costs')
             .select(
@@ -221,8 +228,8 @@ export function createAccountingAdapter(
             .lt('documents.created_at', until)
             .order('document_item_id')
             .range(start, end),
-        ),
-        readReportPages<AccountingRow>((start, end) =>
+        ) : Promise.resolve({ rows: [] as AccountingRow[], truncated: false }),
+        lines ? readReportPages<AccountingRow>((start, end) =>
           client()
             .from('inventory_movement_costs')
             .select(
@@ -233,7 +240,7 @@ export function createAccountingAdapter(
             .lt('created_at', until)
             .order('movement_id')
             .range(start, end),
-        ),
+        ) : Promise.resolve({ rows: [] as AccountingRow[], truncated: false }),
       ])
       const failures = results.filter((result) => result.status === 'rejected')
       // A missing table must not hide a simultaneous permission or network error.

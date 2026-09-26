@@ -3,7 +3,6 @@ import { useCallback, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { listContacts } from '../../services/workspace'
 import { DocumentPrint } from './DocumentPrint'
-import { ExportDocumentsButton } from './ExportDocumentsButton'
 import {
   CircleCheckBig,
   FileDown,
@@ -531,7 +530,6 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
           <Plus size={18} />
           {kind === 'invoice' ? 'Nueva factura' : 'Nueva proforma'}
         </Button>
-        {kind === 'invoice' && !demo && <ExportDocumentsButton kind="invoice" />}
       </div>
       {!demo && (
         <p className="no-print">

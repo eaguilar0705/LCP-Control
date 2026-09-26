@@ -114,13 +114,27 @@ Las funciones `record_shipment`, `set_opening_cost`, `record_expense` y `void_ex
 
 La vista local (`/demo`) trae un libro contable inventado —costos, pedidos, gastos y márgenes— para poder recorrer el módulo antes de aplicar la migración. No permite registrar nada.
 
+## Reportes calculados en la base
+
+`public.report_digest(p_from date, p_to date)` (migración `20260926120000_report_digest.sql`) devuelve en un solo objeto todo lo que muestran Reportes y la portada: ventas por moneda del periodo y del anterior, serie diaria, días de la semana, formas de pago, listas, productos, clientes (nuevos, recurrentes, principales, los que no volvieron y su frecuencia), conversión de proformas, movimientos de inventario y, sólo para administración, el libro contable (venta neta, impuesto, costo congelado, faltantes, mermas a costo, margen por producto y por lista, meses y ventas bajo costo).
+
+- **Por qué:** antes el navegador descargaba cada factura del periodo y del anterior, con sus renglones, sus costos y los movimientos, y la lectura se cortaba en 20,000 filas. Ahora viaja el resultado: su tamaño depende de cuántos productos y clientes distintos hay (las listas de clientes llegan a 200 por moneda), no de cuántas facturas.
+- **Permisos:** `SECURITY INVOKER`, así que RLS decide qué suma cada rol, igual que al leer las tablas. Ventas sólo ve sus documentos; el libro contable sólo lo recibe administración. Sin fila activa en `staff_members` responde «Tu cuenta no tiene permiso».
+- **Fechas:** días de Managua (UTC−6 fijo). Un periodo no puede pasar de diez años.
+- **Índices:** agrega `documents(created_at)` e `inventory_movements(created_at)`.
+- **Misma cuenta que la aplicación:** `src/features/reports/digest.ts` hace el mismo cálculo con las filas crudas (lo usan la vista local y el respaldo). `tests/unit/database/reportDigest.test.ts` carga todas las migraciones en PGlite, emite facturas, proformas y movimientos al azar (semilla fija) y compara ambas versiones en siete periodos, para administración y para ventas.
+- **Medición (PGlite, más lento que Supabase):** con 40,000 facturas, 120,000 renglones y 120,000 movimientos, 30 días tardan 0.24 s, 90 días 0.57 s y un año 2.2 s; la respuesta pesa unos 260 KB.
+- **Respaldo:** si la función no existe (`PGRST202`), la aplicación lee las filas como antes y muestra en Reportes que se están calculando en el equipo.
+
+Para aplicarla: en Supabase, **SQL Editor → New query**, pegar el contenido completo de `supabase/migrations/20260926120000_report_digest.sql` y ejecutar (o `supabase db push` con la CLI). Comprobación: `select to_regprocedure('public.report_digest(date,date)');` debe devolver el nombre de la función. En la aplicación, el aviso «Estos reportes se están calculando en este equipo…» deja de aparecer.
+
 ## Operación y comprobaciones
 
 Las escrituras del negocio pasan por funciones con comprobaciones de rol, validaciones y límites de uso. Las tablas no conceden escritura directa a usuarios del navegador. Las lecturas aplican RLS, y el almacenamiento sigue siendo privado. Deshabilitar una cuenta corta el acceso en la base aunque su token no haya expirado.
 
 `create_document` y `record_inventory_movement` reciben un requestId idempotente. Facturar bloquea y descuenta saldos; proformar no toca inventario. Una factura requiere conteo inicial mediante **Inventario → Ajuste**. Ninguna cantidad se inventó durante la carga.
 
-El historial de documentos permite consultar las últimas 200 facturas o proformas autorizadas y reimprimirlas en carta/PDF; movimientos muestra los últimos 200 registros autorizados. Clientes/proveedores muestran hasta 2,000 registros por pantalla. Para volúmenes mayores, añadir paginación de servidor.
+El historial de documentos consulta las facturas o proformas de un período (índice `documents(kind, created_at desc)`), de 100 en 100, y las reimprime en carta/PDF; el PDF del período junta hasta 2,000 documentos. Movimientos muestra los últimos 200 registros autorizados. Clientes/proveedores muestran hasta 2,000 registros por pantalla. Para volúmenes mayores, añadir paginación de servidor.
 
 `npm run test:db` incluye las 23 comprobaciones históricas de catálogo y las 21 de contabilidad y precios actuales. Comprueba permisos, revisiones, persistencia, instantáneas, costos, gastos y conversión de precios en PostgreSQL desechable. La revisión del 14 de septiembre consultó la base real sin escribir operaciones: 260 productos, 1,560 precios, cero precios inconsistentes, cero saldos negativos y 520 saldos todavía sin contar.
 

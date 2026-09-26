@@ -4,35 +4,11 @@ import { priceTierLabels } from '../../lib/pricing'
 import { buildWorkbook, type Sheet } from '../../lib/xlsx'
 import { totalStock } from '../inventory/model'
 import { accountingSheets } from './accountingExport'
-import {
-  change,
-  concentration,
-  currenciesWithSales,
-  customerActivity,
-  idleStock,
-  inRange,
-  inventoryHealth,
-  lapsedCustomers,
-  purchaseFrequency,
-  movementSummary,
-  movementsInRange,
-  paymentBreakdown,
-  previousRange,
-  proformaConversion,
-  proformaCount,
-  revenueByDay,
-  salesByWeekday,
-  shrinkage,
-  stockCoverage,
-  summary,
-  tierBreakdown,
-  topProducts,
-  type ReportRange,
-  type ReportSource,
-} from './model'
+import { fillDays, type ReportRange } from './model'
+import { DIGEST_LIST_LIMIT, reportView, type ReportData } from './digest'
 
 export interface ReportContext {
-  source: ReportSource
+  report: ReportData
   range: ReportRange
   tier: PriceTier
   business: BusinessSettings
@@ -76,26 +52,25 @@ export async function exportReport(
  * el formato se aplica en la columna.
  */
 export function buildReportWorkbook({
-  source,
+  report,
   range,
   tier,
   business,
 }: ReportContext): Blob {
-  const current = inRange(source.documents, range)
-  const previous = inRange(source.documents, previousRange(range))
-  const currencies = currenciesWithSales(current)
+  const view = reportView(report)
+  const currencies = view.currencies
   const header = [
     business.name,
     `Reporte del ${formatDate(range.from)} al ${formatDate(range.to)}`,
     'Ventas comerciales por moneda original; contabilidad en NIO con la tasa guardada por operación.',
   ]
-  const sheets: Sheet[] = accountingSheets(source, range, business.name)
+  const sheets: Sheet[] = accountingSheets(report, range, business.name)
 
   sheets.push({
     name: 'Resumen',
     notes: [
       ...header,
-      source.truncated
+      report.truncated
         ? 'Aviso: el periodo superó las filas consultadas; acorta el rango para un total exacto.'
         : '',
     ].filter(Boolean),
@@ -111,9 +86,9 @@ export function buildReportWorkbook({
       { header: 'Variación', format: 'number', width: 12 },
     ],
     rows: currencies.map((currency) => {
-      const totals = summary(current, currency)
-      const before = summary(previous, currency)
-      const variation = change(totals.revenue, before.revenue)
+      const totals = view.summary(currency)
+      const before = view.previousSummary(currency)
+      const variation = view.variation(currency)
       return [
         currency,
         totals.revenue,
@@ -121,7 +96,7 @@ export function buildReportWorkbook({
         Number(totals.average.toFixed(2)),
         totals.units,
         totals.customers,
-        proformaCount(current, currency),
+        view.proformaCount(currency),
         before.revenue,
         variation === null ? null : Number((variation * 100).toFixed(1)),
       ]
@@ -143,10 +118,8 @@ export function buildReportWorkbook({
       ]),
     ],
     rows: (() => {
-      const series = currencies.map((currency) =>
-        revenueByDay(current, currency, range),
-      )
-      const days = series[0] ?? revenueByDay([], 'NIO', range)
+      const series = currencies.map((currency) => view.revenueByDay(currency))
+      const days = series[0] ?? fillDays([], range)
       return days.map((point, index) => [
         point.day,
         ...series.flatMap((entries) => [
@@ -166,13 +139,13 @@ export function buildReportWorkbook({
         { header: 'Unidades', format: 'integer', width: 12 },
         { header: 'Importe', format: 'money', width: 16 },
       ],
-      rows: topProducts(current, currency, 200).map((product) => [
+      rows: view.topProducts(currency, DIGEST_LIST_LIMIT).map((product) => [
         product.description,
         product.quantity,
         product.revenue,
       ]),
     })
-    const clients = customerActivity(current, source.customers, currency, range)
+    const clients = view.customerActivity(currency, DIGEST_LIST_LIMIT)
     sheets.push({
       name: `Clientes ${currency}`,
       notes: [
@@ -205,7 +178,7 @@ export function buildReportWorkbook({
         { header: 'Importe anterior', format: 'money', width: 18 },
       ],
       rows: [
-        ...lapsedCustomers(source.documents, range, currency, 200).map(
+        ...view.lapsedCustomers(currency, DIGEST_LIST_LIMIT).map(
           (client) => [
             client.name,
             'No volvió',
@@ -215,7 +188,7 @@ export function buildReportWorkbook({
             client.previousRevenue,
           ],
         ),
-        ...purchaseFrequency(source.documents, currency, range.to, 200).map(
+        ...view.purchaseFrequency(currency, range.to, DIGEST_LIST_LIMIT).map(
           (client) => [
             client.name,
             client.averageDays === null
@@ -234,18 +207,13 @@ export function buildReportWorkbook({
       notes: [
         ...header,
         (() => {
-          const conversion = proformaConversion(current, currency)
+          const conversion = view.proformaConversion(currency)
           return conversion.rate === null
             ? 'Sin proformas en el periodo.'
             : `Proformas: ${conversion.proformas} · terminaron en factura: ${conversion.converted} (${Math.round(conversion.rate * 100)} %, estimado por cliente y fecha).`
         })(),
         (() => {
-          const share = concentration(
-            topProducts(current, currency, 1000).map(
-              (product) => product.revenue,
-            ),
-            10,
-          )
+          const share = view.productShare(currency)
           return share === null
             ? ''
             : `Los diez productos principales concentran el ${Math.round(share * 100)} % de los ingresos.`
@@ -256,7 +224,7 @@ export function buildReportWorkbook({
         { header: 'Ingresos', format: 'money', width: 16 },
         { header: 'Facturas', format: 'integer', width: 12 },
       ],
-      rows: salesByWeekday(current, currency).map((day) => [
+      rows: view.salesByWeekday(currency).map((day) => [
         day.label,
         day.revenue,
         day.count,
@@ -271,12 +239,12 @@ export function buildReportWorkbook({
         { header: 'Importe', format: 'money', width: 16 },
       ],
       rows: [
-        ...paymentBreakdown(current, currency).map((share) => [
+        ...view.paymentBreakdown(currency).map((share) => [
           `Forma de pago: ${share.label}`,
           share.count,
           share.value,
         ]),
-        ...tierBreakdown(current, currency).map((share) => [
+        ...view.tierBreakdown(currency).map((share) => [
           `Lista: ${share.label}`,
           share.count,
           share.value,
@@ -285,33 +253,10 @@ export function buildReportWorkbook({
     })
   }
 
-  sheets.push({
-    name: 'Documentos',
-    notes: header,
-    columns: [
-      { header: 'Número', width: 14 },
-      { header: 'Tipo', width: 11 },
-      { header: 'Fecha', width: 22 },
-      { header: 'Cliente', width: 30 },
-      { header: 'Lista', width: 14 },
-      { header: 'Pago', width: 18 },
-      { header: 'Moneda', width: 9 },
-      { header: 'Total', format: 'money', width: 15 },
-    ],
-    rows: current.map((document) => [
-      document.number,
-      document.kind === 'invoice' ? 'Factura' : 'Proforma',
-      document.createdAt,
-      document.customerName,
-      priceTierLabels[document.tier],
-      document.paymentMethod ?? '',
-      document.currency,
-      document.total,
-    ]),
-  })
-
-  const health = inventoryHealth(source.inventory, tier, currencies[0] ?? 'NIO')
-  const movements = movementSummary(movementsInRange(source.movements, range))
+  // Las facturas del periodo ya no van en el libro: se exportan en PDF desde
+  // el historial de facturas, con el listado y cada documento completo.
+  const health = view.inventoryHealth(tier, view.first)
+  const movements = view.movementSummary()
   sheets.push({
     name: 'Inventario',
     notes: [
@@ -330,7 +275,7 @@ export function buildReportWorkbook({
       { header: 'Mínimo', format: 'integer', width: 10 },
       { header: 'Precio lista', format: 'money', width: 14 },
     ],
-    rows: source.inventory.map((item) => [
+    rows: report.inventory.map((item) => [
       item.product.barcode,
       item.product.name,
       item.product.brand,
@@ -342,7 +287,7 @@ export function buildReportWorkbook({
     ]),
   })
 
-  const first = currencies[0] ?? 'NIO'
+  const first = view.first
   sheets.push({
     name: 'Reposición',
     notes: [
@@ -358,7 +303,7 @@ export function buildReportWorkbook({
       { header: 'Valor a lista', format: 'money', width: 16 },
     ],
     rows: [
-      ...stockCoverage(current, source.inventory, range, first, 500).map(
+      ...view.stockCoverage(first, 500).map(
         (row) => [
           row.description,
           'Se vende',
@@ -368,7 +313,7 @@ export function buildReportWorkbook({
           null,
         ],
       ),
-      ...idleStock(current, source.inventory, tier, first, 500).map((row) => [
+      ...view.idleStock(tier, first, 500).map((row) => [
         row.description,
         'Sin ventas en el periodo',
         row.stock,
@@ -379,13 +324,7 @@ export function buildReportWorkbook({
     ],
   })
 
-  const damaged = shrinkage(
-    movementsInRange(source.movements, range),
-    source.inventory,
-    tier,
-    first,
-    500,
-  )
+  const damaged = view.shrinkage(tier, first, 500)
   if (damaged.length)
     sheets.push({
       name: 'Mermas',
@@ -402,42 +341,32 @@ export function buildReportWorkbook({
 }
 
 /** Las cifras que van al PDF, ya resueltas: el diseño sólo las coloca. */
-export function reportTables({ source, range, tier }: ReportContext) {
-  // Igual que el libro: la ventana cargada es más ancha que el periodo, así
-  // que se acota antes de medir y sólo la comparación mira hacia atrás.
-  const current = inRange(source.documents, range)
-  const previous = inRange(source.documents, previousRange(range))
-  const currencies = currenciesWithSales(current)
-  const first = currencies[0] ?? 'NIO'
+export function reportTables({ report, tier }: ReportContext) {
+  const view = reportView(report)
+  const { currencies, first } = view
   return {
     currencies,
     perCurrency: currencies.map((currency: Currency) => ({
       currency,
-      totals: summary(current, currency),
-      before: summary(previous, currency),
-      variation: change(
-        summary(current, currency).revenue,
-        summary(previous, currency).revenue,
-      ),
-      proformas: proformaCount(current, currency),
-      conversion: proformaConversion(current, currency),
-      products: topProducts(current, currency, 10),
-      payments: paymentBreakdown(current, currency),
-      tiers: tierBreakdown(current, currency),
-      clients: customerActivity(current, source.customers, currency, range),
-      lapsed: lapsedCustomers(source.documents, range, currency, 6),
-      weekdays: salesByWeekday(current, currency),
-      productShare: concentration(
-        topProducts(current, currency, 1000).map((product) => product.revenue),
-        10,
-      ),
+      totals: view.summary(currency),
+      before: view.previousSummary(currency),
+      variation: view.variation(currency),
+      proformas: view.proformaCount(currency),
+      conversion: view.proformaConversion(currency),
+      products: view.topProducts(currency, 10),
+      payments: view.paymentBreakdown(currency),
+      tiers: view.tierBreakdown(currency),
+      clients: view.customerActivity(currency),
+      lapsed: view.lapsedCustomers(currency, 6),
+      weekdays: view.salesByWeekday(currency),
+      productShare: view.productShare(currency),
       money: (value: number) => formatCurrency(value, currency),
     })),
-    coverage: stockCoverage(current, source.inventory, range, first, 8),
-    idle: idleStock(current, source.inventory, tier, first, 6),
-    damaged: shrinkage(movementsInRange(source.movements, range), source.inventory, tier, first, 6),
-    health: inventoryHealth(source.inventory, tier, first),
-    movements: movementSummary(movementsInRange(source.movements, range)),
+    coverage: view.stockCoverage(first, 8),
+    idle: view.idleStock(tier, first, 6),
+    damaged: view.shrinkage(tier, first, 6),
+    health: view.inventoryHealth(tier, first),
+    movements: view.movementSummary(),
     /** Moneda de referencia para las cifras que no van por moneda. */
     money: (value: number) => formatCurrency(value, first),
   }

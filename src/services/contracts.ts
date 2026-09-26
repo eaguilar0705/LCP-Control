@@ -12,11 +12,23 @@ import type {
 } from '../lib/domain'
 import type { ProductInput } from '../features/products/product'
 import type { ReportRange, ReportSource } from '../features/reports/model'
+import type { ReportData } from '../features/reports/digest'
 import type {
   ExpenseInput,
   OpeningCostInput,
   ShipmentInput,
 } from '../features/reports/accounting'
+/** Una página del historial dentro de un periodo. */
+export interface DocumentQuery {
+  range: ReportRange
+  offset?: number
+  limit?: number
+}
+export interface DocumentPage {
+  documents: DocumentRecord[]
+  /** Documentos de todo el periodo, aunque la página traiga menos. */
+  total: number
+}
 export interface DataProvider {
   listProducts(): Promise<Product[]>
   saveProduct(input: ProductInput): Promise<string>
@@ -38,14 +50,20 @@ export interface DataProvider {
   getExchangeRate(): Promise<ExchangeRate | null>
   saveExchangeRate(rate: number): Promise<void>
   listCustomers(): Promise<CustomerRecord[]>
-  listDocuments(kind: DocumentKind, limit?: number): Promise<DocumentRecord[]>
   /**
-   * Todos los documentos de un tipo, del más antiguo al más reciente, para
-   * exportarlos. `truncated` avisa si se alcanzó el tope de filas.
+   * Documentos de un tipo emitidos en el periodo (días de Managua, ambos
+   * extremos incluidos), del más reciente al más antiguo.
+   */
+  listDocuments(kind: DocumentKind, query: DocumentQuery): Promise<DocumentPage>
+  /**
+   * Todos los documentos del periodo, del más antiguo al más reciente, para el
+   * PDF. Si pasan de `DOCUMENT_EXPORT_LIMIT` no trae ninguno y pide un rango
+   * más corto: un archivo recortado se confundiría con el periodo completo.
    */
   exportDocuments(
     kind: DocumentKind,
-  ): Promise<{ documents: DocumentRecord[]; truncated: boolean }>
+    range: ReportRange,
+  ): Promise<DocumentRecord[]>
   /**
    * Elimina una factura emitida: devuelve sus unidades al inventario y la saca
    * de reportes y contabilidad. Sólo Administración. Devuelve el número.
@@ -55,6 +73,11 @@ export interface DataProvider {
   recordMovement(input: MovementRequest): Promise<string>
   /** Filas crudas del periodo; los reportes se calculan sobre ellas. */
   getReportSource(range: ReportRange): Promise<ReportSource>
+  /**
+   * El resumen del periodo ya calculado. Quien no lo implementa entrega las
+   * filas (`getReportSource`) y el resumen se arma en el navegador.
+   */
+  getReport?(range: ReportRange): Promise<ReportData>
   recordShipment(input: ShipmentInput): Promise<string>
   setOpeningCost(input: OpeningCostInput): Promise<string>
   recordExpense(input: ExpenseInput): Promise<string>

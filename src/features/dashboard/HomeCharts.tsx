@@ -7,17 +7,8 @@ import { useServices } from '../../services/useServices'
 import { useQuery } from '../../lib/useQuery'
 import { useAccess } from '../../app/AccessContext'
 import { formatCurrency, formatDate } from '../../lib/format'
-import {
-  change,
-  currenciesWithSales,
-  inRange,
-  inventoryHealth,
-  presetRange,
-  previousRange,
-  revenueByDay,
-  summary,
-  topProducts,
-} from '../reports/model'
+import { presetRange } from '../reports/model'
+import { reportView } from '../reports/digest'
 
 const compact = new Intl.NumberFormat('es-NI', {
   notation: 'compact',
@@ -57,22 +48,18 @@ export function HomeCharts() {
       </Card>
     )
 
-  // El proveedor carga también el periodo anterior para poder comparar; aquí
-  // se acota al mes en curso antes de medir nada.
-  const current = inRange(data.documents, range)
-  const previous = inRange(data.documents, previousRange(range))
-  const currencies = currenciesWithSales(current)
+  // El resumen trae el mes en curso y el anterior, ya sumados por moneda.
+  const view = reportView(data)
   // La moneda con más facturas manda en la portada; el resto se ve en Reportes.
   const currency =
-    currencies
-      .map((code) => ({ code, count: summary(current, code).count }))
+    view.currencies
+      .map((code) => ({ code, count: view.summary(code).count }))
       .sort((a, b) => b.count - a.count)[0]?.code ?? 'NIO'
-  const totals = summary(current, currency)
-  const before = summary(previous, currency)
-  const variation = change(totals.revenue, before.revenue)
-  const daily = revenueByDay(current, currency, range)
-  const products = topProducts(current, currency, 5)
-  const health = inventoryHealth(data.inventory, 'emprendedor', currency)
+  const totals = view.summary(currency)
+  const variation = view.variation(currency)
+  const daily = view.revenueByDay(currency)
+  const products = view.topProducts(currency, 5)
+  const health = view.inventoryHealth('emprendedor', currency)
   const money = (value: number) => formatCurrency(value, currency)
 
   return (
@@ -84,7 +71,7 @@ export function HomeCharts() {
             Ver reportes <ArrowRight size={15} />
           </Link>
         </div>
-        {currencies.length ? (
+        {view.currencies.length ? (
           <>
             <p className="report-figure">{money(totals.revenue)}</p>
             <p className="muted report-note">

@@ -82,12 +82,30 @@ export function planPdfRows(
   return { fontSize: 9, lineHeight: 9 * 1.15, padding: 3, singlePage: false }
 }
 
-export function layoutDocumentPdf(d: DocumentRecord, logo: Uint8Array): jsPDF {
+/** El logo se incrusta una sola vez aunque el PDF traiga cientos de hojas. */
+export const LOGO_ALIAS = 'lcp-wordmark'
+
+export function newLetterPdf() {
+  return new jsPDF({ unit: 'pt', format: 'letter', compress: true })
+}
+
+/**
+ * Dibuja el documento en un PDF nuevo o, con `target`, a continuación de las
+ * hojas que ya tenga (el PDF de un periodo junta muchos). La numeración
+ * «1 / 2» del pie es la de este documento, no la del archivo.
+ */
+export function layoutDocumentPdf(
+  d: DocumentRecord,
+  logo: Uint8Array,
+  target?: jsPDF,
+): jsPDF {
   const tax = d.taxRate == null ? null : includedTax(d.total, d.taxRate)
   // La tasa con la que se cotizó este documento, no la del dólar de hoy.
   const rate = d.catalogRate ?? (d.currency === 'USD' ? d.exchangeRate : null)
   const equivalent = equivalentAmount(d.total, d.currency, rate)
-  const pdf = new jsPDF({ unit: 'pt', format: 'letter', compress: true })
+  const pdf = target ?? newLetterPdf()
+  if (target) pdf.addPage()
+  const firstPage = pdf.getNumberOfPages()
   const accent: RGB = d.kind === 'invoice' ? [87, 23, 28] : [122, 85, 18]
   const { left, right, width } = PAGE
   const {
@@ -137,7 +155,7 @@ export function layoutDocumentPdf(d: DocumentRecord, logo: Uint8Array): jsPDF {
   // ── Encabezado ────────────────────────────────────────────────────────
   function header(continued: boolean) {
     pdf.setFillColor(...accent).rect(left, 22, width, 3, 'F')
-    pdf.addImage(logo, 'JPEG', left, 31, 118, 53.8)
+    pdf.addImage(logo, 'JPEG', left, 31, 118, 53.8, LOGO_ALIAS)
     const address = wrap(
       d.issuer.address || 'Dirección: ______________________________',
       220,
@@ -388,9 +406,10 @@ export function layoutDocumentPdf(d: DocumentRecord, logo: Uint8Array): jsPDF {
     if (rest.length) text(tail, left, y + POLICY_LINE, 6.8)
     return y + POLICY_LINE * (1 + (rest.length ? tail.length : 0))
   }
-  const pageCount = pdf.getNumberOfPages()
+  const lastPage = pdf.getNumberOfPages()
+  const pageCount = lastPage - firstPage + 1
   const notice = `${d.previewKind === 'example' ? 'Ejemplo de diseño; no registra una venta. ' : d.previewKind === 'draft' ? 'Borrador sin emitir. ' : ''}${d.kind === 'invoice' ? 'Documento de control administrativo. No es comprobante fiscal. Desglose según la tasa de impuesto registrada.' : 'Cotización sujeta a disponibilidad. No constituye factura ni comprobante de pago.'}`
-  for (let page = 1; page <= pageCount; page++) {
+  for (let page = firstPage; page <= lastPage; page++) {
     pdf.setPage(page)
     pdf
       .setDrawColor(...accent)
@@ -406,7 +425,7 @@ export function layoutDocumentPdf(d: DocumentRecord, logo: Uint8Array): jsPDF {
       accent,
     )
     text(
-      `${page} / ${pageCount}`,
+      `${page - firstPage + 1} / ${pageCount}`,
       right,
       FOOTER_Y + 11,
       8,
@@ -418,6 +437,7 @@ export function layoutDocumentPdf(d: DocumentRecord, logo: Uint8Array): jsPDF {
       d.kind === 'invoice' ? policy(FOOTER_Y + 20) + 0.8 : FOOTER_Y + 21
     text(wrap(notice, width, 6.5), left, noticeY, 6.5, false, 'left', MUTED)
   }
+  pdf.setPage(lastPage)
   return pdf
 }
 

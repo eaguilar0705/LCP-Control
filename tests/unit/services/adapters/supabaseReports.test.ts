@@ -1,4 +1,4 @@
-import { beforeEach, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { tables, requests, rpc, legacyDocuments, filters } = vi.hoisted(() => ({
   tables: {} as Record<string, unknown[]>,
@@ -74,6 +74,7 @@ vi.mock('@/lib/supabase', () => ({
   },
 }))
 import { supabaseAdapter } from '@/services/adapters/supabase'
+import { DOCUMENT_EXPORT_LIMIT } from '@/features/sales/period'
 
 const document = {
   id: 'document',
@@ -209,8 +210,13 @@ it('reads legacy documents without claiming historic exchange rates or tax rates
   tables.documents = [
     { ...document, exchange_rate: undefined, tax_rate: undefined },
   ]
-  const listed = await supabaseAdapter.listDocuments('invoice')
-  expect(listed[0]).toMatchObject({ exchangeRate: null, taxRate: undefined })
+  const listed = await supabaseAdapter.listDocuments('invoice', {
+    range: { from: '2026-09-01', to: '2026-09-13' },
+  })
+  expect(listed.documents[0]).toMatchObject({
+    exchangeRate: null,
+    taxRate: undefined,
+  })
   const report = await supabaseAdapter.getReportSource({
     from: '2026-09-01',
     to: '2026-09-13',
@@ -245,4 +251,122 @@ it('sends and reads the invoice exchange rate and included tax percentage', asyn
     }),
   })
   expect(result).toMatchObject({ exchangeRate: 36.62, taxRate: 15, total: 100 })
+})
+
+it('el historial pide sólo el periodo elegido, en días de Managua, por páginas', async () => {
+  tables.documents = Array.from({ length: 230 }, (_, index) => ({
+    ...document,
+    id: `doc-${index}`,
+  }))
+  const page = await supabaseAdapter.listDocuments('invoice', {
+    range: { from: '2026-09-01', to: '2026-09-30' },
+    offset: 100,
+    limit: 100,
+  })
+  expect(page.total).toBe(230)
+  expect(page.documents).toHaveLength(100)
+  expect(page.documents[0].id).toBe('doc-100')
+  expect(requests.at(-1)).toMatchObject({ table: 'documents', start: 100, end: 199 })
+  expect(filters).toEqual(
+    expect.arrayContaining([
+      { operator: 'eq', column: 'kind', value: 'invoice' },
+      { operator: 'gte', column: 'created_at', value: '2026-09-01T06:00:00.000Z' },
+      { operator: 'lt', column: 'created_at', value: '2026-10-01T06:00:00.000Z' },
+    ]),
+  )
+})
+
+it('exporta todas las facturas del periodo, pasando el límite de filas del servidor', async () => {
+  tables.documents = Array.from({ length: 600 }, (_, index) => ({
+    ...document,
+    id: `doc-${index}`,
+  }))
+  const documents = await supabaseAdapter.exportDocuments('invoice', {
+    from: '2026-09-01',
+    to: '2026-09-30',
+  })
+  expect(documents).toHaveLength(600)
+  expect(new Set(documents.map((d) => d.id)).size).toBe(600)
+  expect(filters).toEqual(
+    expect.arrayContaining([
+      { operator: 'gte', column: 'created_at', value: '2026-09-01T06:00:00.000Z' },
+      { operator: 'lt', column: 'created_at', value: '2026-10-01T06:00:00.000Z' },
+    ]),
+  )
+})
+
+it('un periodo que pasa del tope no se descarga y pide un rango más corto', async () => {
+  tables.documents = Array.from({ length: DOCUMENT_EXPORT_LIMIT + 1 }, (_, index) => ({
+    ...document,
+    id: `doc-${index}`,
+  }))
+  await expect(
+    supabaseAdapter.exportDocuments('invoice', {
+      from: '2026-01-01',
+      to: '2026-12-31',
+    }),
+  ).rejects.toThrow(/admite hasta .*Elige un rango más corto/)
+  // Sólo se contó: no se bajó ninguna página de facturas.
+  expect(requests.filter((request) => request.table === 'documents')).toEqual([
+    expect.objectContaining({ select: 'id', start: 0, end: 0 }),
+  ])
+})
+
+it('un periodo vacío no hace más consultas', async () => {
+  tables.documents = []
+  expect(
+    await supabaseAdapter.exportDocuments('proforma', {
+      from: '2026-09-01',
+      to: '2026-09-30',
+    }),
+  ).toEqual([])
+  expect(requests).toHaveLength(1)
+})
+
+describe('reportes calculados en la base', () => {
+  const range = { from: '2026-09-01', to: '2026-09-13' }
+  const payload = {
+    version: 1,
+    sales: Object.fromEntries(
+      ['NIO', 'USD'].map((code) => [
+        code,
+        {
+          current: { revenue: code === 'USD' ? 100 : 0, count: code === 'USD' ? 1 : 0, units: 1, customers: 1 },
+          previous: { revenue: 0, count: 0, units: 0, customers: 0 },
+          proformas: 0, converted: 0, days: [], weekdays: [], payments: [], tiers: [],
+          products: [], newCustomers: 0, returning: 0, topCustomers: [], lapsed: [], visits: [],
+        },
+      ]),
+    ),
+    movements: { entries: 0, exits: 0, damaged: 0, adjustments: 0, sales: 0, damagedByProduct: [] },
+    ledger: null,
+  }
+
+  it('con la función instalada no descarga facturas, renglones ni movimientos', async () => {
+    rpc.mockResolvedValue({ data: payload, error: null })
+    tables.documents = [document]
+    const report = await supabaseAdapter.getReport!(range)
+    expect(rpc).toHaveBeenCalledWith('report_digest', { p_from: '2026-09-01', p_to: '2026-09-13' })
+    expect(report.computedIn).toBe('database')
+    expect(report.sales.USD.current.revenue).toBe(100)
+    const read = new Set(requests.map((request) => request.table))
+    for (const table of ['documents', 'inventory_movements', 'customers', 'document_item_costs', 'inventory_movement_costs'])
+      expect(read.has(table), table).toBe(false)
+    expect(read.has('products')).toBe(true)
+  })
+
+  it('sin la función instalada calcula en el navegador, como antes', async () => {
+    rpc.mockResolvedValue({ data: null, error: { code: 'PGRST202', message: 'Could not find the function' } })
+    tables.documents = [document]
+    const report = await supabaseAdapter.getReport!(range)
+    expect(report.computedIn).toBe('browser')
+    expect(report.sales.USD.current).toMatchObject({ revenue: 100, count: 1 })
+    expect(requests.some((request) => request.table === 'documents')).toBe(true)
+  })
+
+  it('un error de permisos no se disfraza de reporte vacío', async () => {
+    rpc.mockResolvedValue({ data: null, error: { code: '42501', message: 'permission denied' } })
+    await expect(supabaseAdapter.getReport!(range)).rejects.toThrow(/permiso/)
+    expect(requests.some((request) => request.table === 'documents')).toBe(false)
+  })
 })

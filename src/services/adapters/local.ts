@@ -80,14 +80,13 @@ export const localWrites = {
   async listCustomers() {
     return []
   },
-  async listDocuments(_kind: DocumentKind, _limit?: number) {
+  async listDocuments(_kind: DocumentKind) {
     void _kind
-    void _limit
-    return []
+    return { documents: [], total: 0 }
   },
   async exportDocuments(_kind: DocumentKind) {
     void _kind
-    return { documents: [], truncated: false }
+    return []
   },
   deleteInvoice: async () => unavailable(),
   createDocument: async () => unavailable(),

@@ -1,4 +1,11 @@
-import { FileText, Plus, ArrowUpRight, Trash2 } from 'lucide-react'
+import {
+  FileText,
+  FileDown,
+  Plus,
+  ArrowUpRight,
+  Trash2,
+  CalendarRange,
+} from 'lucide-react'
 import {
   WorkspaceHeading,
   WorkspaceEmpty,
@@ -19,19 +26,56 @@ import {
 import { can } from '../../lib/permissions'
 import { formatCurrency, formatDate } from '../../lib/format'
 import { errorMessage } from '../../lib/errors'
+import { documentCopy } from '../../lib/domain'
 import type { DocumentKind, DocumentRecord } from '../../lib/domain'
 import { DocumentPrint } from './DocumentPrint'
-import { downloadDocumentPdf } from './pdf'
-import { ExportDocumentsButton } from './ExportDocumentsButton'
+import { downloadDocumentPdf, downloadPeriodPdf } from './pdf'
 import { matchesSearch } from '../../lib/search'
+import { adjustRange, type ReportRange } from '../reports/model'
+import {
+  historyPresetLabels,
+  historyRange,
+  periodLabel,
+  type HistoryPreset,
+} from './period'
+
+const counts = new Intl.NumberFormat('es-NI')
+
 export function DocumentHistory({ kind }: { kind: DocumentKind }) {
   const { salesService } = useServices()
   const { base, demo, role } = useAccess()
+  const { singular, plural } = documentCopy[kind]
+  const noun = (n: number) => `${counts.format(n)} ${n === 1 ? singular : plural}`
+  // `null`: fechas elegidas a mano, ningún atajo queda marcado.
+  const [preset, setPreset] = useState<HistoryPreset | null>('month')
+  const [range, setRange] = useState<ReportRange>(() => historyRange('month'))
+  // La respuesta lleva el periodo que pidió: mientras llega la del periodo
+  // nuevo no se muestra la lista del anterior como si fuera la actual.
   const load = useCallback(
-    () => salesService.listDocuments(kind, 200),
-    [salesService, kind],
+    async () => ({
+      range,
+      ...(await salesService.listDocuments(kind, { range })),
+    }),
+    [salesService, kind, range],
   )
   const { data, error, loading, retry } = useQuery(load)
+  const current = data?.range === range ? data : null
+  // Páginas pedidas con «Cargar más»; se descartan solas al cambiar de
+  // periodo o recargar, porque quedan atadas a la respuesta de la que salen.
+  const [more, setMore] = useState<{
+    from: typeof data
+    documents: DocumentRecord[]
+  }>({ from: null, documents: [] })
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [moreError, setMoreError] = useState('')
+  const extra = current && more.from === current ? more.documents : []
+  const documents = current ? [...current.documents, ...extra] : []
+  const total = current?.total ?? 0
+  const [exporting, setExporting] = useState('')
+  const [exportNotice, setExportNotice] = useState<{
+    tone: 'error' | 'info'
+    text: string
+  } | null>(null)
   const [selected, setSelected] = useState<DocumentRecord | null>(null)
   const [search, setSearch] = useState('')
   const [failure, setFailure] = useState('')
@@ -51,9 +95,73 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
       ?.querySelector<HTMLButtonElement>('button')
       ?.focus({ preventScroll: true })
   }, [selected])
-  const matches = (data ?? []).filter((d) =>
+  const matches = documents.filter((d) =>
     matchesSearch(`${d.number} ${d.customerName}`, search),
   )
+  const searching = !!search.trim()
+  function choosePreset(next: HistoryPreset) {
+    setPreset(next)
+    setRange(historyRange(next))
+    setExportNotice(null)
+  }
+  function chooseDay(edge: 'from' | 'to', value: string) {
+    if (!value) return
+    setPreset(null)
+    setRange((previous) => adjustRange(previous, edge, value))
+    setExportNotice(null)
+  }
+  async function loadMore() {
+    if (!current || loadingMore) return
+    setLoadingMore(true)
+    setMoreError('')
+    try {
+      const page = await salesService.listDocuments(kind, {
+        range,
+        offset: documents.length,
+      })
+      // Una factura emitida mientras tanto corre la paginación un lugar: sin
+      // esto la última de la página anterior aparecería dos veces.
+      const seen = new Set(documents.map((d) => d.id))
+      setMore({
+        from: current,
+        documents: [
+          ...extra,
+          ...page.documents.filter((d) => !seen.has(d.id)),
+        ],
+      })
+    } catch (e) {
+      setMoreError(errorMessage(e))
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+  async function exportPdf() {
+    if (exporting) return
+    setExporting('Buscando…')
+    setExportNotice(null)
+    try {
+      const found = await salesService.exportDocuments(kind, range)
+      if (!found.length) {
+        setExportNotice({
+          tone: 'info',
+          text: `No hay ${plural} emitidas ${periodLabel(range)}.`,
+        })
+        return
+      }
+      setExporting('Generando PDF…')
+      await downloadPeriodPdf(kind, range, found, (done, all) =>
+        setExporting(`Generando ${counts.format(done)} de ${counts.format(all)}…`),
+      )
+      setExportNotice({
+        tone: 'info',
+        text: `PDF listo: ${noun(found.length)} ${periodLabel(range)}.`,
+      })
+    } catch (e) {
+      setExportNotice({ tone: 'error', text: errorMessage(e) })
+    } finally {
+      setExporting('')
+    }
+  }
   // Sólo facturas: las proformas no mueven inventario ni contabilidad.
   const removable = kind === 'invoice' && !demo && can(role, 'document.delete')
   function askRemove(record: DocumentRecord) {
@@ -98,8 +206,66 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
             <Plus size={17} />
             Crear {kind === 'invoice' ? 'factura' : 'proforma'}
           </Link>
-          {kind === 'invoice' && <ExportDocumentsButton kind="invoice" />}
         </WorkspaceHeading>
+        <Card className="report-filters history-filters">
+          <div className="preset-row" role="group" aria-label="Periodo">
+            <CalendarRange size={17} />
+            {(Object.keys(historyPresetLabels) as HistoryPreset[]).map((key) => (
+              <button
+                key={key}
+                type="button"
+                className={`preset ${preset === key ? 'preset-active' : ''}`}
+                aria-pressed={preset === key}
+                onClick={() => choosePreset(key)}
+              >
+                {historyPresetLabels[key]}
+              </button>
+            ))}
+          </div>
+          <div className="history-filter-grid">
+            <Input
+              label="Desde"
+              type="date"
+              value={range.from}
+              max={range.to}
+              onChange={(e) => chooseDay('from', e.target.value)}
+            />
+            <Input
+              label="Hasta"
+              type="date"
+              value={range.to}
+              min={range.from}
+              onChange={(e) => chooseDay('to', e.target.value)}
+            />
+            {/* La vista local no tiene documentos emitidos que exportar. */}
+            {!demo && (
+              <div className="history-export">
+                <Button
+                  type="button"
+                  disabled={!!exporting}
+                  aria-busy={!!exporting}
+                  onClick={() => void exportPdf()}
+                >
+                  <FileDown size={17} />
+                  {exporting || 'Exportar PDF del período'}
+                </Button>
+                <small className="muted">
+                  Listado con totales y cada {singular} completa.
+                </small>
+              </div>
+            )}
+          </div>
+          {exportNotice && (
+            <p
+              role={exportNotice.tone === 'error' ? 'alert' : 'status'}
+              className={
+                exportNotice.tone === 'error' ? 'inline-error' : 'page-feedback'
+              }
+            >
+              {exportNotice.text}
+            </p>
+          )}
+        </Card>
         <div className="directory-toolbar">
           <Input
             label="Buscar por número o cliente"
@@ -109,9 +275,13 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
             onChange={(e) => setSearch(e.target.value)}
           />
           <span className="directory-count">
-            {search.trim()
-              ? `${matches.length} de ${data?.length ?? 0} documentos recientes`
-              : `${data?.length ?? 0} documentos recientes`}
+            {!current
+              ? ''
+              : searching
+                ? `Coinciden ${counts.format(matches.length)} de ${noun(documents.length)}${documents.length < total ? ` cargadas de ${counts.format(total)}` : ''}`
+                : documents.length < total
+                  ? `${counts.format(documents.length)} de ${noun(total)} del período`
+                  : `${noun(total)} en el período`}
           </span>
         </div>
         {notice && (
@@ -119,7 +289,7 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
             {notice}
           </p>
         )}
-        {loading && <LoadingState />}
+        {(loading || (!current && !error)) && <LoadingState />}
         {error && <ErrorState message={error} retry={retry} />}
         <div className="record-grid">
           {matches.map((d) => (
@@ -155,16 +325,40 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
             </Card>
           ))}
         </div>
-        {!loading && !error && !matches.length && (
+        {current && documents.length < total && (
+          <div className="history-more">
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={loadingMore}
+              aria-busy={loadingMore}
+              onClick={() => void loadMore()}
+            >
+              {loadingMore
+                ? 'Cargando…'
+                : `Cargar más (${counts.format(total - documents.length)} restantes)`}
+            </Button>
+            {moreError && (
+              <p className="inline-error" role="alert">
+                {moreError}
+              </p>
+            )}
+          </div>
+        )}
+        {current && !error && !matches.length && (
           <WorkspaceEmpty
             icon={FileText}
             title={
-              search ? 'No encontramos ese documento' : 'Tu archivo está listo'
+              searching
+                ? 'No encontramos ese documento'
+                : `Sin ${plural} en este período`
             }
             description={
-              search
-                ? 'Prueba con otro nombre o número.'
-                : 'Los documentos que emitas aparecerán aquí con su detalle y su PDF.'
+              searching
+                ? documents.length < total
+                  ? 'Busca entre las que faltan con «Cargar más» o acorta el período.'
+                  : 'Prueba con otro nombre o número.'
+                : 'Elige otras fechas. Los documentos que emitas aparecerán aquí con su detalle y su PDF.'
             }
           />
         )}

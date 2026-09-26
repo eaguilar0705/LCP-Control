@@ -2,9 +2,10 @@ import type { Sheet } from '../../lib/xlsx'
 import { priceTierLabels, productPrice } from '../../lib/pricing'
 import { totalStock } from '../inventory/model'
 import type { ReportRange, ReportSource } from './model'
-import { accountingByMonth, accountingSummary, belowCostSales, catalogMargins, accountOf, expenseAccountOrder, expenseAccounts, expenseLabel, expensesInRange, inventoryTurnover, marginRate, roundMoney, shipmentsInRange } from './accounting'
+import type { ReportData } from './digest'
+import { accountingByMonth, accountingSummary, belowCostSummary, catalogMargins, accountOf, expenseAccountOrder, expenseAccounts, expenseLabel, expensesInRange, inventoryTurnover, marginRate, roundMoney, shipmentsInRange } from './accounting'
 
-export function accountingSheets(source: ReportSource, range: ReportRange, businessName: string): Sheet[] {
+export function accountingSheets(source: ReportSource | ReportData, range: ReportRange, businessName: string): Sheet[] {
   const result = accountingSummary(source, range)
   const notes = [businessName, `Contabilidad del ${range.from} al ${range.to}. Importes contables en NIO.`,
     'Tipo de cambio guardado por operación. Promedio ponderado; costo histórico congelado al vender.',
@@ -21,7 +22,7 @@ export function accountingSheets(source: ReportSource, range: ReportRange, busin
   }]
   const costs = new Map(source.accounting.costs.map((row) => [row.productId, row.averageCostNio]))
   const turnover = inventoryTurnover(result, range)
-  const losses = belowCostSales(source, range)
+  const losses = belowCostSummary(source, range)
   const margins = catalogMargins(source)
   return [
     { name: 'Estado de resultados', notes,
@@ -98,13 +99,14 @@ export function accountingSheets(source: ReportSource, range: ReportRange, busin
           })]
       }),
     },
-    { name: 'Ventas bajo costo', notes: [...notes, 'Sólo renglones con costo y venta neta registrados. Un costo desconocido no se cuenta como pérdida.'],
+    { name: 'Ventas bajo costo', notes: [...notes, 'Sólo renglones con costo y venta neta registrados. Un costo desconocido no se cuenta como pérdida.',
+      `${losses.count} renglón(es) bajo costo, ${roundMoney(losses.lossNio)} NIO de pérdida en total.${losses.count > losses.rows.length ? ` Se listan las ${losses.rows.length} mayores.` : ''}`],
       columns: [
         { header: 'Documento', width: 16 }, { header: 'Fecha', width: 25 }, { header: 'Producto', width: 40 },
         { header: 'Unidades', format: 'integer', width: 12 }, { header: 'Venta neta NIO', format: 'money', width: 20 },
         { header: 'Costo NIO', format: 'money', width: 18 }, { header: 'Pérdida NIO', format: 'money', width: 18 },
       ],
-      rows: losses.map((row) => [row.number, row.createdAt, row.description, row.quantity, row.netRevenueNio, row.costNio, row.lossNio]),
+      rows: losses.rows.map((row) => [row.number, row.createdAt, row.description, row.quantity, row.netRevenueNio, row.costNio, row.lossNio]),
     },
     { name: 'Margen del catálogo', notes: [...notes, 'Margen que deja hoy cada lista sobre el costo promedio vigente, sin descontar impuesto.'],
       columns: [{ header: 'Lista', width: 22 }, { header: 'Productos con costo y precio', format: 'integer', width: 30 },

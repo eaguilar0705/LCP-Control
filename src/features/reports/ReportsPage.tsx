@@ -33,34 +33,14 @@ import { AccountingPanel } from './AccountingPanel'
 import {
   change,
   concentration,
-  currenciesWithSales,
-  customerActivity,
-  idleStock,
-  inRange,
-  inventoryHealth,
-  lapsedCustomers,
   localDay,
-  movementSummary,
-  movementsInRange,
-  paymentBreakdown,
   adjustRange,
   presetLabels,
   presetRange,
-  previousRange,
-  proformaConversion,
-  proformaCount,
-  purchaseFrequency,
-  revenueByDay,
-  salesByWeekday,
-  shrinkage,
-  stockCoverage,
-  summary,
-  tierBreakdown,
-  topProducts,
   type Preset,
   type ReportRange,
-  type ReportSource,
 } from './model'
+import { reportView, type ReportData, type ReportView } from './digest'
 
 const compact = new Intl.NumberFormat('es-NI', {
   notation: 'compact',
@@ -94,6 +74,7 @@ export function ReportsPage() {
 
 function Reports() {
   const { reportService, salesService } = useServices()
+  const { demo } = useAccess()
   // `null`: fechas elegidas a mano, ningún botón de periodo queda marcado.
   const [preset, setPreset] = useState<Preset | null>('30d')
   const [range, setRange] = useState<ReportRange>(() => presetRange('30d'))
@@ -128,8 +109,8 @@ function Reports() {
     try {
       const { exportReport } = await import('./export')
       await exportReport(format, {
-        source: data,
-        range,
+        report: data,
+        range: data.range,
         tier,
         business: business ?? {
           name: 'La Casa del Perfume',
@@ -230,8 +211,18 @@ function Reports() {
         <ErrorState message={error ?? 'Sin datos.'} retry={retry} />
       ) : (
         <>
-          <AccountingPanel source={data} range={range} onRecorded={retry} />
-          <ReportBody source={data} range={range} tier={tier} />
+          {/* El periodo es el del resumen recibido, no el del filtro: mientras
+              llega el nuevo, lo mostrado sigue siendo coherente consigo mismo. */}
+          {data.computedIn === 'browser' && !demo && (
+            <p className="page-feedback" role="status">
+              Estos reportes se están calculando en este equipo porque a la
+              base de datos le falta la actualización de reportes
+              (20260926120000_report_digest.sql). Funcionan igual, pero con
+              períodos largos tardan más y pueden quedar incompletos.
+            </p>
+          )}
+          <AccountingPanel source={data} range={data.range} onRecorded={retry} />
+          <ReportBody report={data} tier={tier} />
         </>
       )}
     </>
@@ -270,54 +261,19 @@ function Stat({
   )
 }
 
-function ReportBody({
-  source,
-  range,
-  tier,
-}: {
-  source: ReportSource
-  range: ReportRange
-  tier: PriceTier
-}) {
-  // La consulta trae también el periodo anterior: todo lo que mide «el
-  // periodo» se calcula sobre este recorte, nunca sobre la ventana completa.
-  const current = useMemo(
-    () => inRange(source.documents, range),
-    [source.documents, range],
-  )
-  const currencies = useMemo(() => currenciesWithSales(current), [current])
-  const health = useMemo(
-    () => inventoryHealth(source.inventory, tier, currencies[0] ?? 'NIO'),
-    [source.inventory, tier, currencies],
-  )
-  const movements = useMemo(
-    () => movementSummary(movementsInRange(source.movements, range)),
-    [source.movements, range],
-  )
-  const coverage = useMemo(
-    () =>
-      stockCoverage(current, source.inventory, range, currencies[0] ?? 'NIO'),
-    [current, source.inventory, range, currencies],
-  )
-  const idle = useMemo(
-    () => idleStock(current, source.inventory, tier, currencies[0] ?? 'NIO'),
-    [current, source.inventory, tier, currencies],
-  )
-  const damaged = useMemo(
-    () =>
-      shrinkage(
-        movementsInRange(source.movements, range),
-        source.inventory,
-        tier,
-        currencies[0] ?? 'NIO',
-      ),
-    [source.movements, source.inventory, tier, currencies, range],
-  )
-  const money = (value: number) => formatCurrency(value, currencies[0] ?? 'NIO')
+function ReportBody({ report, tier }: { report: ReportData; tier: PriceTier }) {
+  const view = useMemo(() => reportView(report), [report])
+  const { currencies, first } = view
+  const health = useMemo(() => view.inventoryHealth(tier, first), [view, tier, first])
+  const movements = view.movementSummary()
+  const coverage = useMemo(() => view.stockCoverage(first), [view, first])
+  const idle = useMemo(() => view.idleStock(tier, first), [view, tier, first])
+  const damaged = useMemo(() => view.shrinkage(tier, first), [view, tier, first])
+  const money = (value: number) => formatCurrency(value, first)
 
   return (
     <>
-      {source.truncated && (
+      {report.truncated && (
         <p className="page-feedback" role="status">
           El periodo tiene más documentos de los que se consultan de una vez.
           Las cifras corresponden a las filas consultadas; acorta el rango para
@@ -334,13 +290,7 @@ function ReportBody({
         </Card>
       ) : (
         currencies.map((currency) => (
-          <CurrencyReport
-            key={currency}
-            currency={currency}
-            source={source}
-            current={current}
-            range={range}
-          />
+          <CurrencyReport key={currency} currency={currency} view={view} />
         ))
       )}
 
@@ -473,39 +423,23 @@ function ReportBody({
 
 function CurrencyReport({
   currency,
-  source,
-  current,
-  range,
+  view,
 }: {
   currency: Currency
-  source: ReportSource
-  current: ReportSource['documents']
-  range: ReportRange
+  view: ReportView
 }) {
-  const previous = useMemo(
-    () => inRange(source.documents, previousRange(range)),
-    [source.documents, range],
-  )
-  const totals = summary(current, currency)
-  const before = summary(previous, currency)
-  const daily = revenueByDay(current, currency, range)
-  const products = topProducts(current, currency, 8)
-  const payments = paymentBreakdown(current, currency)
-  const tiers = tierBreakdown(current, currency)
-  const clients = customerActivity(current, source.customers, currency, range)
-  const lapsed = lapsedCustomers(source.documents, range, currency)
-  const frequency = purchaseFrequency(
-    source.documents,
-    currency,
-    localDay(new Date()),
-    6,
-  )
-  const weekdays = salesByWeekday(current, currency)
-  const conversion = proformaConversion(current, currency)
-  const productShare = concentration(
-    topProducts(current, currency, 1000).map((product) => product.revenue),
-    10,
-  )
+  const totals = view.summary(currency)
+  const before = view.previousSummary(currency)
+  const daily = view.revenueByDay(currency)
+  const products = view.topProducts(currency, 8)
+  const payments = view.paymentBreakdown(currency)
+  const tiers = view.tierBreakdown(currency)
+  const clients = view.customerActivity(currency)
+  const lapsed = view.lapsedCustomers(currency)
+  const frequency = view.purchaseFrequency(currency, localDay(new Date()), 6)
+  const weekdays = view.salesByWeekday(currency)
+  const conversion = view.proformaConversion(currency)
+  const productShare = view.productShare(currency)
   const clientShare = concentration(
     clients.top.map((client) => client.revenue),
     5,
@@ -540,7 +474,7 @@ function CurrencyReport({
         />
         <Stat
           title="Proformas"
-          value={whole.format(proformaCount(current, currency))}
+          value={whole.format(view.proformaCount(currency))}
           detail={
             conversion.rate === null
               ? 'Cotizaciones emitidas'
