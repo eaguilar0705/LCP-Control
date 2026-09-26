@@ -43,6 +43,8 @@ Los reintentos de emisión y movimientos con los mismos datos conservan el ident
 
 Los registros reales viven en Supabase; los precios y existencias se validan allí. Las políticas de acceso exigen una cuenta activa del personal. La aplicación obtiene el rol de `staff_members`, no de metadatos editables del navegador.
 
+**Sesión sólo en memoria.** La sesión (tokens de acceso y de renovación) vive únicamente en la memoria de la pestaña: no se escribe en localStorage, sessionStorage, IndexedDB ni cookies, y las respuestas de Supabase no pasan por la caché HTTP. Recargar la página, abrir otra pestaña o cerrar el navegador pide la contraseña otra vez. Al arrancar se borra cualquier sesión que haya dejado una versión anterior. `npm run test:credentials` lo comprueba en un navegador real.
+
 Borradores de facturas y proformas se guardan por cuenta en Supabase y se sincronizan entre equipos con detección de conflictos. Clientes y proveedores también viven en la base. Solo la demostración mantiene registros locales; las preferencias y frases se conservan en el navegador. Los datos locales antiguos no se importan automáticamente.
 
 El catálogo real no se incluye en `src/data/catalog.json` ni en la compilación. El importador genera un archivo privado:
@@ -105,9 +107,10 @@ npm run check
 npm run test:db
 npm run test:e2e
 npm run test:scripts
+npm run test:credentials
 ```
 
-`check` ejecuta lint, pruebas unitarias/integración y compilación. `test:db` ejecuta las suites de catálogo y contabilidad en PostgreSQL desechable, incluidas las migraciones de precios en dólares. Playwright utiliza Chrome instalado y prueba escritorio y móvil con un servidor propio en el puerto 5174 y credenciales vacías. El puerto debe estar libre. Las pruebas de interfaz no realizan operaciones contra la base real.
+`check` ejecuta lint, pruebas unitarias/integración y compilación. `test:db` ejecuta las suites de catálogo y contabilidad en PostgreSQL desechable, incluidas las migraciones de precios en dólares. Playwright utiliza Chrome instalado y prueba escritorio y móvil con un servidor propio en el puerto 5174 y credenciales vacías. El puerto debe estar libre. Las pruebas de interfaz no realizan operaciones contra la base real. `test:credentials` arranca su propio servidor (puerto 5176) contra un Supabase simulado y revisa el almacenamiento del navegador y el perfil escrito en disco.
 
 Para limpiar salidas generadas, detener antes las pruebas y el servidor de preview:
 

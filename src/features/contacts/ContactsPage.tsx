@@ -91,6 +91,13 @@ export function ContactsPage({ kind }: { kind: Kind }) {
     setBusy(true)
     setFormError('')
     try {
+      // «required» acepta un nombre de sólo espacios; la base lo rechaza con
+      // un aviso genérico. Se detiene antes, con un aviso claro.
+      if (!form.name.trim())
+        throw new AppError(
+          'validation',
+          `Escribe el nombre del ${supplier ? 'proveedor' : 'cliente'}.`,
+        )
       const phone = supplier ? form.phone : whatsappNumber(form.phone)
       if (!supplier && form.phone && !phone)
         throw new AppError('validation', 'Revisa el teléfono del cliente.')

@@ -30,7 +30,13 @@ export const documentDraftSchema = z.object({
   taxId: z.string().max(80),
   currency: z.enum(['NIO', 'USD']),
   taxRate: z.number().finite().min(0).max(100).optional(),
-  exchangeRate: z.number().finite().positive().max(1000000).nullable().optional(),
+  exchangeRate: z
+    .number()
+    .finite()
+    .positive()
+    .max(1000000)
+    .nullable()
+    .optional(),
   tier: z.enum(['emprendedor', 'vip', 'premium']),
   payment: z.enum(['pending', 'cash', 'card_pos', 'bank_transfer']),
   location: z.enum(['warehouse', 'store']),
@@ -69,13 +75,14 @@ export function defaultValidUntil(from: Date = new Date()) {
   date.setDate(date.getDate() + PROFORMA_VALID_DAYS)
   return isoDate(date)
 }
+const managuaIsoDate = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/Managua',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
 export function isoDate(date: Date) {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Managua',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(date)
+  return managuaIsoDate.format(date)
 }
 /** Lets the screen preview and share a draft with exactly the same code paths
  * that render a document already stored in PostgreSQL. */

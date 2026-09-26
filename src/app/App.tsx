@@ -96,7 +96,8 @@ function AuthLinkGate({ children }: { children: React.ReactNode }) {
   )
 }
 export function App() {
-  const pages = (
+  // `demo`: la vista local de desarrollo conserva el ejemplo dentro del panel.
+  const pages = (demo: boolean) => (
     <>
       <Route index element={<DashboardPage />} />
       <Route path="inventory" element={<InventoryPage />} />
@@ -143,7 +144,12 @@ export function App() {
       <Route path="products/manage" element={<InventoryRedirect />} />
       <Route path="products/:id/edit" element={<ProductEditorPage />} />
       <Route path="account" element={<AccountPage />} />
-      <Route path="documents/example/:kind" element={<DocumentExamplePage />} />
+      {demo && (
+        <Route
+          path="documents/example/:kind"
+          element={<DocumentExamplePage />}
+        />
+      )}
       <Route
         path="reports"
         element={
@@ -162,15 +168,26 @@ export function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/activate" element={<ActivatePage />} />
           <Route path={AUTH_CALLBACK_PATH} element={<AuthCallbackPage />} />
+          {/* El ejemplo sólo usa datos de muestra y se abre en otra pestaña
+              («Ver ejemplo en carta»). La sesión vive sólo en la memoria de la
+              pestaña que inició sesión, así que esta ruta no la exige. */}
+          <Route
+            path="/documents/example/:kind"
+            element={
+              <main className="main-content">
+                <DocumentExamplePage />
+              </main>
+            }
+          />
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<AppShell />}>
-              {pages}
+              {pages(false)}
             </Route>
           </Route>
           {/* Vista local con datos sintéticos: sólo existe en desarrollo y pruebas. */}
           {import.meta.env.DEV && (
             <Route path="/demo" element={<AppShell demo />}>
-              {pages}
+              {pages(true)}
             </Route>
           )}
           <Route path="*" element={<NotFound />} />

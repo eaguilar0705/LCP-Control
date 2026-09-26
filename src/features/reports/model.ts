@@ -78,13 +78,18 @@ export interface ReportRange {
 const MANAGUA = 'America/Managua'
 
 /** Fecha local del negocio (yyyy-mm-dd) de una marca de tiempo UTC. */
+// Un solo formateador para todo el módulo. Crear un Intl.DateTimeFormat en
+// cada llamada (una por documento y movimiento, varias veces por mes del
+// periodo) reservaba memoria nativa más rápido de lo que el navegador la
+// liberaba: con «Último año» la pestaña se congelaba y terminaba cerrándose.
+const managuaDay = new Intl.DateTimeFormat('en-CA', {
+  timeZone: MANAGUA,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
 export function localDay(value: string | Date): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: MANAGUA,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date(value))
+  return managuaDay.format(new Date(value))
 }
 
 export function addDays(day: string, amount: number): string {
@@ -437,7 +442,10 @@ export function inRange(documents: ReportDocument[], range: ReportRange) {
   })
 }
 
-export function movementsInRange(movements: ReportMovement[], range: ReportRange) {
+export function movementsInRange(
+  movements: ReportMovement[],
+  range: ReportRange,
+) {
   return movements.filter((row) => {
     const day = localDay(row.createdAt)
     return day >= range.from && day <= range.to

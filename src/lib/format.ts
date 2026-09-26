@@ -1,11 +1,25 @@
 import type { Currency } from './domain'
+// Los formateadores se crean una vez: construir uno por llamada es lento y
+// deja memoria nativa pendiente en listas y reportes largos.
+const currencyFormats = new Map<Currency, Intl.NumberFormat>()
 export function formatCurrency(value: number, currency: Currency) {
-  return new Intl.NumberFormat('es-NI', {
-    style: 'currency',
-    currency,
-    currencyDisplay: 'code',
-  }).format(value)
+  let format = currencyFormats.get(currency)
+  if (!format) {
+    format = new Intl.NumberFormat('es-NI', {
+      style: 'currency',
+      currency,
+      currencyDisplay: 'code',
+    })
+    currencyFormats.set(currency, format)
+  }
+  return format.format(value)
 }
+const longManaguaDate = new Intl.DateTimeFormat('es-NI', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'America/Managua',
+})
 // Sólo fecha: «2026-09-20», sin hora ni zona.
 const DAY_ONLY = /^\d{4}-\d{2}-\d{2}$/
 
@@ -20,10 +34,5 @@ export function formatDate(value: string | Date) {
     typeof value === 'string' && DAY_ONLY.test(value)
       ? new Date(`${value}T12:00:00Z`)
       : new Date(value)
-  return new Intl.DateTimeFormat('es-NI', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'America/Managua',
-  }).format(date)
+  return longManaguaDate.format(date)
 }

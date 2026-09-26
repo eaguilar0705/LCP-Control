@@ -174,3 +174,21 @@ it('sales staff can edit customers but not delete them', async () => {
     screen.queryByRole('button', { name: /^Eliminar/ }),
   ).not.toBeInTheDocument()
 })
+it('un nombre de sólo espacios no llega a la base (auditoría 26-09-2026)', async () => {
+  listContacts.mockResolvedValue([])
+  render(
+    <AccessContext.Provider value={{ demo: false, base: '', role: 'admin' }}>
+      <ContactsPage kind="suppliers" />
+    </AccessContext.Provider>,
+  )
+  const user = userEvent.setup()
+  await user.click(
+    await screen.findByRole('button', { name: 'Nuevo proveedor' }),
+  )
+  await user.type(screen.getByLabelText('Nombre'), '    ')
+  await user.click(screen.getByRole('button', { name: 'Guardar' }))
+  expect(
+    await screen.findByText('Escribe el nombre del proveedor.'),
+  ).toBeVisible()
+  expect(saveContact).not.toHaveBeenCalled()
+})

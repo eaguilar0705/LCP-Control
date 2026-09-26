@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   adjustRange,
   change,
@@ -501,5 +501,17 @@ describe('fechas elegidas a mano', () => {
       from: '2026-08-15',
       to: '2026-08-15',
     })
+  })
+})
+
+describe('rendimiento del periodo largo', () => {
+  // Con «Último año», crear un Intl.DateTimeFormat por fecha reservaba memoria
+  // nativa sin control y la pestaña se cerraba (auditoría del 26-09-2026).
+  it('localDay reutiliza un único formateador', () => {
+    const constructor = vi.spyOn(Intl, 'DateTimeFormat')
+    for (let i = 0; i < 500; i++)
+      localDay(new Date(Date.UTC(2026, 0, 1) + i * 86400000))
+    expect(constructor).not.toHaveBeenCalled()
+    expect(localDay('2026-09-26T05:30:00Z')).toBe('2026-09-25')
   })
 })

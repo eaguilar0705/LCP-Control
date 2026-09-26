@@ -145,3 +145,29 @@ test('el total del periodo no arrastra los días de la ventana anterior', async 
     reported.trim(),
   )
 })
+
+// Auditoría del 26-09-2026: con «Último año» la pestaña agotaba la memoria y se
+// cerraba (un Intl.DateTimeFormat nuevo por cada fecha consultada).
+test('el periodo de un año se calcula sin congelar la pestaña', async ({
+  page,
+}) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  page.on('crash', () => errors.push('la pestaña se cerró'))
+  await page.goto('/demo/reports')
+  await expect(
+    page.locator('.report-currency .stat-card strong').first(),
+  ).toHaveText(/NIO/)
+  await page.getByRole('button', { name: 'Último año' }).click()
+  await expect(
+    page.getByRole('button', { name: 'Último año' }),
+  ).toHaveAttribute('aria-pressed', 'true', { timeout: 5000 })
+  // La página sigue respondiendo: otro periodo se aplica enseguida.
+  await page
+    .getByRole('button', { name: 'Últimos 7 días' })
+    .click({ timeout: 5000 })
+  await expect(
+    page.getByRole('button', { name: 'Últimos 7 días' }),
+  ).toHaveAttribute('aria-pressed', 'true', { timeout: 5000 })
+  expect(errors).toEqual([])
+})
