@@ -40,7 +40,8 @@ function seeded(seed: number) {
   }
 }
 const random = seeded(20260926)
-const pick = <T,>(items: readonly T[]) => items[Math.floor(random() * items.length)]
+const pick = <T>(items: readonly T[]) =>
+  items[Math.floor(random() * items.length)]
 const between = (min: number, max: number) =>
   min + Math.floor(random() * (max - min + 1))
 const uuid = (prefix: string, index: number) =>
@@ -64,15 +65,20 @@ async function asOwner<T>(sql: string, params: unknown[] = []) {
 }
 async function rpc<T>(name: string, input: unknown) {
   return (
-    await db.query<{ result: T }>(`select public.${name}($1::jsonb) as result`, [
-      JSON.stringify(input),
-    ])
+    await db.query<{ result: T }>(
+      `select public.${name}($1::jsonb) as result`,
+      [JSON.stringify(input)],
+    )
   ).rows[0].result
 }
 
 let today = ''
-const products = Array.from({ length: 10 }, (_, index) => uuid('aaaaaaaa', index + 1))
-const customers = Array.from({ length: 24 }, (_, index) => uuid('cccccccc', index + 1))
+const products = Array.from({ length: 10 }, (_, index) =>
+  uuid('aaaaaaaa', index + 1),
+)
+const customers = Array.from({ length: 24 }, (_, index) =>
+  uuid('cccccccc', index + 1),
+)
 
 /** Una marca de tiempo en segundos exactos, `daysAgo` días antes en Managua. */
 function moment(daysAgo: number, seconds = between(0, 86399)) {
@@ -93,12 +99,20 @@ beforeAll(async () => {
     grant select,insert,delete on storage.objects to authenticated;
     create function storage.foldername(text) returns text[] language sql immutable as $$ select string_to_array($1,'/') $$;
     create table auth.sessions(id uuid primary key default gen_random_uuid(),user_id uuid references auth.users(id) on delete cascade);`)
-  await db.query('insert into auth.users(id) values($1),($2)', [admin, operator])
+  await db.query('insert into auth.users(id) values($1),($2)', [
+    admin,
+    operator,
+  ])
   for (const file of (await readdir('supabase/migrations')).sort())
-    if (file.endsWith('.sql') && !file.includes('harden_platform_function_grants'))
+    if (
+      file.endsWith('.sql') &&
+      !file.includes('harden_platform_function_grants')
+    )
       await db.exec(await readFile(`supabase/migrations/${file}`, 'utf8'))
   // Datos de prueba en ráfaga: sin el límite de operaciones por minuto.
-  await db.exec(`create or replace function private.enforce_rate_limit(p_action text) returns void language plpgsql as $$ begin end $$;`)
+  await db.exec(
+    `create or replace function private.enforce_rate_limit(p_action text) returns void language plpgsql as $$ begin end $$;`,
+  )
   await db.query(
     "insert into public.staff_members(user_id,display_name,role) values($1,'Admin','admin'),($2,'Ventas','operator')",
     [admin, operator],
@@ -114,7 +128,7 @@ beforeAll(async () => {
 
   for (const [index, id] of products.entries()) {
     await db.query(
-      "insert into public.products(id,sku,name,brand_id) values($1::uuid,$2,$3,(select id from public.brands limit 1))",
+      'insert into public.products(id,sku,name,brand_id) values($1::uuid,$2,$3,(select id from public.brands limit 1))',
       [id, `SKU-${index}`, `Perfume ${index + 1}`],
     )
     for (const tier of ['emprendedor', 'vip', 'premium']) {
@@ -131,8 +145,12 @@ beforeAll(async () => {
   }
   for (const [index, id] of customers.entries())
     await db.query(
-      "insert into public.customers(id,name,created_at) values($1,$2,$3)",
-      [id, `Cliente ${String.fromCharCode(65 + index)}`, moment(between(0, 150))],
+      'insert into public.customers(id,name,created_at) values($1,$2,$3)',
+      [
+        id,
+        `Cliente ${String.fromCharCode(65 + index)}`,
+        moment(between(0, 150)),
+      ],
     )
 
   await identity(admin)
@@ -167,50 +185,90 @@ beforeAll(async () => {
       ...(byName
         ? { customerName: `Mostrador ${between(1, 5)}` }
         : { customerId: pick(customers) }),
-      tier: who === operator ? 'emprendedor' : pick(['emprendedor', 'vip', 'premium']),
+      tier:
+        who === operator
+          ? 'emprendedor'
+          : pick(['emprendedor', 'vip', 'premium']),
       currency,
-      ...(currency === 'USD' ? { exchangeRate: pick([36.62, 36.7, 36.55]) } : {}),
+      ...(currency === 'USD'
+        ? { exchangeRate: pick([36.62, 36.7, 36.55]) }
+        : {}),
       taxRate: pick([0, 15]),
       notes: '',
       items: lines,
       ...(kind === 'invoice'
-        ? { location: pick(['store', 'warehouse']), paymentMethod: pick(['cash', 'card_pos', 'bank_transfer', 'pending']) }
+        ? {
+            location: pick(['store', 'warehouse']),
+            paymentMethod: pick([
+              'cash',
+              'card_pos',
+              'bank_transfer',
+              'pending',
+            ]),
+          }
         : { validUntil: '2099-01-01' }),
     })
     const at = moment(daysAgo, seconds)
-    await asOwner('update public.documents set created_at=$2 where id=$1', [document.id, at])
-    await asOwner('update public.inventory_movements set created_at=$2 where document_id=$1', [document.id, at])
+    await asOwner('update public.documents set created_at=$2 where id=$1', [
+      document.id,
+      at,
+    ])
+    await asOwner(
+      'update public.inventory_movements set created_at=$2 where document_id=$1',
+      [document.id, at],
+    )
     return document.id
   }
   for (let i = 0; i < 170; i++) await issue(admin, 'invoice', between(0, 130))
   for (let i = 0; i < 25; i++) await issue(operator, 'invoice', between(0, 60))
-  for (let i = 0; i < 30; i++) await issue(pick([admin, operator]), 'proforma', between(0, 90))
+  for (let i = 0; i < 30; i++)
+    await issue(pick([admin, operator]), 'proforma', between(0, 90))
   // Casos de borde: 11:59 p. m. y 12:00 a. m. en Managua, a ambos lados de un día.
   await issue(admin, 'invoice', 7, 86399)
   await issue(admin, 'invoice', 6, 0)
 
   await identity(admin)
-  const move = async (type: string, quantity: number, daysAgo: number) => {
+  const move = async (
+    type: string,
+    quantity: number,
+    daysAgo: number,
+    among = products,
+  ) => {
     const id = await rpc<string>('record_inventory_movement', {
       requestId: crypto.randomUUID(),
-      productId: pick(products),
+      productId: pick(among),
       location: pick(['store', 'warehouse']),
       type,
       quantity,
       note: 'Prueba',
     })
     const at = moment(daysAgo)
-    await asOwner('update public.inventory_movements set created_at=$2 where id=$1', [id, at])
-    await asOwner('update public.inventory_movement_costs set created_at=$2 where movement_id=$1', [id, at])
+    await asOwner(
+      'update public.inventory_movements set created_at=$2 where id=$1',
+      [id, at],
+    )
+    await asOwner(
+      'update public.inventory_movement_costs set created_at=$2 where movement_id=$1',
+      [id, at],
+    )
     return id
   }
   const legacy: string[] = []
-  for (let i = 0; i < 30; i++) await move(pick(['DAMAGED', 'EXIT']), between(1, 4), between(0, 120))
-  for (let i = 0; i < 8; i++) await move('ADJUSTMENT', between(4000, 5100), between(0, 120))
-  for (let i = 0; i < 6; i++) legacy.push(await move('DAMAGED', between(1, 3), between(0, 120)))
-  for (let i = 0; i < 5; i++) await move('ENTRY', between(1, 9), between(0, 120))
+  for (let i = 0; i < 30; i++)
+    await move(pick(['DAMAGED', 'EXIT']), between(1, 4), between(0, 120))
+  for (let i = 0; i < 8; i++)
+    await move('ADJUSTMENT', between(4000, 5100), between(0, 120))
+  for (let i = 0; i < 6; i++)
+    legacy.push(await move('DAMAGED', between(1, 3), between(0, 120)))
+  // Una entrada sin costo sólo se admite en un perfume que todavía no tiene
+  // costo promedio: en uno con costo se registra como compra.
+  for (let i = 0; i < 5; i++)
+    await move('ENTRY', between(1, 9), between(0, 120), products.slice(8))
   // Salidas anteriores al libro contable: sin fila de costo.
-  await asOwner('delete from public.inventory_movement_costs where movement_id = any($1::uuid[])', [legacy])
+  await asOwner(
+    'delete from public.inventory_movement_costs where movement_id = any($1::uuid[])',
+    [legacy],
+  )
   // Costos congelados que no cuadran: cantidad distinta o costo desconocido.
   await asOwner(
     'update public.document_item_costs set quantity=quantity+1 where document_item_id in (select document_item_id from public.document_item_costs order by document_item_id limit 4)',
@@ -223,7 +281,10 @@ beforeAll(async () => {
 afterAll(() => db.close())
 
 /** Lo mismo que lee el adaptador de Supabase cuando la función no existe. */
-async function rawSource(range: ReportRange, withLedger: boolean): Promise<ReportSource> {
+async function rawSource(
+  range: ReportRange,
+  withLedger: boolean,
+): Promise<ReportSource> {
   const window = { from: previousRange(range).from, to: range.to }
   const { from, until } = managuaBounds(window)
   type Row = Record<string, unknown>
@@ -238,7 +299,9 @@ async function rawSource(range: ReportRange, withLedger: boolean): Promise<Repor
     'select document_id, product_id, description, quantity, line_total from public.document_items where document_id = any($1::uuid[]) order by id',
     [documents.map((row) => row.id)],
   )
-  const customerRows = await q('select id, name, created_at from public.customers order by id')
+  const customerRows = await q(
+    'select id, name, created_at from public.customers order by id',
+  )
   const movements = await q(
     'select * from public.inventory_movements where created_at >= $1 and created_at < $2 order by created_at, id',
     [from, until],
@@ -323,12 +386,15 @@ async function rawSource(range: ReportRange, withLedger: boolean): Promise<Repor
   }
 }
 
-async function fromDatabase(range: ReportRange, withLedger: boolean): Promise<ReportData> {
+async function fromDatabase(
+  range: ReportRange,
+  withLedger: boolean,
+): Promise<ReportData> {
   const payload = (
-    await db.query<{ digest: unknown }>('select public.report_digest($1::date, $2::date) as digest', [
-      range.from,
-      range.to,
-    ])
+    await db.query<{ digest: unknown }>(
+      'select public.report_digest($1::date, $2::date) as digest',
+      [range.from, range.to],
+    )
   ).rows[0].digest
   return digestFromPayload(payload, {
     range,
@@ -345,21 +411,35 @@ function comparable(report: ReportData) {
   const byKey = <T extends { key: string }>(rows: T[]) =>
     [...rows].sort((a, b) => (a.key < b.key ? -1 : 1))
   const zero = {
-    revenueNio: 0, salesTaxNio: 0, costOfSalesNio: 0, missingCostUnits: 0,
-    missingRevenueLines: 0, soldUnits: 0, inventoryWriteOffNio: 0, missingWriteOffUnits: 0,
+    revenueNio: 0,
+    salesTaxNio: 0,
+    costOfSalesNio: 0,
+    missingCostUnits: 0,
+    missingRevenueLines: 0,
+    soldUnits: 0,
+    inventoryWriteOffNio: 0,
+    missingWriteOffUnits: 0,
   }
   return {
     sales: Object.fromEntries(
       Object.entries(report.sales).map(([code, sales]) => [
         code,
-        { ...sales, payments: byKey(sales.payments), tiers: byKey(sales.tiers) },
+        {
+          ...sales,
+          payments: byKey(sales.payments),
+          tiers: byKey(sales.tiers),
+        },
       ]),
     ),
     movements: report.movements,
     ledger: report.ledger && {
       ...report.ledger,
-      products: [...report.ledger.products].sort((a, b) => (a.productId < b.productId ? -1 : 1)),
-      tiers: [...report.ledger.tiers].sort((a, b) => (a.tier < b.tier ? -1 : 1)),
+      products: [...report.ledger.products].sort((a, b) =>
+        a.productId < b.productId ? -1 : 1,
+      ),
+      tiers: [...report.ledger.tiers].sort((a, b) =>
+        a.tier < b.tier ? -1 : 1,
+      ),
       months: monthsOf(report.range).map(({ month }) => ({
         month,
         ...zero,
@@ -380,20 +460,32 @@ function comparable(report: ReportData) {
 function expectSame(actual: unknown, expected: unknown, path = 'resumen') {
   if (typeof expected === 'number') {
     expect(typeof actual, path).toBe('number')
-    expect(Math.abs((actual as number) - expected), `${path}: ${actual} ≠ ${expected}`).toBeLessThan(0.011)
+    expect(
+      Math.abs((actual as number) - expected),
+      `${path}: ${actual} ≠ ${expected}`,
+    ).toBeLessThan(0.011)
     return
   }
   if (Array.isArray(expected)) {
     expect(Array.isArray(actual), path).toBe(true)
     expect((actual as unknown[]).length, `${path}.length`).toBe(expected.length)
-    expected.forEach((item, index) => expectSame((actual as unknown[])[index], item, `${path}[${index}]`))
+    expected.forEach((item, index) =>
+      expectSame((actual as unknown[])[index], item, `${path}[${index}]`),
+    )
     return
   }
   if (expected && typeof expected === 'object') {
     expect(actual && typeof actual === 'object', path).toBeTruthy()
-    const keys = new Set([...Object.keys(expected), ...Object.keys(actual as object)])
+    const keys = new Set([
+      ...Object.keys(expected),
+      ...Object.keys(actual as object),
+    ])
     for (const key of keys)
-      expectSame((actual as Record<string, unknown>)[key], (expected as Record<string, unknown>)[key], `${path}.${key}`)
+      expectSame(
+        (actual as Record<string, unknown>)[key],
+        (expected as Record<string, unknown>)[key],
+        `${path}.${key}`,
+      )
     return
   }
   expect(actual, path).toEqual(expected)
@@ -403,11 +495,23 @@ describe('report_digest da las mismas cifras que el cálculo de la aplicación',
   const periods = (): [string, ReportRange][] => [
     ['últimos 30 días', { from: addDays(today, -29), to: today }],
     ['últimos 7 días', { from: addDays(today, -6), to: today }],
-    ['un solo día, justo después de medianoche', { from: addDays(today, -6), to: addDays(today, -6) }],
-    ['un solo día, hasta las 11:59 p. m.', { from: addDays(today, -7), to: addDays(today, -7) }],
+    [
+      'un solo día, justo después de medianoche',
+      { from: addDays(today, -6), to: addDays(today, -6) },
+    ],
+    [
+      'un solo día, hasta las 11:59 p. m.',
+      { from: addDays(today, -7), to: addDays(today, -7) },
+    ],
     ['90 días', { from: addDays(today, -89), to: today }],
-    ['dos meses del pasado', { from: addDays(today, -75), to: addDays(today, -40) }],
-    ['un periodo sin movimiento', { from: addDays(today, 1), to: addDays(today, 10) }],
+    [
+      'dos meses del pasado',
+      { from: addDays(today, -75), to: addDays(today, -40) },
+    ],
+    [
+      'un periodo sin movimiento',
+      { from: addDays(today, 1), to: addDays(today, 10) },
+    ],
   ]
 
   it('administración: ventas, movimientos y libro contable', async () => {
@@ -418,10 +522,15 @@ describe('report_digest da las mismas cifras que el cálculo de la aplicación',
       expectSame(comparable(database), comparable(browser), name)
     }
     // Que la prueba no pase en vacío.
-    const month = await fromDatabase({ from: addDays(today, -29), to: today }, true)
+    const month = await fromDatabase(
+      { from: addDays(today, -29), to: today },
+      true,
+    )
     expect(month.sales.NIO.current.count).toBeGreaterThan(10)
     expect(month.sales.USD.current.count).toBeGreaterThan(0)
-    expect(month.sales.NIO.lapsed.length + month.sales.NIO.visits.length).toBeGreaterThan(0)
+    expect(
+      month.sales.NIO.lapsed.length + month.sales.NIO.visits.length,
+    ).toBeGreaterThan(0)
     expect(month.ledger?.belowCost.count).toBeGreaterThan(0)
     expect(month.ledger?.missingCostUnits).toBeGreaterThan(0)
     expect(month.ledger?.missingWriteOffUnits).toBeGreaterThan(0)
@@ -434,12 +543,18 @@ describe('report_digest da las mismas cifras que el cálculo de la aplicación',
     const database = await fromDatabase(range, true)
     expect(database.ledger).toBeNull()
     const browser = digestFromSource(await rawSource(range, false), range)
-    expectSame(comparable({ ...database, ledger: null }), comparable(browser), 'ventas')
+    expectSame(
+      comparable({ ...database, ledger: null }),
+      comparable(browser),
+      'ventas',
+    )
     const everything = await (async () => {
       await identity(admin)
       return fromDatabase(range, true)
     })()
-    expect(database.sales.NIO.current.count).toBeLessThan(everything.sales.NIO.current.count)
+    expect(database.sales.NIO.current.count).toBeLessThan(
+      everything.sales.NIO.current.count,
+    )
   })
 
   it('rechaza fechas invertidas y a quien no es del personal', async () => {

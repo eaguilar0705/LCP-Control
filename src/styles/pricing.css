@@ -1,4 +1,4 @@
-/* Precio de compra y porcentaje de ganancia (ficha del perfume y pantalla
+/* Costo promedio y porcentaje de ganancia (ficha del perfume y pantalla
    Precios). Los colores salen de la identidad: vino para el precio de venta,
    verde sobrio para lo que se gana. */
 .sr-only {
@@ -148,7 +148,7 @@
 }
 .pricing-summary {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 12px;
   padding: 22px 24px 6px;
 }
@@ -192,7 +192,7 @@
 }
 .pricing-toolbar {
   display: grid;
-  grid-template-columns: minmax(200px, 2fr) repeat(3, minmax(140px, 1fr));
+  grid-template-columns: minmax(200px, 2fr) repeat(auto-fit, minmax(140px, 1fr));
   gap: 12px;
   padding: 16px 24px 20px;
   border-bottom: 1px solid var(--line);
@@ -456,5 +456,210 @@
   }
   .pricing-import-controls {
     grid-template-columns: 1fr;
+  }
+}
+
+/* --- Precios desde el costo promedio (27-09-2026) ------------------------- */
+.pricing-purchase.pricing-cost-source {
+  grid-template-columns: minmax(200px, 320px) minmax(0, 1fr);
+  align-items: center;
+}
+.pricing-cost-value {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.pricing-cost-value .pricing-cell-label {
+  display: block;
+}
+.pricing-cost-value output {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.pricing-cost-value small {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.pricing-cost-link {
+  align-self: flex-start;
+  padding-left: 0;
+}
+.pricing-badge.is-pending {
+  background: #fbf0dc;
+  color: #7a4f0e;
+}
+.pricing-pending-note,
+.pricing-table td small.pricing-pending {
+  color: #7a4f0e !important;
+}
+.pricing-sections {
+  display: flex;
+  gap: 4px;
+  padding: 8px;
+  margin-bottom: 16px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow-x: auto;
+}
+.pricing-sections button {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 600;
+  cursor: pointer;
+}
+.pricing-sections button[aria-pressed='true'] {
+  background: var(--wine);
+  color: #fff;
+}
+.pricing-cost-panel .section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 22px 24px 0;
+}
+.pricing-cost-panel .section-heading .button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.pricing-cost-panel .section-heading h2 {
+  margin: 0 0 4px;
+}
+.pricing-formula {
+  margin: 14px 24px 0;
+  padding: 12px 14px;
+  border-left: 3px solid var(--wine);
+  background: #faf6f0;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.pricing-summary-item.is-costed strong {
+  color: #2f5f37;
+}
+.pricing-summary-item.is-missing strong,
+.pricing-summary-item.is-pending strong {
+  color: #8a5a12;
+}
+.pricing-cost-state {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.pricing-cost-state.is-missing {
+  color: #7a4f0e;
+}
+.dialog.pricing-purchase-dialog {
+  width: min(960px, calc(100vw - 32px));
+}
+.pricing-purchase-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.pricing-purchase-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.pricing-purchase-line {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fbf9f6;
+}
+.pricing-purchase-line-fields {
+  display: grid;
+  grid-template-columns: minmax(200px, 2.2fr) minmax(110px, 1fr) minmax(
+      90px,
+      0.8fr
+    ) minmax(130px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+.pricing-outcome {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+.pricing-outcome p {
+  margin: 0;
+}
+.pricing-outcome ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pricing-outcome strong {
+  color: var(--wine);
+}
+.pricing-purchase-total {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.pricing-import-note {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border-left: 3px solid #b79753;
+  background: #faf6ee;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.price-history-cause {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+}
+.record-badge.is-automatic {
+  background: #e8eef7;
+  color: #2d4a73;
+  border-color: #cfdaea;
+}
+.entry-cost-notice {
+  margin: 4px 0 0;
+}
+@media (max-width: 760px) {
+  .pricing-purchase.pricing-cost-source {
+    grid-template-columns: 1fr;
+  }
+  .pricing-cost-panel .section-heading {
+    flex-direction: column;
+    padding: 16px 16px 0;
+  }
+  .pricing-cost-panel .section-heading .button {
+    width: 100%;
+  }
+  .pricing-formula {
+    margin: 12px 16px 0;
+  }
+  .pricing-purchase-line-fields {
+    grid-template-columns: 1fr 1fr;
+  }
+  .pricing-purchase-line-fields > :first-child {
+    grid-column: 1 / -1;
   }
 }

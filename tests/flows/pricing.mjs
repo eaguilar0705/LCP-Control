@@ -1,6 +1,10 @@
-// Precio de compra y porcentaje de ganancia, de punta a punta: la pantalla real
-// en un navegador real contra la base de datos real (PGlite con todas las
-// migraciones), detrás de una API de Supabase simulada.
+// Precios desde el costo promedio y porcentaje de ganancia, de punta a punta:
+// la pantalla real en un navegador real contra la base de datos real (PGlite
+// con todas las migraciones), detrás de una API de Supabase simulada. Recorre
+// el caso de Formulas.xlsx (13 u. a 15.675 + 20 u. a 16.675 → 16.281061 → C$
+// 20.35 con 25 %), compras en dólares, porcentajes pendientes de costo, la
+// carga desde archivo, el cambio de tasa, una entrada sin costo, el historial,
+// el teclado, el teléfono y los permisos.
 //
 //   npm run test:flows
 //
@@ -558,6 +562,16 @@ async function open(viewport = { width: 1440, height: 1000 }) {
 }
 
 try {
+  // Existencias contadas: Oud 13 (5 en tienda y 8 en bodega, como el Excel
+  // del cliente), Cedro 4 y Cítrico 2 sin costo, Jazmín en cero y Vainilla sin
+  // conteo.
+  await asOwner(
+    `update public.inventory_balances b set quantity=c.q from (values
+      ($1::uuid,'store',5),($1,'warehouse',8),($2,'store',0),($2,'warehouse',0),
+      ($3,'store',4),($3,'warehouse',0),($4,'store',2),($4,'warehouse',0)) as c(id,loc,q)
+     where b.product_id=c.id and b.location=c.loc`,
+    [oud, jazmin, cedro, citrico],
+  )
   const { context, page } = await open()
   await login(page, owner)
   const menu = page.getByRole('navigation', { name: 'Navegación principal' })
@@ -570,95 +584,231 @@ try {
     .getByRole('button', { name: 'Editar precios de Oud Nocturno' })
     .waitFor()
   check(
-    await page
-      .getByRole('button', { name: /Sin precio de compra\s*5/ })
-      .isVisible(),
-    'los 5 perfumes empiezan sin precio de compra',
+    await page.getByRole('button', { name: /Sin porcentajes\s*5/ }).isVisible(),
+    'los 5 perfumes empiezan sin porcentajes',
   )
   await shot(page, '01-precios-vacio')
 
-  // 2. Validaciones de la ficha rápida.
+  // 2. Apartado del inventario: costo inicial de las 13 unidades de Oud.
+  const sections = page.getByRole('navigation', {
+    name: 'Apartados de precios',
+  })
+  await sections.getByRole('button', { name: 'Costo de inventario' }).click()
+  await page.waitForURL(`${BASE}/prices?apartado=costo`)
+  const costs = page.getByRole('region', { name: 'Costo promedio por perfume' })
+  await costs.waitFor()
+  const summaryText = (
+    await page
+      .getByRole('group', { name: 'Resumen de costos' })
+      .or(page.locator('[aria-label="Resumen de costos"]'))
+      .textContent()
+  ).replace(/\s+/g, ' ')
+  check(
+    /Con costo\s*0/.test(summaryText) &&
+      /Sin costo\s*4/.test(summaryText) &&
+      /Sin conteo completo\s*1/.test(summaryText),
+    `resumen de costos: 0 con costo, 4 sin costo, 1 sin conteo${/Sin costo\s*4/.test(summaryText) ? '' : ` — se leyó «${summaryText}»`}`,
+  )
+  await shot(page, '02-costo-inventario')
+  await page
+    .getByRole('button', { name: 'Cargar costo inicial de Oud Nocturno' })
+    .click()
+  const openingDialog = page.getByRole('dialog', {
+    name: 'Costo inicial · Oud Nocturno',
+  })
+  await openingDialog.getByLabel('Costo por unidad (C$)').fill('15.675')
+  await openingDialog
+    .getByLabel('Origen del costo / comprobante')
+    .fill('Formulas.xlsx, Hoja 1!F10')
+  await openingDialog.getByText('13 u. contadas').waitFor()
+  check(
+    (await openingDialog.textContent()).includes('C$ 15.675'),
+    'costo inicial: la vista previa enseña 13 u. contadas → C$ 15.675',
+  )
+  await openingDialog
+    .getByRole('button', { name: 'Guardar costo inicial' })
+    .click()
+  await page.getByText('Costo inicial de «Oud Nocturno» registrado').waitFor()
+  const averageOf = async (id) =>
+    Number(
+      (
+        await asOwner(
+          'select average_cost_nio from public.product_costs where product_id=$1',
+          [id],
+        )
+      )[0]?.average_cost_nio ?? NaN,
+    )
+  check(
+    (await averageOf(oud)) === 15.675,
+    'la base guardó el costo promedio C$ 15.675',
+  )
+
+  // 3. Porcentajes: validaciones y el ejemplo del cliente (25 % Emprendedor,
+  // 20 % VIP, Premium a mano).
+  await sections.getByRole('button', { name: 'Porcentajes y precios' }).click()
   await page
     .getByRole('button', { name: 'Editar precios de Oud Nocturno' })
     .click()
   const dialog = page.getByRole('dialog', { name: 'Oud Nocturno' })
-  const purchase = dialog.getByLabel('Precio de compra', { exact: true })
-  const markup = (tier) => dialog.getByLabel(`% de ganancia ${tier}`)
+  const markup = (tier) =>
+    dialog.getByLabel(`% de ganancia sobre el costo · ${tier}`)
   const save = dialog.getByRole('button', { name: 'Guardar precios' })
+  check(
+    (await dialog.locator('output').textContent()).replace(/\s+/g, ' ') ===
+      'NIO 15.68' &&
+      (await dialog.textContent()).includes('C$ 15.675 por unidad'),
+    'la ficha rápida enseña el costo promedio como dato calculado (NIO 15.68, exacto C$ 15.675)',
+  )
+  check(
+    (await dialog.locator('input').count()) === 3 &&
+      (await dialog
+        .locator('input')
+        .evaluateAll((inputs) =>
+          inputs.every((input) =>
+            /% de ganancia/.test(input.labels?.[0]?.textContent ?? ''),
+          ),
+        )),
+    'el costo no se puede escribir: sólo hay tres campos, uno por lista',
+  )
   const cases = [
-    ['0', null, 'El precio de compra debe ser mayor que cero.'],
-    ['-5', null, 'El precio de compra debe ser mayor que cero.'],
-    ['12.345', null, 'Usa hasta dos decimales.'],
-    ['10000001', null, 'El precio de compra es demasiado alto.'],
-    ['500', ['VIP', '1000.5'], 'Usa un porcentaje de hasta 1000.'],
-    ['500', ['VIP', '-1'], 'El porcentaje no puede ser negativo.'],
-    ['500', ['VIP', '12.345'], 'Usa hasta dos decimales.'],
+    ['VIP', '1000.5', 'Usa un porcentaje de hasta 1000.'],
+    ['VIP', '-1', 'El porcentaje no puede ser negativo.'],
+    ['VIP', '12.345', 'Usa hasta dos decimales.'],
   ]
-  for (const [price, percent, message] of cases) {
-    await purchase.fill(price)
-    for (const tier of ['Emprendedor', 'VIP', 'Premium'])
-      await markup(tier).fill('')
-    if (percent) await markup(percent[0]).fill(percent[1])
+  for (const [tier, value, message] of cases) {
+    for (const each of ['Emprendedor', 'VIP', 'Premium'])
+      await markup(each).fill('')
+    await markup(tier).fill(value)
     await save.click()
-    const target = percent ? markup(percent[0]) : purchase
-    const shown = await fieldError(target)
+    const shown = await fieldError(markup(tier))
     check(
       shown === message &&
-        (await target.getAttribute('aria-invalid')) === 'true',
-      `ficha rápida: ${percent ? `% ${percent[0]} ${percent[1]}` : `compra ${price}`} → «${shown}»`,
+        (await markup(tier).getAttribute('aria-invalid')) === 'true',
+      `ficha rápida: % ${tier} ${value} → «${shown}»`,
     )
   }
   check((await pricing(oud)) === null, 'ningún valor inválido llegó a la base')
-
-  // El ejemplo del dueño: C$ 500 con 20 %, 15 % y 10 %.
-  await purchase.fill('500')
-  await dialog.getByLabel('Moneda de compra').selectOption('NIO')
-  await markup('Emprendedor').fill('20')
-  await markup('VIP').fill('15')
-  await markup('Premium').fill('10')
+  await markup('Emprendedor').fill('25')
+  await markup('VIP').fill('20')
+  await markup('Premium').fill('')
   const emprendedor = dialog.getByRole('group', { name: 'Emprendedor' })
-  await emprendedor.getByText('NIO 600.00').waitFor()
-  // Corregido el dato, el aviso se va sin tener que volver a guardar.
+  await emprendedor.getByText('NIO 19.59').waitFor()
   check(
     (await dialog.locator('[aria-invalid="true"]').count()) === 0 &&
       (await dialog.getByRole('alert').count()) === 0,
     'al corregir los datos los avisos se quitan sin volver a pulsar Guardar',
   )
-  const breakdown = (await emprendedor.textContent()).replace(/\s+/g, ' ')
-  const expected = [
-    'NIO 500.00',
-    'NIO 100.00',
-    '20 % de la compra',
-    'NIO 600.00',
-    'USD 16.39',
-  ]
   check(
-    expected.every((text) => breakdown.includes(text)),
-    `desglose: compra C$ 500, 20 %, ganancia C$ 100, venta C$ 600 (US$ 16.39)${expected.every((text) => breakdown.includes(text)) ? '' : ` — se leyó «${breakdown}»`}`,
+    (
+      await dialog.getByRole('group', { name: 'Premium' }).textContent()
+    ).includes('A mano'),
+    'Premium sin porcentaje queda «A mano»',
   )
-  await shot(page, '02-ficha-rapida')
+  await shot(page, '03-ficha-rapida')
   await save.click()
   await page.getByText('Precios de «Oud Nocturno» guardados.').waitFor()
   check(
     same(await prices(oud), {
-      emprendedor: { NIO: 600, USD: 16.39 },
-      vip: { NIO: 575, USD: 15.71 },
-      premium: { NIO: 550, USD: 15.03 },
+      emprendedor: { NIO: 19.59, USD: 0.54 },
+      vip: { NIO: 18.81, USD: 0.51 },
+      premium: { USD: 33, NIO: 1207.8 },
     }),
-    'la base guardó 600 / 575 / 550 córdobas y su equivalente en dólares',
+    'la base guardó 19.59 / 18.81 desde el costo y Premium a mano',
   )
+
+  // 4. Compra del Excel: 20 unidades a C$ 16.675. Promedio 16.281060… y
+  // Emprendedor 25 % → C$ 20.35, calculados en la misma operación.
+  await sections.getByRole('button', { name: 'Costo de inventario' }).click()
+  await page
+    .getByRole('button', { name: 'Registrar compra de Oud Nocturno' })
+    .click()
+  const buy = page.getByRole('dialog', { name: 'Registrar compra' })
+  await buy.getByLabel('Factura o referencia').fill('FAC-778')
+  await buy.getByLabel('Unidades').fill('20')
+  await buy.getByLabel('Costo por unidad (C$)').fill('16.675')
+  await buy.getByText('costo promedio C$ 16.281061').waitFor()
+  const outcome = (await buy.locator('.pricing-outcome').textContent()).replace(
+    /\s+/g,
+    ' ',
+  )
+  check(
+    outcome.includes('13 u. × C$ 15.675 + 20 u. × C$ 16.675') &&
+      outcome.includes('Emprendedor 25 %: NIO 19.59 → NIO 20.35') &&
+      outcome.includes('VIP 20 %: NIO 18.81 → NIO 19.54'),
+    `vista previa de la compra: 13 × 15.675 + 20 × 16.675 → 16.281061; Emprendedor 19.59 → 20.35${outcome.includes('NIO 20.35') ? '' : ` — se leyó «${outcome}»`}`,
+  )
+  await shot(page, '04-registrar-compra')
+  await buy.getByRole('button', { name: 'Registrar compra' }).click()
+  await page.getByText(/Compra registrada: 20 unidades/).waitFor()
+  check(
+    (await averageOf(oud)) === 16.281061 &&
+      same(await prices(oud), {
+        emprendedor: { NIO: 20.35, USD: 0.56 },
+        vip: { NIO: 19.54, USD: 0.53 },
+        premium: { USD: 33, NIO: 1207.8 },
+      }),
+    'la base: promedio 16.281061, Emprendedor C$ 20.35 y VIP C$ 19.54; Premium a mano sin cambios',
+  )
+  await sections.getByRole('button', { name: 'Porcentajes y precios' }).click()
   const oudRow = page
     .getByRole('button', { name: 'Oud Nocturno', exact: true })
     .locator('xpath=ancestor::tr')
-  await oudRow.getByText('20 % · gana NIO 100.00').waitFor()
-  const rowText = (await oudRow.textContent()).replace(/\s+/g, ' ')
+  await oudRow.getByText('25 % · gana NIO 4.07').waitFor()
   check(
-    rowText.includes('NIO 600.00'),
-    `la lista vuelve a leer la base: Emprendedor NIO 600.00, «20 % · gana NIO 100.00»${rowText.includes('NIO 600.00') ? '' : ` — se leyó «${rowText}»`}`,
+    (await oudRow.textContent()).replace(/\s+/g, ' ').includes('NIO 20.35'),
+    'la lista vuelve a leer la base: Emprendedor NIO 20.35, «25 % · gana NIO 4.07»',
   )
 
-  // 3. Ficha completa del perfume: compra en dólares, VIP a mano. Se llega
-  // desde la ficha rápida, con «Editar perfume».
+  // 5. Porcentajes sin costo: quedan pendientes y no inventan precio.
+  await page
+    .getByRole('button', { name: 'Editar precios de Cedro Azul' })
+    .click()
+  const cedroDialog = page.getByRole('dialog', { name: 'Cedro Azul' })
+  await cedroDialog.getByText('Sin costo todavía').waitFor()
+  await cedroDialog
+    .getByLabel('% de ganancia sobre el costo · Emprendedor')
+    .fill('30')
+  await cedroDialog
+    .getByRole('group', { name: 'Emprendedor' })
+    .getByText('Pendiente de costo')
+    .waitFor()
+  const cedroBefore = await prices(cedro)
+  await cedroDialog.getByRole('button', { name: 'Guardar precios' }).click()
+  await page.getByText('Precios de «Cedro Azul» guardados.').waitFor()
+  check(
+    same(await prices(cedro), cedroBefore) &&
+      Number((await pricing(cedro))?.markup_emprendedor) === 30,
+    'Cedro sin costo: el 30 % se guarda y el precio publicado no cambia',
+  )
+  const cedroRow = page
+    .getByRole('button', { name: 'Cedro Azul', exact: true })
+    .locator('xpath=ancestor::tr')
+  await cedroRow.getByText('30 % · pendiente de costo').waitFor()
+  check(true, 'la lista marca «30 % · pendiente de costo»')
+  await sections.getByRole('button', { name: 'Costo de inventario' }).click()
+  await page
+    .getByRole('button', { name: 'Cargar costo inicial de Cedro Azul' })
+    .click()
+  const cedroOpening = page.getByRole('dialog', {
+    name: 'Costo inicial · Cedro Azul',
+  })
+  await cedroOpening.getByLabel('Costo por unidad (C$)').fill('100')
+  await cedroOpening
+    .getByLabel('Origen del costo / comprobante')
+    .fill('Lista del proveedor')
+  await cedroOpening.getByText('Emprendedor 30 %').waitFor()
+  await cedroOpening
+    .getByRole('button', { name: 'Guardar costo inicial' })
+    .click()
+  await page.getByText('Costo inicial de «Cedro Azul» registrado').waitFor()
+  check(
+    (await prices(cedro)).emprendedor.NIO === 130 &&
+      (await prices(cedro)).vip.USD === cedroBefore.vip.USD,
+    'al cargar su costo, Cedro Emprendedor pasa solo a C$ 130; VIP sigue a mano',
+  )
+
+  // 6. Ficha completa del perfume: Jazmín, sin existencias ni costo.
+  await sections.getByRole('button', { name: 'Porcentajes y precios' }).click()
   await page
     .getByRole('button', { name: 'Editar precios de Jazmín Blanco' })
     .click()
@@ -669,62 +819,66 @@ try {
   await page.waitForURL(
     `${BASE}/products/${jazmin}/edit?volver=precios#precios`,
   )
-  // La ficha rápida también tiene «Precio de compra»: se espera a la ficha del
-  // perfume y se trabaja dentro de su tarjeta de precios.
   await page.getByRole('heading', { name: 'Editar perfume' }).waitFor()
   const card = page.locator('#precios')
-  const editorPurchase = card.getByLabel('Precio de compra', { exact: true })
-  await editorPurchase.waitFor()
-  await editorPurchase.fill('-1')
-  await page.getByRole('button', { name: 'Guardar perfume' }).click()
-
+  await card.getByText('Sin costo todavía').waitFor()
   check(
-    (await fieldError(editorPurchase)) ===
-      'El precio de compra debe ser mayor que cero.',
-    'ficha del perfume: una compra negativa se marca en su campo',
+    (await card.getByRole('link', { name: /Costo de inventario/ }).count()) ===
+      1,
+    'ficha del perfume: sin costo enseña el camino para registrarlo',
   )
-  await editorPurchase.fill('20')
-  await card.getByLabel('Moneda de compra').selectOption('USD')
-  await card.getByLabel('% de ganancia Emprendedor').fill('25')
-  await card.getByLabel('% de ganancia Premium').fill('10')
+  await card.getByLabel('% de ganancia sobre el costo · Emprendedor').fill('25')
   const vipUsd = card.getByLabel('VIP USD', { exact: true })
   await vipUsd.fill('')
   await page.getByRole('button', { name: 'Guardar perfume' }).click()
   check(
-    (await fieldError(vipUsd)) === 'Escribe el precio.' ||
-      (await vipUsd.getAttribute('aria-invalid')) === 'true',
+    (await vipUsd.getAttribute('aria-invalid')) === 'true',
     'ficha del perfume: la lista a mano sin precio no se deja guardar',
   )
   await vipUsd.fill('31.5')
-  await shot(page, '03-ficha-perfume')
+  await shot(page, '05-ficha-perfume')
   await page.getByRole('button', { name: 'Guardar perfume' }).click()
   await page.waitForURL(`${BASE}/prices`)
   check(
     same(await prices(jazmin), {
-      emprendedor: { USD: 25, NIO: 915 },
+      emprendedor: { USD: 30, NIO: 1098 },
       vip: { USD: 31.5, NIO: 1152.9 },
-      premium: { USD: 22, NIO: 805.2 },
-    }),
-    'la base guardó Emprendedor y Premium calculados en dólares y VIP a mano',
-  )
-  const saved = await pricing(jazmin)
-  check(
-    Number(saved?.purchase_price) === 20 &&
-      saved?.purchase_currency === 'USD' &&
-      saved?.markup_vip === null,
-    'el precio de compra y los porcentajes quedaron en product_pricing',
+      premium: { USD: 28, NIO: 1024.8 },
+    }) && Number((await pricing(jazmin))?.markup_emprendedor) === 25,
+    'Jazmín: 25 % guardado y pendiente; su precio publicado se conserva',
   )
 
-  // 4. Carga desde CSV: vista previa, errores y guardado todo junto.
-  const csv = join(tmpdir(), `precios-${Date.now()}.csv`)
+  // 7. Compra en dólares con envío: el primer costo de Jazmín y su precio.
+  await sections.getByRole('button', { name: 'Costo de inventario' }).click()
+  await page
+    .getByRole('button', { name: 'Registrar compra de Jazmín Blanco' })
+    .click()
+  await buy.getByLabel('Moneda de la compra').selectOption('USD')
+  await buy.getByLabel('Tasa del pedido (C$ por dólar)').fill('36.5')
+  await buy.getByLabel('Envío de todo el pedido (US$)').fill('3')
+  await buy.getByLabel('Unidades').fill('3')
+  await buy.getByLabel('Costo por unidad (US$)').fill('2')
+  await buy.getByText('costo promedio C$ 109.5').waitFor()
+  await buy.getByRole('button', { name: 'Registrar compra' }).click()
+  await page.getByText(/Compra registrada: 3 unidades/).waitFor()
+  check(
+    (await averageOf(jazmin)) === 109.5 &&
+      (await prices(jazmin)).emprendedor.NIO === 136.88 &&
+      (await prices(jazmin)).emprendedor.USD === 3.74,
+    'compra en US$: (2 + 1 de envío) × 36.5 = C$ 109.5; Emprendedor 25 % → C$ 136.88 (US$ 3.74)',
+  )
+
+  // 8. Carga desde CSV: sólo porcentajes; el costo del archivo se ignora.
+  await sections.getByRole('button', { name: 'Porcentajes y precios' }).click()
+  const csv = join(tmpdir(), `porcentajes-${Date.now()}.csv`)
   writeFileSync(
     csv,
     [
-      'Código;Marca;Perfume;Precio de compra;Moneda;% Emprendedor;% VIP;% Premium',
-      'LCP-0003;Estudio Nácar;Cedro Azul;700;C$;30;25;20',
-      ';Estudio Nácar;Vainilla Suave;"1.250,50";córdobas;10%;10%;10%',
-      'LCP-9999;;;10;C$;1;1;1',
-      'LCP-0005;;;diez;C$;;;',
+      'Código;Marca;Perfume;Costo promedio C$ (informativo, no se importa);Precio de compra;% Emprendedor;% VIP;% Premium',
+      'LCP-0003;Estudio Nácar;Cedro Azul;100;999;40;35;',
+      ';Estudio Nácar;Vainilla Suave;;;"10,5%";10%;10%',
+      'LCP-9999;;;;;1;1;1',
+      'LCP-0005;;;;;diez;;',
     ].join('\r\n'),
     'latin1',
   )
@@ -735,27 +889,31 @@ try {
   await upload.getByLabel('Archivo con los precios').setInputFiles(csv)
   const summary = upload.locator('.pricing-import-summary')
   await summary.filter({ hasText: '2 perfumes cambian' }).waitFor()
-  const preview = await upload.textContent()
+  const preview = (await upload.textContent()).replace(/\s+/g, ' ')
   check(
     preview.includes('2 filas no se pueden usar') &&
       preview.includes('No hay ningún perfume con el código «LCP-9999»') &&
-      preview.includes('El precio de compra «diez» no es un número'),
+      preview.includes('El porcentaje de Emprendedor «diez» no es un número'),
     'CSV en Windows-1252 con ; y coma decimal: 2 cambios y 2 filas explicadas',
   )
-  await shot(page, '04-carga-vista-previa')
-
+  check(
+    preview.includes(
+      '«Costo promedio C$ (informativo, no se importa)», «Precio de compra» no se importan',
+    ) && preview.includes('Un perfume todavía no tiene costo promedio'),
+    'la vista previa dice que las columnas de costo no se importan y que Vainilla queda pendiente',
+  )
+  await shot(page, '06-carga-vista-previa')
   // Otra persona cambia Cedro Azul mientras se revisa el archivo.
+  const cedroRevision = (
+    await asOwner('select revision from public.products where id=$1', [cedro])
+  )[0].revision
   await asUser(owner.id, () =>
     db.query('select public.save_product_pricing($1::jsonb)', [
       JSON.stringify([
         {
           productId: cedro,
-          revision: 1,
-          pricing: {
-            purchasePrice: 1,
-            purchaseCurrency: 'USD',
-            markups: { emprendedor: 1, vip: 1, premium: 1 },
-          },
+          revision: cedroRevision,
+          pricing: { markups: { emprendedor: 31, vip: null, premium: null } },
         },
       ]),
     ]),
@@ -766,11 +924,10 @@ try {
     .filter({ hasText: 'Otro usuario cambió' })
     .waitFor()
   check(
-    Number((await pricing(vainilla))?.purchase_price ?? 0) === 0,
+    (await pricing(vainilla)) === null,
     'un cambio simultáneo detiene la carga completa: nada a medias',
   )
   await upload.getByRole('button', { name: 'Cancelar' }).click()
-  // Volver a abrir la pantalla lee otra vez los perfumes con su revisión.
   await page.getByRole('link', { name: 'Inventario' }).first().click()
   await page.getByRole('link', { name: 'Precios' }).first().click()
   await page.getByRole('button', { name: 'Cargar archivo' }).click()
@@ -778,59 +935,119 @@ try {
   await summary.filter({ hasText: '2 perfumes cambian' }).waitFor()
   await upload.getByRole('button', { name: 'Guardar 2 perfumes' }).click()
   await page.getByText('Precios cargados: 2 perfumes actualizados.').waitFor()
+  const cedroSaved = await pricing(cedro)
   check(
-    (await prices(cedro)).emprendedor.NIO === 910 &&
-      (await prices(vainilla)).premium.NIO === 1375.55,
-    'al volver a cargarlo: Cedro Azul C$ 700 + 30 % = C$ 910; Vainilla C$ 1,250.50 + 10 % = C$ 1,375.55',
+    (await prices(cedro)).emprendedor.NIO === 140 &&
+      (await prices(cedro)).vip.NIO === 135 &&
+      Number(cedroSaved?.markup_premium ?? -1) === -1 &&
+      (await averageOf(cedro)) === 100,
+    'Cedro: 40 % y 35 % sobre C$ 100 → C$ 140 y C$ 135; el «999» del archivo no tocó el costo',
   )
   check(
-    (await pricing(citrico)) === null &&
-      same(await prices(citrico), {
-        emprendedor: { USD: 28, NIO: 1024.8 },
-        vip: { USD: 27, NIO: 988.2 },
-        premium: { USD: 26, NIO: 951.6 },
+    Number((await pricing(vainilla))?.markup_emprendedor) === 10.5 &&
+      same(await prices(vainilla), {
+        emprendedor: { USD: 25, NIO: 915 },
+        vip: { USD: 24, NIO: 878.4 },
+        premium: { USD: 23, NIO: 841.8 },
       }),
-    'la fila con «diez» no tocó Cítrico Vivo: sin precio de compra y con sus precios a mano',
+    'Vainilla sin costo: 10.5 % guardado y sus precios a mano sin cambios',
+  )
+  check(
+    (await pricing(citrico)) === null,
+    'la fila con «diez» no tocó Cítrico Vivo',
   )
 
-  // 5. La plantilla trae lo guardado.
+  // 9. La plantilla trae lo guardado, con el costo como dato informativo.
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.getByRole('button', { name: 'Descargar plantilla' }).click(),
   ])
   check(
-    /^precios-de-compra-\d{4}-\d{2}-\d{2}\.xlsx$/.test(
+    /^porcentajes-de-ganancia-\d{4}-\d{2}-\d{2}\.xlsx$/.test(
       download.suggestedFilename(),
     ),
     `la plantilla se descarga como ${download.suggestedFilename()}`,
   )
 
-  // 6. Cambio de tasa: la compra en córdobas conserva el córdoba.
+  // 10. Cambio de tasa: el costo y el córdoba quedan; se mueve el dólar.
   await asUser(owner.id, () => db.query('select public.set_exchange_rate(37)'))
   check(
-    (await prices(oud)).emprendedor.NIO === 600 &&
-      (await prices(oud)).emprendedor.USD === 16.22 &&
-      (await prices(jazmin)).emprendedor.NIO === 925,
-    'con la tasa en 37: Oud sigue en C$ 600 (US$ 16.22) y Jazmín pasa a C$ 925',
+    (await prices(oud)).emprendedor.NIO === 20.35 &&
+      (await prices(oud)).emprendedor.USD === 0.55 &&
+      (await averageOf(oud)) === 16.281061 &&
+      Number((await pricing(oud)).markup_emprendedor) === 25,
+    'con la tasa en 37: Oud sigue en C$ 20.35 (US$ 0.55), con el mismo costo y porcentaje',
   )
 
-  // 7. Sólo con teclado. El foco vuelve al botón que abrió la ficha: si se
-  // quedara en <body>, habría que recorrer otra vez la pantalla desde arriba.
+  // 11. Una entrada manual de un perfume con costo se rechaza y lo explica.
+  await go(page, `/products/${oud}/edit`)
+  await page.getByRole('heading', { name: 'Cantidades del perfume' }).waitFor()
+  const stock = page.locator('.product-stock-editor')
+  await stock.getByLabel('Cómo cambiar las cantidades').selectOption('ENTRY')
+  await stock.getByText('se registra como compra').waitFor()
+  await stock.getByLabel('Unidades a mover').fill('2')
+  await stock.getByLabel(/Motivo/).fill('Llegó mercadería')
+  await stock
+    .getByRole('button', { name: /Guardar|Registrar/ })
+    .last()
+    .click()
+  await stock
+    .getByRole('alert')
+    .filter({ hasText: 'ya tiene costo promedio' })
+    .waitFor()
+  check(
+    (await averageOf(oud)) === 16.281061 &&
+      Number(
+        (
+          await asOwner(
+            'select sum(quantity)::int as n from public.inventory_balances where product_id=$1',
+            [oud],
+          )
+        )[0].n,
+      ) === 33,
+    'una entrada sin costo de Oud se rechaza: ni existencias ni costo cambian',
+  )
+
+  // 12. Historial: cambios automáticos distinguidos de los manuales.
+  await page.getByRole('heading', { name: 'Historial de precios' }).waitFor()
+  await page.locator('.price-history-record').first().waitFor()
+  const history = (await page.locator('.price-history').textContent()).replace(
+    /\s+/g,
+    ' ',
+  )
+  check(
+    history.includes('Automático') &&
+      history.includes('Compra FAC-778 · registrada por Dueña') &&
+      history.includes('25 % sobre el costo promedio de NIO 16.28') &&
+      history.includes('Dueña'),
+    `el historial marca la compra FAC-778 como automática y el 25 % sobre el costo${history.includes('Compra FAC-778') ? '' : ` — se leyó «${history.slice(0, 700)}»`}`,
+  )
+  await shot(page, '07-historial')
+
+  // 13. Sólo con teclado en la ficha rápida.
+  await page.getByRole('link', { name: 'Precios' }).first().click()
+  const focusedName = () =>
+    page.evaluate(() => {
+      const element = document.activeElement
+      const labelled = element?.getAttribute('aria-labelledby')
+      return (
+        element?.getAttribute('aria-label') ||
+        (labelled ? document.getElementById(labelled)?.textContent : '') ||
+        element?.textContent ||
+        ''
+      ).trim()
+    })
   const focused = async (name) => {
     for (let waited = 0; waited < 3000; waited += 100) {
-      const label = await page.evaluate(
-        () => document.activeElement?.getAttribute('aria-label') ?? '',
-      )
-      if (label === name) return true
+      if ((await focusedName()) === name) return true
       await page.waitForTimeout(100)
     }
     return false
   }
-  const citricoButton = page.getByRole('button', {
-    name: 'Editar precios de Cítrico Vivo',
-  })
   const keyboardDialog = page.getByRole('dialog', { name: 'Cítrico Vivo' })
-  await citricoButton.focus()
+  await page
+    .getByRole('button', { name: 'Editar precios de Cítrico Vivo' })
+    .focus()
   await page.keyboard.press('Enter')
   await keyboardDialog.waitFor()
   await page.keyboard.press('Escape')
@@ -841,42 +1058,24 @@ try {
   )
   await page.keyboard.press('Enter')
   await keyboardDialog.waitFor()
-  await page.keyboard.press('Tab') // Precio de compra
-  await page.keyboard.type('100')
-  await page.keyboard.press('Tab') // Moneda de compra
-  await page.keyboard.press('Tab') // % de ganancia Emprendedor
+  let reached = false
+  for (let presses = 0; presses < 6 && !reached; presses++) {
+    await page.keyboard.press('Tab')
+    reached =
+      (await focusedName()) === '% de ganancia sobre el costo · Emprendedor'
+  }
   await page.keyboard.type('10')
   await page.keyboard.press('Enter')
   await keyboardDialog.waitFor({ state: 'detached' })
-  const typed = await pricing(citrico)
   check(
-    Number(typed?.purchase_price) === 100 &&
-      Number(typed?.markup_emprendedor) === 10 &&
+    reached &&
+      Number((await pricing(citrico))?.markup_emprendedor) === 10 &&
       (await focused('Editar precios de Cítrico Vivo')),
-    'con el teclado: Tab recorre la ficha, Enter guarda y el foco vuelve a la fila',
-  )
-
-  // 8. Historial con porcentaje y precio de compra.
-  await page
-    .getByRole('button', { name: 'Editar precios de Oud Nocturno' })
-    .click()
-  await page
-    .getByRole('dialog', { name: 'Oud Nocturno' })
-    .getByRole('link', { name: 'Editar perfume' })
-    .click()
-  await page.getByRole('heading', { name: 'Historial de precios' }).waitFor()
-  await page.locator('.price-history-record').first().waitFor()
-  const history = (await page.locator('.price-history').textContent()).replace(
-    /\s+/g,
-    ' ',
-  )
-  check(
-    history.includes('20 % sobre la compra de NIO 500.00'),
-    `el historial dice «20 % sobre la compra de NIO 500.00»${history.includes('20 % sobre la compra de NIO 500.00') ? '' : ` — se leyó «${history.slice(0, 600)}»`}`,
+    'con el teclado: Tab llega al porcentaje, Enter guarda y el foco vuelve a la fila',
   )
   await context.close()
 
-  // 9. Teléfono.
+  // 14. Teléfono.
   const phone = await open({ width: 390, height: 844 })
   await login(phone.page, owner)
   await go(phone.page, '/prices')
@@ -884,72 +1083,114 @@ try {
     .getByRole('button', { name: 'Editar precios de Oud Nocturno' })
     .waitFor()
   await noOverflow(phone.page, 'Precios en el teléfono')
-  await shot(phone.page, '05-precios-telefono')
+  await shot(phone.page, '08-precios-telefono')
   await phone.page
     .getByRole('button', { name: 'Editar precios de Oud Nocturno' })
     .click()
   await noOverflow(phone.page, 'ficha rápida en el teléfono')
-  await shot(phone.page, '06-ficha-telefono')
+  await shot(phone.page, '09-ficha-telefono')
+  await phone.page.keyboard.press('Escape')
+  await go(phone.page, '/prices?apartado=costo')
+  await phone.page
+    .getByRole('region', { name: 'Costo promedio por perfume' })
+    .waitFor()
+  await noOverflow(phone.page, 'Costo de inventario en el teléfono')
+  await shot(phone.page, '10-costos-telefono')
+  await phone.page
+    .getByRole('button', { name: 'Registrar compra', exact: true })
+    .click()
+  await phone.page.getByRole('dialog', { name: 'Registrar compra' }).waitFor()
+  await noOverflow(phone.page, 'registrar compra en el teléfono')
+  await shot(phone.page, '11-compra-telefono')
   await phone.context.close()
 
-  // 10. Ventas no ve precios de compra, ni por la pantalla ni por la API.
+  // 15. Ventas no ve costos ni porcentajes, ni por la pantalla ni por la API.
   const seller = await open()
   await login(seller.page, sales)
   check(
     (await seller.page.getByRole('link', { name: 'Precios' }).count()) === 0,
     'Ventas no tiene «Precios» en el menú',
   )
-  await go(seller.page, '/prices')
+  await go(seller.page, '/prices?apartado=costo')
   await seller.page.getByText('No tienes permiso para esta pantalla.').waitFor()
   check(true, 'Ventas que abre /prices lee «No tienes permiso»')
-  const direct = await seller.page.evaluate(
-    async ([url, key, token]) => {
-      const response = await fetch(`${url}/rest/v1/product_pricing?select=*`, {
-        headers: { apikey: key, authorization: `Bearer ${token}` },
-      })
-      return response.json()
-    },
-    [SUPABASE, process.env.VITE_SUPABASE_PUBLISHABLE_KEY, tokenFor(sales)],
-  )
+  const read = (table) =>
+    seller.page.evaluate(
+      async ([url, key, token, name]) => {
+        const response = await fetch(`${url}/rest/v1/${name}?select=*`, {
+          headers: { apikey: key, authorization: `Bearer ${token}` },
+        })
+        return response.json()
+      },
+      [
+        SUPABASE,
+        process.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        tokenFor(sales),
+        table,
+      ],
+    )
+  const [pricingRows, costRows] = [
+    await read('product_pricing'),
+    await read('product_costs'),
+  ]
   check(
-    Array.isArray(direct) && direct.length === 0,
-    'la tabla de precios de compra responde vacía a Ventas (RLS)',
+    Array.isArray(pricingRows) &&
+      pricingRows.length === 0 &&
+      Array.isArray(costRows) &&
+      costRows.length === 0,
+    'porcentajes y costos responden vacíos a Ventas (RLS)',
   )
-  const denied = await seller.page.evaluate(
-    async ([url, key, token, id]) => {
-      const response = await fetch(`${url}/rest/v1/rpc/save_product_pricing`, {
-        method: 'POST',
-        headers: {
-          apikey: key,
-          authorization: `Bearer ${token}`,
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({
-          p_rows: [
-            {
-              productId: id,
-              revision: 99,
-              pricing: {
-                purchasePrice: 1,
-                purchaseCurrency: 'NIO',
-                markups: { emprendedor: 1, vip: 1, premium: 1 },
-              },
-            },
-          ],
-        }),
-      })
-      return response.status
+  const call = (name, body) =>
+    seller.page.evaluate(
+      async ([url, key, token, fn, payload]) => {
+        const response = await fetch(`${url}/rest/v1/rpc/${fn}`, {
+          method: 'POST',
+          headers: {
+            apikey: key,
+            authorization: `Bearer ${token}`,
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        })
+        return response.status
+      },
+      [
+        SUPABASE,
+        process.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        tokenFor(sales),
+        name,
+        body,
+      ],
+    )
+  const denied = await call('save_product_pricing', {
+    p_rows: [
+      {
+        productId: oud,
+        revision: 99,
+        pricing: { markups: { emprendedor: 1, vip: 1, premium: 1 } },
+      },
+    ],
+  })
+  const shipment = await call('record_shipment', {
+    p_input: {
+      requestId: crypto.randomUUID(),
+      incurredOn: '2026-09-26',
+      supplier: '',
+      agency: '',
+      reference: '',
+      note: '',
+      currency: 'NIO',
+      exchangeRate: 1,
+      shippingAmount: 0,
+      lines: [{ productId: oud, location: 'store', quantity: 1, unitPrice: 1 }],
     },
-    [SUPABASE, process.env.VITE_SUPABASE_PUBLISHABLE_KEY, tokenFor(sales), oud],
-  )
+  })
   check(
-    denied === 403,
-    `Ventas no puede guardar precios de compra (HTTP ${denied})`,
+    denied === 403 && shipment === 403,
+    `Ventas no puede guardar porcentajes ni registrar compras (HTTP ${denied} y ${shipment})`,
   )
   await seller.context.close()
 
-  // Las respuestas 4xx buscadas (conflicto, Ventas sin permiso) las anota el
-  // navegador como «Failed to load resource»; no son errores del programa.
   const appErrors = consoleErrors.filter(
     (text) => !text.startsWith('Failed to load resource'),
   )

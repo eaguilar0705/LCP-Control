@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
   ArrowRight,
@@ -25,39 +25,47 @@ import { matchesSearch } from '../../lib/search'
 import { formatCurrency } from '../../lib/format'
 import {
   computedTiers,
+  exactCost,
   priceTierLabels,
   priceTiers,
   tierQuote,
+  tierStatus,
 } from '../../lib/pricing'
-import type {
-  Currency,
-  PricingInput,
-  Product,
-  ProductPricing,
-} from '../../lib/domain'
+import type { Currency, Product, ProductPricing } from '../../lib/domain'
 import { PricingDialog } from './PricingDialog'
+import { CostPanel } from './CostPanel'
 import { PricingImportDialog } from './PricingImportDialog'
 import { downloadPricingTemplate } from './template'
 
-type Status = 'computed' | 'partial' | 'manual'
+type Status = 'computed' | 'partial' | 'pending' | 'manual'
 const statusLabels: Record<Status, string> = {
   computed: 'Calculados',
   partial: 'Incompletos',
-  manual: 'Sin precio de compra',
+  pending: 'Pendientes de costo',
+  manual: 'Sin porcentajes',
+}
+const statusNotes: Record<Status, string> = {
+  computed: 'Las tres listas salen del costo promedio',
+  partial: 'Con costo, pero alguna lista sin porcentaje',
+  pending: 'Tienen porcentajes y todavía no tienen costo',
+  manual: 'Conservan el precio de las listas',
 }
 /**
- * Calculado: las tres listas salen del precio de compra. Incompleto: hay algo
- * cargado pero alguna lista sigue a mano (falta el precio de compra o un
- * porcentaje). Sin precio de compra: nada cargado todavía.
+ * Calculado: las tres listas salen del costo promedio. Incompleto: hay costo y
+ * algún porcentaje, pero alguna lista sigue a mano. Pendiente de costo: hay
+ * porcentajes y el perfume todavía no tiene costo promedio. Sin porcentajes:
+ * nada cargado todavía.
  */
-function statusOf(pricing: PricingInput | undefined): Status {
+function statusOf(pricing: ProductPricing | undefined): Status {
   if (!pricing) return 'manual'
-  if (computedTiers(pricing) === priceTiers.length) return 'computed'
-  const loaded =
-    pricing.purchasePrice !== null ||
-    priceTiers.some((tier) => pricing.markups[tier] !== null)
-  return loaded ? 'partial' : 'manual'
+  const withMarkup = priceTiers.filter((tier) => pricing.markups[tier] !== null)
+  if (!withMarkup.length) return 'manual'
+  if (pricing.averageCost === null) return 'pending'
+  return computedTiers(pricing, pricing.averageCost) === priceTiers.length
+    ? 'computed'
+    : 'partial'
 }
+type Section = 'prices' | 'costs'
 const PAGE_SIZE = 25
 const counts = new Intl.NumberFormat('es-NI')
 
@@ -67,7 +75,7 @@ export function PricingPage() {
     return (
       <EmptyState
         title="No tienes permiso para esta pantalla."
-        description="El precio de compra y los porcentajes de ganancia sólo los ven Administración y SuperAdmin."
+        description="El costo promedio y los porcentajes de ganancia sólo los ven Administración y SuperAdmin."
       />
     )
   return <PricingWorkspace />
@@ -76,15 +84,16 @@ export function PricingPage() {
 function PricingWorkspace() {
   const { base, demo } = useAccess()
   const { state } = useLocation()
-  const { productService, settingsService } = useServices()
+  const { productService, settingsService, inventoryService } = useServices()
   const load = useCallback(async () => {
-    const [products, pricing, rate] = await Promise.all([
+    const [products, pricing, rate, inventory] = await Promise.all([
       productService.listProducts(),
       productService.listPricing(),
       settingsService.getExchangeRate(),
+      inventoryService.getInventory(true),
     ])
-    return { products, pricing, rate: rate?.usdToNio ?? null }
-  }, [productService, settingsService])
+    return { products, pricing, rate: rate?.usdToNio ?? null, inventory }
+  }, [productService, settingsService, inventoryService])
   const { data, loading, error, retry, refresh } = useQuery(load)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<Status | ''>('')
@@ -96,6 +105,15 @@ function PricingWorkspace() {
   const [message, setMessage] = useState<string>(
     (state as { message?: string } | null)?.message ?? '',
   )
+  // El apartado vive en la dirección para que «Costo de inventario» se pueda
+  // enlazar desde otras pantallas (una entrada rechazada, un costo pendiente).
+  const [params, setParams] = useSearchParams()
+  const section: Section =
+    params.get('apartado') === 'costo' ? 'costs' : 'prices'
+  function openSection(next: Section) {
+    if (next !== section) setMessage('')
+    setParams(next === 'costs' ? { apartado: 'costo' } : {}, { replace: true })
+  }
   const byProduct = useMemo(
     () =>
       new Map<string, ProductPricing>(
@@ -118,6 +136,7 @@ function PricingWorkspace() {
     const result: Record<Status, number> = {
       computed: 0,
       partial: 0,
+      pending: 0,
       manual: 0,
     }
     for (const product of products)
@@ -146,11 +165,14 @@ function PricingWorkspace() {
     <>
       <WorkspaceHeading
         title="Precios"
-        eyebrow="COMPRA Y GANANCIA"
+        eyebrow="COSTO Y GANANCIA"
         icon={BadgePercent}
-        description="Precio de compra y porcentaje de ganancia de cada lista. El precio de venta se calcula solo. Sólo lo ven Administración y SuperAdmin."
+        description="El precio de venta de cada lista sale del costo promedio del inventario más su porcentaje de ganancia sobre el costo. Sólo lo ven Administración y SuperAdmin."
       >
-        <div className="inventory-actions pricing-actions">
+        <div
+          className="inventory-actions pricing-actions"
+          hidden={section !== 'prices'}
+        >
           <Button
             variant="secondary"
             disabled={!data || !available}
@@ -171,6 +193,22 @@ function PricingWorkspace() {
           </Button>
         </div>
       </WorkspaceHeading>
+      <nav className="pricing-sections" aria-label="Apartados de precios">
+        <button
+          type="button"
+          aria-pressed={section === 'prices'}
+          onClick={() => openSection('prices')}
+        >
+          Porcentajes y precios
+        </button>
+        <button
+          type="button"
+          aria-pressed={section === 'costs'}
+          onClick={() => openSection('costs')}
+        >
+          Costo de inventario
+        </button>
+      </nav>
       {message && (
         <p role="status" className="page-feedback">
           {message}
@@ -184,9 +222,20 @@ function PricingWorkspace() {
         <Card>
           <EmptyState
             title="Falta la actualización de precios en la base de datos."
-            description="El precio de compra y los porcentajes se guardan en Supabase. Aplica la migración 20260926180000_markup_pricing.sql (instrucciones en docs/guides/database.md) y vuelve a abrir esta pantalla."
+            description="Los porcentajes de ganancia se guardan en Supabase. Aplica las migraciones de precios (instrucciones en docs/guides/database.md) y vuelve a abrir esta pantalla."
           />
         </Card>
+      ) : section === 'costs' && data ? (
+        <CostPanel
+          inventory={data.inventory}
+          pricing={data.pricing.rows}
+          rate={data.rate}
+          readOnly={demo}
+          onRecorded={(text) => {
+            setMessage(text)
+            refresh()
+          }}
+        />
       ) : (
         <Card>
           {data?.rate === null && (
@@ -209,13 +258,7 @@ function PricingWorkspace() {
               >
                 <span>{statusLabels[key]}</span>
                 <strong>{counts.format(totals[key])}</strong>
-                <small>
-                  {key === 'computed'
-                    ? 'Las tres listas salen del precio de compra'
-                    : key === 'partial'
-                      ? 'Falta el precio de compra o algún porcentaje'
-                      : 'Conservan el precio de las listas'}
-                </small>
+                <small>{statusNotes[key]}</small>
               </button>
             ))}
           </div>
@@ -278,7 +321,7 @@ function PricingWorkspace() {
                 <thead>
                   <tr>
                     <th>Perfume</th>
-                    <th>Precio de compra</th>
+                    <th>Costo promedio</th>
                     {priceTiers.map((tier) => (
                       <th key={tier}>{priceTierLabels[tier]}</th>
                     ))}
@@ -309,20 +352,29 @@ function PricingWorkspace() {
                             {!product.active && ' · Inactivo'}
                           </small>
                         </td>
-                        <td data-label="Precio de compra">
-                          {pricing?.purchasePrice != null ? (
-                            <strong>
-                              {formatCurrency(
-                                pricing.purchasePrice,
-                                pricing.purchaseCurrency,
-                              )}
+                        <td data-label="Costo promedio">
+                          {pricing?.averageCost != null ? (
+                            <strong
+                              title={`C$ ${exactCost(pricing.averageCost)}`}
+                            >
+                              {formatCurrency(pricing.averageCost, 'NIO')}
                             </strong>
                           ) : (
-                            <span className="muted">Sin cargar</span>
+                            <span className="muted">Sin costo</span>
                           )}
                         </td>
                         {priceTiers.map((tier) => {
-                          const quote = tierQuote(pricing, tier, data?.rate)
+                          const quote = tierQuote(
+                            pricing,
+                            pricing?.averageCost,
+                            tier,
+                            data?.rate,
+                          )
+                          const status = tierStatus(
+                            pricing,
+                            pricing?.averageCost,
+                            tier,
+                          )
                           const price = product.prices?.[tier]?.[currency]
                           const markup = pricing?.markups[tier] ?? null
                           return (
@@ -334,13 +386,17 @@ function PricingWorkspace() {
                               </strong>
                               <small
                                 className={
-                                  quote ? 'pricing-computed' : undefined
+                                  quote
+                                    ? 'pricing-computed'
+                                    : status === 'pending'
+                                      ? 'pricing-pending'
+                                      : undefined
                                 }
                               >
                                 {quote
-                                  ? `${quote.percent} % · gana ${formatCurrency(quote.profit, quote.currency)}`
-                                  : markup !== null
-                                    ? `${markup} % sin precio de compra`
+                                  ? `${quote.percent} % · gana ${formatCurrency(quote.profit, 'NIO')}`
+                                  : status === 'pending'
+                                    ? `${markup} % · pendiente de costo`
                                     : 'A mano'}
                               </small>
                             </td>
@@ -391,8 +447,10 @@ function PricingWorkspace() {
           </div>
           <p className="muted pricing-footnote">
             Los precios de venta de esta lista son los guardados, los mismos que
-            usan Facturación y Proformas. Para cambiar datos del perfume o un
-            precio fijado a mano, abre{' '}
+            usan Facturación y Proformas. Cuando una compra cambia el costo
+            promedio, las listas calculadas se actualizan solas; las facturas y
+            proformas ya emitidas conservan su precio. Para cambiar datos del
+            perfume o un precio fijado a mano, abre{' '}
             <Link className="text-link" to={`${base}/inventory`}>
               Inventario
             </Link>{' '}
@@ -406,6 +464,10 @@ function PricingWorkspace() {
           saved={byProduct.get(editing.id) ?? null}
           rate={data.rate}
           base={base}
+          onOpenCosts={() => {
+            setEditing(null)
+            openSection('costs')
+          }}
           readOnly={demo}
           onClose={() => setEditing(null)}
           onSaved={saved}

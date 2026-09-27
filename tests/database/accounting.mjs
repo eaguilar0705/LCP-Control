@@ -176,16 +176,24 @@ try {
     assert.ok(losses.every((r) => Number(r.unit_cost_nio) === 85.2))
     assert.equal(await average(), 85.2)
   })
-  await check('uncosted incoming stock invalidates average and future sales preserve missing basis', async () => {
-    await rpc('record_inventory_movement', movement({ type: 'ENTRY', quantity: 1 }))
-    assert.equal(await average(), null)
-    const doc = await rpc('create_document', invoice({ items: [{ productId: product, quantity: 1 }] }))
+  await check('an uncosted entry cannot dilute a known average; a product without cost still receives it', async () => {
+    // Mercadería sin costo sobre un promedio conocido lo dejaría sin valor y,
+    // con él, los precios que salen del costo. Se rechaza y no cambia nada.
+    const stock = await quantity()
+    await assert.rejects(rpc('record_inventory_movement', movement({ type: 'ENTRY', quantity: 1 })), /ya tiene costo promedio[\s\S]*Registrar compra/)
+    assert.equal(await average(), 85.2)
+    assert.equal(await quantity(), stock)
+    // Un perfume que todavía no tiene costo recibe la entrada: su costo sigue
+    // pendiente y las ventas congelan ese hueco en lugar de inventar un costo.
+    const legacyStock = await quantity(legacy)
+    await rpc('record_inventory_movement', movement({ productId: legacy, type: 'ENTRY', quantity: 1, note: 'Entrada sin costo declarado' }))
+    assert.equal(await quantity(legacy), legacyStock + 1)
+    assert.equal(await average(legacy), null)
+    const doc = await rpc('create_document', invoice({ items: [{ productId: legacy, quantity: 1 }] }))
     assert.equal((await rows('document_item_costs')).find((r) => r.document_id === doc.id).unit_cost_nio, null)
-    await rpc('record_inventory_movement', movement())
+    await rpc('record_inventory_movement', movement({ productId: legacy }))
     assert.equal((await rows('inventory_movement_costs')).at(-1).unit_cost_nio, null)
-    await rpc('set_opening_cost', opening({ unitCost: 90 }))
-    assert.equal(await average(), 90)
-    assert.equal((await rows('document_item_costs')).find((r) => r.document_id === doc.id).unit_cost_nio, null)
+    await rpc('record_inventory_movement', movement({ productId: legacy, type: 'ENTRY', quantity: 1, note: 'Reposición del frasco' }))
   })
   await check('a shipment refuses to enter a cost gap and names the perfume; empty stock establishes cost', async () => {
     // Existencias contadas y ningún costo: no hay base contra la cual promediar,
@@ -295,7 +303,7 @@ try {
     assert.equal((await rows('document_item_costs')).length, 0)
     assert.ok((await rows('documents')).some((r) => r.id === doc.id))
     await identity(admin)
-    assert.equal(Number((await rows('document_item_costs')).find((r) => r.document_id === doc.id).unit_cost_nio), 90)
+    assert.equal(Number((await rows('document_item_costs')).find((r) => r.document_id === doc.id).unit_cost_nio), 85.2)
   })
   await check('proformas do not snapshot cost or require an accounting exchange rate', async () => {
     const before = (await rows('document_item_costs')).length
@@ -352,7 +360,7 @@ try {
     assert.equal(Number(frozen.total), 1855)
     assert.equal(await average(), costBefore)
   })
-  await check('a count correction keeps the cost; a manual entry without cost still clears it', async () => {
+  await check('a count correction keeps the cost; a manual entry without cost is refused', async () => {
     // Corregir un conteo corrige la cuenta de unidades, no su valoración: el
     // costo se queda. Una entrada manual sí trae mercadería que nadie costeó.
     const before = await average(empty)
@@ -363,8 +371,12 @@ try {
     assert.equal(await average(empty), before)
     await rpc('record_inventory_movement', movement({ productId: empty, type: 'ADJUSTMENT', quantity: stock, note: 'Recuento corregido' }))
     assert.equal(await average(empty), before)
-    await rpc('record_inventory_movement', movement({ productId: empty, type: 'ENTRY', quantity: 1, note: 'Entrada sin costo declarado' }))
-    assert.equal(await average(empty), null)
+    await assert.rejects(
+      rpc('record_inventory_movement', movement({ productId: empty, type: 'ENTRY', quantity: 1, note: 'Entrada sin costo declarado' })),
+      /ya tiene costo promedio/,
+    )
+    assert.equal(await average(empty), before)
+    assert.equal(await quantity(empty), stock)
   })
   await check('price history lists only real price changes, newest first, and only for the owner', async () => {
     const id = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'

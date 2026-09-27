@@ -1,12 +1,13 @@
 import type { Product, ProductPricing } from '../../lib/domain'
-import { currencySymbols, priceTierLabels, priceTiers } from '../../lib/pricing'
+import { priceTierLabels, priceTiers } from '../../lib/pricing'
 import { formatDate } from '../../lib/format'
 import { buildWorkbook, type Sheet } from '../../lib/xlsx'
 
 /**
  * La plantilla es el catálogo con una fila por perfume y las columnas que lee
  * la carga. Trae lo que ya está guardado, así que también sirve de respaldo:
- * se descarga, se cambia lo necesario y se vuelve a cargar.
+ * se descarga, se cambia lo necesario y se vuelve a cargar. El costo promedio
+ * va sólo como referencia: la carga no lo importa, porque sale del inventario.
  */
 export function pricingTemplate(
   products: Product[],
@@ -32,27 +33,27 @@ export function pricingTemplate(
         product.size === null
           ? 'Por confirmar'
           : `${product.size} ${product.unit}`,
-        saved?.purchasePrice ?? null,
-        saved?.purchasePrice == null
-          ? null
-          : currencySymbols[saved.purchaseCurrency],
+        saved?.averageCost ?? null,
         ...priceTiers.map((tier) => saved?.markups[tier] ?? null),
       ]
     })
   return {
-    name: 'Precios de compra',
+    name: 'Porcentajes de ganancia',
     notes: [
-      `Precios de compra y porcentajes de ganancia · ${formatDate(now)}`,
-      'Escribe el precio de compra, su moneda (C$ o US$) y el porcentaje de ganancia de cada lista. Deja vacía la celda que no quieras cambiar.',
-      'No cambies la columna Código: con ella se reconoce cada perfume. Este archivo tiene precios de compra: guárdalo en un lugar privado.',
+      `Porcentajes de ganancia sobre el costo promedio · ${formatDate(now)}`,
+      'Escribe el porcentaje de ganancia sobre el costo de cada lista. Precio de venta = costo promedio × (1 + % ÷ 100). Deja vacía la celda que no quieras cambiar.',
+      'La columna del costo promedio es informativa y no se importa: el costo sale de las compras registradas. No cambies la columna Código. Este archivo tiene costos: guárdalo en un lugar privado.',
     ],
     columns: [
       { header: 'Código', width: 14 },
       { header: 'Marca', width: 20 },
       { header: 'Perfume', width: 36 },
       { header: 'Tamaño', width: 13 },
-      { header: 'Precio de compra', width: 17, format: 'money' },
-      { header: 'Moneda', width: 9 },
+      {
+        header: 'Costo promedio C$ (informativo, no se importa)',
+        width: 22,
+        format: 'number',
+      },
       ...priceTiers.map((tier) => ({
         header: `% ${priceTierLabels[tier]}`,
         width: 15,
@@ -67,7 +68,7 @@ export function pricingTemplateName(now = new Date()) {
   const day = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/Managua',
   }).format(now)
-  return `precios-de-compra-${day}.xlsx`
+  return `porcentajes-de-ganancia-${day}.xlsx`
 }
 
 export function downloadPricingTemplate(

@@ -24,12 +24,14 @@ import { useQuery } from '../../lib/useQuery'
 import { errorMessage, issuesByField } from '../../lib/errors'
 import {
   labels,
+  type PriceChange,
   type PricingInput,
   type Product,
   type PriceTier,
 } from '../../lib/domain'
 import {
   applyPricing,
+  exactCost,
   marginRate,
   priceTierLabels,
   priceTiers,
@@ -54,22 +56,24 @@ export function ProductEditorPage() {
     )
   return <ProductLoader key={id ?? 'new'} />
 }
-// Un perfume nuevo todavía no tiene precio de compra; la consulta sólo dice si
-// la base ya puede guardarlo.
+// Un perfume nuevo todavía no tiene porcentajes; la consulta sólo dice si la
+// base ya puede guardarlos.
 const NEW_PRODUCT = '00000000-0000-0000-0000-000000000000'
 function ProductLoader() {
   const { id } = useParams()
   const { productService, settingsService } = useServices()
-  // El precio de compra y la tasa llegan junto con el perfume: el formulario
-  // arranca con todo lo que necesita para calcular, y nada se sobrescribe
-  // mientras alguien ya está escribiendo.
+  // Los porcentajes, el costo promedio y la tasa llegan junto con el perfume:
+  // el formulario arranca con todo lo que necesita para calcular, y nada se
+  // sobrescribe mientras alguien ya está escribiendo. Quien no puede leer
+  // costos recibe nulo sin error.
   const load = useCallback(async () => {
-    const [products, pricing, rate] = await Promise.all([
+    const [products, pricing, rate, cost] = await Promise.all([
       productService.listProducts(),
       productService.listPricing(id ?? NEW_PRODUCT),
       settingsService.getExchangeRate(),
+      id ? productService.getProductCost(id) : Promise.resolve(null),
     ])
-    return { products, pricing, rate: rate?.usdToNio ?? null }
+    return { products, pricing, rate: rate?.usdToNio ?? null, cost }
   }, [id, productService, settingsService])
   const { data, loading, error, retry } = useQuery(load)
   if (loading) return <LoadingState />
@@ -83,6 +87,7 @@ function ProductLoader() {
       product={product}
       brands={[...new Set(data?.products.map((p) => p.brand))]}
       pricing={data?.pricing.available ? pricingInput(saved) : null}
+      averageCost={data?.cost ?? null}
       rate={data?.rate ?? null}
     />
   )
@@ -91,12 +96,18 @@ function ProductForm({
   product,
   brands,
   pricing,
+  averageCost,
   rate,
 }: {
   product?: Product
   brands: string[]
-  /** `null` mientras la base no guarde precios de compra. */
+  /** `null` mientras la base no guarde porcentajes de ganancia. */
   pricing: PricingInput | null
+  /**
+   * Costo promedio vigente en C$ (de sólo lectura): la base de las listas
+   * calculadas y del margen. `null` mientras no se conozca.
+   */
+  averageCost: number | null
   /**
    * El precio en córdobas se calcula con esta tasa. Sin ella no se puede fijar
    * un precio, así que el formulario lo dice y no deja guardar a ciegas.
@@ -107,17 +118,6 @@ function ProductForm({
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const { productService } = useServices()
-  // El costo promedio decide si un precio deja margen. Un perfume recién creado
-  // no lo tiene todavía, y quien no puede leer costos recibe nulo sin error.
-  const productId = product?.id
-  const loadCost = useCallback(
-    () =>
-      productId
-        ? productService.getProductCost(productId)
-        : Promise.resolve(null),
-    [productId, productService],
-  )
-  const { data: averageCost } = useQuery(loadCost)
   const [value, setValue] = useState(() => ({
     ...productInput(product),
     manufacturerBarcode:
@@ -125,18 +125,28 @@ function ProductForm({
     ...(pricing ? { pricing } : {}),
   }))
   // Lo que se ve y lo que se guarda: las listas con porcentaje ya calculadas.
-  const shownPrices = applyPricing(value.prices, value.pricing, rate)
+  const shownPrices = applyPricing(
+    value.prices,
+    value.pricing,
+    averageCost,
+    rate,
+  )
   /**
    * Una lista que deja de tener porcentaje conserva el último precio
    * calculado como precio a mano, en lugar de volver a uno viejo.
    */
   function changePricing(next: PricingInput) {
     setValue((current) => {
-      const prices = applyPricing(current.prices, current.pricing, rate)
+      const prices = applyPricing(
+        current.prices,
+        current.pricing,
+        averageCost,
+        rate,
+      )
       // A mano manda el dólar: el córdoba vuelve a salir de la tasa, igual
       // que lo guardará la base.
       for (const tier of priceTiers) {
-        if (tierQuote(next, tier, rate)) continue
+        if (tierQuote(next, averageCost, tier, rate)) continue
         // Sin tasa no hay dólar calculado: queda el que ya tenía la lista.
         const usd = Number.isFinite(prices[tier].USD)
           ? prices[tier].USD
@@ -435,11 +445,12 @@ function ProductForm({
             <h2>Listas de precios</h2>
             {value.pricing ? (
               <p className="muted">
-                Escribe el precio de compra y el porcentaje de ganancia de cada
-                lista: el precio de venta se calcula solo. Una lista sin
-                porcentaje conserva su precio en dólares, que se fija a mano. El
-                precio de compra y los porcentajes sólo los ven Administración y
-                SuperAdmin.
+                Escribe el porcentaje de ganancia sobre el costo de cada lista:
+                el precio de venta sale del costo promedio del inventario y se
+                actualiza solo con cada compra. Una lista sin porcentaje (o
+                mientras el perfume no tenga costo) conserva su precio en
+                dólares, que se fija a mano. El costo y los porcentajes sólo los
+                ven Administración y SuperAdmin.
               </p>
             ) : (
               <>
@@ -450,7 +461,7 @@ function ProductForm({
                   recalcula solo cuando el dueño cambia la tasa en Negocio.
                 </p>
                 <p className="muted pricing-unavailable">
-                  Para calcular precios con el precio de compra y un porcentaje
+                  Para calcular precios desde el costo promedio y un porcentaje
                   de ganancia falta aplicar la actualización de precios en la
                   base de datos.
                 </p>
@@ -462,16 +473,27 @@ function ProductForm({
                 antes de fijar precios.
               </p>
             )}
-            {product && (averageCost !== null || !value.pricing) && (
+            {product && !value.pricing && (
               <p className="muted">
                 {averageCost === null
                   ? 'Este perfume todavía no tiene costo registrado: hasta que lo tenga no se puede saber qué margen deja cada precio.'
-                  : `Costo promedio actual: ${formatCurrency(averageCost, 'NIO')} por unidad. Debajo de cada precio va lo que queda después del costo.`}
+                  : `Costo promedio actual: ${formatCurrency(averageCost, 'NIO')} por unidad (C$ ${exactCost(averageCost)}). Debajo de cada precio va lo que queda después del costo.`}
               </p>
             )}
             {value.pricing ? (
               <PricingFields
                 pricing={value.pricing}
+                averageCost={averageCost}
+                costHelp={
+                  product && (
+                    <Link
+                      className="text-link"
+                      to={`${base}/prices?apartado=costo`}
+                    >
+                      Registrar el costo en Precios → Costo de inventario
+                    </Link>
+                  )
+                }
                 onChange={changePricing}
                 rate={rate}
                 prices={shownPrices}
@@ -671,10 +693,28 @@ function PriceMargin({
     </p>
   )
 }
+const causeLabels: Record<NonNullable<PriceChange['cause']>, string> = {
+  purchase: 'Compra',
+  opening_cost: 'Costo inicial',
+  invoice_deleted: 'Factura eliminada',
+  migration: 'Cambio a precios por costo promedio',
+  cost: 'Cambio del costo promedio',
+}
+/** Cómo se calculó el precio de la lista, en una línea. */
+function priceBasis(change: PriceChange): string | null {
+  if (change.markup == null) return null
+  if (change.averageCost != null)
+    return `${change.markup} % sobre el costo promedio de ${formatCurrency(change.averageCost, 'NIO')}`
+  if (change.purchasePrice != null && change.purchaseCurrency)
+    return `${change.markup} % sobre la compra de ${formatCurrency(change.purchasePrice, change.purchaseCurrency)}`
+  return `${change.markup} % configurado · pendiente de costo`
+}
 /**
- * Los cambios de precio del perfume. La base ya los venía guardando en cada
- * guardado del catálogo; esto es la única forma de leerlos. Un cambio sin
- * «antes» es el precio con el que el perfume entró al catálogo.
+ * Los cambios de precio del perfume, del más reciente al más antiguo. Un
+ * cambio hecho por una persona dice quién fue; uno que hizo el sistema al
+ * cambiar el costo promedio se marca «Automático» con su causa (la compra, el
+ * costo inicial, la factura eliminada) y quién registró esa operación. Un
+ * cambio sin «antes» es el precio con el que el perfume entró al catálogo.
  */
 function PriceHistory({ productId }: { productId: string }) {
   const { productService } = useServices()
@@ -687,10 +727,10 @@ function PriceHistory({ productId }: { productId: string }) {
     <Card className="form-card price-history">
       <h2>Historial de precios</h2>
       <p className="muted">
-        Cada cambio de precio de este perfume, del más reciente al más antiguo,
-        con quién lo hizo. Los precios en córdobas son los que dejó la tasa de
-        ese día. Un precio calculado dice con qué porcentaje y sobre qué precio
-        de compra.
+        Cada cambio de precio de este perfume, del más reciente al más antiguo.
+        Los precios en córdobas son los que dejó la tasa de ese día. Un precio
+        calculado dice con qué porcentaje y sobre qué costo; los cambios que
+        hizo el sistema al cambiar el costo promedio se marcan como automáticos.
       </p>
       {loading && <LoadingState />}
       {error && <ErrorState message={error} retry={retry} />}
@@ -701,55 +741,68 @@ function PriceHistory({ productId }: { productId: string }) {
         </p>
       )}
       <div className="price-history-list">
-        {data?.map((change, index) => (
-          <article
-            className="price-history-record"
-            key={`${change.changedAt}:${change.tier}:${index}`}
-          >
-            <div>
-              <h3>{priceTierLabels[change.tier]}</h3>
-              <p>
-                {formatDate(change.changedAt)} · {change.actor}
-              </p>
-            </div>
-            <div className="price-history-amounts">
-              {/* Un precio calculado desde una compra en córdobas se lee
-                  primero en córdobas: es el que quedó fijo. */}
-              {(change.markup != null && change.purchaseCurrency === 'NIO'
-                ? (['NIO', 'USD'] as const)
-                : (['USD', 'NIO'] as const)
-              ).map((currency, index) => {
-                const before =
-                  currency === 'USD' ? change.beforeUsd : change.beforeNio
-                const after =
-                  currency === 'USD' ? change.afterUsd : change.afterNio
-                const text =
-                  before === null
-                    ? formatCurrency(after, currency)
-                    : `${formatCurrency(before, currency)} → ${formatCurrency(after, currency)}`
-                return index === 0 ? (
-                  <strong key={currency}>{text}</strong>
-                ) : (
-                  <small key={currency}>{text}</small>
-                )
-              })}
-              {change.markup != null &&
-                change.purchasePrice != null &&
-                change.purchaseCurrency && (
-                  <small className="price-history-markup">
-                    {change.markup} % sobre la compra de{' '}
-                    {formatCurrency(
-                      change.purchasePrice,
-                      change.purchaseCurrency,
-                    )}
+        {data?.map((change, index) => {
+          const basis = priceBasis(change)
+          // Un precio que sale de un costo en córdobas se lee primero en
+          // córdobas: es el que queda fijo cuando cambia la tasa.
+          const cordobasFirst =
+            change.markup != null &&
+            (change.averageCost != null || change.purchaseCurrency === 'NIO')
+          return (
+            <article
+              className={`price-history-record ${change.automatic ? 'is-automatic' : ''}`}
+              key={`${change.changedAt}:${change.tier}:${index}`}
+            >
+              <div>
+                <h3>{priceTierLabels[change.tier]}</h3>
+                <p>
+                  {formatDate(change.changedAt)} ·{' '}
+                  {change.automatic ? 'Automático' : change.actor}
+                </p>
+                {change.automatic && (
+                  <small className="price-history-cause">
+                    {causeLabels[change.cause ?? 'cost']}
+                    {change.causeReference ? ` ${change.causeReference}` : ''}
+                    {change.actor !== 'Sistema' &&
+                      ` · registrada por ${change.actor}`}
                   </small>
                 )}
-              {change.beforeUsd === null && (
-                <span className="record-badge is-muted">Precio inicial</span>
-              )}
-            </div>
-          </article>
-        ))}
+              </div>
+              <div className="price-history-amounts">
+                {(cordobasFirst
+                  ? (['NIO', 'USD'] as const)
+                  : (['USD', 'NIO'] as const)
+                ).map((currency, position) => {
+                  const before =
+                    currency === 'USD' ? change.beforeUsd : change.beforeNio
+                  const after =
+                    currency === 'USD' ? change.afterUsd : change.afterNio
+                  const text =
+                    before === null
+                      ? formatCurrency(after, currency)
+                      : `${formatCurrency(before, currency)} → ${formatCurrency(after, currency)}`
+                  return position === 0 ? (
+                    <strong key={currency}>{text}</strong>
+                  ) : (
+                    <small key={currency}>{text}</small>
+                  )
+                })}
+                {basis && (
+                  <small className="price-history-markup">{basis}</small>
+                )}
+                {change.automatic ? (
+                  <span className="record-badge is-automatic">Automático</span>
+                ) : (
+                  change.beforeUsd === null && (
+                    <span className="record-badge is-muted">
+                      Precio inicial
+                    </span>
+                  )
+                )}
+              </div>
+            </article>
+          )
+        })}
       </div>
     </Card>
   )

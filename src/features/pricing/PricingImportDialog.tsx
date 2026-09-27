@@ -1,11 +1,6 @@
 import { useState } from 'react'
-import { Button, Dialog, Input, Select } from '../../components/ui'
-import type {
-  Currency,
-  PricingInput,
-  Product,
-  ProductPricing,
-} from '../../lib/domain'
+import { Button, Dialog, Input } from '../../components/ui'
+import type { Product, ProductPricing } from '../../lib/domain'
 import { errorMessage } from '../../lib/errors'
 import { formatCurrency } from '../../lib/format'
 import { priceTierLabels, priceTiers } from '../../lib/pricing'
@@ -21,19 +16,15 @@ import {
 const SHOWN_PROBLEMS = 50
 const counts = new Intl.NumberFormat('es-NI')
 
-function purchaseText(pricing: PricingInput) {
-  return pricing.purchasePrice === null
-    ? 'Sin cargar'
-    : formatCurrency(pricing.purchasePrice, pricing.purchaseCurrency)
-}
 function markupText(value: number | null) {
   return value === null ? '—' : `${value} %`
 }
 
 /**
- * Cargar precios de compra y porcentajes desde un Excel o un CSV. Se lee el
- * archivo en el navegador, se enseña qué va a cambiar (y qué filas no se
- * pueden usar, con el motivo) y sólo al confirmar se guarda, todo junto.
+ * Cargar porcentajes de ganancia desde un Excel o un CSV. Se lee el archivo en
+ * el navegador, se enseña qué va a cambiar (y qué filas no se pueden usar, con
+ * el motivo) y sólo al confirmar se guarda, todo junto. El costo no se carga:
+ * sale del inventario.
  */
 export function PricingImportDialog({
   products,
@@ -51,13 +42,12 @@ export function PricingImportDialog({
   onSaved: (message: string) => void
 }) {
   const { productService } = useServices()
-  const [currency, setCurrency] = useState<Currency>('NIO')
   const [file, setFile] = useState<File | null>(null)
   const [plan, setPlan] = useState<PricingPlan | null>(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
-  async function read(next: File, chosen: Currency) {
+  async function read(next: File) {
     setBusy(true)
     setError('')
     setPlan(null)
@@ -69,7 +59,6 @@ export function PricingImportDialog({
           products,
           pricing,
           rate,
-          defaultCurrency: chosen,
         }),
       )
     } catch (e) {
@@ -105,6 +94,8 @@ export function PricingImportDialog({
   }
   const large =
     plan?.changes.filter((change) => change.largeChanges.length) ?? []
+  const pending =
+    plan?.changes.filter((change) => change.pendingTiers.length) ?? []
   return (
     <Dialog
       open
@@ -117,26 +108,13 @@ export function PricingImportDialog({
       <p className="muted">
         Acepta Excel (.xlsx) o CSV. Hace falta una fila de encabezados con{' '}
         <strong>Código</strong> (o <strong>Marca</strong> y{' '}
-        <strong>Perfume</strong>) y los datos que quieras cargar:{' '}
-        <strong>Precio de compra</strong>, <strong>Moneda</strong>,{' '}
-        <strong>% Emprendedor</strong>, <strong>% VIP</strong> y{' '}
-        <strong>% Premium</strong>. Una celda vacía no cambia nada. La plantilla
-        ya trae el catálogo con esas columnas.
+        <strong>Perfume</strong>) y los porcentajes de ganancia sobre el costo
+        que quieras cargar: <strong>% Emprendedor</strong>,{' '}
+        <strong>% VIP</strong> y <strong>% Premium</strong>. Una celda vacía no
+        cambia nada. El costo promedio no se carga desde el archivo: sale de las
+        compras registradas. La plantilla ya trae el catálogo con esas columnas.
       </p>
       <div className="pricing-import-controls">
-        <Select
-          label="Moneda si el archivo no la indica"
-          value={currency}
-          disabled={busy}
-          onChange={(event) => {
-            const chosen = event.target.value as Currency
-            setCurrency(chosen)
-            if (file) void read(file, chosen)
-          }}
-        >
-          <option value="NIO">C$ Córdobas</option>
-          <option value="USD">US$ Dólares</option>
-        </Select>
         <Input
           label="Archivo con los precios"
           type="file"
@@ -151,7 +129,7 @@ export function PricingImportDialog({
             const next = event.target.files?.[0]
             if (!next) return
             setFile(next)
-            void read(next, currency)
+            void read(next)
           }}
         />
       </div>
@@ -175,13 +153,33 @@ export function PricingImportDialog({
               ` y ${counts.format(plan.problems.length)} ${plan.problems.length === 1 ? 'fila no se puede usar' : 'filas no se pueden usar'}`}
             . Encabezados en la fila {plan.headerLine}.
           </p>
+          {plan.ignoredColumns.length > 0 && (
+            <p className="pricing-import-note">
+              {plan.ignoredColumns.length === 1 ? 'La columna' : 'Las columnas'}{' '}
+              {plan.ignoredColumns.map((name) => `«${name}»`).join(', ')}{' '}
+              {plan.ignoredColumns.length === 1
+                ? 'no se importa'
+                : 'no se importan'}
+              : el costo sale del costo promedio del inventario.
+            </p>
+          )}
+          {pending.length > 0 && (
+            <p className="pricing-import-note">
+              {pending.length === 1
+                ? 'Un perfume todavía no tiene'
+                : `${counts.format(pending.length)} perfumes todavía no tienen`}{' '}
+              costo promedio: sus porcentajes se guardan y el precio se
+              calculará cuando se registre su costo. Mientras tanto conservan su
+              precio.
+            </p>
+          )}
           {large.length > 0 && (
             <p className="pricing-import-warning" role="alert">
               {large.length === 1
                 ? 'Un perfume cambia su precio de venta'
                 : `${counts.format(large.length)} perfumes cambian su precio de venta`}{' '}
-              más de un 30 %. Están marcados abajo: revisa que el precio de
-              compra y la moneda sean los correctos.
+              más de un 30 %. Están marcados abajo: revisa que el porcentaje sea
+              el correcto.
             </p>
           )}
           {rate === null && (
@@ -263,7 +261,7 @@ function ChangesTable({ changes }: { changes: PlannedPricing[] }) {
           <tr>
             <th>Fila</th>
             <th>Perfume</th>
-            <th>Precio de compra</th>
+            <th>Costo promedio</th>
             {priceTiers.map((tier) => (
               <th key={tier}>{priceTierLabels[tier]}</th>
             ))}
@@ -285,12 +283,9 @@ function ChangesTable({ changes }: { changes: PlannedPricing[] }) {
                 </small>
               </td>
               <td>
-                {purchaseText(change.after)}
-                {change.before.purchasePrice !== null &&
-                  purchaseText(change.before) !==
-                    purchaseText(change.after) && (
-                    <small>antes {purchaseText(change.before)}</small>
-                  )}
+                {change.averageCost === null
+                  ? 'Sin costo'
+                  : formatCurrency(change.averageCost, 'NIO')}
               </td>
               {priceTiers.map((tier) => {
                 const before = change.prices.before[tier]?.NIO
@@ -314,11 +309,13 @@ function ChangesTable({ changes }: { changes: PlannedPricing[] }) {
                         </small>
                       )}
                     <small>
-                      {Number.isFinite(after)
-                        ? moved && Number.isFinite(before)
-                          ? `${formatCurrency(before, 'NIO')} → ${formatCurrency(after, 'NIO')}`
-                          : formatCurrency(after, 'NIO')
-                        : '—'}
+                      {change.pendingTiers.includes(tier)
+                        ? 'Pendiente de costo'
+                        : Number.isFinite(after)
+                          ? moved && Number.isFinite(before)
+                            ? `${formatCurrency(before, 'NIO')} → ${formatCurrency(after, 'NIO')}`
+                            : formatCurrency(after, 'NIO')
+                          : '—'}
                     </small>
                   </td>
                 )

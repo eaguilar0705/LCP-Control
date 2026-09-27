@@ -20,6 +20,7 @@ import { useQuery } from '../../lib/useQuery'
 import { useServices } from '../../services/useServices'
 import { createIdempotentOperation } from '../../lib/idempotentOperation'
 import { errorMessage } from '../../lib/errors'
+import { EntryCostNotice } from '../inventory/EntryCostNotice'
 
 const actions: {
   type: MovementRequest['type']
@@ -202,6 +203,7 @@ export function ProductStockEditor({
                     Cero significa que no hay unidades.
                   </p>
                 )}
+                {movementType === 'ENTRY' && <EntryCostNotice />}
                 <div className="stock-adjustment-row">
                   <div className="quantity-stepper">
                     <Button

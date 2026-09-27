@@ -29,8 +29,9 @@ const pair = z.object({ NIO: derived, USD: money })
 const twoDecimals = (value: number) =>
   Math.abs(value * 100 - Math.round(value * 100)) < 0.00001
 /**
- * Precio de compra y porcentajes. Todo es opcional: una lista sin porcentaje
- * (o un perfume sin precio de compra) conserva su precio a mano.
+ * Porcentajes de ganancia sobre el costo promedio. Todos son opcionales: una
+ * lista sin porcentaje conserva su precio a mano. El costo no viaja: es el
+ * promedio del inventario y sólo cambia con las compras y el costo inicial.
  */
 const percent = z
   .number({ error: 'Escribe el porcentaje o deja el campo vacío.' })
@@ -40,14 +41,6 @@ const percent = z
   .refine(twoDecimals, 'Usa hasta dos decimales.')
   .nullable()
 export const pricingInputSchema = z.object({
-  purchasePrice: z
-    .number({ error: 'Escribe el precio de compra o deja el campo vacío.' })
-    .finite('Escribe el precio de compra o deja el campo vacío.')
-    .positive('El precio de compra debe ser mayor que cero.')
-    .max(10000000, 'El precio de compra es demasiado alto.')
-    .refine(twoDecimals, 'Usa hasta dos decimales.')
-    .nullable(),
-  purchaseCurrency: z.enum(['NIO', 'USD']),
   markups: z.object({ emprendedor: percent, vip: percent, premium: percent }),
 })
 export const productInputSchema = z.object({
@@ -87,8 +80,8 @@ export const productInputSchema = z.object({
   imagePath: z.string().max(250).nullable(),
   prices: z.object({ emprendedor: pair, vip: pair, premium: pair }),
   /**
-   * Sólo viaja cuando quien edita es dueño y la base ya guarda precios de
-   * compra. Sin él, la base respeta lo que tenía guardado.
+   * Sólo viaja cuando quien edita es dueño y la base ya guarda porcentajes.
+   * Sin él, la base respeta lo que tenía guardado.
    */
   pricing: pricingInputSchema.optional(),
 })
@@ -100,14 +93,10 @@ export type ProductInput = z.infer<typeof productInputSchema>
 export function nioFromUsd(usd: number, rate: number | null): number {
   return convertPrice(usd, 'USD', 'NIO', rate)
 }
-/** Copia editable del precio de compra (o uno vacío para un perfume nuevo). */
+/** Copia editable de los porcentajes (o vacíos para un perfume nuevo). */
 export function pricingInput(pricing?: PricingInput | null): PricingInput {
   if (!pricing) return emptyPricing()
-  return {
-    purchasePrice: pricing.purchasePrice,
-    purchaseCurrency: pricing.purchaseCurrency,
-    markups: { ...pricing.markups },
-  }
+  return { markups: { ...pricing.markups } }
 }
 export function productInput(product?: Product): ProductInput {
   return {

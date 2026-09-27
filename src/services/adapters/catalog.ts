@@ -8,6 +8,7 @@ import type {
 } from '../../lib/domain'
 import type { DataProvider } from '../contracts'
 import { DEMO_EXCHANGE_RATE, localWrites } from './local'
+import { applyPricing } from '../../lib/pricing'
 import {
   previousRange,
   type ReportRange,
@@ -71,33 +72,54 @@ export const catalogProducts: Product[] = brands.flatMap(
     }),
 )
 /**
- * Precios de compra de muestra, elegidos para que el precio calculado coincida
- * con el del catálogo de muestra: la vista local enseña listas calculadas en
- * dólares y en córdobas, una con porcentaje sólo en Emprendedor, una con precio
- * de compra sin porcentajes y otra con porcentajes sin precio de compra.
+ * Porcentajes de muestra: la vista local enseña listas calculadas desde el
+ * costo promedio de muestra, una con porcentaje sólo en Emprendedor, una con
+ * porcentajes y sin costo todavía (pendiente) y el resto a mano.
  */
 const pricingSample = (
   number: number,
-  purchasePrice: number | null,
-  purchaseCurrency: ProductPricing['purchaseCurrency'],
   emprendedor: number | null,
   vip: number | null,
   premium: number | null,
-): ProductPricing => ({
+) => ({
   productId: `demo-${String(number).padStart(4, '0')}`,
-  purchasePrice,
-  purchaseCurrency,
   markups: { emprendedor, vip, premium },
-  updatedAt: null,
 })
-export const catalogPricing: ProductPricing[] = [
-  pricingSample(3, null, 'NIO', 20, 15, 10),
-  pricingSample(6, 25, 'USD', 20, 16, 8),
-  pricingSample(11, 1000, 'NIO', 28.1, 24.44, 17.12),
-  pricingSample(16, 20, 'USD', 100, 95, 85),
-  pricingSample(21, 1500, 'NIO', 9.8, null, null),
-  pricingSample(26, 30, 'USD', null, null, null),
+export const catalogPricing = [
+  pricingSample(3, 20, 15, 10),
+  pricingSample(6, 25, 20, 10),
+  pricingSample(11, 28.1, 24.44, 17.12),
+  pricingSample(16, 100, 95, 85),
+  pricingSample(21, 9.8, null, null),
 ]
+/** El perfume de muestra que todavía no tiene costo promedio. */
+export const DEMO_UNCOSTED = 'demo-0021'
+/**
+ * El catálogo de muestra con las listas calculadas ya al día: el mismo
+ * resultado que dejaría la base después de registrar el costo.
+ */
+async function pricedCatalog(): Promise<Product[]> {
+  const { demoAverageCost } = await import('./catalogSales')
+  const markups = new Map(catalogPricing.map((row) => [row.productId, row]))
+  return catalogProducts.map((product) => {
+    const pricing = markups.get(product.id)
+    const cost =
+      product.id === DEMO_UNCOSTED ? null : demoAverageCost.get(product.id)
+    if (!pricing || cost == null || !product.prices)
+      return structuredClone(product)
+    const prices = applyPricing(
+      product.prices,
+      pricing,
+      cost,
+      DEMO_EXCHANGE_RATE,
+    )
+    return {
+      ...structuredClone(product),
+      prices,
+      price: prices.emprendedor.NIO,
+    }
+  })
+}
 /**
  * Existencias de muestra. La vista local las trae contadas para que el inicio,
  * el inventario y los reportes cuenten la misma historia: sin conteo no hay
@@ -110,7 +132,13 @@ const items: InventoryItem[] = catalogProducts.map((product, index) => ({
 export const catalogAdapter: DataProvider = {
   mode: 'demo',
   async getInventory() {
-    return structuredClone(items)
+    const products = new Map(
+      (await pricedCatalog()).map((product) => [product.id, product]),
+    )
+    return items.map((item) => ({
+      product: products.get(item.product.id) ?? structuredClone(item.product),
+      quantities: { ...item.quantities },
+    }))
   },
   async findByBarcode(code) {
     return structuredClone(
@@ -167,7 +195,7 @@ export const catalogAdapter: DataProvider = {
   },
   ...localWrites,
   async listProducts() {
-    return structuredClone(catalogProducts)
+    return pricedCatalog()
   },
   // La vista local enseña un historial y un costo inventados para que las dos
   // secciones nuevas del editor se puedan recorrer sin base de datos. El costo
@@ -202,17 +230,32 @@ export const catalogAdapter: DataProvider = {
     ]
   },
   async getProductCost(productId: string) {
+    if (productId === DEMO_UNCOSTED) return null
     const { demoAverageCost } = await import('./catalogSales')
     return demoAverageCost.get(productId) ?? null
   },
   async listPricing(productId?: string) {
-    return {
-      available: true,
-      rows: structuredClone(
-        catalogPricing.filter(
-          (row) => productId === undefined || row.productId === productId,
+    const { demoAverageCost } = await import('./catalogSales')
+    const markups = new Map(
+      catalogPricing.map((row) => [row.productId, row.markups]),
+    )
+    const rows: ProductPricing[] = catalogProducts
+      .filter((product) => productId === undefined || product.id === productId)
+      .map((product) => ({
+        productId: product.id,
+        averageCost:
+          product.id === DEMO_UNCOSTED
+            ? null
+            : (demoAverageCost.get(product.id) ?? null),
+        markups: structuredClone(
+          markups.get(product.id) ?? {
+            emprendedor: null,
+            vip: null,
+            premium: null,
+          },
         ),
-      ),
-    }
+        updatedAt: null,
+      }))
+    return { available: true, rows }
   },
 }

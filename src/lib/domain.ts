@@ -23,34 +23,51 @@ export interface PriceChange {
   beforeNio: number | null
   afterNio: number
   catalogRate: number | null
-  /**
-   * El porcentaje de ganancia y el precio de compra que produjeron el precio.
-   * Nulos cuando esa lista se fijó a mano.
-   */
+  /** Porcentaje de ganancia configurado en la lista. Nulo en una lista a mano. */
   markup?: number | null
+  /**
+   * Costo promedio (C$) sobre el que se calculó el precio. Nulo si la lista no
+   * salió del costo: a mano o pendiente de costo.
+   */
+  averageCost?: number | null
+  /**
+   * Precio de compra del modelo anterior (hasta el 27-09-2026), sólo en los
+   * registros viejos que se calcularon con él.
+   */
   purchasePrice?: number | null
   purchaseCurrency?: Currency | null
+  /** El sistema lo cambió solo al cambiar el costo promedio. */
+  automatic?: boolean
+  /** Por qué cambió el costo: una compra, el costo inicial, una factura eliminada… */
+  cause?: PriceChangeCause | null
+  /** El pedido, la factura o el respaldo que lo produjo. */
+  causeReference?: string | null
 }
+export type PriceChangeCause =
+  'purchase' | 'opening_cost' | 'invoice_deleted' | 'migration' | 'cost'
 /**
- * Cómo sale el precio de venta de un perfume: lo que costó y cuánto se le gana
- * en cada lista. Una lista con precio de compra y porcentaje se calcula; una
+ * Cuánto se le gana a cada lista sobre el costo promedio del inventario. Una
+ * lista con porcentaje se calcula sola en cuanto el perfume tiene costo; una
  * sin porcentaje conserva su precio a mano. Sólo lo leen los dueños.
  */
 export interface PricingInput {
-  /** Precio de compra; `null` mientras el dueño no lo haya cargado. */
-  purchasePrice: number | null
-  purchaseCurrency: Currency
-  /** Porcentaje de ganancia sobre el precio de compra, por lista. */
+  /** Porcentaje de ganancia sobre el costo promedio, por lista. */
   markups: Record<PriceTier, number | null>
 }
 export interface ProductPricing extends PricingInput {
   productId: string
+  /**
+   * Costo promedio vigente en córdobas (seis decimales), el de la contabilidad
+   * del inventario. `null` mientras no se conozca. Es de sólo lectura: cambia
+   * con las compras y el costo inicial, nunca desde la pantalla de precios.
+   */
+  averageCost: number | null
   updatedAt: string | null
 }
 /**
- * El precio de compra de todo el catálogo. `available` es falso mientras la
- * base no tenga la actualización que lo guarda: la pantalla lo dice en lugar
- * de fallar.
+ * Los porcentajes y costos de todo el catálogo. `available` es falso mientras
+ * la base no tenga la actualización que los guarda: la pantalla lo dice en
+ * lugar de fallar.
  */
 export interface PricingList {
   available: boolean

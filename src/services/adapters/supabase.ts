@@ -14,6 +14,7 @@ import type {
   NewDocument,
   PaymentMethod,
   PriceChange,
+  PriceChangeCause,
   PriceTier,
   Product,
   ProductPricing,
@@ -71,35 +72,61 @@ interface PriceChangeRow {
   purchase_price?: number | string | null
   purchase_currency?: Currency | null
   markup?: number | string | null
+  // Desde la migración de precios por costo promedio.
+  average_cost?: number | string | null
+  automatic?: boolean | null
+  cause?: PriceChangeCause | null
+  cause_reference?: string | null
 }
 interface PricingRow {
   product_id: string
-  purchase_price: number | string | null
-  purchase_currency: Currency
   markup_emprendedor: number | string | null
   markup_vip: number | string | null
   markup_premium: number | string | null
   updated_at: string | null
 }
+interface CostRow {
+  product_id: string
+  average_cost_nio: number | string | null
+}
 const pricingSelect =
-  'product_id,purchase_price,purchase_currency,markup_emprendedor,markup_vip,markup_premium,updated_at'
+  'product_id,markup_emprendedor,markup_vip,markup_premium,updated_at'
 function optionalNumber(value: number | string | null | undefined) {
   if (value === null || value === undefined || value === '') return null
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : null
 }
-function toPricing(row: PricingRow): ProductPricing {
-  return {
-    productId: row.product_id,
-    purchasePrice: optionalNumber(row.purchase_price),
-    purchaseCurrency: row.purchase_currency === 'USD' ? 'USD' : 'NIO',
-    markups: {
-      emprendedor: optionalNumber(row.markup_emprendedor),
-      vip: optionalNumber(row.markup_vip),
-      premium: optionalNumber(row.markup_premium),
-    },
-    updatedAt: row.updated_at,
+/**
+ * Porcentajes y costo promedio de cada perfume. Un perfume con costo y sin
+ * porcentajes también aparece: la pantalla enseña su costo.
+ */
+function mergePricing(pricing: PricingRow[], costs: CostRow[]) {
+  const rows = new Map<string, ProductPricing>()
+  for (const row of pricing)
+    rows.set(row.product_id, {
+      productId: row.product_id,
+      averageCost: null,
+      markups: {
+        emprendedor: optionalNumber(row.markup_emprendedor),
+        vip: optionalNumber(row.markup_vip),
+        premium: optionalNumber(row.markup_premium),
+      },
+      updatedAt: row.updated_at,
+    })
+  for (const cost of costs) {
+    const averageCost = optionalNumber(cost.average_cost_nio)
+    if (averageCost === null) continue
+    const row = rows.get(cost.product_id)
+    if (row) row.averageCost = averageCost
+    else
+      rows.set(cost.product_id, {
+        productId: cost.product_id,
+        averageCost,
+        markups: { emprendedor: null, vip: null, premium: null },
+        updatedAt: null,
+      })
   }
+  return [...rows.values()]
 }
 /** La tabla o la función del precio de compra todavía no existen. */
 function pricingSchemaMissing(error: { code?: string } | null) {
@@ -413,30 +440,45 @@ export const supabaseAdapter: DataProvider = {
       afterNio: Number(row.after_nio),
       catalogRate: row.catalog_rate === null ? null : Number(row.catalog_rate),
       markup: optionalNumber(row.markup),
+      averageCost: optionalNumber(row.average_cost),
       purchasePrice: optionalNumber(row.purchase_price),
       purchaseCurrency: row.purchase_currency ?? null,
+      automatic: row.automatic === true,
+      cause: row.cause ?? null,
+      causeReference: row.cause_reference ?? null,
     }))
   },
   // Quien no es dueño no recibe filas (RLS), sin error: para esa cuenta no hay
-  // precios de compra que enseñar. Sin la migración, la pantalla lo avisa.
+  // costos ni porcentajes que enseñar. Sin la migración, la pantalla lo avisa.
   async listPricing(productId) {
-    const rows: ProductPricing[] = []
     const page = 1000
-    for (let start = 0; ; start += page) {
-      let query = client().from('product_pricing').select(pricingSelect)
-      if (productId) query = query.eq('product_id', productId)
-      const { data, error } = await query
-        .order('product_id')
-        .range(start, start + page - 1)
-      if (error) {
-        if (pricingSchemaMissing(error)) return { available: false, rows: [] }
-        fail(error)
+    async function all<T>(
+      table: 'product_pricing' | 'product_costs',
+      columns: string,
+    ): Promise<T[] | null> {
+      const rows: T[] = []
+      for (let start = 0; ; start += page) {
+        let query = client().from(table).select(columns)
+        if (productId) query = query.eq('product_id', productId)
+        const { data, error } = await query
+          .order('product_id')
+          .range(start, start + page - 1)
+        if (error) {
+          if (pricingSchemaMissing(error)) return null
+          fail(error)
+        }
+        const batch = (data ?? []) as T[]
+        rows.push(...batch)
+        if (batch.length < page) break
       }
-      const batch = (data ?? []) as PricingRow[]
-      rows.push(...batch.map(toPricing))
-      if (batch.length < page) break
+      return rows
     }
-    return { available: true, rows }
+    const [pricing, costs] = await Promise.all([
+      all<PricingRow>('product_pricing', pricingSelect),
+      all<CostRow>('product_costs', 'product_id,average_cost_nio'),
+    ])
+    if (pricing === null) return { available: false, rows: [] }
+    return { available: true, rows: mergePricing(pricing, costs ?? []) }
   },
   async savePricing(rows) {
     const { data, error } = await client().rpc('save_product_pricing', {
@@ -446,7 +488,7 @@ export const supabaseAdapter: DataProvider = {
       if (pricingSchemaMissing(error))
         throw new AppError(
           'configuration',
-          'Falta aplicar la actualización de precios de compra en Supabase. Contacta al administrador.',
+          'Falta aplicar la actualización de precios en Supabase. Contacta al administrador.',
         )
       fail(error)
     }

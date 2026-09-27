@@ -1,6 +1,7 @@
 // @vitest-environment node
 /**
- * La pantalla y la base calculan el mismo precio al centavo.
+ * La pantalla y la base calculan el mismo precio al centavo y el mismo costo
+ * promedio a la millonésima.
  *
  * El editor enseña el precio de venta antes de guardar y la base lo vuelve a
  * calcular al guardarlo. Si redondearan distinto, el dueño vería C$ 18,30 y la
@@ -12,7 +13,13 @@
 import { readFile, readdir } from 'node:fs/promises'
 import { afterAll, beforeAll, expect, it } from 'vitest'
 import { PGlite } from '@electric-sql/pglite'
-import { convertPrice, markupPrice } from '@/lib/pricing'
+import {
+  convertPrice,
+  landedUnitCost,
+  markupPrice,
+  shippingPerUnit,
+  weightedAverageCost,
+} from '@/lib/pricing'
 
 const db = new PGlite()
 
@@ -60,6 +67,10 @@ it('marks up exactly like PostgreSQL', async () => {
   ]
   for (let index = 0; index < 3000; index++)
     cases.push([amount(1, 2_000_000, 2), amount(0, 100_000, 2)])
+  // Costos promedio con seis decimales, como los guarda la contabilidad.
+  cases.push([16.281061, 25], [0.000001, 0], [10.004999, 50], [18.004, 12.5])
+  for (let index = 0; index < 3000; index++)
+    cases.push([amount(0, 5_000_000_000, 6), amount(0, 100_000, 2)])
   const { rows } = await db.query<{ price: string }>(
     'select private.markup_price(c,p)::text as price from unnest($1::numeric[],$2::numeric[]) as t(c,p)',
     [cases.map(([cost]) => cost), cases.map(([, percent]) => percent)],
@@ -103,4 +114,48 @@ it('converts between córdobas and dollars exactly like PostgreSQL', async () =>
     )
     expect(mismatches).toEqual([])
   }
+})
+
+it('averages, spreads shipping and lands costs exactly like record_shipment', async () => {
+  const cases: [number, number, number, number, number, number][] = [
+    // existencias, promedio, entran, precio, envío por pedido, tasa
+    [13, 15.675, 20, 16.675, 0, 1],
+    [4, 115, 4, 3, 2, 36.5],
+    [0, 0, 3, 2, 3, 36.5],
+    [1, 0.000001, 1, 0.000002, 0, 1],
+  ]
+  for (let index = 0; index < 2000; index++)
+    cases.push([
+      Math.floor(random() * 500),
+      amount(0, 200_000_000, 6),
+      1 + Math.floor(random() * 300),
+      amount(0, 50_000_000, 6),
+      amount(0, 500_000, 2),
+      random() < 0.5 ? 1 : amount(30_000_000, 40_000_000, 6),
+    ])
+  const { rows } = await db.query<{
+    per: string
+    landed: string
+    average: string
+  }>(
+    `select per::text, landed::text,
+       (case when t=0 then landed else round((a*t+landed*q)/(t+q),6) end)::text as average
+     from (select *, round((p+per)*r,6) as landed from (
+       select t,a,q,p,r, round(s/q,6) as per
+       from unnest($1::int[],$2::numeric[],$3::int[],$4::numeric[],$5::numeric[],$6::numeric[]) as x(t,a,q,p,s,r)) y) z`,
+    [0, 1, 2, 3, 4, 5].map((column) => cases.map((row) => row[column])),
+  )
+  const mismatches = cases.filter(
+    ([existing, average, incoming, price, shipping, rate], index) => {
+      const per = shippingPerUnit(shipping, incoming)
+      const landed = landedUnitCost(price, per, rate)
+      const next = weightedAverageCost(existing, average, incoming, landed)
+      return (
+        per !== Number(rows[index].per) ||
+        landed !== Number(rows[index].landed) ||
+        next !== Number(rows[index].average)
+      )
+    },
+  )
+  expect(mismatches).toEqual([])
 })

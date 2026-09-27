@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button, Dialog } from '../../components/ui'
-import type { PricingInput, Product } from '../../lib/domain'
+import type { Product, ProductPricing } from '../../lib/domain'
 import { errorMessage, issuesByField } from '../../lib/errors'
 import { samePricing, type TierPrices } from '../../lib/pricing'
 import { pricingInput, pricingInputSchema } from '../products/product'
@@ -15,9 +15,11 @@ const MISSING_PRICES: TierPrices = {
 }
 
 /**
- * La ficha de precios de un perfume: precio de compra y porcentaje de cada
- * lista, con el desglose calculado mientras se escribe. Guarda sólo eso; los
- * precios a mano y el resto de los datos se cambian en «Editar perfume».
+ * La ficha de precios de un perfume: su costo promedio vigente (de sólo
+ * lectura) y el porcentaje de ganancia de cada lista, con el desglose
+ * calculado mientras se escribe. Guarda sólo los porcentajes; los precios a
+ * mano y el resto de los datos se cambian en «Editar perfume», y el costo, con
+ * las compras en «Costo de inventario».
  */
 export function PricingDialog({
   product,
@@ -27,15 +29,18 @@ export function PricingDialog({
   readOnly,
   onClose,
   onSaved,
+  onOpenCosts,
 }: {
   product: Product
-  saved: PricingInput | null
+  saved: ProductPricing | null
   rate: number | null
   base: string
   /** Vista local: se puede probar el cálculo, pero no guardar. */
   readOnly: boolean
   onClose: () => void
   onSaved: (message: string) => void
+  /** Lleva al apartado donde se completa el costo. */
+  onOpenCosts?: () => void
 }) {
   const { productService } = useServices()
   const [draft, setDraft] = useState(() => pricingInput(saved))
@@ -103,10 +108,23 @@ export function PricingDialog({
         <fieldset disabled={busy} className="pricing-dialog-fields">
           <PricingFields
             pricing={draft}
+            averageCost={saved?.averageCost ?? null}
             onChange={setDraft}
             rate={rate}
             prices={product.prices ?? MISSING_PRICES}
             errors={errors}
+            costHelp={
+              onOpenCosts && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="pricing-cost-link"
+                  onClick={onOpenCosts}
+                >
+                  Ir a Costo de inventario
+                </Button>
+              )
+            }
           />
         </fieldset>
         {readOnly && (

@@ -31,7 +31,7 @@ export interface DocumentPage {
   /** Documentos de todo el periodo, aunque la página traiga menos. */
   total: number
 }
-/** El precio de compra de un perfume, con la revisión con que se leyó. */
+/** Los porcentajes de un perfume, con la revisión con que se leyó. */
 export interface PricingSave {
   productId: string
   revision: number
@@ -46,14 +46,14 @@ export interface DataProvider {
   /** Costo promedio ponderado en córdobas; `null` mientras no se conozca. */
   getProductCost(productId: string): Promise<number | null>
   /**
-   * Precio de compra y porcentajes de ganancia (de un perfume o de todos).
-   * Sólo los dueños reciben filas. `available` es falso mientras la base no
-   * tenga la actualización que los guarda.
+   * Costo promedio y porcentajes de ganancia (de un perfume o de todos). Sólo
+   * los dueños reciben filas. `available` es falso mientras la base no tenga
+   * la actualización que los guarda.
    */
   listPricing(productId?: string): Promise<PricingList>
   /**
-   * Guarda el precio de compra y los porcentajes de uno o varios perfumes y
-   * recalcula sus listas. Todo o nada. Devuelve cuántos perfumes guardó.
+   * Guarda los porcentajes de uno o varios perfumes y recalcula sus listas
+   * desde el costo promedio. Todo o nada. Devuelve cuántos perfumes guardó.
    */
   savePricing(rows: PricingSave[]): Promise<number>
   uploadProductImage(blob: Blob): Promise<string>
