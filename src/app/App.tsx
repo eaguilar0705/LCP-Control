@@ -14,6 +14,7 @@ import { SuppliersPage } from '../features/suppliers/SuppliersPage'
 import { ContactsPage } from '../features/contacts/ContactsPage'
 import { ActivatePage } from '../features/auth/ActivatePage'
 import { AuthCallbackPage } from '../features/auth/AuthCallbackPage'
+import { RecoveryPage } from '../features/auth/RecoveryPage'
 import { AUTH_CALLBACK_PATH, hasAuthLink } from '../features/auth/authLink'
 import { MovementHistory } from '../features/inventory/MovementHistory'
 import { DocumentHistory } from '../features/sales/DocumentHistory'
@@ -174,18 +175,20 @@ export function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/activate" element={<ActivatePage />} />
+          <Route path="/forgot-password" element={<RecoveryPage />} />
+          <Route path="/reset-password" element={<RecoveryPage reset />} />
           <Route path={AUTH_CALLBACK_PATH} element={<AuthCallbackPage />} />
-          {/* El ejemplo sólo usa datos de muestra y se abre en otra pestaña
-              («Ver ejemplo en carta»). La sesión vive sólo en la memoria de la
-              pestaña que inició sesión, así que esta ruta no la exige. */}
-          <Route
-            path="/documents/example/:kind"
-            element={
-              <main className="main-content">
-                <DocumentExamplePage />
-              </main>
-            }
-          />
+          {/* Los ejemplos de impresión sólo existen durante el desarrollo. */}
+          {import.meta.env.DEV && (
+            <Route
+              path="/documents/example/:kind"
+              element={
+                <main className="main-content">
+                  <DocumentExamplePage />
+                </main>
+              }
+            />
+          )}
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<AppShell />}>
               {pages(false)}

@@ -10,8 +10,7 @@ import { equivalentAmount, priceTierLabels } from '../../lib/pricing'
 import { includedTax } from './document'
 
 /**
- * PDF de factura/proforma en carta, comprimido para que hasta 40 productos
- * quepan en una sola hoja. Coordenadas en puntos (612 × 792).
+ * PDF de factura/proforma en carta. Coordenadas en puntos (612 × 792).
  *
  * La tabla elige el tamaño de letra más grande (10 → 8 pt, siempre en
  * negrita) con el que todos los renglones caben en la hoja junto con el
@@ -37,14 +36,15 @@ const MAX_PAD = 9
 /**
  * Posiciones del final de la hoja. `continued`: última línea útil de la tabla
  * en hojas que continúan; `summary`: límite inferior del resumen (deja
- * espacio para firmar). La factura sube 16 pt para la política de cambios.
+ * espacio para firmar). La factura reserva espacio para los tres párrafos
+ * de la política de cambios sin reducir la letra de los productos.
  */
 const BOTTOM = {
   proforma: { continued: 742, summary: 700, signature: 728, footer: 756 },
-  invoice: { continued: 726, summary: 692, signature: 718, footer: 740 },
+  invoice: { continued: 684, summary: 684, signature: 0, footer: 694 },
 } as const
-/** Interlineado de la política de cambios (letra de 6,8 pt). */
-const POLICY_LINE = 8.2
+/** Interlineado de la política de cambios (letra de 7,5 pt, en negrita). */
+const POLICY_LINE = 8.625
 
 const INK: RGB = [20, 16, 14]
 const MUTED: RGB = [92, 81, 74]
@@ -79,7 +79,12 @@ export function planPdfRows(
         singlePage: true,
       }
   }
-  return { fontSize: 9, lineHeight: 9 * 1.15, padding: 3, singlePage: false }
+  return {
+    fontSize: 9,
+    lineHeight: 9 * 1.15,
+    padding: MIN_PAD,
+    singlePage: false,
+  }
 }
 
 /** El logo se incrusta una sola vez aunque el PDF traiga cientos de hojas. */
@@ -381,30 +386,24 @@ export function layoutDocumentPdf(
     y = header(true) + 4
   }
   summary(y + 6)
-  pdf.setDrawColor(...MUTED).setLineWidth(0.6)
-  pdf
-    .line(70, SIGNATURE_Y, 250, SIGNATURE_Y)
-    .line(362, SIGNATURE_Y, 542, SIGNATURE_Y)
-  text('Elaborado por', 160, SIGNATURE_Y + 10, 8, false, 'center')
-  text(
-    d.kind === 'invoice' ? 'Recibido por' : 'Aceptación del cliente',
-    452,
-    SIGNATURE_Y + 10,
-    8,
-    false,
-    'center',
-  )
-  /** Política de cambios: título en negrita y texto en la misma línea. */
+  if (d.kind === 'proforma') {
+    pdf.setDrawColor(...MUTED).setLineWidth(0.6)
+    pdf
+      .line(70, SIGNATURE_Y, 250, SIGNATURE_Y)
+      .line(362, SIGNATURE_Y, 542, SIGNATURE_Y)
+    text('Elaborado por', 160, SIGNATURE_Y + 10, 8, false, 'center')
+    text('Aceptación del cliente', 452, SIGNATURE_Y + 10, 8, false, 'center')
+  }
+  /** Entire policy in bold, with readable spacing between paragraphs. */
   function policy(y: number) {
-    const title = returnPolicy.title.toUpperCase()
-    pdf.setFont('helvetica', 'bold').setFontSize(6.8)
-    const titleWidth = pdf.getTextWidth(title) + 3
-    const [first, ...rest] = wrap(returnPolicy.text, width - titleWidth, 6.8)
-    text(title, left, y, 6.8, true)
-    text(first, left + titleWidth, y, 6.8)
-    const tail = wrap(rest.join(' '), width, 6.8)
-    if (rest.length) text(tail, left, y + POLICY_LINE, 6.8)
-    return y + POLICY_LINE * (1 + (rest.length ? tail.length : 0))
+    text(returnPolicy.title.toUpperCase(), left, y, 7.5, true)
+    let cursor = y + 11
+    for (const paragraph of returnPolicy.text.split('\n\n')) {
+      const lines = wrap(paragraph, width, 7.5, true)
+      text(lines, left, cursor, 7.5, true)
+      cursor += lines.length * POLICY_LINE + 2
+    }
+    return cursor
   }
   const lastPage = pdf.getNumberOfPages()
   const pageCount = lastPage - firstPage + 1
@@ -415,15 +414,16 @@ export function layoutDocumentPdf(
       .setDrawColor(...accent)
       .setLineWidth(1)
       .line(left, FOOTER_Y, right, FOOTER_Y)
-    text(
-      'Gracias por tu confianza.',
-      left,
-      FOOTER_Y + 11,
-      9,
-      true,
-      'left',
-      accent,
-    )
+    if (d.kind === 'proforma')
+      text(
+        'Gracias por tu confianza.',
+        left,
+        FOOTER_Y + 11,
+        9,
+        true,
+        'left',
+        accent,
+      )
     text(
       `${page - firstPage + 1} / ${pageCount}`,
       right,
@@ -434,7 +434,7 @@ export function layoutDocumentPdf(
       MUTED,
     )
     const noticeY =
-      d.kind === 'invoice' ? policy(FOOTER_Y + 20) + 0.8 : FOOTER_Y + 21
+      d.kind === 'invoice' ? policy(FOOTER_Y + 10) + 0.8 : FOOTER_Y + 21
     text(wrap(notice, width, 6.5), left, noticeY, 6.5, false, 'left', MUTED)
   }
   pdf.setPage(lastPage)

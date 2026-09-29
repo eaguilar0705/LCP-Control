@@ -142,7 +142,12 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
   )
   const total = valid ? draftTotal(lines, tier, currency) : null
   const validTax = Number.isFinite(taxRate) && taxRate >= 0 && taxRate <= 100
-  const validExchange = currency === 'NIO' || (exchangeRate !== null && Number.isFinite(exchangeRate) && exchangeRate > 0 && exchangeRate <= 1000000)
+  const validExchange =
+    currency === 'NIO' ||
+    (exchangeRate !== null &&
+      Number.isFinite(exchangeRate) &&
+      exchangeRate > 0 &&
+      exchangeRate <= 1000000)
   /**
    * Motivo por el que una línea no puede facturarse, junto a su cantidad. Las
    * existencias se comprueban al emitir en PostgreSQL, que es la autoridad;
@@ -161,7 +166,8 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
     const available = item.quantities[location]
     if (available == null)
       return `Sin conteo en ${labels.location[location]}. Registra el inventario antes de facturar.`
-    if (available === 0) return `No hay existencias en ${labels.location[location]}.`
+    if (available === 0)
+      return `No hay existencias en ${labels.location[location]}.`
     return line.quantity > available
       ? `Solo hay ${available} en ${labels.location[location]}.`
       : undefined
@@ -282,7 +288,9 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
       lines,
     })
     if (!result.success) {
-      setMessage('Agrega productos y revisa las cantidades, tasa de impuesto y tipo de cambio.')
+      setMessage(
+        'Agrega productos y revisa las cantidades, tasa de impuesto y tipo de cambio.',
+      )
       return
     }
     if (savingDraft) return
@@ -408,21 +416,30 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
     setNotes(item.notes)
     let pricesChanged = false
     const refreshedLines = item.lines.map((line) => {
-      const product = data?.find((entry) => entry.product.id === line.productId)?.product
+      const product = data?.find(
+        (entry) => entry.product.id === line.productId,
+      )?.product
       if (!product?.active || !product.prices) return structuredClone(line)
       const prices = structuredClone(product.prices)
-      if (Object.keys(priceTierLabels).some((key) => {
-        const priceTier = key as PriceTier
-        return prices[priceTier].NIO !== line.prices[priceTier].NIO ||
-          prices[priceTier].USD !== line.prices[priceTier].USD
-      })) pricesChanged = true
+      if (
+        Object.keys(priceTierLabels).some((key) => {
+          const priceTier = key as PriceTier
+          return (
+            prices[priceTier].NIO !== line.prices[priceTier].NIO ||
+            prices[priceTier].USD !== line.prices[priceTier].USD
+          )
+        })
+      )
+        pricesChanged = true
       return { ...line, prices }
     })
     setLines(refreshedLines)
     setFailure('')
-    setMessage(pricesChanged
-      ? 'Borrador abierto con los precios actuales del catálogo. Revisa el total antes de emitir y guarda los cambios.'
-      : 'Borrador abierto. Guarda los cambios al terminar.')
+    setMessage(
+      pricesChanged
+        ? 'Borrador abierto con los precios actuales del catálogo. Revisa el total antes de emitir y guarda los cambios.'
+        : 'Borrador abierto. Guarda los cambios al terminar.',
+    )
   }
 
   function clear() {
@@ -510,7 +527,13 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
           displayedRate,
         )
   const displayedTaxRate = issued ? issued.taxRate : taxRate
-  const taxBreakdown = displayedTotal !== null && displayedTaxRate !== undefined && displayedTaxRate !== null && Number.isFinite(displayedTaxRate) ? includedTax(displayedTotal, displayedTaxRate) : null
+  const taxBreakdown =
+    displayedTotal !== null &&
+    displayedTaxRate !== undefined &&
+    displayedTaxRate !== null &&
+    Number.isFinite(displayedTaxRate)
+      ? includedTax(displayedTotal, displayedTaxRate)
+      : null
   return (
     <>
       <div className="page-heading no-print">
@@ -518,14 +541,16 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
           <h1>{copy.title}</h1>
           <p className="muted">{copy.subtitle}</p>
         </div>
-        <a
-          className="button button-secondary"
-          href={`${base}/documents/example/${kind}`}
-          target="_blank"
-          rel="noreferrer"
-        >
-          Ver ejemplo en carta
-        </a>
+        {demo && (
+          <a
+            className="button button-secondary"
+            href={`${base}/documents/example/${kind}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Ver ejemplo en carta
+          </a>
+        )}
         <Button variant="secondary" onClick={clear} disabled={busy}>
           <Plus size={18} />
           {kind === 'invoice' ? 'Nueva factura' : 'Nueva proforma'}
@@ -685,7 +710,10 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
             <div className="form-grid">
               <Input
                 label="Impuesto incluido en el precio (%)"
-                type="number" min={0} max={100} step="0.01"
+                type="number"
+                min={0}
+                max={100}
+                step="0.01"
                 value={Number.isNaN(taxRate) ? '' : taxRate}
                 error={!validTax ? 'Indica una tasa entre 0 y 100.' : undefined}
                 onChange={(event) => setTaxRate(event.target.valueAsNumber)}
@@ -693,9 +721,16 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
               {currency === 'USD' && (
                 <Input
                   label="Tipo de cambio (NIO por 1 USD)"
-                  type="number" min="0.000001" max={1000000} step="0.000001"
+                  type="number"
+                  min="0.000001"
+                  max={1000000}
+                  step="0.000001"
                   value={exchangeField}
-                  error={kind === 'invoice' && !validExchange ? 'Registra el tipo de cambio para contabilizar esta venta.' : undefined}
+                  error={
+                    kind === 'invoice' && !validExchange
+                      ? 'Registra el tipo de cambio para contabilizar esta venta.'
+                      : undefined
+                  }
                   onChange={(event) => setExchangeText(event.target.value)}
                 />
               )}
@@ -852,8 +887,24 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
           </div>
           {taxBreakdown && (
             <div className="invoice-meta">
-              <p>Venta sin impuesto<small>{formatCurrency(taxBreakdown.net, issued?.currency ?? currency)}</small></p>
-              <p>Impuesto incluido ({displayedTaxRate} %)<small>{formatCurrency(taxBreakdown.tax, issued?.currency ?? currency)}</small></p>
+              <p>
+                Venta sin impuesto
+                <small>
+                  {formatCurrency(
+                    taxBreakdown.net,
+                    issued?.currency ?? currency,
+                  )}
+                </small>
+              </p>
+              <p>
+                Impuesto incluido ({displayedTaxRate} %)
+                <small>
+                  {formatCurrency(
+                    taxBreakdown.tax,
+                    issued?.currency ?? currency,
+                  )}
+                </small>
+              </p>
             </div>
           )}
           <div className="invoice-total">
@@ -876,7 +927,8 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
               </span>
               <small>
                 A {displayedRate} C$ por dólar. Cambia la moneda arriba para
-                cobrar en {equivalent.currency === 'USD' ? 'dólares' : 'córdobas'}.
+                cobrar en{' '}
+                {equivalent.currency === 'USD' ? 'dólares' : 'córdobas'}.
               </small>
             </p>
           )}

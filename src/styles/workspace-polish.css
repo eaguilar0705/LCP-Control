@@ -169,11 +169,27 @@
 .activation-page form {
   margin: 25px 0 20px;
 }
+.recovery-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.recovery-card .demo-link {
+  display: block;
+  margin-top: 20px;
+  text-align: center;
+}
+@media (max-width: 380px) {
+  .activation-page > .card {
+    padding: 24px 20px;
+  }
+}
 .activation-page > a {
   font-size: 12px;
 }
 .workspace-heading {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 24px;
@@ -186,6 +202,11 @@
   align-items: center;
   gap: 19px;
   min-width: 0;
+  flex: 1 1 320px;
+}
+.workspace-heading-copy > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .workspace-heading-icon {
   display: grid;
@@ -222,6 +243,7 @@
 }
 .workspace-heading-action {
   flex-shrink: 0;
+  max-width: 100%;
 }
 .section-heading {
   display: flex;

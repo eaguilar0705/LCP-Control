@@ -212,27 +212,14 @@ test('entry, exit and damage are pending drafts and never change stock', async (
     .selectOption('available')
   await expect(page.getByText('30 de 30 productos')).toBeVisible()
 })
-test('a new visit rotates the reflection without consuming two entries in StrictMode', async ({
+test('the daily reflection stays the same after reloading and visiting another tab', async ({
   page,
 }) => {
   await page.goto('/demo')
   const first = await page.locator('blockquote').innerText()
-  await expect
-    .poll(() =>
-      page.evaluate(
-        () =>
-          JSON.parse(localStorage.getItem('lcp.reflections.v1') ?? '[]').length,
-      ),
-    )
-    .toBe(1)
   await page.reload()
-  await expect(page.locator('blockquote')).not.toHaveText(first)
-  await expect
-    .poll(() =>
-      page.evaluate(
-        () =>
-          JSON.parse(localStorage.getItem('lcp.reflections.v1') ?? '[]').length,
-      ),
-    )
-    .toBe(2)
+  await expect(page.locator('blockquote')).toHaveText(first)
+  await page.goto('/demo/inventory')
+  await page.goto('/demo')
+  await expect(page.locator('blockquote')).toHaveText(first)
 })

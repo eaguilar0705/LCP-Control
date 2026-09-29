@@ -65,7 +65,7 @@ describe('parseAuthLink', () => {
     ).toBe(true)
     expect(hasAuthLink('/', '', '')).toBe(false)
   })
-  it('sends password recovery to the account page', () => {
+  it('sends password recovery to its dedicated form', () => {
     expect(
       destinationAfterLink({
         kind: 'tokens',
@@ -73,7 +73,17 @@ describe('parseAuthLink', () => {
         refreshToken: 'r',
         type: 'recovery',
       }),
-    ).toBe('/account')
+    ).toBe('/reset-password')
+  })
+  it('keeps recovery intent in PKCE and implicit callbacks', () => {
+    for (const [search, hash] of [
+      ['?code=c&type=recovery', ''],
+      ['?type=recovery', '#access_token=a&refresh_token=r'],
+      ['?token_hash=h&type=recovery', ''],
+    ])
+      expect(destinationAfterLink(parseAuthLink(search, hash)!)).toBe(
+        '/reset-password',
+      )
   })
 })
 

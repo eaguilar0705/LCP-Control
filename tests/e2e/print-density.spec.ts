@@ -39,7 +39,11 @@ test.describe('impresión compacta de facturas y proformas', () => {
             .evaluate((cell) => getComputedStyle(cell).fontWeight),
         ).toBe('700')
         for (const format of ['Letter', 'A4'] as const) {
-          const pdf = await page.pdf({ format, printBackground: true })
+          const pdf = await page.pdf({
+            format,
+            printBackground: true,
+            path: `output/test-results/print-${kind}-${count}-${format}.pdf`,
+          })
           expect(pageCount(pdf), `${format}`).toBe(1)
           if (count === 40)
             await page.screenshot({

@@ -43,6 +43,7 @@
   font-weight: 700;
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 .inventory-total-warehouse {
   color: var(--stock-warehouse-ink);
@@ -85,13 +86,41 @@
   gap: 4px;
   font-size: 10px;
   font-weight: 500;
-  white-space: nowrap;
+  flex-wrap: wrap;
+  overflow-wrap: anywhere;
 }
 .stock-tile dd {
   margin: 4px 0 0;
   font-size: 18px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* Each card adapts to its own width, including the tablet sidebar layout. */
+.catalog-product {
+  container-type: inline-size;
+}
+.catalog-product-body {
+  overflow-wrap: anywhere;
+}
+@container (max-width: 245px) {
+  .stock-by-location {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .stock-tile {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+  .stock-tile dt {
+    flex-wrap: nowrap;
+  }
+  .stock-tile dd {
+    margin: 0;
+    font-size: 15px;
+  }
 }
 .stock-tile-warehouse {
   color: var(--stock-warehouse-ink);

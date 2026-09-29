@@ -6,6 +6,8 @@ const auth = vi.hoisted(() => ({
   setSession: vi.fn(),
   verifyOtp: vi.fn(),
   exchangeCodeForSession: vi.fn(),
+  resetPasswordForEmail: vi.fn(),
+  updateUser: vi.fn(),
 }))
 vi.mock('@/lib/supabase', () => ({
   authConfigured: true,
@@ -17,10 +19,68 @@ import {
   confirmAuthLink,
   resendConfirmation,
   signUpStaff,
+  requestPasswordReset,
+  replacePassword,
 } from '@/services/auth'
 
 beforeEach(() => {
+  vi.unstubAllEnvs()
   for (const fn of Object.values(auth)) fn.mockReset()
+})
+
+describe('recuperación de contraseña', () => {
+  it('sends the normalized email to the recovery callback', async () => {
+    auth.resetPasswordForEmail.mockResolvedValue({ error: null })
+    await requestPasswordReset(' Ana@Example.test ')
+    expect(auth.resetPasswordForEmail).toHaveBeenCalledWith(
+      'ana@example.test',
+      {
+        redirectTo: `${location.origin}/auth/callback?type=recovery`,
+      },
+    )
+  })
+  it('does not reveal whether the email exists', async () => {
+    auth.resetPasswordForEmail.mockResolvedValue({
+      error: { code: 'user_not_found' },
+    })
+    await expect(
+      requestPasswordReset('nobody@example.test'),
+    ).resolves.toBeUndefined()
+  })
+  it('reports rate limits without retrying', async () => {
+    auth.resetPasswordForEmail.mockResolvedValue({ error: { status: 429 } })
+    await expect(requestPasswordReset('a@example.test')).rejects.toThrow(
+      'límite temporal',
+    )
+    expect(auth.resetPasswordForEmail).toHaveBeenCalledTimes(1)
+  })
+  it('never redirects production to a stale localhost configuration', () => {
+    for (const hostname of ['localhost', '127.0.0.1', '[::1]']) {
+      vi.stubEnv(
+        'VITE_AUTH_REDIRECT_URL',
+        `http://${hostname}:5173/auth/callback`,
+      )
+      expect(authRedirectUrl('https://lcp-control.pages.dev')).toBe(
+        'https://lcp-control.pages.dev/auth/callback',
+      )
+    }
+    vi.stubEnv(
+      'VITE_AUTH_REDIRECT_URL',
+      'https://lcp-control.pages.dev/auth/callback',
+    )
+    expect(authRedirectUrl('https://preview.example')).toBe(
+      'https://lcp-control.pages.dev/auth/callback',
+    )
+  })
+  it('rejects weak input and uses Supabase to update the authenticated account', async () => {
+    await expect(replacePassword('short')).rejects.toThrow('12 a 72')
+    expect(auth.updateUser).not.toHaveBeenCalled()
+    auth.updateUser.mockResolvedValue({ error: null })
+    await replacePassword('A-new-password-123')
+    expect(auth.updateUser).toHaveBeenCalledWith({
+      password: 'A-new-password-123',
+    })
+  })
 })
 
 describe('correo de activación', () => {

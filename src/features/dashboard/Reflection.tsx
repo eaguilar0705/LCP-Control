@@ -1,33 +1,22 @@
 import { useEffect, useState } from 'react'
-import { nextReflection, reflections } from './quotes'
+import { dailyReflection } from './quotes'
 export function Reflection() {
-  const [selection] = useState(() => {
-    let history = ''
-    try {
-      const quote = nextReflection({
-        getItem: (key) => localStorage.getItem(key),
-        setItem: (_key, value) => {
-          history = value
-        },
-      })
-      return { quote, history }
-    } catch {
-      return { quote: reflections[0], history }
-    }
-  })
+  const [quote, setQuote] = useState(() => dailyReflection())
   useEffect(() => {
-    if (selection.history) {
-      try {
-        localStorage.setItem('lcp.reflections.v1', selection.history)
-      } catch {
-        /* A reflection is still shown without storage. */
-      }
+    const update = () => setQuote(dailyReflection())
+    const timer = setInterval(update, 30_000)
+    window.addEventListener('focus', update)
+    document.addEventListener('visibilitychange', update)
+    return () => {
+      clearInterval(timer)
+      window.removeEventListener('focus', update)
+      document.removeEventListener('visibilitychange', update)
     }
-  }, [selection])
+  }, [])
   return (
     <div className="reflection">
       <span>Para comenzar el día</span>
-      <blockquote>{selection.quote}</blockquote>
+      <blockquote>{quote}</blockquote>
     </div>
   )
 }

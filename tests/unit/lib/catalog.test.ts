@@ -9,7 +9,7 @@ import {
 } from '@/features/inventory/model'
 import { lineCents } from '@/lib/pricing'
 import { draftTotal, type DraftLine } from '@/features/sales/document'
-import { nextReflection, reflections } from '@/features/dashboard/quotes'
+import { dailyReflection, reflections } from '@/features/dashboard/quotes'
 describe('synthetic local catalog', () => {
   it('keeps unique internal identifiers and a price for every tier and currency', () => {
     expect(catalogProducts).toHaveLength(30)
@@ -114,29 +114,29 @@ describe('document arithmetic', () => {
       expect(() => lineCents(10, quantity)).toThrow()
   })
 })
-describe('reflection rotation', () => {
-  it('uses every reflection before repeating and avoids an immediate cycle repeat', () => {
-    let value: string | null = null
-    const storage = {
-      getItem: () => value,
-      setItem: (_key: string, next: string) => {
-        value = next
-      },
-    }
-    const seen = Array.from({ length: reflections.length }, () =>
-      nextReflection(storage, () => 0),
+describe('daily reflections', () => {
+  it('contains 365 unique reflections and uses each date exactly once', () => {
+    expect(reflections).toHaveLength(365)
+    expect(new Set(reflections).size).toBe(365)
+    const year = Array.from({ length: 365 }, (_, i) =>
+      dailyReflection(new Date(Date.UTC(2027, 0, i + 1, 12))),
     )
-    expect(new Set(seen).size).toBe(reflections.length)
-    expect(nextReflection(storage, () => 0)).not.toBe(seen.at(-1))
+    expect(new Set(year).size).toBe(365)
   })
-  it('tolerates corrupt or unavailable storage', () => {
-    expect(reflections).toContain(
-      nextReflection({
-        getItem: () => '{broken',
-        setItem: () => {
-          throw new Error('blocked')
-        },
-      }),
+  it('changes at midnight in Nicaragua, independently of the device timezone', () => {
+    expect(dailyReflection(new Date('2026-09-28T05:59:59Z'))).not.toBe(
+      dailyReflection(new Date('2026-09-28T06:00:00Z')),
+    )
+    expect(dailyReflection(new Date('2026-09-28T06:00:00Z'))).toBe(
+      dailyReflection(new Date('2026-09-29T05:59:59Z')),
+    )
+  })
+  it('keeps calendar dates stable in leap years', () => {
+    expect(dailyReflection(new Date('2028-03-01T12:00:00Z'))).toBe(
+      dailyReflection(new Date('2027-03-01T12:00:00Z')),
+    )
+    expect(dailyReflection(new Date('2028-02-29T12:00:00Z'))).toBe(
+      reflections[364],
     )
   })
 })

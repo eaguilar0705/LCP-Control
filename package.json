@@ -19,6 +19,7 @@
     "test:scripts": "node --test \"tests/scripts/*.test.mjs\"",
     "test:e2e": "playwright test",
     "test:credentials": "node tests/security/credentials.mjs",
+    "test:recovery": "node tests/flows/recovery.mjs",
     "test:flows": "node tests/flows/pricing.mjs",
     "test:db": "node tests/database/catalog.mjs && node tests/database/accounting.mjs && node tests/database/staff.mjs && node tests/database/contacts.mjs && node tests/database/invoices.mjs && node tests/database/pricing.mjs",
     "preview": "vite preview --host 127.0.0.1"

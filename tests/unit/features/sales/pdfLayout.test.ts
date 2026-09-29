@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { layoutDocumentPdf, planPdfRows } from '@/features/sales/pdfLayout'
 import { exampleDocument } from '@/features/sales/example'
 import { printDensity } from '@/features/sales/printDensity'
+import { returnPolicy } from '@/lib/domain'
 
 const logo = new Uint8Array(readFileSync('public/brand/wordmark-wine.jpeg'))
 
@@ -35,10 +36,19 @@ describe('PDF comprimido de facturas y proformas', () => {
       ).pages
         .flat()
         .join('\n')
-    expect(content('invoice')).toContain('POL')
-    expect(content('invoice')).toContain('No se hacen devoluciones de dinero.')
-    expect(content('invoice')).toContain('7 d')
-    expect(content('proforma')).not.toContain('No se hacen devoluciones')
+    const invoice = content('invoice')
+    const words = [...invoice.matchAll(/\(((?:\\.|[^\\)])*)\) Tj/g)]
+      .map((match) => match[1].replace(/\\([\\()])/g, '$1'))
+      .join(' ')
+    expect(words).toContain(returnPolicy.text.replace(/\s+/g, ' '))
+    expect(content('proforma')).not.toContain('Por favor, revise su producto')
+    for (const block of invoice
+      .split('BT')
+      .filter((block) =>
+        /Por favor, revise|En caso de presentar|El producto deberá/.test(block),
+      )) {
+      expect(block).toContain('/F2 7.5 Tf')
+    }
   })
   it('usa la letra más grande que cabe y nunca baja de 8 pt', () => {
     const few = planPdfRows(() => [1, 1, 1], 450)

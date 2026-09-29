@@ -4,10 +4,10 @@
    (A4) por 279,4 mm de alto (carta)— para que el mismo documento quepa en una
    hoja con cualquiera de los dos papeles.
 
-   Presupuesto vertical del modo denso (px a 96 ppp, alto útil ≈ 995 px):
-   encabezado 70 · cliente 56 · cabecera de tabla 18 · 40 renglones × 16 = 640
-   · totales 76 · firmas 40 · pie 38  →  ≈ 938 px, con margen para algún
-   nombre largo en dos líneas.
+   En las facturas se omiten las firmas y los agradecimientos decorativos
+   para dar espacio a los productos y a la política completa. La prueba de
+   impresión verifica 40 descripciones de una línea en carta y A4; nombres
+   extensos u observaciones adicionales pueden necesitar otra hoja.
 
    Legibilidad: el cuerpo de la tabla no baja de 11 px (≈ 8,3 pt), en negrita
    y negro puro. Las líneas de la tabla son de 1 px en gris medio: los grises
@@ -121,6 +121,7 @@
 }
 .letter-stamp p {
   margin: 2px 0 0;
+  line-height: 1.2;
   font-size: 10px;
   color: var(--document-ink);
 }
@@ -129,6 +130,7 @@
 }
 .letter-density-dense .letter-stamp {
   padding: 4px 10px;
+  line-height: 1.15;
 }
 .letter-density-dense .letter-stamp strong {
   font-size: 17px;
@@ -319,6 +321,9 @@
   margin-top: 10px;
   break-inside: avoid;
 }
+.letter-invoice .letter-footer {
+  margin-top: auto;
+}
 .letter-footer strong {
   color: var(--document-accent);
   font-size: 11px;
@@ -331,14 +336,19 @@
 }
 /* Política de cambios: en tinta, no en gris, porque el cliente debe leerla. */
 .letter-footer .letter-policy {
-  margin: 2px 0 1px;
-  font-size: 8.5px;
+  margin: 5px 0;
+  font-weight: 700;
+  font-size: 9.5px;
   line-height: 1.25;
   color: var(--document-ink);
 }
 .letter-policy b {
   font-weight: 700;
   text-transform: uppercase;
+}
+.letter-policy-paragraph {
+  display: block;
+  margin-top: 2px;
 }
 .letter-density-dense .letter-summary {
   margin-top: 6px;
@@ -366,17 +376,12 @@
 .letter-density-dense .letter-footer {
   margin-top: 6px;
 }
-/* La política de cambios ocupa dos líneas del pie: en el modo denso la
-   factura recorta ese alto del aire alrededor del resumen y las firmas para
-   que 40 productos sigan cabiendo en una hoja. */
+/* El modo denso prioriza los productos; el pie conserva la política completa. */
 .letter-invoice.letter-density-dense .letter-summary {
   margin-top: 4px;
 }
 .letter-invoice.letter-density-dense .letter-signatures {
   padding-top: 14px;
-}
-.letter-invoice.letter-density-dense .letter-footer {
-  margin-top: 4px;
 }
 
 @media print {

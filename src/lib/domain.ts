@@ -259,7 +259,7 @@ export const labels = {
  */
 export const returnPolicy = {
   title: 'Política de cambios y devoluciones:',
-  text: 'No se hacen devoluciones de dinero. Se aceptan cambios dentro de los 7 días posteriores a la compra, sujetos a la evaluación del producto. Revise su producto antes de salir de la tienda.',
+  text: 'Por favor, revise su producto antes de retirarse de la tienda. Una vez entregado y verificado, no se realizan cambios ni devoluciones por preferencia personal, aroma o elección del producto.\n\nEn caso de presentar un posible defecto de fabricación, el producto deberá ser llevado a nuestra sucursal para su revisión. Luego de la evaluación, se determinará si cumple con las condiciones para realizar el cambio correspondiente.\n\nEl producto deberá conservar su empaque, presentación y contenido en las condiciones en que fue entregado. La presentación de esta factura será necesaria para cualquier solicitud de revisión o cambio.',
 } as const
 
 export const documentCopy: Record<

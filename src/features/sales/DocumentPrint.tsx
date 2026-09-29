@@ -142,8 +142,10 @@ export function DocumentPrint({ document: d }: { document: DocumentRecord }) {
             {d.items.length} {d.items.length === 1 ? 'producto' : 'productos'} ·{' '}
             {units} {units === 1 ? 'unidad' : 'unidades'}
           </p>
-          <small>OBSERVACIONES</small>
-          <p>{d.notes || 'Gracias por elegir La Casa del Perfume.'}</p>
+          {d.kind === 'proforma' && <small>OBSERVACIONES</small>}
+          {(d.notes || d.kind === 'proforma') && (
+            <p>{d.notes || 'Gracias por elegir La Casa del Perfume.'}</p>
+          )}
           {d.kind === 'invoice' && d.location && (
             <p>Entrega desde: {labels.location[d.location]}</p>
           )}
@@ -176,17 +178,22 @@ export function DocumentPrint({ document: d }: { document: DocumentRecord }) {
           )}
         </div>
       </section>
-      <div className="letter-signatures">
-        <span>Elaborado por</span>
-        <span>
-          {d.kind === 'invoice' ? 'Recibido por' : 'Aceptación del cliente'}
-        </span>
-      </div>
+      {d.kind === 'proforma' && (
+        <div className="letter-signatures">
+          <span>Elaborado por</span>
+          <span>Aceptación del cliente</span>
+        </div>
+      )}
       <footer className="letter-footer">
-        <strong>Gracias por tu confianza.</strong>
+        {d.kind === 'proforma' && <strong>Gracias por tu confianza.</strong>}
         {d.kind === 'invoice' && (
           <p className="letter-policy">
-            <b>{returnPolicy.title}</b> {returnPolicy.text}
+            <b>{returnPolicy.title}</b>
+            {returnPolicy.text.split('\n\n').map((paragraph) => (
+              <span className="letter-policy-paragraph" key={paragraph}>
+                {paragraph}
+              </span>
+            ))}
           </p>
         )}
         <p>

@@ -113,6 +113,9 @@ export function AuthCallbackPage({
               <Link className="button button-secondary" to="/activate">
                 Solicitar un correo nuevo
               </Link>
+              <Link className="button button-secondary" to="/forgot-password">
+                Recuperar contraseña
+              </Link>
             </div>
           </div>
         )}

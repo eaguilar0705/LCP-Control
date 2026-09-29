@@ -11,6 +11,7 @@ export default tseslint.config(
       '.tools',
       'private-data',
       'output',
+      'tmp',
       'playwright-report',
       'test-results',
     ],

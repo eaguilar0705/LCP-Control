@@ -85,6 +85,11 @@ export function LoginPage() {
             </Button>
           </form>
           {authConfigured && (
+            <Link className="demo-link" to="/forgot-password">
+              Olvidé mi contraseña
+            </Link>
+          )}
+          {authConfigured && (
             <Link className="demo-link" to="/activate">
               Activar mi cuenta
             </Link>

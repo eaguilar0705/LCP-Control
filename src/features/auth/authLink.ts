@@ -63,7 +63,7 @@ export function parseAuthLink(search: string, hash: string): AuthLink | null {
       kind: 'tokens',
       accessToken,
       refreshToken,
-      type: fragment.get('type'),
+      type: fragment.get('type') ?? query.get('type'),
     }
   const tokenHash = query.get('token_hash')
   const type = query.get('type') as EmailOtpType | null
@@ -93,11 +93,11 @@ export function authLinkErrorMessage(code: string | null) {
     case 'otp_expired':
     case 'email_link_invalid':
     case 'access_denied':
-      return 'El enlace venció o ya se usó. Si ya lo habías abierto, tu correo puede estar confirmado: intenta iniciar sesión. Si no, solicita un correo nuevo desde «Activar mi cuenta».'
+      return 'El enlace venció o ya se usó. Solicita uno nuevo desde «Recuperar contraseña» o «Activar mi cuenta», según lo que necesites, y abre el correo más reciente.'
     case 'bad_code_verifier':
     case 'flow_state_not_found':
     case 'flow_state_expired':
-      return 'Abre el enlace en el mismo navegador donde creaste tu acceso, o solicita un correo nuevo desde «Activar mi cuenta».'
+      return 'Abre el enlace en el mismo navegador donde lo solicitaste, o solicita un correo nuevo.'
     case 'user_not_found':
       return 'La cuenta de este enlace ya no existe. Solicita acceso al administrador.'
     default:
@@ -105,7 +105,7 @@ export function authLinkErrorMessage(code: string | null) {
   }
 }
 
-/** Adonde ir después de canjear el enlace: la recuperación termina en Mi cuenta. */
+/** La recuperación abre un formulario dedicado a elegir la contraseña. */
 export function destinationAfterLink(link: AuthLink) {
-  return 'type' in link && link.type === 'recovery' ? '/account' : '/'
+  return 'type' in link && link.type === 'recovery' ? '/reset-password' : '/'
 }

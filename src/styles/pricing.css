@@ -200,6 +200,7 @@
 .pricing-table {
   width: 100%;
   overflow-x: auto;
+  contain: inline-size layout;
 }
 .pricing-table td,
 .pricing-table th {
@@ -587,10 +588,9 @@
 }
 .pricing-purchase-line-fields {
   display: grid;
-  grid-template-columns: minmax(200px, 2.2fr) minmax(110px, 1fr) minmax(
-      90px,
-      0.8fr
-    ) minmax(130px, 1fr) auto;
+  grid-template-columns:
+    minmax(200px, 2.2fr) minmax(110px, 1fr) minmax(90px, 0.8fr)
+    minmax(130px, 1fr) auto;
   gap: 10px;
   align-items: end;
 }

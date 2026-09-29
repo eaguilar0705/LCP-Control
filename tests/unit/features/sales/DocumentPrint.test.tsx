@@ -8,7 +8,12 @@ it('la factura impresa lleva la política de cambios y devoluciones', () => {
   expect(
     screen.getByText(/Política de cambios y devoluciones/i).closest('p'),
   ).toHaveTextContent(
-    'No se hacen devoluciones de dinero. Se aceptan cambios dentro de los 7 días posteriores a la compra',
+    'Por favor, revise su producto antes de retirarse de la tienda.',
+  )
+  expect(
+    screen.getByText(/Política de cambios y devoluciones/i).closest('p'),
+  ).toHaveTextContent(
+    'La presentación de esta factura será necesaria para cualquier solicitud de revisión o cambio.',
   )
 })
 

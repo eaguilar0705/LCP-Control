@@ -52,7 +52,7 @@ function client() {
   if (!supabase)
     throw new AppError(
       'configuration',
-      'Configura Supabase para acceder con tu cuenta. Puedes explorar la demostración.',
+      'El acceso no está disponible. Comunícate con el administrador.',
     )
   return supabase
 }
@@ -170,9 +170,9 @@ export const authService: AuthService = {
 
 /**
  * Dirección a la que Supabase devuelve a la persona después de abrir el enlace
- * del correo. Sin `emailRedirectTo`, Supabase usa la «Site URL» del proyecto,
- * que hoy apunta al equipo de desarrollo (127.0.0.1) y no existe en el
- * teléfono ni en otra computadora. Debe figurar en Authentication → URL
+ * del correo. Sin `emailRedirectTo`, Supabase usa la «Site URL» del proyecto.
+ * El dominio publicado evita enviar a otra persona al equipo de desarrollo.
+ * Debe figurar en Authentication → URL
  * Configuration → Redirect URLs; si no, Supabase vuelve a la Site URL.
  * `VITE_AUTH_REDIRECT_URL` fija el dominio publicado cuando el origen actual no
  * es el definitivo.
@@ -180,12 +180,24 @@ export const authService: AuthService = {
 export function authRedirectUrl(origin = globalThis.location?.origin ?? '') {
   const configured = import.meta.env.VITE_AUTH_REDIRECT_URL?.trim()
   const parsed = configured ? URL.parse(configured) : null
-  if (parsed && (parsed.protocol === 'https:' || isLoopback(parsed.hostname)))
+  const localOrigin = isLoopback(URL.parse(origin)?.hostname ?? '')
+  if (
+    parsed &&
+    (parsed.protocol === 'https:' ||
+      (parsed.protocol === 'http:' &&
+        localOrigin &&
+        isLoopback(parsed.hostname))) &&
+    (localOrigin || !isLoopback(parsed.hostname))
+  )
     return parsed.href
   return `${origin}${AUTH_CALLBACK_PATH}`
 }
 function isLoopback(hostname: string) {
-  return hostname === 'localhost' || /^127(?:\.\d{1,3}){3}$/.test(hostname)
+  return (
+    hostname === 'localhost' ||
+    hostname === '[::1]' ||
+    /^127(?:\.\d{1,3}){3}$/.test(hostname)
+  )
 }
 
 export type SignUpResult = 'confirmation_sent' | 'already_registered'
@@ -236,6 +248,42 @@ export async function resendConfirmation(email: string) {
     options: { emailRedirectTo: authRedirectUrl() },
   })
   if (error) throw signUpError(error)
+}
+
+/** Supabase sends the recovery email; the same callback handles its one-use link. */
+export async function requestPasswordReset(email: string) {
+  const redirect = new URL(authRedirectUrl())
+  redirect.searchParams.set('type', 'recovery')
+  const { error } = await client().auth.resetPasswordForEmail(
+    email.trim().toLowerCase(),
+    {
+      redirectTo: redirect.href,
+    },
+  )
+  if (error && error.code !== 'user_not_found') {
+    if (error.status === 429 || error.code === 'over_email_send_rate_limit')
+      throw new AppError(
+        'rate_limited',
+        'Se alcanzó el límite temporal de correos. Espera unos minutos antes de intentarlo otra vez.',
+      )
+    throw new AppError(
+      'network',
+      'No se pudo enviar el enlace. Inténtalo de nuevo; si continúa, comunícalo al administrador.',
+    )
+  }
+}
+
+export async function replacePassword(password: string) {
+  if (password.length < 12 || password.length > 72)
+    throw new AppError('validation', 'Usa de 12 a 72 caracteres.')
+  const { error } = await client().auth.updateUser({ password })
+  if (error)
+    throw new AppError(
+      'validation',
+      error.code === 'same_password'
+        ? 'Elige una contraseña diferente de la anterior.'
+        : 'No se pudo guardar la contraseña. Revisa los requisitos o solicita un enlace nuevo.',
+    )
 }
 
 /**
