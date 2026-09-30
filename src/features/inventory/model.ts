@@ -28,7 +28,7 @@ export function totalStock(item: InventoryItem) {
   const { store, warehouse } = item.quantities
   return store === null || warehouse === null ? null : store + warehouse
 }
-export interface LocationTotals {
+interface LocationTotals {
   warehouse: number
   store: number
   /** Suma consolidada Bodega + Tienda de los productos con ambos conteos. */

@@ -210,13 +210,6 @@ export function ErrorState({
     </div>
   )
 }
-export function Feedback({ children }: { children: ReactNode }) {
-  return (
-    <div className="feedback" role="status">
-      {children}
-    </div>
-  )
-}
 export function Dialog({
   open,
   title,

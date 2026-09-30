@@ -66,7 +66,7 @@ function Tip({
   )
 }
 
-export interface TrendPoint {
+interface TrendPoint {
   label: string
   value: number
   detail?: string
@@ -201,7 +201,7 @@ export function TrendChart({
   )
 }
 
-export interface RankedBar {
+interface RankedBar {
   label: string
   value: number
   detail?: string
@@ -241,7 +241,7 @@ export function RankedBars({
   )
 }
 
-export interface Segment {
+interface Segment {
   key: string
   label: string
   value: number

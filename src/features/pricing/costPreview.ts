@@ -48,7 +48,7 @@ export interface LinePreview {
   prices: TierPreview[]
   problem: string | null
 }
-export interface PurchasePreview {
+interface PurchasePreview {
   lines: LinePreview[]
   units: number
   goods: number

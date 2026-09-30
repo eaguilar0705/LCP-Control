@@ -74,7 +74,6 @@ export interface PricingList {
   rows: ProductPricing[]
 }
 export type PaymentMethod = 'cash' | 'card_pos' | 'bank_transfer'
-export type Bank = 'BAC' | 'LAFISE' | 'FICOSA'
 export interface Product {
   revision?: number
   imagePath?: string | null
@@ -99,47 +98,9 @@ export interface Product {
   sourceRow?: number
   sizeSource?: string
 }
-// Costs belong to a separate administrative projection, never to inventory reads.
-export interface ProductCost {
-  productId: string
-  averageCost: string
-  currency: Currency
-}
 export interface InventoryItem {
   product: Product
   quantities: Record<InventoryLocation, number | null>
-}
-export type MovementType =
-  'ENTRY' | 'EXIT' | 'DAMAGED' | 'ADJUSTMENT' | 'TRANSFER' | 'SALE'
-export interface InventoryMovement {
-  id: string
-  productId: string
-  location: InventoryLocation
-  quantity: number
-  type: MovementType
-  actorId: string
-  createdAt: string
-  reference: string | null
-  note: string
-}
-export interface SaleItem {
-  productId: string
-  quantity: number
-  unitPrice: string
-}
-export interface Sale {
-  id: string
-  currency: Currency
-  items: SaleItem[]
-  createdAt: string
-}
-export interface Customer {
-  id: string
-  name: string
-}
-export interface Supplier {
-  id: string
-  name: string
 }
 export interface BusinessSettings {
   name: string

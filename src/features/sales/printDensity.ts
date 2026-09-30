@@ -14,14 +14,14 @@ import type { DocumentRecord } from '../../lib/domain'
  * como dos. Por encima de 40 el documento sigue en otra hoja con el encabezado
  * de la tabla repetido.
  */
-export type PrintDensity = 'regular' | 'compact' | 'dense'
+type PrintDensity = 'regular' | 'compact' | 'dense'
 
-export const PRINT_CAPACITY = { regular: 12, compact: 25, dense: 40 } as const
+const PRINT_CAPACITY = { regular: 12, compact: 25, dense: 40 } as const
 
 /** Caracteres que caben en una línea de la descripción en modo denso. */
 const DESCRIPTION_CHARS = 72
 
-export function printedLines(document: Pick<DocumentRecord, 'items'>) {
+function printedLines(document: Pick<DocumentRecord, 'items'>) {
   return document.items.reduce(
     (sum, item) =>
       sum +

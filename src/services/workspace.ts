@@ -60,7 +60,7 @@ export const saveContact = (
   rpc<string>(kind === 'customers' ? 'save_customer' : 'save_supplier', {
     p_payload: record,
   })
-export type ContactDeletion = 'deleted' | 'archived'
+type ContactDeletion = 'deleted' | 'archived'
 /**
  * Elimina un cliente o proveedor. Un cliente con facturas o proformas se
  * archiva en lugar de borrarse, para conservar los documentos emitidos.

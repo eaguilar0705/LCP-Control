@@ -54,24 +54,12 @@
 .accounting-two-columns .accounting-table tbody td { min-width: 96px; }
 .accounting-table small { display: block; margin-top: 6px; color: var(--muted); font-size: 11px; line-height: 1.5; font-weight: 400; }
 .accounting-table .button { min-height: 38px; font-size: 12px; }
-.accounting-formula { border-left: 3px solid #c4a05a; background: #f8f5ee; padding: 12px 16px; margin: 12px 0 20px; color: #685536; font-size: 13px; }
-.accounting-search { display: flex; align-items: flex-end; gap: 24px; margin: 20px 0 12px; }
-.accounting-search > .field { flex: 1; max-width: 490px; }
-.accounting-checkbox { display: flex; align-items: center; min-height: 44px; gap: 8px; font-size: 13px; cursor: pointer; }
-.accounting-checkbox input { min-height: 18px; width: 18px; height: 18px; accent-color: var(--wine); }
-.accounting-pagination { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 18px; }
-.accounting-pagination > span { margin-right: auto; color: var(--muted); }
 .accounting-voided { background: #f7f4f0; }
-.accounting-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .accounting-alert { border-color: #e2b6b6; }
 .accounting-alert h3 { color: #a13c3c; }
 /* Un margen delgado se marca en el mismo lugar donde se lee el precio: es el
    dato que decide si esa lista todavía tiene sentido. */
 .accounting-table small.accounting-thin, .accounting-thin { color: #a13c3c; font-weight: 600; }
-.accounting-problems { list-style: none; margin: 4px 0; padding: 0; display: flex; flex-direction: column; gap: 8px; max-height: 260px; overflow-y: auto; }
-.accounting-problems li { padding: 10px 13px; background: #fdf6f5; border: 1px solid #ecd6d3; border-radius: 8px; font-size: 12px; line-height: 1.55; }
-.accounting-problems strong { display: block; overflow-wrap: anywhere; }
-.accounting-problems span { color: #7d5450; }
 .accounting-form textarea { width: 100%; min-height: 150px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
 .accounting-form .accounting-table-scroll { border: 1px solid var(--line); border-radius: 8px; }
 .accounting-form { max-width: 660px; }
@@ -90,30 +78,6 @@
 .accounting-account header strong { font-size: 17px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .accounting-account .accounting-table-scroll { margin-top: 12px; }
 .accounting-account .accounting-note { margin-bottom: 0; }
-/* Pedidos de importación: la caja completa, con su cobro por peso repartido. */
-.accounting-shipments { display: flex; flex-direction: column; gap: 16px; }
-.accounting-shipment { border: 1px solid var(--line); border-radius: 12px; padding: 18px; background: #fff; min-width: 0; }
-.accounting-shipment > header { display: grid; grid-template-columns: 1fr 1.3fr; gap: 18px; align-items: start; }
-.accounting-shipment > header strong { display: block; font-size: 15px; }
-.accounting-shipment > header small { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; line-height: 1.55; }
-.accounting-shipment .accounting-breakdown { margin: 0; }
-.accounting-shipment .accounting-breakdown > div { padding: 5px 0; font-size: 12px; }
-.accounting-shipment .accounting-breakdown > div:last-child { border-bottom: 0; }
-.accounting-shipment .accounting-table-scroll { margin-top: 14px; }
-.accounting-shipment .accounting-note { margin-bottom: 0; }
-/* El formulario del pedido necesita una fila por perfume, más ancha que el resto. */
-.dialog:has(.accounting-form-wide) { width: min(900px, calc(100% - 32px)); }
-.accounting-form-wide { max-width: none; }
-.accounting-lines { display: flex; flex-direction: column; gap: 12px; }
-.accounting-lines .section-heading { margin: 0; }
-.accounting-lines h4 { margin: 0; font-size: 14px; color: var(--ink); }
-.accounting-line { display: grid; grid-template-columns: minmax(170px, 2.2fr) minmax(110px, 1fr) minmax(85px, .7fr) minmax(115px, 1fr) minmax(105px, 1fr) auto; gap: 10px; align-items: end; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: #fbf9f6; }
-.accounting-line-cost { display: flex; flex-direction: column; gap: 2px; padding-bottom: 9px; }
-.accounting-line-cost span { color: var(--muted); font-size: 12px; }
-.accounting-line-cost strong { font-variant-numeric: tabular-nums; }
-.accounting-line-cost small { color: #a13c3c; font-size: 11px; line-height: 1.4; }
-.accounting-line .button { margin-bottom: 4px; }
-@media (max-width: 760px) { .accounting-line { grid-template-columns: 1fr 1fr; } .accounting-shipment > header { grid-template-columns: 1fr; } }
 @media (max-width: 1000px) { .accounting-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .accounting-two-columns, .accounting-wide-left { grid-template-columns: 1fr; gap: 0; } }
-@media (max-width: 600px) { .accounting-heading { flex-direction: column; padding: 20px; gap: 8px; } .accounting-badges { flex-direction: row; flex-wrap: wrap; align-items: flex-start; } .accounting-heading h2 { font-size: 23px; } .accounting-tabs { padding: 6px; } .accounting-tabs button { padding: 11px 13px; font-size: 12px; } .accounting-metrics { gap: 10px; } .accounting-metric { padding: 16px; gap: 10px; } .accounting-metric > span { font-size: 12px; } .accounting-metric > span svg { display: none; } .accounting-metric strong { font-size: 21px; letter-spacing: -.7px; } .accounting-metric small { font-size: 11px; } .accounting-card { padding: 18px; } .accounting-search { flex-direction: column; align-items: stretch; gap: 7px; } .accounting-search > .field { max-width: none; } .accounting-callout { padding: 14px; } .accounting-form .form-grid { grid-template-columns: 1fr; } }
-@media print { .accounting-tabs, .accounting-search, .accounting-pagination, .accounting-card .button { display: none; } .accounting-table-scroll { overflow: visible; } .accounting-metric-highlight { background: #fff; color: var(--ink); } .accounting-metric-highlight > span, .accounting-metric-highlight small { color: var(--muted); } }
+@media (max-width: 600px) { .accounting-heading { flex-direction: column; padding: 20px; gap: 8px; } .accounting-badges { flex-direction: row; flex-wrap: wrap; align-items: flex-start; } .accounting-heading h2 { font-size: 23px; } .accounting-tabs { padding: 6px; } .accounting-tabs button { padding: 11px 13px; font-size: 12px; } .accounting-metrics { gap: 10px; } .accounting-metric { padding: 16px; gap: 10px; } .accounting-metric > span { font-size: 12px; } .accounting-metric > span svg { display: none; } .accounting-metric strong { font-size: 21px; letter-spacing: -.7px; } .accounting-metric small { font-size: 11px; } .accounting-card { padding: 18px; } .accounting-callout { padding: 14px; } .accounting-form .form-grid { grid-template-columns: 1fr; } }
+@media print { .accounting-tabs, .accounting-card .button { display: none; } .accounting-table-scroll { overflow: visible; } .accounting-metric-highlight { background: #fff; color: var(--ink); } .accounting-metric-highlight > span, .accounting-metric-highlight small { color: var(--muted); } }

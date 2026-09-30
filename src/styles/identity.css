@@ -1,14 +1,8 @@
 /* Brand assets supplied by La Casa del Perfume. */
-.login-form .login-mobile-brand,
 .topbar .header-brand {
   display: none;
 }
 @media (max-width: 760px) {
-  .login-form .login-mobile-brand {
-    display: block;
-    width: 200px;
-    margin-bottom: 30px;
-  }
   .topbar .header-brand {
     display: block;
     width: 18px;
@@ -33,7 +27,6 @@ body {
 }
 .muted,
 .field,
-.table-secondary,
 .barcode-label,
 .product-identity small,
 .filter-note,
@@ -44,7 +37,6 @@ body {
 .user-block small,
 .table-footer,
 .mobile-product-meta,
-.location-strip,
 .nav-label,
 .brand small {
   color: var(--muted);
@@ -184,26 +176,6 @@ input[type='file']::file-selector-button:hover {
 .home-action > svg:last-child {
   color: var(--wine);
   margin-top: 20px;
-}
-.scan-shortcut {
-  display: flex;
-  gap: 20px;
-  align-items: center;
-  background: var(--wine);
-  color: #fff8ef;
-  padding: 25px 30px;
-  border-radius: 10px;
-}
-.scan-shortcut h2 {
-  font-size: 18px;
-}
-.scan-shortcut p {
-  color: #ebd7ce;
-  font-size: 12px;
-  margin-top: 6px;
-}
-.scan-shortcut > svg:last-child {
-  margin-left: auto;
 }
 .workspace-disclaimer {
   font-size: 12px;
@@ -738,13 +710,6 @@ input[type='file']::file-selector-button:hover {
   }
   .home-action p {
     font-size: 11px;
-  }
-  .scan-shortcut {
-    padding: 24px;
-    gap: 16px;
-  }
-  .scan-shortcut h2 {
-    font-size: 16px;
   }
   .catalog-toolbar-heading {
     display: block;

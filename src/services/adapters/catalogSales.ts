@@ -50,7 +50,7 @@ const names = [
   'Jorge Martínez',
 ]
 
-export interface SyntheticSales {
+interface SyntheticSales {
   documents: ReportDocument[]
   customers: ReportCustomer[]
   movements: ReportMovement[]

@@ -51,7 +51,7 @@ export async function exportReport(
  * el dueño puedan filtrar y sumar por su cuenta. Las cifras van como números;
  * el formato se aplica en la columna.
  */
-export function buildReportWorkbook({
+function buildReportWorkbook({
   report,
   range,
   tier,

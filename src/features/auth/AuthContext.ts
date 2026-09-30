@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react'
 import type { UserProfile } from '../../lib/domain'
 import type { AuthService } from '../../services/auth'
-export interface AuthState {
+interface AuthState {
   user: UserProfile | null
   loading: boolean
   error: string | null

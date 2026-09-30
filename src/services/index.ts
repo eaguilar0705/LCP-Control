@@ -96,7 +96,7 @@ export function createServices(provider: DataProvider) {
 // exists only in development and tests: a production build without Supabase
 // fails closed instead of serving a catalogue to anyone.
 const dataMode = import.meta.env.VITE_DATA_MODE || 'demo'
-export const realDataEnabled = dataMode === 'supabase' && authConfigured
+const realDataEnabled = dataMode === 'supabase' && authConfigured
 export const privateServices = createServices(
   realDataEnabled ? supabaseAdapter : unconfiguredAdapter,
 )

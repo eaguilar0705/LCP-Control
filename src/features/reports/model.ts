@@ -140,7 +140,7 @@ export const presetLabels: Record<Preset, string> = {
   '365d': 'Último año',
 }
 
-export function invoices(documents: ReportDocument[], currency: Currency) {
+function invoices(documents: ReportDocument[], currency: Currency) {
   return documents.filter(
     (document) => document.kind === 'invoice' && document.currency === currency,
   )
@@ -317,7 +317,7 @@ export function tierBreakdown(
     .filter((share): share is Share => !!share)
 }
 
-export interface CustomerActivity {
+interface CustomerActivity {
   newCustomers: number
   returning: number
   /** Clientes que más compraron en el periodo, por importe. */
@@ -367,7 +367,7 @@ export function customerActivity(
   }
 }
 
-export interface InventoryHealth {
+interface InventoryHealth {
   available: number
   low: number
   out: number
@@ -489,7 +489,7 @@ export function change(current: number, previous: number): number | null {
   return (current - previous) / previous
 }
 
-export interface Coverage {
+interface Coverage {
   productId: string
   description: string
   stock: number
@@ -540,7 +540,7 @@ export function coverageFromSold(
   return rows.sort((a, b) => a.days - b.days).slice(0, limit)
 }
 
-export interface IdleProduct {
+interface IdleProduct {
   productId: string
   description: string
   stock: number
@@ -593,7 +593,7 @@ export function concentration(values: number[], top: number): number | null {
   return head / total
 }
 
-export interface LapsedCustomer {
+interface LapsedCustomer {
   id: string
   name: string
   lastPurchase: string
@@ -658,7 +658,7 @@ export function daysBetween(from: string, to: string): number {
   return Math.round((end - start) / 86400000)
 }
 
-export interface Frequency {
+interface Frequency {
   id: string
   name: string
   orders: number
@@ -741,7 +741,7 @@ export const weekdayLabels = [
   'Viernes',
   'Sábado',
 ]
-export interface WeekdaySales {
+interface WeekdaySales {
   weekday: number
   label: string
   revenue: number
@@ -769,7 +769,7 @@ export function salesByWeekday(
   return totals
 }
 
-export interface Shrinkage {
+interface Shrinkage {
   productId: string
   description: string
   units: number
@@ -837,7 +837,7 @@ export function shrinkageFromUnits(
     .slice(0, limit)
 }
 
-export interface Conversion {
+interface Conversion {
   proformas: number
   converted: number
   rate: number | null

@@ -138,7 +138,7 @@ const CORS = {
 }
 const b64 = (value) => Buffer.from(JSON.stringify(value)).toString('base64url')
 const now = () => Math.floor(Date.now() / 1000)
-export const tokenFor = (user) =>
+const tokenFor = (user) =>
   `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: user.id, role: 'authenticated', exp: now() + 3600 })}.firmaSimulada0123456789`
 const identifier = /^[a-z_][a-z0-9_]*$/
 const operators = { eq: '=', neq: '<>', gt: '>', gte: '>=', lt: '<', lte: '<=' }

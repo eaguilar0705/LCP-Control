@@ -32,7 +32,7 @@ function loadLogo() {
     })
   return logoPromise
 }
-export async function buildDocumentPdf(
+async function buildDocumentPdf(
   document: DocumentRecord,
 ): Promise<Blob> {
   const { renderDocumentPdf } = await import('./pdfLayout')
@@ -56,7 +56,7 @@ export async function downloadPeriodPdf(
   downloadBlob(blob, periodFileName(kind, range))
 }
 
-export type ShareOutcome = 'shared' | 'downloaded' | 'cancelled'
+type ShareOutcome = 'shared' | 'downloaded' | 'cancelled'
 
 /** Mobile gets the native share sheet (WhatsApp included); desktop, where the
  * API cannot attach files, gets the download so it can be attached by hand. */

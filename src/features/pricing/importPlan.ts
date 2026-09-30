@@ -33,9 +33,9 @@ import { parseAmount } from '../reports/openingCostImport'
 export type PricingColumn =
   'code' | 'brand' | 'name' | 'size' | 'ignored' | PriceTier
 
-export const MAX_PRICING_ROWS = 2000
+const MAX_PRICING_ROWS = 2000
 /** Un precio que se mueve más que esto se marca para revisarlo. */
-export const LARGE_CHANGE = 0.3
+const LARGE_CHANGE = 0.3
 
 export interface PricingProblem {
   line: number

@@ -5,10 +5,6 @@ export const priceTierLabels: Record<PriceTier, string> = {
   premium: 'Premium',
 }
 export const priceTiers = Object.keys(priceTierLabels) as PriceTier[]
-export const currencySymbols: Record<Currency, string> = {
-  NIO: 'C$',
-  USD: 'US$',
-}
 export function productPrice(
   product: Product,
   tier: PriceTier,
@@ -230,7 +226,7 @@ export function tierStatus(
  * ganancia y precio de venta en córdobas, más el precio en las dos monedas tal
  * como se guardará. `null` si la lista no se calcula.
  */
-export interface TierQuote {
+interface TierQuote {
   tier: PriceTier
   cost: number
   percent: number

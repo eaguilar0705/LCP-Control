@@ -20,7 +20,7 @@ export interface AuthService {
  * que mantener a mano y que puede contradecir a la base. La política
  * `self_profile` permite a cada cuenta leer su propia fila y ninguna otra.
  */
-export async function roleFromDatabase(
+async function roleFromDatabase(
   userId: string,
 ): Promise<UserRole | null> {
   if (!supabase) return null

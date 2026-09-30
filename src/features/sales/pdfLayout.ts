@@ -51,7 +51,7 @@ const MUTED: RGB = [92, 81, 74]
 const RULE: RGB = [185, 173, 163]
 const ZEBRA: RGB = [247, 243, 238]
 
-export interface PdfRowPlan {
+interface PdfRowPlan {
   fontSize: number
   lineHeight: number
   padding: number

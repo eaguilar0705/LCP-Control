@@ -78,7 +78,7 @@ function money(value: number, currency: Currency) {
   return formatCurrency(value, currency).replace(/\s/g, ' ')
 }
 
-export interface PeriodTotals {
+interface PeriodTotals {
   count: number
   byCurrency: Record<Currency, { count: number; total: number }>
   /**
@@ -134,7 +134,7 @@ export function periodTotals(documents: DocumentRecord[]): PeriodTotals {
   return { count: documents.length, byCurrency, totalNio, byPayment }
 }
 
-export interface PeriodPdfOptions {
+interface PeriodPdfOptions {
   now?: Date
   /** Se llama cada tanto con cuántos documentos van dibujados. */
   onProgress?: (done: number, total: number) => void

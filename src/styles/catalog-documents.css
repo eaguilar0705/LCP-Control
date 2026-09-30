@@ -107,30 +107,6 @@
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
-.product-management-list {
-  margin-top: 20px;
-}
-.managed-product {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 14px 0;
-  border-bottom: 1px solid #e8dfd4;
-}
-.managed-product > div:not(.product-photo) {
-  flex: 1;
-  min-width: 0;
-}
-.managed-product small {
-  display: block;
-  margin-top: 6px;
-  color: #776e66;
-}
-.managed-product > .product-photo {
-  flex: 0 0 64px;
-  width: 64px;
-  height: 72px;
-}
 .account-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
@@ -172,13 +148,6 @@
   .product-price-row h3,
   .product-price-margin {
     grid-column: 1 / -1;
-  }
-  .managed-product {
-    gap: 9px;
-    font-size: 12px;
-  }
-  .managed-product .button {
-    padding: 9px;
   }
   .example-paper {
     padding: 0;

@@ -2,7 +2,7 @@ import { totalStock } from '../inventory/model'
 import { emptyAccounting } from './accounting'
 import type { ReportSource } from './model'
 
-export interface OpeningCostRow {
+interface OpeningCostRow {
   line: number
   code: string
   productId: string
@@ -10,12 +10,12 @@ export interface OpeningCostRow {
   stock: number
   unitCost: number
 }
-export interface OpeningCostProblem {
+interface OpeningCostProblem {
   line: number
   text: string
   reason: string
 }
-export interface OpeningCostParse {
+interface OpeningCostParse {
   rows: OpeningCostRow[]
   problems: OpeningCostProblem[]
 }

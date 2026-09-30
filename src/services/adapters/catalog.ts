@@ -85,7 +85,7 @@ const pricingSample = (
   productId: `demo-${String(number).padStart(4, '0')}`,
   markups: { emprendedor, vip, premium },
 })
-export const catalogPricing = [
+const catalogPricing = [
   pricingSample(3, 20, 15, 10),
   pricingSample(6, 25, 20, 10),
   pricingSample(11, 28.1, 24.44, 17.12),
@@ -93,7 +93,7 @@ export const catalogPricing = [
   pricingSample(21, 9.8, null, null),
 ]
 /** El perfume de muestra que todavía no tiene costo promedio. */
-export const DEMO_UNCOSTED = 'demo-0021'
+const DEMO_UNCOSTED = 'demo-0021'
 /**
  * El catálogo de muestra con las listas calculadas ya al día: el mismo
  * resultado que dejaría la base después de registrar el costo.

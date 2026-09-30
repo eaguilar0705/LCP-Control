@@ -64,7 +64,7 @@ export function pricingTemplate(
   }
 }
 
-export function pricingTemplateName(now = new Date()) {
+function pricingTemplateName(now = new Date()) {
   const day = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/Managua',
   }).format(now)

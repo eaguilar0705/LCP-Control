@@ -2,7 +2,7 @@ export interface ScannerAdapter {
   start(onDecode: (code: string) => void): Promise<void>
   stop(): Promise<void>
 }
-export type CameraFailure = 'denied' | 'unavailable' | 'insecure' | 'device'
+type CameraFailure = 'denied' | 'unavailable' | 'insecure' | 'device'
 export class CameraError extends Error {
   constructor(public kind: CameraFailure) {
     super(kind)

@@ -59,19 +59,19 @@ import {
 /** Largo de las listas de clientes que trae el resumen (el Excel usa hasta 200). */
 export const DIGEST_LIST_LIMIT = 200
 
-export interface SalesTotals {
+interface SalesTotals {
   revenue: number
   count: number
   units: number
   /** Clientes distintos que compraron. */
   customers: number
 }
-export interface DigestShare {
+interface DigestShare {
   key: string
   value: number
   count: number
 }
-export interface DigestLapsed {
+interface DigestLapsed {
   id: string
   name: string
   lastPurchase: string

@@ -19,7 +19,7 @@ type PageResult = {
   count?: number | null
 }
 const PAGE_SIZE = 500
-export const REPORT_ROW_LIMIT = 20000
+const REPORT_ROW_LIMIT = 20000
 
 /** Exact counts also handle projects whose REST row limit is below our page size. */
 export async function readReportPages<T>(

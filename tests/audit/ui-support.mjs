@@ -9,7 +9,7 @@ import {
   USERS,
 } from './harness.mjs'
 
-export const SUPABASE = 'https://auditoria.supabase.invalid'
+const SUPABASE = 'https://auditoria.supabase.invalid'
 
 export async function startAudit({ port }) {
   Object.assign(process.env, {
@@ -165,7 +165,7 @@ export async function settle(page, timeout = 8000) {
 }
 
 /** Textos que nunca deberían verse: mensajes internos o valores rotos. */
-export const LEAKS =
+const LEAKS =
   /\b(NaN|Infinity|undefined|null|\[object Object\]|violates|constraint|PGRST|syntax error|invalid input syntax|TypeError|ReferenceError|stack|SQLSTATE|duplicate key|permission denied for|insufficient_privilege)\b/
 
 export async function screenText(page) {

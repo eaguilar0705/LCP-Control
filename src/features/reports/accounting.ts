@@ -83,7 +83,7 @@ export const expenseCategories = {
   marketing: { account: 'ventas', label: 'Marketing y publicidad' },
 } as const satisfies Record<string, { account: ExpenseAccount; label: string }>
 export type ExpenseCategory = keyof typeof expenseCategories
-export const expenseCategoryOrder = Object.keys(expenseCategories) as ExpenseCategory[]
+const expenseCategoryOrder = Object.keys(expenseCategories) as ExpenseCategory[]
 export const categoriesOf = (account: ExpenseAccount) =>
   expenseCategoryOrder.filter((category) => expenseCategories[category].account === account)
 export const expenseLabel = (category: ExpenseCategory) => expenseCategories[category].label
@@ -148,7 +148,7 @@ export interface AccountingSource {
 export const emptyAccounting: AccountingSource = {
   available: false, costs: [], shipments: [], expenses: [], saleCosts: [], truncated: false,
 }
-export interface ProductMargin {
+interface ProductMargin {
   productId: string
   description: string
   quantity: number
@@ -157,7 +157,7 @@ export interface ProductMargin {
   profitNio: number | null
   missingUnits: number
 }
-export interface AccountingSummary {
+interface AccountingSummary {
   revenueNio: number
   salesTaxNio: number
   costOfSalesNio: number
@@ -193,13 +193,13 @@ export interface AccountingSummary {
 export const roundMoney = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100
 const known = (value: number | null | undefined): value is number =>
   value !== null && value !== undefined && Number.isFinite(value) && value >= 0
-export const datedInRange = (day: string, range: ReportRange) => day >= range.from && day <= range.to
+const datedInRange = (day: string, range: ReportRange) => day >= range.from && day <= range.to
 
 /**
  * Lo que las funciones contables leen de un reporte. Sirve igual para las filas
  * crudas (`ReportSource`) que para el resumen calculado en la base (`ReportData`).
  */
-export interface AccountingInput {
+interface AccountingInput {
   accounting?: AccountingSource
   inventory: InventoryItem[]
   truncated: boolean
@@ -231,7 +231,7 @@ export interface LedgerTotals {
   inventoryWriteOffNio: number
   missingWriteOffUnits: number
 }
-export interface LedgerProduct {
+interface LedgerProduct {
   productId: string
   description: string
   quantity: number
@@ -239,13 +239,13 @@ export interface LedgerProduct {
   costNio: number
   missingUnits: number
 }
-export interface LedgerTier {
+interface LedgerTier {
   tier: PriceTier
   netRevenueNio: number
   costNio: number
   missingUnits: number
 }
-export interface LedgerPeriod extends LedgerTotals {
+interface LedgerPeriod extends LedgerTotals {
   products: LedgerProduct[]
   tiers: LedgerTier[]
 }
@@ -255,13 +255,13 @@ export interface LedgerDigest extends LedgerPeriod {
   /** `rows` trae las mayores; `count` y `lossNio` cuentan todas. */
   belowCost: { count: number; lossNio: number; rows: BelowCostSale[] }
 }
-export const emptyLedger: LedgerPeriod = {
+const emptyLedger: LedgerPeriod = {
   revenueNio: 0, salesTaxNio: 0, costOfSalesNio: 0, missingCostUnits: 0,
   missingRevenueLines: 0, soldUnits: 0, inventoryWriteOffNio: 0, missingWriteOffUnits: 0,
   products: [], tiers: [],
 }
 /** Renglones bajo costo que viajan en el resumen; la cuenta y el total van completos. */
-export const BELOW_COST_LIMIT = 500
+const BELOW_COST_LIMIT = 500
 
 /**
  * A frozen snapshot is only trusted when it is the single row for its invoice
@@ -284,7 +284,7 @@ function snapshotIndex(accounting: AccountingSource) {
 }
 
 /** Missing historical cost is never replaced by the current average or a selling price. */
-export function ledgerPeriod(source: ReportSource, range: ReportRange): LedgerPeriod {
+function ledgerPeriod(source: ReportSource, range: ReportRange): LedgerPeriod {
   const accounting = source.accounting ?? emptyAccounting
   const result = { ...emptyLedger, products: [], tiers: [] } as LedgerPeriod
   const snapshot = snapshotIndex(accounting)
@@ -392,7 +392,7 @@ export function ledgerDigest(source: ReportSource, range: ReportRange): LedgerDi
  * Suma al libro de ventas lo que no crece con ellas: pedidos, gastos y el
  * inventario valorado a costo promedio. Esas filas son pocas y se leen tal cual.
  */
-export function composeAccounting(
+function composeAccounting(
   ledger: LedgerTotals & Partial<Pick<LedgerPeriod, 'products' | 'tiers'>>,
   input: AccountingInput,
   range: ReportRange,
@@ -546,7 +546,7 @@ export function belowCostSummary(input: ReportSource | ReportData, range: Report
   }
 }
 
-export interface Turnover {
+interface Turnover {
   turnoverPerYear: number | null
   daysOnHand: number | null
   costOfSalesNio: number
@@ -572,7 +572,7 @@ export function inventoryTurnover(summary: AccountingSummary, range: ReportRange
 
 /** Share of the list price that is not cost. Null whenever either side is unknown. */
 export { marginRate } from '../../lib/pricing'
-export interface CatalogMargin {
+interface CatalogMargin {
   tier: PriceTier
   priced: number
   belowCost: number
