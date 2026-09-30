@@ -167,7 +167,7 @@ Mientras no se aplique, la ficha del perfume funciona como antes (precios a mano
 
 ## Precios desde el costo promedio
 
-Migración `20260927120000_cost_based_pricing.sql` (27-09-2026, **pendiente de aplicar**). Reemplaza la base de las listas calculadas: ya no es el precio de compra escrito a mano sino el costo promedio ponderado del inventario, `product_costs.average_cost_nio`, el mismo que lleva la contabilidad. Pedido del dueño (notas de voz y `Formulas.xlsx`, `Hoja 1!F16`):
+Migración `20260927120000_cost_based_pricing.sql` (27-09-2026, **aplicada en Supabase el 28-09-2026**). Reemplaza la base de las listas calculadas: ya no es el precio de compra escrito a mano sino el costo promedio ponderado del inventario, `product_costs.average_cost_nio`, el mismo que lleva la contabilidad. Pedido del dueño (notas de voz y `Formulas.xlsx`, `Hoja 1!F16`):
 
 ```text
 costo promedio nuevo = (existencias × promedio anterior + unidades que entran × costo de entrada) / (existencias + unidades que entran)

@@ -101,10 +101,10 @@ Dos cuentas, **las dos Administrador**:
 
 | Correo | Nombre | Alta | Último ingreso |
 | --- | --- | --- | --- |
-| `avilesurbinadiego@gmail.com` | Diego | 13 sep | 14 sep |
-| `leoaguilarnovoa@gmail.com` | Emmanuel | 13 sep | 13 sep |
+| (correo retirado del informe) | Diego | 13 sep | 14 sep |
+| (correo retirado del informe) | Emmanuel | 13 sep | 13 sep |
 
-Hay además una invitación pendiente para `lacasadelperfumenic@gmail.com` como **SuperAdmin**.
+Hay además una invitación pendiente para el correo del negocio como **SuperAdmin**.
 
 Administrador lo puede todo: ve los costos, los márgenes y el resultado del negocio, cambia el tipo de cambio —que reprecia los 780 precios en córdobas— y da de alta y de baja al personal. **Vale la pena confirmar que la segunda cuenta necesita ese alcance.** Si sólo tiene que facturar, el rol Ventas le sirve y no le enseña los costos; si maneja bodega, Inventario. Se cambia en Negocio → Usuarios, sin tocar código.
 

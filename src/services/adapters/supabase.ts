@@ -190,7 +190,12 @@ inventory_balances(location,quantity)`
 const documentSelect = `id,kind,number,customer_id,customer_name,customer_phone,issuer,tier_code,
 currency,total,location,valid_until,payment_method,notes,created_at,customer_tax_id,
 document_items(id,product_id,description,quantity,unit_price,line_total)`
-const documentAccountingColumns = ',exchange_rate,tax_rate,catalog_rate'
+// La tabla de documentos no tiene columnas de tasa de cambio ni de impuesto:
+// ambos quedan en la solicitud con la que se emitió (`request_payload`), que la
+// base valida y guarda tal cual. Sin leerlos de ahí, la factura reabierta,
+// impresa o compartida perdía el «Impuesto incluido» y el tipo de cambio.
+const documentAccountingColumns =
+  ',exchange_rate:request_payload->exchangeRate,tax_rate:request_payload->taxRate,catalog_rate'
 function missingDocumentColumns(error: { code?: string } | null) {
   return error?.code === '42703' || error?.code === 'PGRST204'
 }
@@ -727,7 +732,14 @@ export const supabaseAdapter: DataProvider = {
       },
     })
     if (error) fail(error)
-    return toDocument(data as unknown as DocumentRow)
+    // La respuesta trae el documento sin la solicitud: la tasa y el impuesto
+    // son los que se acaban de enviar y la base aceptó.
+    const row = data as unknown as DocumentRow
+    return toDocument({
+      ...row,
+      exchange_rate: row.exchange_rate ?? input.exchangeRate ?? null,
+      tax_rate: row.tax_rate ?? input.taxRate ?? 0,
+    })
   },
   recordShipment: accounting.recordShipment,
   setOpeningCost: accounting.setOpeningCost,

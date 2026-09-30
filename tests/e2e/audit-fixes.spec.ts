@@ -99,3 +99,21 @@ test('una dirección inexistente tiene su propio encabezado principal', async ({
     page.getByRole('heading', { level: 1, name: 'Página no encontrada' }),
   ).toBeVisible()
 })
+
+// Auditoría del 28 de septiembre de 2026.
+
+test('una dirección de perfume inválida dice «no encontrado» y ofrece volver', async ({
+  page,
+}) => {
+  for (const id of ['no-es-un-id', '00000000-0000-4000-8000-000000000000']) {
+    await page.goto(`/demo/products/${id}/edit`)
+    await expect(
+      page.getByRole('heading', { name: 'Perfume no encontrado' }),
+    ).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Reintentar' })).toHaveCount(
+      0,
+    )
+  }
+  await page.getByRole('link', { name: 'Volver al inventario' }).click()
+  await expect(page).toHaveURL(/\/demo\/inventory$/)
+})

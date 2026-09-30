@@ -22,6 +22,9 @@
     "test:recovery": "node tests/flows/recovery.mjs",
     "test:flows": "node tests/flows/pricing.mjs",
     "test:db": "node tests/database/catalog.mjs && node tests/database/accounting.mjs && node tests/database/staff.mjs && node tests/database/contacts.mjs && node tests/database/invoices.mjs && node tests/database/pricing.mjs",
+    "test:audit": "node tests/audit/data-roundtrip.mjs && node tests/audit/ui-roundtrip.mjs && node tests/audit/forms.mjs && node tests/audit/urls.mjs",
+    "test:audit:buttons": "node tests/audit/buttons.mjs",
+    "test:audit:inputs": "node tests/audit/inputs.mjs",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {

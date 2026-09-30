@@ -253,6 +253,34 @@ it('sends and reads the invoice exchange rate and included tax percentage', asyn
   expect(result).toMatchObject({ exchangeRate: 36.62, taxRate: 15, total: 100 })
 })
 
+// Auditoría del 28-09: la tabla de documentos no tiene columnas de tasa ni de
+// impuesto; la base devuelve el documento emitido sin ellas y los listados las
+// leen de la solicitud guardada.
+it('keeps the tax and exchange rate of an issued invoice although the table has no such columns', async () => {
+  rpc.mockResolvedValue({
+    data: { ...document, exchange_rate: undefined, tax_rate: undefined },
+    error: null,
+  })
+  const result = await supabaseAdapter.createDocument({
+    requestId: 'sin-columnas',
+    kind: 'invoice',
+    currency: 'USD',
+    exchangeRate: 36.62,
+    taxRate: 15,
+    tier: 'emprendedor',
+    notes: '',
+    items: [{ productId: 'product', quantity: 1 }],
+  })
+  expect(result).toMatchObject({ exchangeRate: 36.62, taxRate: 15 })
+  tables.documents = [document]
+  await supabaseAdapter.listDocuments('invoice', {
+    range: { from: '2026-09-01', to: '2026-09-13' },
+  })
+  expect(requests.at(-1)?.select).toContain(
+    'exchange_rate:request_payload->exchangeRate,tax_rate:request_payload->taxRate',
+  )
+})
+
 it('el historial pide sólo el periodo elegido, en días de Managua, por páginas', async () => {
   tables.documents = Array.from({ length: 230 }, (_, index) => ({
     ...document,

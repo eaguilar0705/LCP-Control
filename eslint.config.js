@@ -41,7 +41,7 @@ export default tseslint.config(
   },
   {
     // Node, con funciones que Playwright ejecuta dentro de la página.
-    files: ['tests/security/*.mjs', 'tests/flows/*.mjs'],
+    files: ['tests/security/*.mjs', 'tests/flows/*.mjs', 'tests/audit/*.mjs'],
     languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
 )

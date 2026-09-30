@@ -1,3 +1,4 @@
+import { AlertCircle } from 'lucide-react'
 import { ScanButton } from '../scanner/ScanButton'
 import { ProductStockEditor } from './ProductStockEditor'
 import { can } from '../../lib/permissions'
@@ -59,6 +60,23 @@ export function ProductEditorPage() {
 // Un perfume nuevo todavía no tiene porcentajes; la consulta sólo dice si la
 // base ya puede guardarlos.
 const NEW_PRODUCT = '00000000-0000-0000-0000-000000000000'
+/**
+ * Una dirección escrita a mano o de un perfume que ya no existe: se dice así y
+ * se ofrece volver, en vez de un «Reintentar» que nunca va a funcionar.
+ */
+function ProductNotFound() {
+  const { base } = useAccess()
+  return (
+    <div className="state error" role="alert">
+      <AlertCircle size={28} />
+      <h1>Perfume no encontrado</h1>
+      <p>La dirección no corresponde a ningún perfume del catálogo.</p>
+      <Link className="button button-secondary" to={`${base}/inventory`}>
+        Volver al inventario
+      </Link>
+    </div>
+  )
+}
 function ProductLoader() {
   const { id } = useParams()
   const { productService, settingsService } = useServices()
@@ -67,8 +85,13 @@ function ProductLoader() {
   // sobrescribe mientras alguien ya está escribiendo. Quien no puede leer
   // costos recibe nulo sin error.
   const load = useCallback(async () => {
-    const [products, pricing, rate, cost] = await Promise.all([
-      productService.listProducts(),
+    const products = await productService.listProducts()
+    // Un perfume que no está en el catálogo (una dirección escrita a mano o
+    // de un perfume borrado) no se sigue consultando: la base respondería con
+    // un error técnico en lugar de «no encontrado».
+    if (id && !products.some((p) => p.id === id))
+      return { products, pricing: null, rate: null, cost: null }
+    const [pricing, rate, cost] = await Promise.all([
       productService.listPricing(id ?? NEW_PRODUCT),
       settingsService.getExchangeRate(),
       id ? productService.getProductCost(id) : Promise.resolve(null),
@@ -79,14 +102,14 @@ function ProductLoader() {
   if (loading) return <LoadingState />
   if (error) return <ErrorState message={error} retry={retry} />
   const product = data?.products.find((p) => p.id === id)
-  if (id && !product) return <ErrorState message="Producto no encontrado." />
-  const saved = data?.pricing.rows.find((row) => row.productId === id)
+  if (id && !product) return <ProductNotFound />
+  const saved = data?.pricing?.rows.find((row) => row.productId === id)
   return (
     <ProductForm
       key={`${id ?? 'new'}:${product?.revision}`}
       product={product}
       brands={[...new Set(data?.products.map((p) => p.brand))]}
-      pricing={data?.pricing.available ? pricingInput(saved) : null}
+      pricing={data?.pricing?.available ? pricingInput(saved) : null}
       averageCost={data?.cost ?? null}
       rate={data?.rate ?? null}
     />
