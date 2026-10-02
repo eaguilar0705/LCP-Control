@@ -16,7 +16,7 @@ import {
   whatsappUrl,
 } from '@/features/sales/whatsapp'
 import { documentFileName } from '@/features/sales/pdf'
-import { documentCopy } from '@/lib/domain'
+import { bankTransferLabels, documentCopy, type PaymentMethod } from '@/lib/domain'
 import { equivalentAmount } from '@/lib/pricing'
 
 // Datos inventados: ningún negocio, producto ni teléfono real.
@@ -59,6 +59,14 @@ function draft(overrides: Partial<DocumentDraft> = {}): DocumentDraft {
 }
 
 describe('separación entre facturas y proformas', () => {
+  it.each(Object.keys(bankTransferLabels) as PaymentMethod[])(
+    'conserva %s al guardar y recuperar el borrador',
+    (payment) => {
+      const saved = JSON.stringify(draft({ payment }))
+      const restored = documentDraftSchema.parse(JSON.parse(saved))
+      expect(draftPreview(restored, issuer).paymentMethod).toBe(payment)
+    },
+  )
   it('guarda cada tipo en su propio almacenamiento', () => {
     expect(draftStorageKey('invoice')).not.toBe(draftStorageKey('proforma'))
   })

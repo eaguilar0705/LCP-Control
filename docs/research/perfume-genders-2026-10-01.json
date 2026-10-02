@@ -1,0 +1,3101 @@
+{
+  "reviewDate": "2026-10-01",
+  "method": "Clasificación comercial: fichas de marca, fichas especializadas y distribuidores. Los nombres explícitos Men/Women/Pour Homme/Uomo se registran como evidencia de catálogo; CK One y CK Be se corrigen a unisex. Se revisaron fotos para variantes ambiguas. No representa restricciones de uso del perfume.",
+  "products": [
+    {
+      "sku": "LCP-0001",
+      "name": "Hawas black",
+      "brand": "Rasasi",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.fragrantica.nl/ontwerper/Rasasi.html"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0002",
+      "name": "Hawas elixir",
+      "brand": "Rasasi",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://www.fragrantica.com/perfume/Rasasi/Hawas-Elixir-110808.html"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0003",
+      "name": "Hawas for him",
+      "brand": "Rasasi",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://rasasistore.com/products/hawas-for-him"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0004",
+      "name": "Set Hawas for men + 8ml decant",
+      "brand": "Rasasi",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://rasasistore.com/products/hawas-for-him"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0005",
+      "name": "Hawas fire",
+      "brand": "Rasasi",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://rasasistore.com/products/hawas-fire"
+      ],
+      "reason": "Versión comercial For Him de Rasasi; otras bases la describen como unisex."
+    },
+    {
+      "sku": "LCP-0006",
+      "name": "Set Hawas fire",
+      "brand": "Rasasi",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://rasasistore.com/products/hawas-fire"
+      ],
+      "reason": "Versión comercial For Him de Rasasi; otras bases la describen como unisex."
+    },
+    {
+      "sku": "LCP-0007",
+      "name": "Hawas Malibu",
+      "brand": "Rasasi",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://www.fragrantica.nl/ontwerper/Rasasi.html"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0008",
+      "name": "Hawas Atlantis",
+      "brand": "Rasasi",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://rasasistore.com/products/hawas-atlantis-for-him"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0009",
+      "name": "Hawas tropical",
+      "brand": "Rasasi",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.fragrantica.nl/ontwerper/Rasasi.html"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0010",
+      "name": "Hawas ice",
+      "brand": "Rasasi",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://rasasistore.com/products/hawas-ice"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0011",
+      "name": "Hawas london",
+      "brand": "Rasasi",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://www.fragrantica.nl/ontwerper/Rasasi.html"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0012",
+      "name": "Hawas kobra",
+      "brand": "Rasasi",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.fragrantica.com/perfume/Rasasi/Kobra-112706.html"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0013",
+      "name": "Hawas pink",
+      "brand": "Rasasi",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://rasasistore.com/products/hawas-pink"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0014",
+      "name": "Hawas eclat",
+      "brand": "Rasasi",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://beta.fragrantica.com/perfume/Rasasi/Eclat-112708.html"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0015",
+      "name": "Hawas diva",
+      "brand": "Rasasi",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.fragrantica.com/perfume/Rasasi/Hawas-Diva-113190.html"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0016",
+      "name": "Hawas chrome",
+      "brand": "Rasasi",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://www.fragrantica.com/perfume/Rasasi/Hawas-Chrome-136922.html"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0017",
+      "name": "Mandarin Sky Elixir",
+      "brand": "Armaf",
+      "size": "3.490",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://armaf.com/products/odyssey-mandarin-sky-elixir"
+      ],
+      "reason": "Campo Gender de la ficha oficial de Armaf."
+    },
+    {
+      "sku": "LCP-0018",
+      "name": "Odyssey Mandarin sky vintage edition",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://armaf.com/products/odyssey-mandarin-sky-vintage-edition"
+      ],
+      "reason": "Campo Gender de la ficha oficial de Armaf."
+    },
+    {
+      "sku": "LCP-0019",
+      "name": "Odyssey Spectra",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://armaf.com/products/armaf-odyssey-spectra-rainbow-edition"
+      ],
+      "reason": "Campo Gender de la ficha oficial de Armaf."
+    },
+    {
+      "sku": "LCP-0020",
+      "name": "Oyssey Limoni",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://armaf.com/products/armaf-odyssey-limoni-fresh-edition"
+      ],
+      "reason": "Campo Gender de la ficha oficial de Armaf."
+    },
+    {
+      "sku": "LCP-0021",
+      "name": "Odyssey Aqua",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://armaf.com/products/odyssey-aqua-edition"
+      ],
+      "reason": "Campo Gender de la ficha oficial de Armaf."
+    },
+    {
+      "sku": "LCP-0022",
+      "name": "Odyssey candee",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://armaf.com/products/odyssey-candee-special-edition"
+      ],
+      "reason": "Campo Gender de la ficha oficial de Armaf."
+    },
+    {
+      "sku": "LCP-0023",
+      "name": "Odyssey candee SET 3PCS",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://armaf.com/products/odyssey-candee-special-edition"
+      ],
+      "reason": "Campo Gender de la ficha oficial de Armaf."
+    },
+    {
+      "sku": "LCP-0024",
+      "name": "Odyssey Mandaryn sky",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://armaf.com/products/odyssey-mega-for-men"
+      ],
+      "reason": "Campo Gender de la ficha oficial de Armaf."
+    },
+    {
+      "sku": "LCP-0025",
+      "name": "Odyssey Mandaryn sky SET 3PCS",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://armaf.com/products/odyssey-mega-for-men"
+      ],
+      "reason": "Campo Gender de la ficha oficial de Armaf."
+    },
+    {
+      "sku": "LCP-0026",
+      "name": "Odyssey Dubai Chocolate",
+      "brand": "Armaf",
+      "size": null,
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://armaf.com/products/odyssey-dubai-chocolat-gourmand-edition-for-men"
+      ],
+      "reason": "Campo Gender de la ficha oficial de Armaf."
+    },
+    {
+      "sku": "LCP-0027",
+      "name": "Club de nuit intense",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://armaf.com/products/club-de-nuit-intense-man",
+        "https://drive.google.com/file/d/1tn9ScXSIYoblOj85BggYDBwS6qxehWEo/view"
+      ],
+      "reason": "La imagen real del catálogo identifica Club de Nuit Intense MAN; el set y body spray son la misma variante masculina."
+    },
+    {
+      "sku": "LCP-0028",
+      "name": "Club de nuit intense SET 3PCS",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://armaf.com/products/club-de-nuit-intense-man",
+        "https://drive.google.com/file/d/1tn9ScXSIYoblOj85BggYDBwS6qxehWEo/view"
+      ],
+      "reason": "La imagen real del catálogo identifica Club de Nuit Intense MAN; el set y body spray son la misma variante masculina."
+    },
+    {
+      "sku": "LCP-0029",
+      "name": "Oyssey Artisto",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://armaf.com/products/odyssey-artisto"
+      ],
+      "reason": "Campo Gender de la ficha oficial de Armaf."
+    },
+    {
+      "sku": "LCP-0030",
+      "name": "Odyssey Mega",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://armaf.com/products/odyssey-mega-man"
+      ],
+      "reason": "Campo Gender de la ficha oficial de Armaf."
+    },
+    {
+      "sku": "LCP-0031",
+      "name": "Odysssey homme white edition",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://armaf.com/products/odyssey-homme-white-edition"
+      ],
+      "reason": "Campo Gender de la ficha oficial de Armaf."
+    },
+    {
+      "sku": "LCP-0032",
+      "name": "Odyssey Bahamas tropical",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://armaf.com/products/odyssey-ba-ha-mas"
+      ],
+      "reason": "Campo Gender de la ficha oficial de Armaf."
+    },
+    {
+      "sku": "LCP-0033",
+      "name": "Odyssey Toffee coffee",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://armaf.com/products/odyssey-toffee-coffee"
+      ],
+      "reason": "Campo Gender de la ficha oficial de Armaf."
+    },
+    {
+      "sku": "LCP-0034",
+      "name": "Odyssey Go Mango",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://armaf.com/products/odyssey-go-mango"
+      ],
+      "reason": "Campo Gender de la ficha oficial de Armaf."
+    },
+    {
+      "sku": "LCP-0035",
+      "name": "Odyssey Marshmallow",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://armaf.com/products/odyssey-marshmallow"
+      ],
+      "reason": "Campo Gender de la ficha oficial de Armaf."
+    },
+    {
+      "sku": "LCP-0036",
+      "name": "Odyssey Black Forrest",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://armaf.com/products/odyssey-toffee-coffee-copy-1"
+      ],
+      "reason": "Campo Gender de la ficha oficial de Armaf."
+    },
+    {
+      "sku": "LCP-0037",
+      "name": "Odyssey Pink Pop",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://armaf.com/products/odyssey-pink-pop-edp"
+      ],
+      "reason": "Campo Gender de la ficha oficial de Armaf."
+    },
+    {
+      "sku": "LCP-0038",
+      "name": "Odyssey Lichi Lush",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://armaf.com/products/odyssey-lichi-lush-edp"
+      ],
+      "reason": "Campo Gender de la ficha oficial de Armaf."
+    },
+    {
+      "sku": "LCP-0039",
+      "name": "Club de nuit sillage",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://beta.fragrantica.com/perfume/Armaf/Club-de-Nuit-Sillage-64105.html"
+      ],
+      "reason": "Ficha especializada unisex; Armaf presenta etiquetas Men y Unisex inconsistentes."
+    },
+    {
+      "sku": "LCP-0040",
+      "name": "Club de nuit urban elixir",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://armaf.com/products/club-de-nuit-urban-elixir-100ml"
+      ],
+      "reason": "Campo Gender de la ficha oficial de Armaf."
+    },
+    {
+      "sku": "LCP-0041",
+      "name": "Club de nuit imperiale",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.fragrantica.com/perfume/Armaf/Club-de-Nuit-White-Imperiale-78474.html"
+      ],
+      "reason": "White Imperiale: ficha especializada femenina; se encontró información comercial inconsistente en distribuidores."
+    },
+    {
+      "sku": "LCP-0042",
+      "name": "Club de nuit iconic",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://armaf.com/products/club-de-nuit-blue-iconic-200ml"
+      ],
+      "reason": "Campo Gender de la ficha oficial de Armaf."
+    },
+    {
+      "sku": "LCP-0043",
+      "name": "Club de nuit Untold",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://armaf.com/products/armaf-club-de-nuit-untold"
+      ],
+      "reason": "Campo Gender de la ficha oficial de Armaf."
+    },
+    {
+      "sku": "LCP-0044",
+      "name": "Club de nuit women",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://armaf.com/products/club-de-nuit-w"
+      ],
+      "reason": "Campo Gender de la ficha oficial de Armaf."
+    },
+    {
+      "sku": "LCP-0045",
+      "name": "Club de nuit women SET 3PCS",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://armaf.com/products/club-de-nuit-w"
+      ],
+      "reason": "Campo Gender de la ficha oficial de Armaf."
+    },
+    {
+      "sku": "LCP-0046",
+      "name": "Club de nuit maleka",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://armaf.com/products/club-de-nuit-maleka"
+      ],
+      "reason": "Campo Gender de la ficha oficial de Armaf."
+    },
+    {
+      "sku": "LCP-0047",
+      "name": "Club de nuit bling",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://armaf.com/products/club-de-nuit-bling",
+        "https://beta.fragrantica.com/perfume/Armaf/Club-de-Nuit-Bling-117624.html"
+      ],
+      "reason": "La descripción oficial y la ficha especializada dicen unisex; el campo Gender de la tienda dice Men."
+    },
+    {
+      "sku": "LCP-0048",
+      "name": "Club de nuit precieux extrait de parfum",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://www.fragrantica.com/perfume/Armaf/Club-de-Nuit-Precieux-I-93272.html"
+      ],
+      "reason": "Clasificación comercial en la ficha consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0049",
+      "name": "Club de nuit milestone",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://www.fragrantica.com/perfume/Armaf/Club-De-Nuit-Milestone-64104.html"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0050",
+      "name": "Yum yum",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://armaf.com/collections/armaf-delights"
+      ],
+      "reason": "La colección oficial identifica Yum Yum como unisex; algunas fichas especializadas lo clasifican femenino."
+    },
+    {
+      "sku": "LCP-0051",
+      "name": "Yum yum SET 3PCS",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://armaf.com/collections/armaf-delights"
+      ],
+      "reason": "La colección oficial identifica Yum Yum como unisex; algunas fichas especializadas lo clasifican femenino."
+    },
+    {
+      "sku": "LCP-0052",
+      "name": "Bon bon",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://armaf.com/products/bon-bon"
+      ],
+      "reason": "Campo Gender de la ficha oficial de Armaf."
+    },
+    {
+      "sku": "LCP-0053",
+      "name": "Island Bliss",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://armaf.com/products/island-bliss-delights-spr"
+      ],
+      "reason": "Campo Gender de la ficha oficial de Armaf."
+    },
+    {
+      "sku": "LCP-0054",
+      "name": "Beach party",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://armaf.com/products/beach-party-spr"
+      ],
+      "reason": "Campo Gender de la ficha oficial de Armaf."
+    },
+    {
+      "sku": "LCP-0055",
+      "name": "Eter arabian sky",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://armaf.com/products/eter-arabian-sky",
+        "https://www.notino.es/armaf/arabian-sky-eau-de-parfum-unisex/"
+      ],
+      "reason": "Descripción oficial unisex corroborada por distribuidor; su campo Gender aislado dice Women."
+    },
+    {
+      "sku": "LCP-0056",
+      "name": "Body spray Club de nuit intense men",
+      "brand": "Armaf",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://armaf.com/products/club-de-nuit-intense-man",
+        "https://drive.google.com/file/d/1tn9ScXSIYoblOj85BggYDBwS6qxehWEo/view"
+      ],
+      "reason": "La imagen real del catálogo identifica Club de Nuit Intense MAN; el set y body spray son la misma variante masculina."
+    },
+    {
+      "sku": "LCP-0057",
+      "name": "Body Spray Odyssey Aqua",
+      "brand": "Armaf",
+      "size": "6.800",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://armaf.com/products/odyssey-aqua-edition"
+      ],
+      "reason": "Variante Aqua masculina; body spray de la misma línea."
+    },
+    {
+      "sku": "LCP-0058",
+      "name": "Body Spray Odyssey Mandarin sky",
+      "brand": "Armaf",
+      "size": "6.800",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://armaf.com/products/odyssey-mega-for-men"
+      ],
+      "reason": "Variante Mandarin Sky masculina; body spray de la misma línea."
+    },
+    {
+      "sku": "LCP-0059",
+      "name": "Body Spray Odyssey Candee",
+      "brand": "Armaf",
+      "size": "6.800",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://armaf.com/products/odyssey-candee-special-edition"
+      ],
+      "reason": "Variante Candee femenina; body spray de la misma línea."
+    },
+    {
+      "sku": "LCP-0060",
+      "name": "Body Spray Odyssey Mega",
+      "brand": "Armaf",
+      "size": "6.800",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://armaf.com/products/odyssey-mega-man"
+      ],
+      "reason": "Variante Mega masculina; body spray de la misma línea."
+    },
+    {
+      "sku": "LCP-0061",
+      "name": "Body Spray Club de nuit women",
+      "brand": "Armaf",
+      "size": "6.800",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://armaf.com/products/club-de-nuit-w"
+      ],
+      "reason": "Nombre explícito Women en catálogo y línea oficial femenina."
+    },
+    {
+      "sku": "LCP-0062",
+      "name": "Body Spray Odyssey Limoni",
+      "brand": "Armaf",
+      "size": "6.800",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://armaf.com/collections/fresh?page=2"
+      ],
+      "reason": "La colección oficial identifica ODYSSEY LIMONI BODY SPRAY como Unisex."
+    },
+    {
+      "sku": "LCP-0063",
+      "name": "Lataffa Yara Body spray",
+      "brand": "Lataffa",
+      "size": "6.800",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://lattafa.com/product/yara-deo/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0064",
+      "name": "Asad",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://lattafa.com/product/asad/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0065",
+      "name": "Asad Elixir",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://lattafa.com/product/asad-elixir/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0066",
+      "name": "Asad Borubon",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://lattafa.com/product/asad-bourbon/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0067",
+      "name": "Asad bourbon set",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://lattafa.com/product/asad-bourbon/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0068",
+      "name": "Asad Zanzibar",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://lattafa.com/product/asad-zanzibar/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0069",
+      "name": "Yara",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://lattafa.com/product/yara/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0070",
+      "name": "Set Yara 3 Pcs 3.4 Oz Edp + 12Ml Travel Spray + 50Ml Hairmist Women",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://lattafa.com/product/yara/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0071",
+      "name": "Yara moi",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://lattafa.com/product/yara-moii/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0072",
+      "name": "Yara elixir",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://lattafa.com/product/yara-elixir/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0073",
+      "name": "Yara candy",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://lattafa.com/product/yara-candy/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0074",
+      "name": "Yara tous",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://lattafa.com/product/yara-tous/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0075",
+      "name": "Badee al Oud Honor & Glory",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://lattafa.com/product/badee-al-oud-honor-and-glory/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0076",
+      "name": "Badee al Oud Noble blush",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://lattafa.com/product/badee-al-oud-noble-blush/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0077",
+      "name": "Badee al oud for glory",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://lattafa.com/product/badee-al-oud-oud-for-glory/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0078",
+      "name": "Badee al Oud Amethyst",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://lattafa.com/product/badee-al-oud-amethyest/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0079",
+      "name": "Badee al oud sublieme",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://lattafa.com/product/badee-al-oud-sublime/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0080",
+      "name": "Fakhar Extrait gold",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://lattafa.com/product/fakhar-lattafa-extrait/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0081",
+      "name": "Fakhar black",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://lattafa.com/product/fakhar-lattafa-men/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0082",
+      "name": "Fakhar Rose gold",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://lattafa.com/product/fakhar-lattafa-women/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0083",
+      "name": "Khamrah Qahwa",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://lattafa.com/product/khamrah-qahwa/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0084",
+      "name": "Khamrah",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://lattafa.com/product/khamrah/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0085",
+      "name": "Khamrah Waha",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://lattafa.com/product/khamrah-waha/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0086",
+      "name": "His Confession",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://lattafa.com/product/his-confession/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0087",
+      "name": "Her Confession",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://lattafa.com/product/her-confession/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0088",
+      "name": "Mayar",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://lattafa.com/product/mayar/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0089",
+      "name": "Mayar cherry intense",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://lattafa.com/product/mayar-cherry-intense/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0090",
+      "name": "Mayar natural intense",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://lattafa.com/product/mayar-natural-intense/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0091",
+      "name": "Haya",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://lattafa.com/product/haya/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0092",
+      "name": "Haya SET 3PCS",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://lattafa.com/product/haya/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0093",
+      "name": "Eclair EDP",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://lattafa.com/product/eclaire/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0094",
+      "name": "Eclaire EDP SET 3PCS",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://lattafa.com/product/eclaire/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0095",
+      "name": "Eclaire Pistacho",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://www.fragrantica.com/perfume/Lattafa-Perfumes/Eclaire-Pistache-113777.html"
+      ],
+      "reason": "Referencia especializada para esta variante; no confundir con Eclaire original."
+    },
+    {
+      "sku": "LCP-0096",
+      "name": "Eclaire Banoffi",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://beta.fragrantica.com/perfume/Lattafa-Perfumes/Eclaire-Banoffi-113778.html"
+      ],
+      "reason": "Referencia especializada para esta variante."
+    },
+    {
+      "sku": "LCP-0097",
+      "name": "Art of universe",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://lattafa.com/product/art-of-universe/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0098",
+      "name": "Mussman white intense",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://lattafa.com/product/musamam-white-intense/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0099",
+      "name": "Mussaman edp",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://lattafa.com/product/musamam/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0100",
+      "name": "Nebras",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://lattafa.com/product/nebras/"
+      ],
+      "reason": "Clasificación de la ficha oficial de Lattafa."
+    },
+    {
+      "sku": "LCP-0101",
+      "name": "Now Woman",
+      "brand": "Lataffa",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [],
+      "reason": "Variante explícita Women, Woman o Girl en el nombre original del catálogo; no se infiere por las notas del aroma."
+    },
+    {
+      "sku": "LCP-0102",
+      "name": "9pm set",
+      "brand": "Afnan",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://us.afnan.com/products/gift-set-9pm-homme"
+      ],
+      "reason": "Ficha oficial de la fragancia; los sets conservan la clasificación del perfume."
+    },
+    {
+      "sku": "LCP-0103",
+      "name": "Supremacy silver",
+      "brand": "Afnan",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://us.afnan.com/products/supremacy-silver"
+      ],
+      "reason": "Ficha oficial de la fragancia; los sets conservan la clasificación del perfume."
+    },
+    {
+      "sku": "LCP-0104",
+      "name": "Supremacy not only intense",
+      "brand": "Afnan",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://us.afnan.com/products/supremacy-not-only-intense"
+      ],
+      "reason": "Ficha oficial de la fragancia; los sets conservan la clasificación del perfume."
+    },
+    {
+      "sku": "LCP-0105",
+      "name": "9am por femme",
+      "brand": "Afnan",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://us.afnan.com/products/9-am-pour-femme"
+      ],
+      "reason": "Ficha oficial de la fragancia; los sets conservan la clasificación del perfume."
+    },
+    {
+      "sku": "LCP-0106",
+      "name": "Supremacy pink",
+      "brand": "Afnan",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://us.afnan.com/products/supremacy-pink"
+      ],
+      "reason": "Ficha oficial de la fragancia; los sets conservan la clasificación del perfume."
+    },
+    {
+      "sku": "LCP-0107",
+      "name": "9pm",
+      "brand": "Afnan",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://us.afnan.com/products/9-pm"
+      ],
+      "reason": "Ficha oficial de la fragancia; los sets conservan la clasificación del perfume."
+    },
+    {
+      "sku": "LCP-0108",
+      "name": "9pm rebel",
+      "brand": "Afnan",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://us.afnan.com/products/9-pm-rebel"
+      ],
+      "reason": "Ficha oficial de la fragancia; los sets conservan la clasificación del perfume."
+    },
+    {
+      "sku": "LCP-0109",
+      "name": "9pm rebel set",
+      "brand": "Afnan",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://us.afnan.com/products/gift-set-9pm-rebel"
+      ],
+      "reason": "Ficha oficial de la fragancia; los sets conservan la clasificación del perfume."
+    },
+    {
+      "sku": "LCP-0110",
+      "name": "9am dive",
+      "brand": "Afnan",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://us.afnan.com/products/9-am-dive"
+      ],
+      "reason": "Ficha oficial de la fragancia; los sets conservan la clasificación del perfume."
+    },
+    {
+      "sku": "LCP-0111",
+      "name": "9am dive set",
+      "brand": "Afnan",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://us.afnan.com/products/gift-set-9am-dive"
+      ],
+      "reason": "Ficha oficial de la fragancia; los sets conservan la clasificación del perfume."
+    },
+    {
+      "sku": "LCP-0112",
+      "name": "9pm elixir",
+      "brand": "Afnan",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://us.afnan.com/products/9-pm-elixir"
+      ],
+      "reason": "Ficha oficial de la fragancia; los sets conservan la clasificación del perfume."
+    },
+    {
+      "sku": "LCP-0113",
+      "name": "9pm night out",
+      "brand": "Afnan",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://us.afnan.com/products/9pm-night-out"
+      ],
+      "reason": "Ficha oficial de la fragancia; los sets conservan la clasificación del perfume."
+    },
+    {
+      "sku": "LCP-0114",
+      "name": "9pm pour femme",
+      "brand": "Afnan",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://us.afnan.com/products/9-pm-pour-femme"
+      ],
+      "reason": "Ficha oficial de la fragancia; los sets conservan la clasificación del perfume."
+    },
+    {
+      "sku": "LCP-0115",
+      "name": "Stallion 53",
+      "brand": "Emper",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://www.fragrancenet.com/fragrances/emper/emper-stallion-53/eau-de-parfum"
+      ],
+      "reason": "Ficha comercial del perfume exacto y set de la misma fragancia."
+    },
+    {
+      "sku": "LCP-0116",
+      "name": "Stallion 53 set",
+      "brand": "Emper",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://www.fragrancenet.com/fragrances/emper/emper-stallion-53/eau-de-parfum"
+      ],
+      "reason": "Ficha comercial del perfume exacto y set de la misma fragancia."
+    },
+    {
+      "sku": "LCP-0117",
+      "name": "Stallion mandora",
+      "brand": "Emper",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://shop.app/products/9057841447166/mandora-by-stallion-53-unisex-edp-100mi-3-40z-limited-edition-by-emper"
+      ],
+      "reason": "Ficha comercial de Mandora, no del Stallion original."
+    },
+    {
+      "sku": "LCP-0118",
+      "name": "Stallion uomo intense",
+      "brand": "Emper",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://emporioethan.com/products/uomo-intense-by-stallion-53-men-edp-100mi-20ml-by-emper"
+      ],
+      "reason": "Clasificación comercial en la ficha consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0119",
+      "name": "Stallion donna intense",
+      "brand": "Emper",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://emporioethan.com/products/donna-intense-by-stallion-53-women-edp-100mi-20ml-by-emper"
+      ],
+      "reason": "Clasificación comercial en la ficha consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0120",
+      "name": "Blue stallion 53",
+      "brand": "Emper",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.parfumo.com/Perfumes/Emper/blue-stallion-by-stallion-53"
+      ],
+      "reason": "Referencia especializada de la variante Blue."
+    },
+    {
+      "sku": "LCP-0121",
+      "name": "Amber oud Dubai night",
+      "brand": "Al haramain",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://shop.alharamainperfumes.com/default/haramain-amber-oud-gold-dubai-night-100ml-extrait-de-parfum.html"
+      ],
+      "reason": "La marca indica Unisex; algunas tiendas lo ofrecen como masculino."
+    },
+    {
+      "sku": "LCP-0122",
+      "name": "Amber oud Acqua Dubai",
+      "brand": "Al haramain",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://www.fragrantica.com/perfume/Al-Haramain-Perfumes/Amber-Oud-Aqua-Dubai-96482.html"
+      ],
+      "reason": "Clasificación comercial en la ficha consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0123",
+      "name": "Amber oud Gold edition",
+      "brand": "Al haramain",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://us.alharamainperfumes.com/en/amber-oud-gold-edition.html"
+      ],
+      "reason": "Ficha oficial de la fragancia; los sets conservan la clasificación del perfume."
+    },
+    {
+      "sku": "LCP-0124",
+      "name": "Nitro red intensely",
+      "brand": "Dumont",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://beta.fragrantica.com/perfume/Dumont/Nitro-Red-Intensely-104555.html"
+      ],
+      "reason": "Clasificación comercial en la ficha consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0125",
+      "name": "Nitro red",
+      "brand": "Dumont",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://beta.fragrantica.com/perfume/Dumont/Nitro-Red-73023.html"
+      ],
+      "reason": "Clasificación comercial en la ficha consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0126",
+      "name": "Nitro Blue",
+      "brand": "Dumont",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.unitedperfumes.com/content/Import/UnitedPerfumes%20Catalog%20With%20Prices%20Eng.pdf"
+      ],
+      "reason": "Catálogo del distribuidor identifica Nitro Blue Men."
+    },
+    {
+      "sku": "LCP-0127",
+      "name": "Nitro platimun",
+      "brand": "Dumont",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.parfumo.com/Perfumes/Dumont/nitro-platinum"
+      ],
+      "reason": "Clasificación comercial en la ficha consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0128",
+      "name": "BHARARA MAST PERFUME ROME POUR FEMME SET 2PCS WOMEN EDP 3.4oz + 8.4oz",
+      "brand": "Bharara",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.bhararabeauty.com/products/rome-pour-femme-5-pcs-set"
+      ],
+      "reason": "Ficha oficial de la fragancia; los sets conservan la clasificación del perfume."
+    },
+    {
+      "sku": "LCP-0129",
+      "name": "BHARARA MAST PERFUME ROME PARADOX SET 2PCS WOMEN EDP 3.4oz + 8.4oz",
+      "brand": "Bharara",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.bhararabeauty.com/products/mast-perfume-rome-paradox-3-4-eau-de-parfume-for-women"
+      ],
+      "reason": "Ficha oficial de la fragancia; los sets conservan la clasificación del perfume."
+    },
+    {
+      "sku": "LCP-0130",
+      "name": "Bharara King",
+      "brand": "Bharara",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.bhararabeauty.com/products/bharara-king-6-pcs-gift-set"
+      ],
+      "reason": "Ficha oficial de la fragancia; los sets conservan la clasificación del perfume."
+    },
+    {
+      "sku": "LCP-0131",
+      "name": "Bharara king Gold edition",
+      "brand": "Bharara",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://bhararabeauty.eu/"
+      ],
+      "reason": "La tienda europea de la marca lo identifica como King Gold Pour Homme."
+    },
+    {
+      "sku": "LCP-0132",
+      "name": "Rome pour homme",
+      "brand": "Bharara",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.bhararabeauty.com/products/bharara-rome-pour-homme-eau-de-parfum"
+      ],
+      "reason": "Ficha oficial de la fragancia; los sets conservan la clasificación del perfume."
+    },
+    {
+      "sku": "LCP-0133",
+      "name": "Rome extradose men",
+      "brand": "Bharara",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.bhararabeauty.com/products/rome-extradose-pour-homme"
+      ],
+      "reason": "Ficha oficial de la fragancia; los sets conservan la clasificación del perfume."
+    },
+    {
+      "sku": "LCP-0134",
+      "name": "Rome pour femme",
+      "brand": "Bharara",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.bhararabeauty.com/products/bharara-rome-pour-femme-eau-de-parfum"
+      ],
+      "reason": "Ficha oficial de la fragancia; los sets conservan la clasificación del perfume."
+    },
+    {
+      "sku": "LCP-0135",
+      "name": "Rome Melancholia Pour Homme",
+      "brand": "Bharara",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.bhararabeauty.com/products/rome-melancholia-pour-homme-3-4-edp"
+      ],
+      "reason": "Ficha oficial de la fragancia; los sets conservan la clasificación del perfume."
+    },
+    {
+      "sku": "LCP-0136",
+      "name": "Rome Melancholia Pour femme",
+      "brand": "Bharara",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.bhararabeauty.com/products/rome-melancholia-pour-femme-3-4-edp"
+      ],
+      "reason": "Ficha oficial de la fragancia; los sets conservan la clasificación del perfume."
+    },
+    {
+      "sku": "LCP-0137",
+      "name": "Rome extradose women",
+      "brand": "Bharara",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.bhararabeauty.com/products/rome-extradose-pour-femme"
+      ],
+      "reason": "Ficha oficial de la fragancia; los sets conservan la clasificación del perfume."
+    },
+    {
+      "sku": "LCP-0138",
+      "name": "LUCKY",
+      "brand": "Bharara",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://perfumesandrea.com/products/products-rome-lucky-by-bharara-men-3-4oz-edp"
+      ],
+      "reason": "Nombre abreviado del catálogo corresponde a Rome Lucky; ficha comercial."
+    },
+    {
+      "sku": "LCP-0139",
+      "name": "LA BOMBA",
+      "brand": "Bharara",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.bhararabeauty.com/products/rome-la-bomba-3-4-edp"
+      ],
+      "reason": "Ficha oficial de la fragancia; los sets conservan la clasificación del perfume."
+    },
+    {
+      "sku": "LCP-0140",
+      "name": "Liquid Brun",
+      "brand": "French avenue",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://frenchavenue.com/products/liquid-brun"
+      ],
+      "reason": "Ficha y catálogo oficial: For Him."
+    },
+    {
+      "sku": "LCP-0141",
+      "name": "Vulcan Feu",
+      "brand": "French avenue",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://frenchavenue.com/products/vulcan-feu"
+      ],
+      "reason": "Catálogo oficial: For Him. Otras bases lo comercializan como unisex."
+    },
+    {
+      "sku": "LCP-0142",
+      "name": "Aether Extrait de parfum",
+      "brand": "French avenue",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://www.fragrantica.fr/parfum/French-Avenue/Aether-94702.html"
+      ],
+      "reason": "Clasificación comercial en la ficha consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0143",
+      "name": "Pacific Aura",
+      "brand": "Rayhaan",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://rayhaanperfumes.com/products/pacific-aura"
+      ],
+      "reason": "Catálogo oficial: For Him."
+    },
+    {
+      "sku": "LCP-0144",
+      "name": "Elixir",
+      "brand": "Rayhaan",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://rayhaanperfumes.com/products/elixir"
+      ],
+      "reason": "Catálogo oficial: For Him."
+    },
+    {
+      "sku": "LCP-0145",
+      "name": "Nocturno Elixir",
+      "brand": "Rayhaan",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://rayhaanperfumes.com/products/nocturno-elixir"
+      ],
+      "reason": "Catálogo oficial: For Him."
+    },
+    {
+      "sku": "LCP-0146",
+      "name": "Terra",
+      "brand": "Rayhaan",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://rayhaanperfumes.com/products/rayhaan-terra"
+      ],
+      "reason": "Catálogo oficial: For Him."
+    },
+    {
+      "sku": "LCP-0147",
+      "name": "Tubees sweet caramel",
+      "brand": "Tubees",
+      "size": "1.700",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://www.tubbees.es/en/products/sweet-caramel"
+      ],
+      "reason": "Clasificación comercial en la fuente consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0148",
+      "name": "Tubees pink sugar",
+      "brand": "Tubees",
+      "size": "1.700",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://www.parfumerie-de-dubai.com/en/product-category-2/tubbees/"
+      ],
+      "reason": "Variante identificada como unisex en la colección del distribuidor."
+    },
+    {
+      "sku": "LCP-0149",
+      "name": "Tubees strawberry cheesecake",
+      "brand": "Tubees",
+      "size": "1.700",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://www.tubbees.es/en/products/strawberry-cheesecake"
+      ],
+      "reason": "Clasificación comercial en la fuente consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0150",
+      "name": "Tubees berry blas",
+      "brand": "Tubees",
+      "size": "1.700",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://www.tubbees.es/en/products/berry-blast"
+      ],
+      "reason": "Clasificación comercial en la fuente consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0151",
+      "name": "Tubees bubble gum",
+      "brand": "Tubees",
+      "size": "1.700",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://www.tubbees.es/en/products/bubble-gum"
+      ],
+      "reason": "Clasificación comercial en la fuente consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0152",
+      "name": "Tubees candy pop",
+      "brand": "Tubees",
+      "size": "1.700",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://www.parfumerie-de-dubai.com/en/product-category-2/tubbees/"
+      ],
+      "reason": "Variante identificada como unisex en la colección del distribuidor."
+    },
+    {
+      "sku": "LCP-0153",
+      "name": "Tubees cherry luxe",
+      "brand": "Tubees",
+      "size": "1.700",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://www.parfumerie-de-dubai.com/en/product-category-2/tubbees/"
+      ],
+      "reason": "Variante identificada como unisex en la colección del distribuidor."
+    },
+    {
+      "sku": "LCP-0154",
+      "name": "Tubees chocolate fudge",
+      "brand": "Tubees",
+      "size": "1.700",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://www.parfumerie-de-dubai.com/en/product-category-2/tubbees/"
+      ],
+      "reason": "Variante identificada como unisex en la colección del distribuidor."
+    },
+    {
+      "sku": "LCP-0155",
+      "name": "Tubees cookies & cream",
+      "brand": "Tubees",
+      "size": "1.700",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://www.tubbees.es/en/products/cookies-cream"
+      ],
+      "reason": "Clasificación comercial en la fuente consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0156",
+      "name": "Tubees cotton candy",
+      "brand": "Tubees",
+      "size": "1.700",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://www.tubbees.es/en/products/cotton-candy"
+      ],
+      "reason": "Clasificación comercial en la fuente consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0157",
+      "name": "Tubees dreamy treats",
+      "brand": "Tubees",
+      "size": "1.700",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://www.parfumerie-de-dubai.com/en/product-category-2/tubbees/"
+      ],
+      "reason": "Variante identificada como unisex en la colección del distribuidor."
+    },
+    {
+      "sku": "LCP-0158",
+      "name": "tubees unicorn vanilla",
+      "brand": "Tubees",
+      "size": "1.700",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://www.parfumerie-de-dubai.com/en/product-category-2/tubbees/"
+      ],
+      "reason": "Variante identificada como unisex en la colección del distribuidor."
+    },
+    {
+      "sku": "LCP-0159",
+      "name": "Sweet like candy",
+      "brand": "Ariana grande",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.fragrantica.com/perfume/Ariana-Grande/Sweet-Like-Candy-39970.html"
+      ],
+      "reason": "Clasificación comercial en la ficha consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0160",
+      "name": "Ari by ariana grande",
+      "brand": "Ariana grande",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.fragrantica.com/perfume/Ariana-Grande/Ari-31661.html"
+      ],
+      "reason": "Clasificación comercial en la ficha consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0161",
+      "name": "Cloud pink",
+      "brand": "Ariana grande",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.fragrantica.com/perfume/Ariana-Grande/Cloud-Pink-83995.html"
+      ],
+      "reason": "Clasificación comercial en la fuente consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0162",
+      "name": "ARIANA GRANDE CLOUD 3.4 EDP L (113305) - Poland",
+      "brand": "Ariana grande",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.fragrantica.com/perfume/Ariana-Grande/Cloud-50384.html"
+      ],
+      "reason": "Clasificación comercial en la ficha consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0163",
+      "name": "ARIANA GRANDE CLOUD 3.4 EDP L + 4.0 B/M+ 3.4 B/C (126250) - Emirates",
+      "brand": "Ariana grande",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.fragrantica.com/perfume/Ariana-Grande/Cloud-50384.html"
+      ],
+      "reason": "Clasificación comercial en la ficha consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0164",
+      "name": "ARIANA GRANDE THANK U NEXT 3.4 EDP L + 3.4BL+ 3.4SHG (117626) - Emirates",
+      "brand": "Ariana grande",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.fragrantica.com/perfume/Ariana-Grande/Thank-U-Next-56741.html"
+      ],
+      "reason": "Clasificación comercial en la ficha consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0165",
+      "name": "Thank U next",
+      "brand": "Ariana grande",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.fragrantica.com/perfume/Ariana-Grande/Thank-U-Next-56741.html"
+      ],
+      "reason": "Clasificación comercial en la ficha consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0166",
+      "name": "Stonger with you intensily EDP",
+      "brand": "Emporio Armani",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.giorgioarmanibeauty-usa.com/fragrances/emporio-armani-stronger-with-you-intensely/3614272225701.html"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0167",
+      "name": "Acqua di gio profondo",
+      "brand": "Emporio Armani",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.giorgioarmanibeauty-usa.com/fragrances/mens-cologne/acqua-di-gio/acqua-di-gio-profondo-eau-de-parfum/3614273953832.html"
+      ],
+      "reason": "Clasificación comercial en la ficha consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0168",
+      "name": "The most wanted intense",
+      "brand": "Azzaro",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.azzaro.com/en/fragrances/azzaro-the-most-wanted"
+      ],
+      "reason": "Clasificación comercial en la ficha consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0169",
+      "name": "One edt men",
+      "brand": "Calvin Klein",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://www.calvinklein.us/en/women/fragrance/fragrance/ck-one/088300107438.html"
+      ],
+      "reason": "CK One se comercializa para ambos; “men” en el nombre importado no determina su clasificación."
+    },
+    {
+      "sku": "LCP-0170",
+      "name": "Be edt men",
+      "brand": "Calvin Klein",
+      "size": null,
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://www.fragrancex.com/products/calvin-klein/ck-be-perfume"
+      ],
+      "reason": "CK Be se comercializa para ambos; “men” en el nombre importado no determina su clasificación."
+    },
+    {
+      "sku": "LCP-0171",
+      "name": "Eternity Men",
+      "brand": "Calvin Klein",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [],
+      "reason": "Variante explícita Men, Uomo, M o Pour Homme en el nombre original del catálogo; no se infiere por las notas del aroma."
+    },
+    {
+      "sku": "LCP-0172",
+      "name": "Eternity Women",
+      "brand": "Calvin Klein",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [],
+      "reason": "Variante explícita Women, Woman o Girl en el nombre original del catálogo; no se infiere por las notas del aroma."
+    },
+    {
+      "sku": "LCP-0173",
+      "name": "Euphoria edp women",
+      "brand": "Calvin Klein",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [],
+      "reason": "Variante explícita Women, Woman o Girl en el nombre original del catálogo; no se infiere por las notas del aroma."
+    },
+    {
+      "sku": "LCP-0174",
+      "name": "Carolina Ch men",
+      "brand": "Carolina herrera",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.carolinaherrera.com/us/en/c/fragrances/fragrancesmen"
+      ],
+      "reason": "Líneas masculinas CH Men, Bad Boy y 212 VIP Black."
+    },
+    {
+      "sku": "LCP-0175",
+      "name": "Carolina Ch Woman",
+      "brand": "Carolina herrera",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.carolinaherrera.com/sa/en/c/fragrances/fragranceswomen"
+      ],
+      "reason": "Líneas femeninas CH Woman, 212 VIP Rosé y Good Girl."
+    },
+    {
+      "sku": "LCP-0176",
+      "name": "Carolina Ch la bomba",
+      "brand": "Carolina herrera",
+      "size": "2.700",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.carolinaherrera.com/uk/en/p-fragrance/labomba"
+      ],
+      "reason": "Clasificación comercial en la fuente consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0177",
+      "name": "212 vip rose",
+      "brand": "Carolina herrera",
+      "size": "2.700",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.carolinaherrera.com/sa/en/c/fragrances/fragranceswomen"
+      ],
+      "reason": "Líneas femeninas CH Woman, 212 VIP Rosé y Good Girl."
+    },
+    {
+      "sku": "LCP-0178",
+      "name": "212 VIP ROSE 4.2 EDP L (108338) - Spain",
+      "brand": "Carolina herrera",
+      "size": "4.200",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.carolinaherrera.com/sa/en/c/fragrances/fragranceswomen"
+      ],
+      "reason": "Líneas femeninas CH Woman, 212 VIP Rosé y Good Girl."
+    },
+    {
+      "sku": "LCP-0179",
+      "name": "CAROLINA CH GOOD GIRL 2.7 EDP L (107002) - Spain",
+      "brand": "Carolina herrera",
+      "size": "2.700",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.carolinaherrera.com/sa/en/c/fragrances/fragranceswomen"
+      ],
+      "reason": "Líneas femeninas CH Woman, 212 VIP Rosé y Good Girl."
+    },
+    {
+      "sku": "LCP-0180",
+      "name": "Very good girl elixir",
+      "brand": "Carolina herrera",
+      "size": "2.700",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.carolinaherrera.com/sa/en/c/fragrances/fragranceswomen"
+      ],
+      "reason": "Líneas femeninas CH Woman, 212 VIP Rosé y Good Girl."
+    },
+    {
+      "sku": "LCP-0181",
+      "name": "Carolina Ch good girl blush",
+      "brand": "Carolina herrera",
+      "size": "2.700",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.carolinaherrera.com/sa/en/c/fragrances/fragranceswomen"
+      ],
+      "reason": "Líneas femeninas CH Woman, 212 VIP Rosé y Good Girl."
+    },
+    {
+      "sku": "LCP-0182",
+      "name": "CAROLINA CH BAD BOY LE PARFUM 3.4 EDP M (117627) - Spain",
+      "brand": "Carolina herrera",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.carolinaherrera.com/us/en/c/fragrances/fragrancesmen"
+      ],
+      "reason": "Líneas masculinas CH Men, Bad Boy y 212 VIP Black."
+    },
+    {
+      "sku": "LCP-0183",
+      "name": "212 3.4 EDT L (100010) - Spain",
+      "brand": "Carolina herrera",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": null,
+      "sources": [
+        "https://drive.google.com/file/d/1pcgyxkhkICXcr4R9kN8NhG67Rlgnyd46/view"
+      ],
+      "reason": "El nombre importado indica L, pero la foto muestra 212 MEN NYC. El usuario pidió dejarlo Por confirmar el 1 de octubre de 2026."
+    },
+    {
+      "sku": "LCP-0184",
+      "name": "212 vip black",
+      "brand": "Carolina herrera",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.carolinaherrera.com/us/en/c/fragrances/fragrancesmen"
+      ],
+      "reason": "Líneas masculinas CH Men, Bad Boy y 212 VIP Black."
+    },
+    {
+      "sku": "LCP-0185",
+      "name": "La vie est belle edp",
+      "brand": "Lancome",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.lancome-usa.com/fragrance/fragrance-by-collection/la-vie-est-belle/la-vie-est-belle-lelixir-eau-de-parfum/3614274169706.html"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0186",
+      "name": "LA VIE EST BELLE L'ELIXIR 3.4 EDP L (128261) - France",
+      "brand": "Lancome",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.lancome-usa.com/fragrance/fragrance-by-collection/la-vie-est-belle/la-vie-est-belle-lelixir-eau-de-parfum/3614274169706.html"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0187",
+      "name": "Daisy love",
+      "brand": "Marc Jacobs",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.fragrantica.com/designers/Marc-Jacobs.html"
+      ],
+      "reason": "Daisy, Daisy Dream, Daisy Love y Perfect: líneas femeninas."
+    },
+    {
+      "sku": "LCP-0188",
+      "name": "Daisy Dream",
+      "brand": "Marc Jacobs",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.fragrantica.com/designers/Marc-Jacobs.html"
+      ],
+      "reason": "Daisy, Daisy Dream, Daisy Love y Perfect: líneas femeninas."
+    },
+    {
+      "sku": "LCP-0189",
+      "name": "Daisy",
+      "brand": "Marc Jacobs",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.fragrantica.com/designers/Marc-Jacobs.html"
+      ],
+      "reason": "Daisy, Daisy Dream, Daisy Love y Perfect: líneas femeninas."
+    },
+    {
+      "sku": "LCP-0190",
+      "name": "MARC JACOBS PERFECT 3.4 EDP WOMEN 2.5 B WOMEN",
+      "brand": "Marc Jacobs",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.fragrantica.com/designers/Marc-Jacobs.html"
+      ],
+      "reason": "Daisy, Daisy Dream, Daisy Love y Perfect: líneas femeninas."
+    },
+    {
+      "sku": "LCP-0191",
+      "name": "Voyage",
+      "brand": "Nautica",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.target.com/c/men-s-grooming/nautica/-/N-4ykmfZ5t8mt"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0192",
+      "name": "Voyage Sport",
+      "brand": "Nautica",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.target.com/c/men-s-grooming/nautica/-/N-4ykmfZ5t8mt"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0193",
+      "name": "Nautica blue",
+      "brand": "Nautica",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.target.com/c/men-s-grooming/nautica/-/N-4ykmfZ5t8mt"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0194",
+      "name": "Pure Blue",
+      "brand": "Nautica",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.target.com/c/men-s-grooming/nautica/-/N-4ykmfZ5t8mt"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0195",
+      "name": "Uomo signature",
+      "brand": "Ferragamo",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [],
+      "reason": "Variante explícita Men, Uomo, M o Pour Homme en el nombre original del catálogo; no se infiere por las notas del aroma."
+    },
+    {
+      "sku": "LCP-0196",
+      "name": "Signoria ribelle",
+      "brand": "Ferragamo",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.ferragamo.com/shop/mex/es/mx-gifts-her/signorina-ribelle-718874--5"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0197",
+      "name": "Tommy girl",
+      "brand": "Tommy Hilfiger",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [],
+      "reason": "Variante explícita Women, Woman o Girl en el nombre original del catálogo; no se infiere por las notas del aroma."
+    },
+    {
+      "sku": "LCP-0198",
+      "name": "Tommy impact intense+spray inside",
+      "brand": "Tommy Hilfiger",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://usa.tommy.com/en/impact-intense-for-men-fragrance-1.7oz/TX001018.html"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0199",
+      "name": "Uomo Born in roma extradose uomo",
+      "brand": "Valentino",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.valentino-beauty.us/born-in-roma.html"
+      ],
+      "reason": "Colección Uomo masculina; incluye Purple Melancholia."
+    },
+    {
+      "sku": "LCP-0200",
+      "name": "Uomo Born in roma intense",
+      "brand": "Valentino",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.valentino-beauty.us/born-in-roma.html"
+      ],
+      "reason": "Colección Uomo masculina; incluye Purple Melancholia."
+    },
+    {
+      "sku": "LCP-0201",
+      "name": "uomo born in roma coral fantasy",
+      "brand": "Valentino",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.valentino-beauty.us/born-in-roma.html"
+      ],
+      "reason": "Colección Uomo masculina; incluye Purple Melancholia."
+    },
+    {
+      "sku": "LCP-0202",
+      "name": "uomo melancholia",
+      "brand": "Valentino",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.valentino-beauty.us/born-in-roma.html"
+      ],
+      "reason": "Colección Uomo masculina; incluye Purple Melancholia."
+    },
+    {
+      "sku": "LCP-0203",
+      "name": "Donna born in roma extradose",
+      "brand": "Valentino",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.valentino-beauty.us/born-in-roma.html"
+      ],
+      "reason": "Colección Donna femenina."
+    },
+    {
+      "sku": "LCP-0204",
+      "name": "Donna Born in roma intense",
+      "brand": "Valentino",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.valentino-beauty.us/born-in-roma.html"
+      ],
+      "reason": "Colección Donna femenina."
+    },
+    {
+      "sku": "LCP-0205",
+      "name": "Donna born in roma edp",
+      "brand": "Valentino",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.valentino-beauty.us/born-in-roma.html"
+      ],
+      "reason": "Colección Donna femenina."
+    },
+    {
+      "sku": "LCP-0206",
+      "name": "Invictus parfum",
+      "brand": "Paco Rabanne",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.rabanne.com/us/en_US/fragrance/p/miniature-discovery-set-for-men--000000000065240412"
+      ],
+      "reason": "Colecciones masculinas Invictus, 1 Million y Phantom; variantes identificadas por nombre."
+    },
+    {
+      "sku": "LCP-0207",
+      "name": "Invictus Victory elixir intense",
+      "brand": "Paco Rabanne",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.rabanne.com/us/en_US/fragrance/p/miniature-discovery-set-for-men--000000000065240412"
+      ],
+      "reason": "Colecciones masculinas Invictus, 1 Million y Phantom; variantes identificadas por nombre."
+    },
+    {
+      "sku": "LCP-0208",
+      "name": "One Million elixir parfum intense",
+      "brand": "Paco Rabanne",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.rabanne.com/us/en_US/fragrance/p/miniature-discovery-set-for-men--000000000065240412"
+      ],
+      "reason": "Colecciones masculinas Invictus, 1 Million y Phantom; variantes identificadas por nombre."
+    },
+    {
+      "sku": "LCP-0209",
+      "name": "PACO RABANNE PHANTOM PARFUM 3.4 MEN + 5.0 DEO",
+      "brand": "Paco Rabanne",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.rabanne.com/us/en_US/fragrance/p/miniature-discovery-set-for-men--000000000065240412"
+      ],
+      "reason": "Colecciones masculinas Invictus, 1 Million y Phantom; variantes identificadas por nombre."
+    },
+    {
+      "sku": "LCP-0210",
+      "name": "PACO ONE MILLION 3.4 EDT MEN + 3.4 S/G",
+      "brand": "Paco Rabanne",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.rabanne.com/us/en_US/fragrance/p/miniature-discovery-set-for-men--000000000065240412"
+      ],
+      "reason": "Colecciones masculinas Invictus, 1 Million y Phantom; variantes identificadas por nombre."
+    },
+    {
+      "sku": "LCP-0211",
+      "name": "One Million Lucky",
+      "brand": "Paco Rabanne",
+      "size": null,
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.rabanne.com/us/en_US/fragrance/p/miniature-discovery-set-for-men--000000000065240412"
+      ],
+      "reason": "Colecciones masculinas Invictus, 1 Million y Phantom; variantes identificadas por nombre."
+    },
+    {
+      "sku": "LCP-0212",
+      "name": "La male le parfum",
+      "brand": "Jean Paul Gaultier",
+      "size": "4.200",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.jeanpaulgaultier.com/us/en/fragrances/fragrances-for-men"
+      ],
+      "reason": "Clasificación comercial en la fuente consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0213",
+      "name": "Le male le elixir",
+      "brand": "Jean Paul Gaultier",
+      "size": "4.200",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.jeanpaulgaultier.com/us/en/fragrances/fragrances-for-men"
+      ],
+      "reason": "Clasificación comercial en la fuente consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0214",
+      "name": "JEAN PAUL G LE MALE ELIXIR 4.2 EDP M + 2.5 S/G (130294) - France",
+      "brand": "Jean Paul Gaultier",
+      "size": "4.200",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.jeanpaulgaultier.com/us/en/fragrances/fragrances-for-men"
+      ],
+      "reason": "Clasificación comercial en la fuente consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0215",
+      "name": "JEAN PAUL G LE BEAU 4.2 EDT M (102305) - Spain",
+      "brand": "Jean Paul Gaultier",
+      "size": "4.200",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.jeanpaulgaultier.com/us/en/fragrances/fragrances-for-men"
+      ],
+      "reason": "Clasificación comercial en la fuente consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0216",
+      "name": "Le beau le parfum-4,2oz/125ml",
+      "brand": "Jean Paul Gaultier",
+      "size": "4.200",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.jeanpaulgaultier.com/us/en/fragrances/fragrances-for-men"
+      ],
+      "reason": "Clasificación comercial en la fuente consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0217",
+      "name": "le beau le parfum",
+      "brand": "Jean Paul Gaultier",
+      "size": "2.700",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.jeanpaulgaultier.com/us/en/fragrances/fragrances-for-men"
+      ],
+      "reason": "Clasificación comercial en la fuente consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0218",
+      "name": "Le beau paradise garden",
+      "brand": "Jean Paul Gaultier",
+      "size": "2.500",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.jeanpaulgaultier.com/uk/en/fragrances/range-le-beau/le-beau-paradise-garden-eau-de-parfum"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0219",
+      "name": "Le beau paradise garden 4,2oz/125ml",
+      "brand": "Jean Paul Gaultier",
+      "size": null,
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.jeanpaulgaultier.com/uk/en/fragrances/range-le-beau/le-beau-paradise-garden-eau-de-parfum"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0220",
+      "name": "VERSACE EROS FLAME 3.4 EDP M (113487) - Italy",
+      "brand": "Versace",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.versace.com/us/en/men/accessories/fragrances-body-care/eros-flame/SET_Fragrances_ErosFlame.html"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0221",
+      "name": "VERSACE EROS 3.4 EDP",
+      "brand": "Versace",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.fragrantica.com/perfume/Versace/Eros-Parfum-70090.html"
+      ],
+      "reason": "Clasificación comercial en la ficha consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0222",
+      "name": "Versace Eros edp Set",
+      "brand": "Versace",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.fragrantica.com/perfume/Versace/Eros-Parfum-70090.html"
+      ],
+      "reason": "Clasificación comercial en la ficha consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0223",
+      "name": "Versace eros Parfum",
+      "brand": "Versace",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.fragrantica.com/perfume/Versace/Eros-Parfum-70090.html"
+      ],
+      "reason": "Clasificación comercial en la ficha consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0224",
+      "name": "YELLOW DIAMOND",
+      "brand": "Versace",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.versace.com/us/en/women/accessories/fragrances-body-care/"
+      ],
+      "reason": "Clasificación comercial en la fuente consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0225",
+      "name": "BRIGHT CRYSTAL ABSOLU",
+      "brand": "Versace",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.versace.com/us/en/women/accessories/fragrances-body-care/"
+      ],
+      "reason": "Clasificación comercial en la fuente consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0226",
+      "name": "BRIGHT CRYSTAL PARFUM",
+      "brand": "Versace",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.versace.com/us/en/women/accessories/fragrances-body-care/"
+      ],
+      "reason": "Clasificación comercial en la fuente consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0227",
+      "name": "Colors green",
+      "brand": "Benetton",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.fragrantica.com/perfume/Benetton/Colors-de-Benetton-Man-Green-59498.html"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0228",
+      "name": "United dreams together",
+      "brand": "Benetton",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://drive.google.com/file/d/1Y6DSQL25gW1SZliRrXcC7IXkzBQ1gCu8/view"
+      ],
+      "reason": "La imagen guardada del producto identifica United Dreams Together FOR HER."
+    },
+    {
+      "sku": "LCP-0229",
+      "name": "sisterland pink raspberry",
+      "brand": "Benetton",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://sisterland.benettonfragrances.com/en/"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0230",
+      "name": "colors black intense",
+      "brand": "Benetton",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.fragrantica.com/designers/Benetton.html"
+      ],
+      "reason": "Colors Man Black Intenso."
+    },
+    {
+      "sku": "LCP-0231",
+      "name": "sisterland yellow peany",
+      "brand": "Benetton",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://sisterland.benettonfragrances.com/en/"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0232",
+      "name": "Rose Eau de fraiche",
+      "brand": "Lacoste",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.lacoste.com/us/lacoste/women/accessories/fragrance/LC008A01.html"
+      ],
+      "reason": "Clasificación comercial en la fuente consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0233",
+      "name": "Eau de blanc",
+      "brand": "Lacoste",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.lacoste.com/fr/lacoste/homme/accessoires/parfums/LC002A01.html"
+      ],
+      "reason": "Clasificación comercial en la fuente consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0234",
+      "name": "Polo Black",
+      "brand": "Polo",
+      "size": "4.200",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.ralphlaurenfragrances.com/en_US/men/polo-black/polo-black-eau-de-toilette/RLFE012.html"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0235",
+      "name": "Polo 67",
+      "brand": "Polo",
+      "size": "4.200",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.ralphlaurenfragrances.com/en_US/products/"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0236",
+      "name": "Gentleman Privee EDP",
+      "brand": "Givenchy",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.givenchybeauty.com/us/fragrance/men-s-fragrance-cologne/gentleman-givenchy/"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0237",
+      "name": "Ysl Black opium",
+      "brand": "Yves saint laurent",
+      "size": "3.000",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.yslbeautyus.com/fragrance/womens-fragrances/?geo=false"
+      ],
+      "reason": "Clasificación comercial en la fuente consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0238",
+      "name": "YSL LIBRE LE PARFUM 3.0 EDP WOMEN",
+      "brand": "Yves saint laurent",
+      "size": "3.000",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.yslbeautyus.com/fragrance/womens-fragrances/?geo=false"
+      ],
+      "reason": "Clasificación comercial en la fuente consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0239",
+      "name": "Y edp",
+      "brand": "Yves saint laurent",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.yslbeautyus.com/fragrance/mens-fragrances/"
+      ],
+      "reason": "Clasificación comercial en la ficha consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0240",
+      "name": "Ysl Libre berry crush edp women 3.0 Women",
+      "brand": "Yves saint laurent",
+      "size": "3.000",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.yslbeautyus.com/fragrance/womens-fragrances/libre/libre-berry-crush/3614274521245.html"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0241",
+      "name": "Erba pura",
+      "brand": "Xerjoff",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "unisex",
+      "sources": [
+        "https://www.fragrantica.com/perfume/Xerjoff/Erba-Pura-55157.html"
+      ],
+      "reason": "Clasificación comercial en la fuente consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0242",
+      "name": "Dg Devotion set 2pcs",
+      "brand": "Dolce & Gabanna",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://world.dolcegabbana.com/beauty/dolce-gabbana-devotion-woman-fragrances-katy-perry-2025"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0243",
+      "name": "Light blue edt Men",
+      "brand": "Dolce & Gabanna",
+      "size": "3.300",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [],
+      "reason": "Variante explícita Men, Uomo, M o Pour Homme en el nombre original del catálogo; no se infiere por las notas del aroma."
+    },
+    {
+      "sku": "LCP-0244",
+      "name": "Light blue edt Men",
+      "brand": "Dolce & Gabanna",
+      "size": "4.200",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [],
+      "reason": "Variante explícita Men, Uomo, M o Pour Homme en el nombre original del catálogo; no se infiere por las notas del aroma."
+    },
+    {
+      "sku": "LCP-0245",
+      "name": "Light blue edt Woman",
+      "brand": "Dolce & Gabanna",
+      "size": "3.300",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [],
+      "reason": "Variante explícita Women, Woman o Girl en el nombre original del catálogo; no se infiere por las notas del aroma."
+    },
+    {
+      "sku": "LCP-0246",
+      "name": "Limperatrice EDT Woman",
+      "brand": "Dolce & Gabanna",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [],
+      "reason": "Variante explícita Women, Woman o Girl en el nombre original del catálogo; no se infiere por las notas del aroma."
+    },
+    {
+      "sku": "LCP-0247",
+      "name": "PRADA LUNA ROSSA BLACK M. EDP SP 3.3oz LI FREE REFILLABLE",
+      "brand": "Prada",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [],
+      "reason": "Variante explícita Men, Uomo, M o Pour Homme en el nombre original del catálogo; no se infiere por las notas del aroma."
+    },
+    {
+      "sku": "LCP-0248",
+      "name": "Luna Rossa Ocean 3.4 Oz Edp Men",
+      "brand": "Prada",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [],
+      "reason": "Variante explícita Men, Uomo, M o Pour Homme en el nombre original del catálogo; no se infiere por las notas del aroma."
+    },
+    {
+      "sku": "LCP-0249",
+      "name": "Prada paradoxe intense",
+      "brand": "Prada",
+      "size": "3.000",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [
+        "https://www.prada-beauty.com/new/paradoxe-intense-eau-de-parfum/3614273961707.html"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0250",
+      "name": "360 BLACK",
+      "brand": "Perry ellis",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://drive.google.com/file/d/1EfF7WAmJgKLn_yRlz5nH0cv6yYv83FWL/view"
+      ],
+      "reason": "La foto del producto indica 360 BLACK FOR MEN."
+    },
+    {
+      "sku": "LCP-0251",
+      "name": "360 RED",
+      "brand": "Perry ellis",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.perryellis.com/products/360-red-eau-de-toilette-12252877",
+        "https://drive.google.com/file/d/1CjLrU1UHXWfnS3X5bfg5uQnxCJ0GObEA/view"
+      ],
+      "reason": "La ficha y la foto del producto identifican 360 RED FOR MEN."
+    },
+    {
+      "sku": "LCP-0252",
+      "name": "360 EDT MEN",
+      "brand": "Perry ellis",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.perryellis.com/products/360-for-men-eau-de-toilette-34-fl-oz-pe3552/"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0253",
+      "name": "360 EDT WOMEN",
+      "brand": "Perry ellis",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [],
+      "reason": "Variante explícita Women, Woman o Girl en el nombre original del catálogo; no se infiere por las notas del aroma."
+    },
+    {
+      "sku": "LCP-0254",
+      "name": "360 RED EDP Women",
+      "brand": "Perry ellis",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [],
+      "reason": "Variante explícita Women, Woman o Girl en el nombre original del catálogo; no se infiere por las notas del aroma."
+    },
+    {
+      "sku": "LCP-0255",
+      "name": "360 purple women",
+      "brand": "Perry ellis",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "female",
+      "sources": [],
+      "reason": "Variante explícita Women, Woman o Girl en el nombre original del catálogo; no se infiere por las notas del aroma."
+    },
+    {
+      "sku": "LCP-0256",
+      "name": "Cool water",
+      "brand": "Davidoff",
+      "size": "4.200",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.macys.com/shop/product/davidoff-cool-water-collection-for-him?ID=16457",
+        "https://drive.google.com/file/d/16gmCXgGFPQmdamvbmlH05sLNBWNmRmPZ/view"
+      ],
+      "reason": "La foto corresponde al frasco clásico masculino de Cool Water."
+    },
+    {
+      "sku": "LCP-0257",
+      "name": "Boss bottled triumph elixir",
+      "brand": "Boss",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.hugoboss.com/at/boss-bottled-triumph-elixir-eau-de-parfum-100%C2%A0ml/hbeu58138451_999.html"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    },
+    {
+      "sku": "LCP-0258",
+      "name": "Hugo edt",
+      "brand": "Boss",
+      "size": "4.200",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.hugoboss.com/hugo-man-eau-de-toilette-125ml/hbeu58097774_999.html"
+      ],
+      "reason": "Clasificación comercial en la fuente consultada; aplica a los tamaños y sets de la misma variante."
+    },
+    {
+      "sku": "LCP-0259",
+      "name": "Leau Dissey Pour Homme 4.2 Oz Edt Men",
+      "brand": "Issey Miyaki",
+      "size": "4.200",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [],
+      "reason": "Variante explícita Men, Uomo, M o Pour Homme en el nombre original del catálogo; no se infiere por las notas del aroma."
+    },
+    {
+      "sku": "LCP-0260",
+      "name": "Sauvage Edp",
+      "brand": "Dior",
+      "size": "3.400",
+      "unit": "oz",
+      "gender": "male",
+      "sources": [
+        "https://www.dior.com/en_int/beauty/sauvage-fragrance"
+      ],
+      "reason": "Clasificación de la ficha consultada; se conserva en los tamaños y sets del mismo perfume."
+    }
+  ]
+}

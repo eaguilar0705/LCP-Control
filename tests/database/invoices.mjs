@@ -136,7 +136,26 @@ try {
     const next = await rpc('create_document', invoice({ items: [{ productId: product, quantity: 1 }] }))
     assert.notEqual(next.number, doc.number)
   })
-  console.log(`${checks} invoice deletion checks passed`)
+  for (const paymentMethod of ['bac_nio', 'bac_usd', 'lafise_nio', 'lafise_usd', 'ficohsa_nio', 'ficohsa_usd']) {
+    await check(`stores ${paymentMethod} and returns it through the public RPC`, async () => {
+      await db.exec('begin')
+      try {
+        const before = await stock()
+        const paid = await rpc('create_document', invoice({ paymentMethod, items: [{ productId: product, quantity: 1 }] }))
+        assert.equal(paid.payment_method, paymentMethod)
+        assert.equal((await asOwner('select payment_method from public.documents where id=$1', [paid.id]))[0].payment_method, paymentMethod)
+        assert.equal(await stock(), before - 1)
+      } finally {
+        await db.exec('rollback')
+      }
+    })
+  }
+  await check('rejects unknown bank accounts without consuming stock', async () => {
+    const before = await stock()
+    await assert.rejects(rpc('create_document', invoice({ paymentMethod: 'unknown_bank' })), /forma de pago/)
+    assert.equal(await stock(), before)
+  })
+  console.log(`${checks} invoice checks passed`)
 } finally {
   await db.close()
 }

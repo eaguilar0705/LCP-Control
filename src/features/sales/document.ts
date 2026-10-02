@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { lineCents } from '../../lib/pricing'
+import { paymentMethods } from '../../lib/domain'
 import type {
   Currency,
   DocumentKind,
@@ -38,7 +39,7 @@ export const documentDraftSchema = z.object({
     .nullable()
     .optional(),
   tier: z.enum(['emprendedor', 'vip', 'premium']),
-  payment: z.enum(['pending', 'cash', 'card_pos', 'bank_transfer']),
+  payment: z.enum(['pending', ...paymentMethods]),
   location: z.enum(['warehouse', 'store']),
   validUntil: z.string().max(10).default(''),
   notes: z.string().max(1500),

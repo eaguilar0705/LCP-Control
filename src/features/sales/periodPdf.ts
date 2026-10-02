@@ -1,6 +1,7 @@
 import type { jsPDF } from 'jspdf'
 import {
   documentCopy,
+  bankTransferLabels,
   type Currency,
   type DocumentKind,
   type DocumentRecord,
@@ -69,6 +70,9 @@ const PAYMENTS: { key: PaymentKey; label: string; short: string }[] = [
     short: 'Transferencia',
   },
   { key: 'pending', label: 'Pendiente de pago', short: 'Pendiente' },
+  ...Object.entries(bankTransferLabels).map(([key, label]) => ({
+    key: key as PaymentKey, label, short: label,
+  })),
 ]
 
 function round(value: number) {
