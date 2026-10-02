@@ -587,9 +587,13 @@ export const supabaseAdapter: DataProvider = {
   async getBusiness() {
     const { data, error } = await client()
       .from('business_settings')
+<<<<<<< HEAD
       .select(
         'name,address,phone,legal_name,tax_id,email,branch,billing_details',
       )
+=======
+      .select('name,address,phone,legal_name,tax_id,email,branch,billing_details')
+>>>>>>> 85881a23e92f04d83123169ad57854d0f366e907
       .limit(1)
       .maybeSingle()
     if (error) fail(error)

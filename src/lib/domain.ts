@@ -82,6 +82,7 @@ export const bankTransferLabels = {
   ficohsa_usd: 'Ficohsa $',
 } as const
 export const paymentMethods = [
+<<<<<<< HEAD
   'cash',
   'card_pos',
   'bank_transfer',
@@ -91,6 +92,10 @@ export const paymentMethods = [
   'lafise_usd',
   'ficohsa_nio',
   'ficohsa_usd',
+=======
+  'cash', 'card_pos', 'bank_transfer',
+  'bac_nio', 'bac_usd', 'lafise_nio', 'lafise_usd', 'ficohsa_nio', 'ficohsa_usd',
+>>>>>>> 85881a23e92f04d83123169ad57854d0f366e907
 ] as const
 export type PaymentMethod = (typeof paymentMethods)[number]
 export interface Product {

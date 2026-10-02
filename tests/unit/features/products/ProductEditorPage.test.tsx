@@ -289,9 +289,13 @@ it('refreshes the cost and product revision after adding a cost from the editor'
     return 'saved'
   })
   const user = userEvent.setup()
+<<<<<<< HEAD
   await user.click(
     await screen.findByRole('button', { name: 'Costo de inventario' }),
   )
+=======
+  await user.click(await screen.findByRole('button', { name: 'Agregar costo' }))
+>>>>>>> 85881a23e92f04d83123169ad57854d0f366e907
   const input = await screen.findByLabelText('Costo por unidad (C$)')
   // El formulario del costo es independiente del formulario del perfume.
   expect(input.closest('form')?.parentElement?.closest('form')).toBeNull()
@@ -304,12 +308,18 @@ it('refreshes the cost and product revision after adding a cost from the editor'
     screen.getByRole('button', { name: 'Guardar costo inicial' }),
   )
   expect(
+<<<<<<< HEAD
     await screen.findByText('Costo inicial de «Oud nocturno» registrado.'),
   ).toBeVisible()
   // 1295 con costo 500 deja 61,4 %.
   expect(
     await screen.findByText('Margen sobre el costo promedio: 61.4%'),
   ).toBeVisible()
+=======
+    await screen.findByRole('button', { name: 'Registrar compra' }),
+  ).toBeEnabled()
+  expect(screen.getByText('NIO 500.00', { selector: 'output' })).toBeVisible()
+>>>>>>> 85881a23e92f04d83123169ad57854d0f366e907
   expect(
     screen.getByText('Costo inicial de «Oud nocturno» registrado.'),
   ).toBeVisible()
@@ -321,7 +331,11 @@ it('refreshes the cost and product revision after adding a cost from the editor'
   })
 })
 
+<<<<<<< HEAD
 it('computes a list from the purchase price written in the perfume form', async () => {
+=======
+it('computes a list from the read-only average cost and never sends a cost', async () => {
+>>>>>>> 85881a23e92f04d83123169ad57854d0f366e907
   productService.listPricing.mockImplementation(async () => ({
     available: true,
     rows: [],
@@ -364,6 +378,7 @@ it('keeps a list with percentage and no purchase price pending, with its dollar 
   }))
   renderEditor(pricedPerfume(), null)
   const user = userEvent.setup()
+<<<<<<< HEAD
   const inventoryCost = await screen.findByRole('button', {
     name: 'Costo de inventario',
   })
@@ -372,6 +387,18 @@ it('keeps a list with percentage and no purchase price pending, with its dollar 
   // Con cambios sin guardar el botón espera, sin párrafos de explicación.
   expect(inventoryCost).toBeDisabled()
   expect(screen.queryByText(/Guarda los cambios del perfume/)).toBeNull()
+=======
+  expect(await screen.findByText('Sin costo todavía')).toBeVisible()
+  const addCost = screen.getByRole('button', { name: 'Agregar costo' })
+  expect(addCost).toBeEnabled()
+  await user.type(percent('VIP'), '20')
+  expect(addCost).toBeDisabled()
+  expect(
+    screen.getByText(
+      'Guarda los cambios del perfume antes de registrar su costo.',
+    ),
+  ).toBeVisible()
+>>>>>>> 85881a23e92f04d83123169ad57854d0f366e907
   const vip = screen.getByRole('group', { name: 'VIP' })
   expect(vip).toHaveTextContent('Falta precio de compra')
   expect(screen.getByLabelText('VIP USD', { exact: true })).toHaveValue(34)
