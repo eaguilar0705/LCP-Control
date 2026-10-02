@@ -14,7 +14,7 @@ import { errorMessage } from '../../lib/errors'
 import { formatCurrency } from '../../lib/format'
 import { createIdempotentOperation } from '../../lib/idempotentOperation'
 import { matchesSearch } from '../../lib/search'
-import { exactCost, landedUnitCost, priceTierLabels } from '../../lib/pricing'
+import { exactCost, landedUnitCost } from '../../lib/pricing'
 import {
   labels,
   type Currency,
@@ -27,12 +27,10 @@ import { localDay } from '../reports/model'
 import {
   hasDecimals,
   previewPurchase,
-  tierPreviews,
   typed,
   validRate,
   type LinePreview,
   type PurchaseLineDraft,
-  type TierPreview,
 } from './costPreview'
 
 type CostStatus = 'costed' | 'missing' | 'uncounted'
@@ -125,11 +123,6 @@ export function CostPanel({
       <div className="section-heading">
         <div>
           <h2>Costo promedio del inventario</h2>
-          <p className="muted">
-            Cada compra se promedia con lo que ya hay en tienda y bodega. El
-            costo de entrada es el precio del proveedor más la parte del envío
-            que le toca a cada unidad, en córdobas con la tasa del pedido.
-          </p>
         </div>
         <Button disabled={readOnly} onClick={() => setPurchase('')}>
           <PackagePlus size={17} /> Registrar compra
@@ -311,11 +304,6 @@ export function CostPanel({
           </Button>
         </div>
       </div>
-      <p className="muted pricing-footnote">
-        Una salida, una merma o una corrección de conteo no cambian el costo.
-        Una entrada de mercadería de un perfume con costo se registra aquí, como
-        compra, para que el costo y los precios se actualicen juntos.
-      </p>
       {purchase !== null && (
         <PurchaseDialog
           inventory={items}
@@ -359,7 +347,7 @@ const round6 = (value: number) => Math.round(value * 1e6) / 1e6
  * envío del pedido. Mientras se escribe se ve, por renglón, el promedio que va
  * a quedar y el precio de cada lista calculada.
  */
-function PurchaseDialog({
+export function PurchaseDialog({
   inventory,
   pricing,
   catalogRate,
@@ -442,12 +430,8 @@ function PurchaseDialog({
           unitPrice: round6(line.unitPrice),
         })),
       })
-      const repriced = preview.lines.filter((line) => line.prices.length).length
       onRecorded(
-        `Compra registrada: ${counts.format(preview.units)} ${preview.units === 1 ? 'unidad' : 'unidades'} en inventario y costo promedio actualizado` +
-          (repriced
-            ? `. Se recalcularon los precios de ${repriced} ${repriced === 1 ? 'perfume' : 'perfumes'}.`
-            : '.'),
+        `Compra registrada: ${counts.format(preview.units)} ${preview.units === 1 ? 'unidad' : 'unidades'} en inventario y costo promedio actualizado.`,
       )
     } catch (error) {
       setFailure(errorMessage(error))
@@ -676,7 +660,6 @@ function PurchaseLine({
           incoming={preview.quantity}
           incomingCost={preview.landed}
           nextAverage={preview.nextAverage}
-          prices={preview.prices}
         />
       ) : null}
     </section>
@@ -690,14 +673,12 @@ function CostOutcome({
   incoming,
   incomingCost,
   nextAverage,
-  prices,
 }: {
   existing: number
   previousAverage: number | null
   incoming: number | null
   incomingCost: number | null
   nextAverage: number
-  prices: TierPreview[]
 }) {
   return (
     <div className="pricing-outcome" aria-live="polite">
@@ -712,28 +693,6 @@ function CostOutcome({
           ` + ${counts.format(incoming)} u. × C$ ${exactCost(incomingCost)}`}{' '}
         → costo promedio <strong>C$ {exactCost(nextAverage)}</strong>
       </p>
-      {prices.length > 0 ? (
-        <ul>
-          {prices.map((price) => (
-            <li key={price.tier}>
-              {priceTierLabels[price.tier]} {price.markup} %:{' '}
-              {price.before !== null && price.before !== price.after && (
-                <span className="muted">
-                  {formatCurrency(price.before, 'NIO')} →{' '}
-                </span>
-              )}
-              <strong>{formatCurrency(price.after, 'NIO')}</strong>
-              {Number.isFinite(price.afterUsd) && (
-                <small> · {formatCurrency(price.afterUsd, 'USD')}</small>
-              )}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="muted">
-          Este perfume no tiene porcentajes: sus precios no cambian.
-        </p>
-      )}
     </div>
   )
 }
@@ -742,9 +701,8 @@ function CostOutcome({
  * El costo de las unidades que ya estaban contadas cuando se empezó a llevar
  * el costo. Sólo para perfumes con existencias y sin costo promedio.
  */
-function OpeningCostDialog({
+export function OpeningCostDialog({
   item,
-  pricing,
   catalogRate,
   onClose,
   onRecorded,
@@ -786,10 +744,6 @@ function OpeningCostDialog({
       : null
   const cost =
     !unitProblem && rate !== null ? landedUnitCost(unit, 0, rate) : null
-  const prices =
-    cost === null
-      ? []
-      : tierPreviews(pricing, cost, item.product.prices, catalogRate)
   async function submit(event: FormEvent) {
     event.preventDefault()
     if (busy) return
@@ -805,10 +759,7 @@ function OpeningCostDialog({
         exchangeRate: rate,
         note: note.trim(),
       })
-      onRecorded(
-        `Costo inicial de «${item.product.name}» registrado` +
-          (prices.length ? ' y sus precios calculados actualizados.' : '.'),
-      )
+      onRecorded(`Costo inicial de «${item.product.name}» registrado.`)
     } catch (error) {
       setFailure(errorMessage(error))
     } finally {
@@ -826,9 +777,7 @@ function OpeningCostDialog({
     >
       <form noValidate onSubmit={(event) => void submit(event)}>
         <p className="muted">
-          Asigna el costo de compra documentado a las {counts.format(total)}{' '}
-          unidades contadas en tienda y bodega. Incluye la parte del envío que
-          le tocó a cada unidad. No cambia cantidades ni ventas pasadas.
+          {counts.format(total)} unidades contadas en tienda y bodega.
         </p>
         <fieldset disabled={busy} className="form-grid">
           <Input
@@ -880,7 +829,6 @@ function OpeningCostDialog({
             incoming={null}
             incomingCost={null}
             nextAverage={cost}
-            prices={prices}
           />
         )}
         {failure && (

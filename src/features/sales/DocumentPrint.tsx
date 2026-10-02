@@ -1,4 +1,5 @@
 import { Brand } from '../../components/Brand'
+import { businessIdentityLines } from '../../lib/business'
 import {
   documentCopy,
   labels,
@@ -36,16 +37,11 @@ export function DocumentPrint({ document: d }: { document: DocumentRecord }) {
       <header className="letter-header">
         <div className="letter-issuer">
           <Brand wordmark />
-          <p>
-            {d.issuer.address ||
-              'Dirección: __________________________________'}
-          </p>
-          <p>
-            {d.issuer.phone
-              ? `Tel. ${d.issuer.phone}`
-              : 'Teléfono: ______________'}
-            {' · '}RUC: ______________
-          </p>
+          <div className="letter-issuer-details">
+            {businessIdentityLines(d.issuer).map((line, index) => (
+              <p key={index}>{line}</p>
+            ))}
+          </div>
         </div>
         <div className="letter-stamp">
           <strong>{copy.stamp}</strong>
@@ -203,7 +199,7 @@ export function DocumentPrint({ document: d }: { document: DocumentRecord }) {
               ? 'Borrador sin emitir. '
               : ''}
           {d.kind === 'invoice'
-            ? 'Documento de control administrativo. No es comprobante fiscal. El desglose usa la tasa de impuesto registrada.'
+            ? ''
             : 'Cotización sujeta a disponibilidad. No constituye factura ni comprobante de pago.'}
         </p>
       </footer>

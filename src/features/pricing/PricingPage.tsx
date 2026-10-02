@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import { Link, useLocation, useSearchParams } from 'react-router-dom'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
   ArrowRight,
@@ -25,7 +25,6 @@ import { matchesSearch } from '../../lib/search'
 import { formatCurrency } from '../../lib/format'
 import {
   computedTiers,
-  exactCost,
   priceTierLabels,
   priceTiers,
   tierQuote,
@@ -41,29 +40,20 @@ type Status = 'computed' | 'partial' | 'pending' | 'manual'
 const statusLabels: Record<Status, string> = {
   computed: 'Calculados',
   partial: 'Incompletos',
-  pending: 'Pendientes de costo',
+  pending: 'Sin precio de compra',
   manual: 'Sin porcentajes',
 }
-const statusNotes: Record<Status, string> = {
-  computed: 'Las tres listas salen del costo promedio',
-  partial: 'Con costo, pero alguna lista sin porcentaje',
-  pending: 'Tienen porcentajes y todavía no tienen costo',
-  manual: 'Conservan el precio de las listas',
-}
 /**
- * Calculado: las tres listas salen del costo promedio. Incompleto: hay costo y
- * algún porcentaje, pero alguna lista sigue a mano. Pendiente de costo: hay
- * porcentajes y el perfume todavía no tiene costo promedio. Sin porcentajes:
- * nada cargado todavía.
+ * Calculado: las tres listas salen del precio de compra. Incompleto: hay
+ * precio de compra, pero alguna lista sigue a mano. Sin precio de compra: hay
+ * porcentajes y falta la compra. Sin porcentajes: nada cargado todavía.
  */
 function statusOf(pricing: ProductPricing | undefined): Status {
   if (!pricing) return 'manual'
   const withMarkup = priceTiers.filter((tier) => pricing.markups[tier] !== null)
   if (!withMarkup.length) return 'manual'
-  if (pricing.averageCost === null) return 'pending'
-  return computedTiers(pricing, pricing.averageCost) === priceTiers.length
-    ? 'computed'
-    : 'partial'
+  if (pricing.purchasePrice === null) return 'pending'
+  return computedTiers(pricing) === priceTiers.length ? 'computed' : 'partial'
 }
 type Section = 'prices' | 'costs'
 const PAGE_SIZE = 25
@@ -167,7 +157,7 @@ function PricingWorkspace() {
         title="Precios"
         eyebrow="COSTO Y GANANCIA"
         icon={BadgePercent}
-        description="El precio de venta de cada lista sale del costo promedio del inventario más su porcentaje de ganancia sobre el costo. Sólo lo ven Administración y SuperAdmin."
+        description="Precio de venta = precio de compra + % de ganancia de cada lista."
       >
         <div
           className="inventory-actions pricing-actions"
@@ -199,7 +189,7 @@ function PricingWorkspace() {
           aria-pressed={section === 'prices'}
           onClick={() => openSection('prices')}
         >
-          Porcentajes y precios
+          Precios de venta
         </button>
         <button
           type="button"
@@ -258,7 +248,6 @@ function PricingWorkspace() {
               >
                 <span>{statusLabels[key]}</span>
                 <strong>{counts.format(totals[key])}</strong>
-                <small>{statusNotes[key]}</small>
               </button>
             ))}
           </div>
@@ -321,7 +310,7 @@ function PricingWorkspace() {
                 <thead>
                   <tr>
                     <th>Perfume</th>
-                    <th>Costo promedio</th>
+                    <th>Precio de compra</th>
                     {priceTiers.map((tier) => (
                       <th key={tier}>{priceTierLabels[tier]}</th>
                     ))}
@@ -352,29 +341,21 @@ function PricingWorkspace() {
                             {!product.active && ' · Inactivo'}
                           </small>
                         </td>
-                        <td data-label="Costo promedio">
-                          {pricing?.averageCost != null ? (
-                            <strong
-                              title={`C$ ${exactCost(pricing.averageCost)}`}
-                            >
-                              {formatCurrency(pricing.averageCost, 'NIO')}
+                        <td data-label="Precio de compra">
+                          {pricing?.purchasePrice != null ? (
+                            <strong>
+                              {formatCurrency(
+                                pricing.purchasePrice,
+                                pricing.purchaseCurrency,
+                              )}
                             </strong>
                           ) : (
-                            <span className="muted">Sin costo</span>
+                            <span className="muted">—</span>
                           )}
                         </td>
                         {priceTiers.map((tier) => {
-                          const quote = tierQuote(
-                            pricing,
-                            pricing?.averageCost,
-                            tier,
-                            data?.rate,
-                          )
-                          const status = tierStatus(
-                            pricing,
-                            pricing?.averageCost,
-                            tier,
-                          )
+                          const quote = tierQuote(pricing, tier, data?.rate)
+                          const status = tierStatus(pricing, tier)
                           const price = product.prices?.[tier]?.[currency]
                           const markup = pricing?.markups[tier] ?? null
                           return (
@@ -394,9 +375,9 @@ function PricingWorkspace() {
                                 }
                               >
                                 {quote
-                                  ? `${quote.percent} % · gana ${formatCurrency(quote.profit, 'NIO')}`
+                                  ? `${quote.percent} % · gana ${formatCurrency(quote.profit, quote.currency)}`
                                   : status === 'pending'
-                                    ? `${markup} % · pendiente de costo`
+                                    ? `${markup} % · falta compra`
                                     : 'A mano'}
                               </small>
                             </td>
@@ -445,17 +426,6 @@ function PricingWorkspace() {
               </Button>
             </div>
           </div>
-          <p className="muted pricing-footnote">
-            Los precios de venta de esta lista son los guardados, los mismos que
-            usan Facturación y Proformas. Cuando una compra cambia el costo
-            promedio, las listas calculadas se actualizan solas; las facturas y
-            proformas ya emitidas conservan su precio. Para cambiar datos del
-            perfume o un precio fijado a mano, abre{' '}
-            <Link className="text-link" to={`${base}/inventory`}>
-              Inventario
-            </Link>{' '}
-            y elige Editar.
-          </p>
         </Card>
       )}
       {editing && data && (
@@ -464,10 +434,6 @@ function PricingWorkspace() {
           saved={byProduct.get(editing.id) ?? null}
           rate={data.rate}
           base={base}
-          onOpenCosts={() => {
-            setEditing(null)
-            openSection('costs')
-          }}
           readOnly={demo}
           onClose={() => setEditing(null)}
           onSaved={saved}

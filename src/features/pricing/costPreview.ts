@@ -2,14 +2,10 @@ import type {
   Currency,
   InventoryItem,
   InventoryLocation,
-  PriceTier,
   ProductPricing,
 } from '../../lib/domain'
 import {
-  convertPrice,
   landedUnitCost,
-  markupPrice,
-  priceTiers,
   shippingPerUnit,
   weightedAverageCost,
 } from '../../lib/pricing'
@@ -19,8 +15,8 @@ import {
  * registrarla (`record_shipment`): el envío se reparte por igual entre las
  * unidades, el costo de entrada es precio + envío por unidad convertido con la
  * tasa del pedido, y el promedio nuevo pondera las existencias de tienda y
- * bodega con lo que entra. Enseña el costo promedio que va a quedar y el
- * precio de cada lista calculada, antes de guardar nada.
+ * bodega con lo que entra. Enseña el costo promedio que va a quedar antes de
+ * guardar nada. El costo no mueve precios: éstos salen del precio de compra.
  */
 
 export interface PurchaseLineDraft {
@@ -28,13 +24,6 @@ export interface PurchaseLineDraft {
   location: InventoryLocation
   quantity: string
   unitPrice: string
-}
-export interface TierPreview {
-  tier: PriceTier
-  markup: number
-  before: number | null
-  after: number
-  afterUsd: number
 }
 export interface LinePreview {
   productId: string
@@ -45,7 +34,6 @@ export interface LinePreview {
   previousAverage: number | null
   landed: number | null
   nextAverage: number | null
-  prices: TierPreview[]
   problem: string | null
 }
 interface PurchasePreview {
@@ -78,31 +66,6 @@ export function validRate(currency: Currency, rateText: string): number | null {
     ? rate
     : null
 }
-/** Los precios de las listas calculadas con un costo promedio dado. */
-export function tierPreviews(
-  pricing: ProductPricing | undefined,
-  averageCost: number,
-  currentPrices:
-    Partial<Record<PriceTier, Record<Currency, number>>> | undefined,
-  catalogRate: number | null,
-): TierPreview[] {
-  if (!pricing) return []
-  return priceTiers.flatMap((tier) => {
-    const markup = pricing.markups[tier]
-    if (markup === null) return []
-    const after = markupPrice(averageCost, markup)
-    return [
-      {
-        tier,
-        markup,
-        before: currentPrices?.[tier]?.NIO ?? null,
-        after,
-        afterUsd: convertPrice(after, 'NIO', 'USD', catalogRate),
-      },
-    ]
-  })
-}
-
 export function previewPurchase({
   lines,
   shippingText,
@@ -110,7 +73,6 @@ export function previewPurchase({
   rateText,
   inventory,
   pricing,
-  catalogRate,
 }: {
   lines: PurchaseLineDraft[]
   shippingText: string
@@ -118,7 +80,8 @@ export function previewPurchase({
   rateText: string
   inventory: InventoryItem[]
   pricing: ProductPricing[]
-  catalogRate: number | null
+  /** Ya no interviene: el costo no mueve precios. */
+  catalogRate?: number | null
 }): PurchasePreview {
   const items = new Map(inventory.map((item) => [item.product.id, item]))
   const rows = new Map(pricing.map((row) => [row.productId, row]))
@@ -199,10 +162,6 @@ export function previewPurchase({
       previousAverage,
       landed,
       nextAverage,
-      prices:
-        nextAverage === null
-          ? []
-          : tierPreviews(saved, nextAverage, item?.product.prices, catalogRate),
       problem,
     }
   })
@@ -216,19 +175,6 @@ export function previewPurchase({
   const ready =
     problem === null &&
     previews.length > 0 &&
-    previews.every(
-      (line) => line.problem === null && line.nextAverage !== null,
-    ) &&
-    previews.every((line) =>
-      line.prices.every((price) => price.after <= 10_000_000),
-    )
-  if (
-    !problem &&
-    previews.some((line) =>
-      line.prices.some((price) => price.after > 10_000_000),
-    )
-  )
-    problem =
-      'Un precio calculado saldría demasiado alto. Revisa el costo y los porcentajes.'
+    previews.every((line) => line.problem === null && line.nextAverage !== null)
   return { lines: previews, units, goods, perUnit, problem, ready }
 }

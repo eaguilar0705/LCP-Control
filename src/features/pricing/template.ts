@@ -6,8 +6,7 @@ import { buildWorkbook, type Sheet } from '../../lib/xlsx'
 /**
  * La plantilla es el catálogo con una fila por perfume y las columnas que lee
  * la carga. Trae lo que ya está guardado, así que también sirve de respaldo:
- * se descarga, se cambia lo necesario y se vuelve a cargar. El costo promedio
- * va sólo como referencia: la carga no lo importa, porque sale del inventario.
+ * se descarga, se cambia lo necesario y se vuelve a cargar.
  */
 export function pricingTemplate(
   products: Product[],
@@ -33,27 +32,29 @@ export function pricingTemplate(
         product.size === null
           ? 'Por confirmar'
           : `${product.size} ${product.unit}`,
-        saved?.averageCost ?? null,
+        saved?.purchasePrice ?? null,
+        saved?.purchasePrice == null
+          ? null
+          : saved.purchaseCurrency === 'NIO'
+            ? 'C$'
+            : 'US$',
         ...priceTiers.map((tier) => saved?.markups[tier] ?? null),
       ]
     })
   return {
-    name: 'Porcentajes de ganancia',
+    name: 'Precios de compra',
     notes: [
-      `Porcentajes de ganancia sobre el costo promedio · ${formatDate(now)}`,
-      'Escribe el porcentaje de ganancia sobre el costo de cada lista. Precio de venta = costo promedio × (1 + % ÷ 100). Deja vacía la celda que no quieras cambiar.',
-      'La columna del costo promedio es informativa y no se importa: el costo sale de las compras registradas. No cambies la columna Código. Este archivo tiene costos: guárdalo en un lugar privado.',
+      `Precio de compra y porcentajes de ganancia · ${formatDate(now)}`,
+      'Precio de venta = precio de compra × (1 + % ÷ 100). Moneda: US$ o C$. Deja vacía la celda que no quieras cambiar.',
+      'No cambies la columna Código. Este archivo tiene costos: guárdalo en un lugar privado.',
     ],
     columns: [
       { header: 'Código', width: 14 },
       { header: 'Marca', width: 20 },
       { header: 'Perfume', width: 36 },
       { header: 'Tamaño', width: 13 },
-      {
-        header: 'Costo promedio C$ (informativo, no se importa)',
-        width: 22,
-        format: 'number',
-      },
+      { header: 'Precio de compra', width: 16, format: 'number' },
+      { header: 'Moneda de compra', width: 12 },
       ...priceTiers.map((tier) => ({
         header: `% ${priceTierLabels[tier]}`,
         width: 15,
@@ -68,7 +69,7 @@ function pricingTemplateName(now = new Date()) {
   const day = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/Managua',
   }).format(now)
-  return `porcentajes-de-ganancia-${day}.xlsx`
+  return `precios-de-compra-${day}.xlsx`
 }
 
 export function downloadPricingTemplate(

@@ -67,10 +67,17 @@
 }
 .letter-issuer {
   display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-rows: auto auto;
+  grid-template-columns: auto minmax(0, 1fr);
   column-gap: 14px;
   align-items: end;
+}
+.letter-issuer-details {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.letter-issuer-details p:first-child {
+  font-weight: 700;
+  color: var(--document-ink);
 }
 .letter-issuer .brand-wordmark {
   display: block;
@@ -379,6 +386,9 @@
 /* El modo denso prioriza los productos; el pie conserva la política completa. */
 .letter-invoice.letter-density-dense .letter-summary {
   margin-top: 4px;
+}
+.letter-invoice.letter-density-dense {
+  --row-pad-y: 0.75px;
 }
 .letter-invoice.letter-density-dense .letter-signatures {
   padding-top: 14px;

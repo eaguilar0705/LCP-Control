@@ -21,10 +21,9 @@ function markupText(value: number | null) {
 }
 
 /**
- * Cargar porcentajes de ganancia desde un Excel o un CSV. Se lee el archivo en
- * el navegador, se enseña qué va a cambiar (y qué filas no se pueden usar, con
- * el motivo) y sólo al confirmar se guarda, todo junto. El costo no se carga:
- * sale del inventario.
+ * Cargar precios de compra y porcentajes desde un Excel o un CSV. Se lee el
+ * archivo en el navegador, se enseña qué va a cambiar (y qué filas no se
+ * pueden usar, con el motivo) y sólo al confirmar se guarda, todo junto.
  */
 export function PricingImportDialog({
   products,
@@ -106,13 +105,8 @@ export function PricingImportDialog({
       }}
     >
       <p className="muted">
-        Acepta Excel (.xlsx) o CSV. Hace falta una fila de encabezados con{' '}
-        <strong>Código</strong> (o <strong>Marca</strong> y{' '}
-        <strong>Perfume</strong>) y los porcentajes de ganancia sobre el costo
-        que quieras cargar: <strong>% Emprendedor</strong>,{' '}
-        <strong>% VIP</strong> y <strong>% Premium</strong>. Una celda vacía no
-        cambia nada. El costo promedio no se carga desde el archivo: sale de las
-        compras registradas. La plantilla ya trae el catálogo con esas columnas.
+        Excel o CSV con las columnas de la plantilla. Una celda vacía no cambia
+        nada.
       </p>
       <div className="pricing-import-controls">
         <Input
@@ -158,19 +152,16 @@ export function PricingImportDialog({
               {plan.ignoredColumns.length === 1 ? 'La columna' : 'Las columnas'}{' '}
               {plan.ignoredColumns.map((name) => `«${name}»`).join(', ')}{' '}
               {plan.ignoredColumns.length === 1
-                ? 'no se importa'
-                : 'no se importan'}
-              : el costo sale del costo promedio del inventario.
+                ? 'no se importa.'
+                : 'no se importan.'}
             </p>
           )}
           {pending.length > 0 && (
             <p className="pricing-import-note">
               {pending.length === 1
-                ? 'Un perfume todavía no tiene'
-                : `${counts.format(pending.length)} perfumes todavía no tienen`}{' '}
-              costo promedio: sus porcentajes se guardan y el precio se
-              calculará cuando se registre su costo. Mientras tanto conservan su
-              precio.
+                ? 'Un perfume no tiene'
+                : `${counts.format(pending.length)} perfumes no tienen`}{' '}
+              precio de compra: conservan su precio hasta que lo tengan.
             </p>
           )}
           {large.length > 0 && (
@@ -261,7 +252,7 @@ function ChangesTable({ changes }: { changes: PlannedPricing[] }) {
           <tr>
             <th>Fila</th>
             <th>Perfume</th>
-            <th>Costo promedio</th>
+            <th>Precio de compra</th>
             {priceTiers.map((tier) => (
               <th key={tier}>{priceTierLabels[tier]}</th>
             ))}
@@ -283,9 +274,12 @@ function ChangesTable({ changes }: { changes: PlannedPricing[] }) {
                 </small>
               </td>
               <td>
-                {change.averageCost === null
-                  ? 'Sin costo'
-                  : formatCurrency(change.averageCost, 'NIO')}
+                {change.after.purchasePrice === null
+                  ? '—'
+                  : formatCurrency(
+                      change.after.purchasePrice,
+                      change.after.purchaseCurrency,
+                    )}
               </td>
               {priceTiers.map((tier) => {
                 const before = change.prices.before[tier]?.NIO
@@ -310,7 +304,7 @@ function ChangesTable({ changes }: { changes: PlannedPricing[] }) {
                       )}
                     <small>
                       {change.pendingTiers.includes(tier)
-                        ? 'Pendiente de costo'
+                        ? 'Falta precio de compra'
                         : Number.isFinite(after)
                           ? moved && Number.isFinite(before)
                             ? `${formatCurrency(before, 'NIO')} → ${formatCurrency(after, 'NIO')}`

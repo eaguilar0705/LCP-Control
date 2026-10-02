@@ -1,4 +1,5 @@
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, Coins } from 'lucide-react'
+import { ProductCostDialog } from './ProductCostDialog'
 import { ScanButton } from '../scanner/ScanButton'
 import { ProductStockEditor } from './ProductStockEditor'
 import { can } from '../../lib/permissions'
@@ -32,7 +33,6 @@ import {
 } from '../../lib/domain'
 import {
   applyPricing,
-  exactCost,
   marginRate,
   priceTierLabels,
   priceTiers,
@@ -79,6 +79,7 @@ function ProductNotFound() {
 }
 function ProductLoader() {
   const { id } = useParams()
+  const [costMessage, setCostMessage] = useState('')
   const { productService, settingsService } = useServices()
   // Los porcentajes, el costo promedio y la tasa llegan junto con el perfume:
   // el formulario arranca con todo lo que necesita para calcular, y nada se
@@ -105,14 +106,25 @@ function ProductLoader() {
   if (id && !product) return <ProductNotFound />
   const saved = data?.pricing?.rows.find((row) => row.productId === id)
   return (
-    <ProductForm
-      key={`${id ?? 'new'}:${product?.revision}`}
-      product={product}
-      brands={[...new Set(data?.products.map((p) => p.brand))]}
-      pricing={data?.pricing?.available ? pricingInput(saved) : null}
-      averageCost={data?.cost ?? null}
-      rate={data?.rate ?? null}
-    />
+    <>
+      {costMessage && (
+        <p role="status" className="workspace-feedback">
+          {costMessage}
+        </p>
+      )}
+      <ProductForm
+        key={`${id ?? 'new'}:${product?.revision}`}
+        product={product}
+        brands={[...new Set(data?.products.map((p) => p.brand))]}
+        pricing={data?.pricing?.available ? pricingInput(saved) : null}
+        averageCost={data?.cost ?? null}
+        rate={data?.rate ?? null}
+        onCostRecorded={(message) => {
+          setCostMessage(message)
+          retry()
+        }}
+      />
+    </>
   )
 }
 function ProductForm({
@@ -121,14 +133,15 @@ function ProductForm({
   pricing,
   averageCost,
   rate,
+  onCostRecorded,
 }: {
   product?: Product
   brands: string[]
   /** `null` mientras la base no guarde porcentajes de ganancia. */
   pricing: PricingInput | null
   /**
-   * Costo promedio vigente en C$ (de sólo lectura): la base de las listas
-   * calculadas y del margen. `null` mientras no se conozca.
+   * Costo promedio vigente en C$ (de sólo lectura): sólo para enseñar el
+   * margen de cada precio. `null` mientras no se conozca.
    */
   averageCost: number | null
   /**
@@ -136,8 +149,9 @@ function ProductForm({
    * un precio, así que el formulario lo dice y no deja guardar a ciegas.
    */
   rate: number | null
+  onCostRecorded: (message: string) => void
 }) {
-  const { base, demo } = useAccess()
+  const { base, demo, role } = useAccess()
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const { productService } = useServices()
@@ -147,29 +161,21 @@ function ProductForm({
       product?.manufacturerBarcode ?? params.get('barcode') ?? '',
     ...(pricing ? { pricing } : {}),
   }))
+  const [initialValue] = useState(() => JSON.stringify(value))
+  const [costOpen, setCostOpen] = useState(false)
   // Lo que se ve y lo que se guarda: las listas con porcentaje ya calculadas.
-  const shownPrices = applyPricing(
-    value.prices,
-    value.pricing,
-    averageCost,
-    rate,
-  )
+  const shownPrices = applyPricing(value.prices, value.pricing, rate)
   /**
    * Una lista que deja de tener porcentaje conserva el último precio
    * calculado como precio a mano, en lugar de volver a uno viejo.
    */
   function changePricing(next: PricingInput) {
     setValue((current) => {
-      const prices = applyPricing(
-        current.prices,
-        current.pricing,
-        averageCost,
-        rate,
-      )
+      const prices = applyPricing(current.prices, current.pricing, rate)
       // A mano manda el dólar: el córdoba vuelve a salir de la tasa, igual
       // que lo guardará la base.
       for (const tier of priceTiers) {
-        if (tierQuote(next, averageCost, tier, rate)) continue
+        if (tierQuote(next, tier, rate)) continue
         // Sin tasa no hay dólar calculado: queda el que ya tenía la lista.
         const usd = Number.isFinite(prices[tier].USD)
           ? prices[tier].USD
@@ -180,6 +186,7 @@ function ProductForm({
     })
   }
   const [file, setFile] = useState<Blob | null>(null)
+  const unsaved = file !== null || JSON.stringify(value) !== initialValue
   const [preview, setPreview] = useState(product?.imageUrl ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -465,58 +472,33 @@ function ProductForm({
             </div>
           </Card>
           <Card className="form-card product-prices" id="precios">
-            <h2>Listas de precios</h2>
-            {value.pricing ? (
-              <p className="muted">
-                Escribe el porcentaje de ganancia sobre el costo de cada lista:
-                el precio de venta sale del costo promedio del inventario y se
-                actualiza solo con cada compra. Una lista sin porcentaje (o
-                mientras el perfume no tenga costo) conserva su precio en
-                dólares, que se fija a mano. El costo y los porcentajes sólo los
-                ven Administración y SuperAdmin.
-              </p>
-            ) : (
-              <>
-                <p className="muted">
-                  El precio se fija en dólares. El de córdobas sale de la tasa
-                  vigente
-                  {rate === null ? '' : ` de ${rate} C$ por dólar`} y se
-                  recalcula solo cuando el dueño cambia la tasa en Negocio.
-                </p>
-                <p className="muted pricing-unavailable">
-                  Para calcular precios desde el costo promedio y un porcentaje
-                  de ganancia falta aplicar la actualización de precios en la
-                  base de datos.
-                </p>
-              </>
-            )}
+            <div className="section-heading">
+              <h2>Listas de precios</h2>
+              {product && (demo || can(role, 'product.edit_cost')) && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={busy || demo || unsaved || !product.active}
+                  onClick={() => setCostOpen(true)}
+                >
+                  <Coins size={18} />
+                  Costo de inventario
+                </Button>
+              )}
+            </div>
             {rate === null && (
               <p className="inline-error" role="alert">
-                Todavía no hay tipo de cambio registrado. Regístralo en Negocio
-                antes de fijar precios.
+                Falta el tipo de cambio. Regístralo en Negocio.
               </p>
             )}
-            {product && !value.pricing && (
-              <p className="muted">
-                {averageCost === null
-                  ? 'Este perfume todavía no tiene costo registrado: hasta que lo tenga no se puede saber qué margen deja cada precio.'
-                  : `Costo promedio actual: ${formatCurrency(averageCost, 'NIO')} por unidad (C$ ${exactCost(averageCost)}). Debajo de cada precio va lo que queda después del costo.`}
+            {!value.pricing && (
+              <p className="muted pricing-unavailable">
+                Falta aplicar la actualización de precios en la base de datos.
               </p>
             )}
             {value.pricing ? (
               <PricingFields
                 pricing={value.pricing}
-                averageCost={averageCost}
-                costHelp={
-                  product && (
-                    <Link
-                      className="text-link"
-                      to={`${base}/prices?apartado=costo`}
-                    >
-                      Registrar el costo en Precios → Costo de inventario
-                    </Link>
-                  )
-                }
                 onChange={changePricing}
                 rate={rate}
                 prices={shownPrices}
@@ -553,8 +535,10 @@ function ProductForm({
                         }}
                       />
                       <small className={nioError ? 'field-error' : undefined}>
-                        {Number.isNaN(nio) ? '—' : formatCurrency(nio, 'NIO')}{' '}
-                        {nioError ?? '· con la tasa vigente'}
+                        {nioError ??
+                          (Number.isNaN(nio)
+                            ? '—'
+                            : formatCurrency(nio, 'NIO'))}
                       </small>
                     </div>
                   )
@@ -607,9 +591,9 @@ function ProductForm({
                       <strong>
                         {Number.isNaN(nio) ? '—' : formatCurrency(nio, 'NIO')}
                       </strong>
-                      <small className={nioError ? 'field-error' : undefined}>
-                        {nioError ?? 'Calculado con la tasa vigente'}
-                      </small>
+                      {nioError && (
+                        <small className="field-error">{nioError}</small>
+                      )}
                     </div>
                     <PriceMargin
                       priceNio={Number.isNaN(nio) ? null : nio}
@@ -645,9 +629,21 @@ function ProductForm({
           )}
         </div>
       </form>
+      {costOpen && product && (
+        <ProductCostDialog
+          productId={product.id}
+          onClose={() => setCostOpen(false)}
+          onRecorded={(message) => {
+            setCostOpen(false)
+            onCostRecorded(message)
+          }}
+        />
+      )}
       {product && <PriceHistory productId={product.id} />}
       {product ? (
-        <ProductStockEditor product={product} disabled={busy} />
+        <section id="cantidades-perfume" tabIndex={-1}>
+          <ProductStockEditor product={product} disabled={busy} />
+        </section>
       ) : (
         <p className="page-feedback">
           Guarda el perfume para registrar sus cantidades en Tienda y Bodega.
@@ -730,7 +726,7 @@ function priceBasis(change: PriceChange): string | null {
     return `${change.markup} % sobre el costo promedio de ${formatCurrency(change.averageCost, 'NIO')}`
   if (change.purchasePrice != null && change.purchaseCurrency)
     return `${change.markup} % sobre la compra de ${formatCurrency(change.purchasePrice, change.purchaseCurrency)}`
-  return `${change.markup} % configurado · pendiente de costo`
+  return `${change.markup} % configurado · falta precio de compra`
 }
 /**
  * Los cambios de precio del perfume, del más reciente al más antiguo. Un
@@ -749,19 +745,10 @@ function PriceHistory({ productId }: { productId: string }) {
   return (
     <Card className="form-card price-history">
       <h2>Historial de precios</h2>
-      <p className="muted">
-        Cada cambio de precio de este perfume, del más reciente al más antiguo.
-        Los precios en córdobas son los que dejó la tasa de ese día. Un precio
-        calculado dice con qué porcentaje y sobre qué costo; los cambios que
-        hizo el sistema al cambiar el costo promedio se marcan como automáticos.
-      </p>
       {loading && <LoadingState />}
       {error && <ErrorState message={error} retry={retry} />}
       {!loading && !error && data?.length === 0 && (
-        <p className="page-feedback">
-          Todavía no hay cambios de precio registrados. El primero que se guarde
-          aparecerá aquí.
-        </p>
+        <p className="page-feedback">Sin cambios de precio todavía.</p>
       )}
       <div className="price-history-list">
         {data?.map((change, index) => {

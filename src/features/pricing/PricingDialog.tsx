@@ -15,11 +15,9 @@ const MISSING_PRICES: TierPrices = {
 }
 
 /**
- * La ficha de precios de un perfume: su costo promedio vigente (de sólo
- * lectura) y el porcentaje de ganancia de cada lista, con el desglose
- * calculado mientras se escribe. Guarda sólo los porcentajes; los precios a
- * mano y el resto de los datos se cambian en «Editar perfume», y el costo, con
- * las compras en «Costo de inventario».
+ * La ficha de precios de un perfume: su precio de compra y el porcentaje de
+ * ganancia de cada lista, con el desglose calculado mientras se escribe. Los
+ * precios a mano y el resto de los datos se cambian en «Editar perfume».
  */
 export function PricingDialog({
   product,
@@ -29,7 +27,6 @@ export function PricingDialog({
   readOnly,
   onClose,
   onSaved,
-  onOpenCosts,
 }: {
   product: Product
   saved: ProductPricing | null
@@ -39,8 +36,6 @@ export function PricingDialog({
   readOnly: boolean
   onClose: () => void
   onSaved: (message: string) => void
-  /** Lleva al apartado donde se completa el costo. */
-  onOpenCosts?: () => void
 }) {
   const { productService } = useServices()
   const [draft, setDraft] = useState(() => pricingInput(saved))
@@ -108,31 +103,13 @@ export function PricingDialog({
         <fieldset disabled={busy} className="pricing-dialog-fields">
           <PricingFields
             pricing={draft}
-            averageCost={saved?.averageCost ?? null}
             onChange={setDraft}
             rate={rate}
             prices={product.prices ?? MISSING_PRICES}
             errors={errors}
-            costHelp={
-              onOpenCosts && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="pricing-cost-link"
-                  onClick={onOpenCosts}
-                >
-                  Ir a Costo de inventario
-                </Button>
-              )
-            }
           />
         </fieldset>
-        {readOnly && (
-          <p className="page-feedback">
-            Vista de ejemplo: puedes probar el cálculo, pero los precios no se
-            guardan.
-          </p>
-        )}
+        {readOnly && <p className="page-feedback">Vista de ejemplo.</p>}
         {(invalid > 0 || error) && (
           <p role="alert" className="inline-error">
             {invalid > 0

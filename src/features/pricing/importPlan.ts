@@ -24,14 +24,20 @@ import { parseAmount } from '../reports/openingCostImport'
  * los números y arma lo que quedaría guardado, para que el dueño vea el
  * resultado completo (y los problemas) antes de confirmar.
  *
- * Una celda vacía significa «no cambiar». El costo no se carga desde un
- * archivo: es el promedio del inventario. Una columna de costo (la informativa
- * de la plantilla, o el «Precio de compra» de una plantilla anterior) se lee
- * como encabezado conocido y se ignora, y la vista previa lo dice.
+ * Una celda vacía significa «no cambiar». La hoja puede traer el precio de
+ * compra y su moneda; una columna informativa (el costo promedio de una
+ * plantilla anterior) se reconoce y se ignora, y la vista previa lo dice.
  */
 
 export type PricingColumn =
-  'code' | 'brand' | 'name' | 'size' | 'ignored' | PriceTier
+  | 'code'
+  | 'brand'
+  | 'name'
+  | 'size'
+  | 'purchase'
+  | 'currency'
+  | 'ignored'
+  | PriceTier
 
 const MAX_PRICING_ROWS = 2000
 /** Un precio que se mueve más que esto se marca para revisarlo. */
@@ -45,11 +51,9 @@ export interface PricingProblem {
 export interface PlannedPricing {
   line: number
   product: Product
-  /** Costo promedio vigente; `null` si todavía no tiene. */
-  averageCost: number | null
   before: PricingInput
   after: PricingInput
-  /** Listas con porcentaje que quedan pendientes porque falta el costo. */
+  /** Listas con porcentaje que quedan pendientes porque falta la compra. */
   pendingTiers: PriceTier[]
   prices: { before: TierPrices; after: TierPrices }
   /** Listas cuyo precio en córdobas cambia más de un 30 %. */
@@ -79,15 +83,12 @@ export function classifyHeader(value: SheetCell): PricingColumn | null {
   }
   if (/^(cod(igo)?\b|sku\b|ean\b|upc\b|barcode|code\b)/.test(text))
     return 'code'
-  // El costo es de sólo lectura: la columna informativa de la plantilla y el
-  // precio de compra de las plantillas anteriores se reconocen para ignorarlos.
-  if (
-    /informativ|precio de compra|precio compra|\bcompra\b|\bcosto\b|\bcost\b/.test(
-      text,
-    ) ||
-    /^(moneda|divisa|currency)\b/.test(text)
-  )
-    return 'ignored'
+  // La columna informativa del costo promedio (plantillas anteriores) no se
+  // importa: el costo del inventario sale de las compras registradas.
+  if (/informativ|promedio/.test(text)) return 'ignored'
+  if (/^(moneda|divisa|currency)\b/.test(text)) return 'currency'
+  if (/precio de compra|precio compra|\bcompra\b|\bcosto\b|\bcost\b/.test(text))
+    return 'purchase'
   if (/^(marca|brand)\b/.test(text)) return 'brand'
   if (
     /^(perfume|nombre|producto|descripcion|articulo|name|product)\b/.test(text)
@@ -108,7 +109,8 @@ function findHeader(rows: SheetRows) {
       if (column && !columns.has(column)) columns.set(column, position)
     })
     const identifies = columns.has('code') || columns.has('name')
-    const prices = priceTiers.some((tier) => columns.has(tier))
+    const prices =
+      columns.has('purchase') || priceTiers.some((tier) => columns.has(tier))
     if (identifies && prices) return { index, columns, ignored }
   }
   return null
@@ -203,7 +205,7 @@ export function planPricingImport({
   const header = findHeader(rows)
   if (!header)
     throw new PricingFileError(
-      'No encontramos los encabezados. La hoja necesita una fila con «Código» (o «Marca» y «Perfume») y los porcentajes («% Emprendedor», «% VIP», «% Premium»). Descarga la plantilla para ver el formato.',
+      'No encontramos los encabezados. La hoja necesita una fila con «Código» (o «Marca» y «Perfume») y el «Precio de compra» o los porcentajes («% Emprendedor», «% VIP», «% Premium»). Descarga la plantilla para ver el formato.',
     )
   const { columns } = header
   const at = (row: SheetCell[], column: PricingColumn) => {
@@ -292,13 +294,36 @@ export function planPricingImport({
         )
       else markups[tier] = round2(value)
     }
+    let purchase: number | undefined
+    const purchaseCell = at(row, 'purchase')
+    if (!isEmpty(purchaseCell)) {
+      const value = readNumber(purchaseCell)
+      if (value === null)
+        reasons.push(
+          `El precio de compra «${cellText(purchaseCell)}» no es un número.`,
+        )
+      else if (value <= 0 || value > 10000000)
+        reasons.push('El precio de compra debe ser mayor que cero.')
+      else purchase = round2(value)
+    }
+    const currencyCell = at(row, 'currency')
+    const currency = isEmpty(currencyCell) ? null : readCurrency(currencyCell)
+    if (!isEmpty(currencyCell) && currency === null)
+      reasons.push(
+        `La moneda «${cellText(currencyCell)}» no se reconoce. Usa C$ o US$.`,
+      )
     if (reasons.length) return problem(reasons.join(' '))
     const saved = current.get(product.id)
     const before: PricingInput = saved
-      ? { markups: { ...saved.markups } }
+      ? {
+          purchasePrice: saved.purchasePrice,
+          purchaseCurrency: saved.purchaseCurrency,
+          markups: { ...saved.markups },
+        }
       : emptyPricing()
-    const averageCost = saved?.averageCost ?? null
     const after: PricingInput = {
+      purchasePrice: purchase ?? before.purchasePrice,
+      purchaseCurrency: currency ?? before.purchaseCurrency,
       markups: { ...before.markups, ...markups },
     }
     if (samePricing(before, after)) {
@@ -310,23 +335,22 @@ export function planPricingImport({
       vip: { NIO: NaN, USD: NaN },
       premium: { NIO: NaN, USD: NaN },
     }
-    const next = applyPricing(prices, after, averageCost, rate)
+    const next = applyPricing(prices, after, rate)
     const tooHigh = priceTiers.find((tier) => {
-      const quote = tierQuote(after, averageCost, tier, rate)
+      const quote = tierQuote(after, tier, rate)
       return quote !== null && quote.price > 10000000
     })
     if (tooHigh)
       return problem(
-        `El precio de venta de ${priceTierLabels[tooHigh]} saldría demasiado alto. Revisa el porcentaje.`,
+        `El precio de venta de ${priceTierLabels[tooHigh]} saldría demasiado alto. Revisa el precio de compra y el porcentaje.`,
       )
     plan.changes.push({
       line,
       product,
-      averageCost,
       before,
       after,
       pendingTiers: priceTiers.filter(
-        (tier) => tierStatus(after, averageCost, tier) === 'pending',
+        (tier) => tierStatus(after, tier) === 'pending',
       ),
       prices: { before: prices, after: next },
       largeChanges: largeChanges(prices, next),

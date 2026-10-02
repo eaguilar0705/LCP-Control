@@ -54,7 +54,7 @@ La salida en `private-data/database-import` está excluida de Git. No incorporar
 | Costos congelados  | `document_item_costs` guarda costo, tipo de cambio, tasa de impuesto y venta neta de cada renglón al emitir; `inventory_movement_costs` hace lo mismo con mermas, salidas y ajustes negativos. |
 | Gastos             | `expense_records`; categoría, comprobante e importe, repartidos en cinco cuentas. No se borran: se anulan con motivo y quedan en el historial.                                                 |
 | Tipo de cambio     | `exchange_rates`, una sola fila con la tasa vigente en córdobas por dólar y quién la cambió. Se edita en **Negocio** con `set_exchange_rate`; sólo propone un valor, nunca reescribe operaciones pasadas. |
-| Porcentajes        | `product_pricing`: el porcentaje de ganancia sobre el costo de cada lista (`purchase_price` y `purchase_currency` quedan como historia, sin uso desde `cost_based_pricing`). Sólo lo leen Administrador y SuperAdmin (`owner_pricing_read`). Se escribe con `save_catalog_product` (ficha del perfume) o `save_product_pricing` (pantalla Precios y carga de archivos). |
+| Porcentajes        | `product_pricing`: el precio de compra del perfume (`purchase_price`, `purchase_currency`) y el porcentaje de ganancia de cada lista; el precio de venta sale de ambos (`purchase_price_pricing`). Sólo lo leen Administrador y SuperAdmin (`owner_pricing_read`). Se escribe con `save_catalog_product` (ficha del perfume) o `save_product_pricing` (pantalla Precios y carga de archivos). |
 | Acceso             | Supabase Auth guarda las credenciales. `staff_members` es la única fuente de permisos. `private.pending_staff` reserva correos y roles antes de activar cuentas.     |
 
 La demostración de desarrollo conserva sus datos sintéticos y borradores/proveedores locales. Preferencias de interfaz y rotación de frases siguen en el navegador; no son registros del negocio.
@@ -165,7 +165,35 @@ select to_regclass('public.product_pricing') as tabla,
 
 Mientras no se aplique, la ficha del perfume funciona como antes (precios a mano en dólares) y avisa que falta la actualización; la pantalla Precios dice lo mismo y no deja cargar archivos.
 
-## Precios desde el costo promedio
+## Precios desde el precio de compra
+
+Migración `20261002120000_purchase_price_pricing.sql` (02-10-2026, **pendiente de aplicar en Supabase**). Pedido del dueño: escribir el precio al que compró cada perfume y sumarle el porcentaje de cada tipo de cliente. Reemplaza la base de las listas calculadas, que dejaba de ser el costo promedio:
+
+```text
+precio de venta = round(precio de compra × (100 + %) / 100, 2)   en la moneda de la compra
+otra moneda     = convertida con la tasa vigente
+```
+
+Ejemplo: compra de US$ 20 con tasa 36.6 → Emprendedor 25 % = US$ 25.00 / C$ 915.00; VIP 20 % = US$ 24.00 / C$ 878.40. Compra de C$ 500 con 20 % → C$ 600.00 / US$ 16.39.
+
+- **Listas:** con porcentaje y precio de compra → **calculada**. Con porcentaje y sin precio de compra → **falta precio de compra**: conserva su precio publicado. Sin porcentaje → **a mano** (US$ fijo, C$ = US$ × tasa).
+- **Dónde se escribe:** ficha del perfume (`save_catalog_product`), pantalla Precios y carga de archivos (`save_product_pricing`). Si la llamada no trae `purchasePrice`, se conserva el guardado, así que una aplicación anterior que sólo manda porcentajes sigue funcionando.
+- **Costo promedio:** `product_costs` sigue igual (compras, costo inicial, facturas eliminadas) para márgenes y contabilidad, pero ya no mueve precios: `sync_cost_prices` sólo vigila que no quede en blanco y se elimina `apply_cost_prices`.
+- **Cambio de tasa:** `reprice_catalog` conserva la moneda de la compra y mueve la otra.
+- **Al aplicarla:** ningún precio publicado cambia. Los precios de compra viejos (sin uso desde el 27-09) se apartan en `private.retired_purchase_prices` y se vacían, para que no recalculen nada solos con un valor desactualizado.
+- **Historial:** los cambios guardados desde el precio de compra se anotan con `base: 'purchase'` y `list_price_changes` devuelve ese precio y su moneda.
+
+Orden de despliegue: aplicar la migración (**SQL Editor → New query**, pegar el archivo y ejecutar) y después publicar la aplicación en Cloudflare. Comprobación:
+
+```sql
+select to_regprocedure('private.apply_cost_prices(uuid,jsonb)') is null as sin_recalculo_por_costo,
+       (select count(*) from private.retired_purchase_prices) as apartados,
+       (select count(*) from public.product_prices) as precios;  -- los mismos que antes
+```
+
+## Precios desde el costo promedio (reemplazado)
+
+> Desde `20261002120000_purchase_price_pricing.sql` la base de las listas calculadas es el precio de compra: ver [Precios desde el precio de compra](#precios-desde-el-precio-de-compra). Lo siguiente queda como historia.
 
 Migración `20260927120000_cost_based_pricing.sql` (27-09-2026, **aplicada en Supabase el 28-09-2026**). Reemplaza la base de las listas calculadas: ya no es el precio de compra escrito a mano sino el costo promedio ponderado del inventario, `product_costs.average_cost_nio`, el mismo que lleva la contabilidad. Pedido del dueño (notas de voz y `Formulas.xlsx`, `Hoja 1!F16`):
 
@@ -208,9 +236,9 @@ Las escrituras del negocio pasan por funciones con comprobaciones de rol, valida
 
 El historial de documentos consulta las facturas o proformas de un período (índice `documents(kind, created_at desc)`), de 100 en 100, y las reimprime en carta/PDF; el PDF del período junta hasta 2,000 documentos. Movimientos muestra los últimos 200 registros autorizados. Clientes/proveedores muestran hasta 2,000 registros por pantalla. Para volúmenes mayores, añadir paginación de servidor.
 
-`npm run test:flows` recorre la pantalla real en Chrome contra PGlite con todas las migraciones, detrás de una API de Supabase simulada (`tests/flows/pricing.mjs`, puerto 5177; no toca la base real). Son 45 comprobaciones: el caso de `Formulas.xlsx` de punta a punta (costo inicial C$ 15.675 de 13 unidades, 25 % y 20 %, compra de 20 unidades a C$ 16.675 → promedio 16.281061 → C$ 20.35 leído de vuelta en la base), validaciones de los porcentajes, porcentajes pendientes de costo, una compra en dólares con envío, la carga de un CSV de Windows con `;` y coma decimal (con columnas de costo que se ignoran), un cambio simultáneo que detiene la carga completa, el cambio de tasa, una entrada manual rechazada, el historial automático, el uso sólo con teclado, el teléfono sin desbordes, y que Ventas no vea costos ni porcentajes ni pueda guardarlos o registrar compras (RLS y HTTP 403). Con otro navegador: `PLAYWRIGHT_EXECUTABLE_PATH=<ruta>`.
+`npm run test:flows` recorre la pantalla real en Chrome contra PGlite con todas las migraciones, detrás de una API de Supabase simulada (`tests/flows/pricing.mjs`, puerto 5177; no toca la base real). Son 56 comprobaciones: precio de compra en dólares y córdobas con sus porcentajes (US$ 20 con 25 % → US$ 25 / C$ 915), listas pendientes y a mano, validaciones, compras y costo inicial que mueven el costo promedio sin tocar precios, la carga de un CSV de Windows con precio y moneda de compra, un cambio simultáneo que detiene la carga completa, la plantilla, el cambio de tasa, una entrada manual rechazada, el historial, el uso sólo con teclado, el teléfono y que Ventas no vea ni guarde precios de compra ni porcentajes (RLS y HTTP 403). Con otro navegador: `PLAYWRIGHT_EXECUTABLE_PATH=<ruta>`.
 
-`npm run test:db` incluye las 23 comprobaciones históricas de catálogo, las de contabilidad, personal, contactos y eliminación de facturas, y las 21 de precios desde el costo promedio (`tests/database/pricing.mjs`: la migración desde el precio de compra, el caso del Excel, compras en córdobas y dólares, existencias en cero, costo inicial, porcentajes pendientes, entradas sin costo, cambio de tasa, facturas eliminadas, atomicidad, validaciones, carga todo o nada, historial automático, permisos y retiro). Comprueba permisos, revisiones, persistencia, instantáneas, costos, gastos y conversión de precios en PostgreSQL desechable. La revisión del 14 de septiembre consultó la base real sin escribir operaciones: 260 productos, 1,560 precios, cero precios inconsistentes, cero saldos negativos y 520 saldos todavía sin contar.
+`npm run test:db` incluye las 23 comprobaciones históricas de catálogo, las de contabilidad, personal, contactos y eliminación de facturas, las 12 de precios desde el precio de compra (`tests/database/purchase-pricing.mjs`) y las 21 de precios desde el costo promedio (`tests/database/pricing.mjs`: la migración desde el precio de compra, el caso del Excel, compras en córdobas y dólares, existencias en cero, costo inicial, porcentajes pendientes, entradas sin costo, cambio de tasa, facturas eliminadas, atomicidad, validaciones, carga todo o nada, historial automático, permisos y retiro). Comprueba permisos, revisiones, persistencia, instantáneas, costos, gastos y conversión de precios en PostgreSQL desechable. La revisión del 14 de septiembre consultó la base real sin escribir operaciones: 260 productos, 1,560 precios, cero precios inconsistentes, cero saldos negativos y 520 saldos todavía sin contar.
 
 El asesor de seguridad informa once tablas privadas con RLS sin políticas: es intencional, no se consultan directamente desde la API. También advierte sobre quince RPC SECURITY DEFINER accesibles a authenticated —entre ellas `set_exchange_rate` y `save_product_pricing`—; son las escrituras y consultas autorizadas del programa, con controles internos de rol y search_path vacío (revisado el 26 de septiembre de 2026). Las cuatro RPC de contabilidad no aparecen en el aviso porque su envoltura pública es SECURITY INVOKER. [Detalle del aviso](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable). No se amplió el acceso público para ocultar estas advertencias.
 

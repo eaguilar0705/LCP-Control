@@ -392,10 +392,11 @@ export function BusinessPage() {
     setMessage('')
     setFailure('')
     try {
-      await rpc('save_business_settings', {
-        p_name: String(f.get('name') ?? '').trim(),
-        p_address: String(f.get('address') ?? '').trim(),
-        p_phone: String(f.get('phone') ?? '').trim(),
+      await rpc('save_business_profile', {
+        p_payload: Object.fromEntries(
+          ['name', 'legalName', 'taxId', 'address', 'phone', 'email', 'branch', 'billingDetails']
+            .map((field) => [field, String(f.get(field) ?? '').trim()]),
+        ),
       })
       setMessage('Datos del negocio guardados.')
       retry()
@@ -435,7 +436,7 @@ export function BusinessPage() {
           <div className="section-heading">
             <div>
               <span className="section-kicker">INFORMACIÓN GENERAL</span>
-              <h2>Cómo te encuentran tus clientes</h2>
+              <h2>Identidad y datos de facturación</h2>
             </div>
           </div>
           {data && (
@@ -447,18 +448,31 @@ export function BusinessPage() {
                 maxLength={160}
                 defaultValue={data.name}
               />
+              <Input label="Razón social / Nombre del titular" name="legalName"
+                required maxLength={160} defaultValue={data.legalName ?? ''} />
+              <Input label="RUC del negocio" name="taxId"
+                required maxLength={40} defaultValue={data.taxId ?? ''} />
+              <Input label="Sucursal" name="branch"
+                maxLength={100} defaultValue={data.branch ?? ''} />
               <Input
                 label="Dirección"
                 name="address"
+                required
                 maxLength={600}
                 defaultValue={data.address}
               />
               <Input
                 label="Teléfono"
                 name="phone"
+                required
                 maxLength={60}
                 defaultValue={data.phone}
               />
+              <Input label="Correo del negocio" name="email" type="email"
+                maxLength={160} defaultValue={data.email ?? ''} />
+              <Input label="Datos adicionales de facturación" name="billingDetails"
+                maxLength={240} defaultValue={data.billingDetails ?? ''}
+                placeholder="Serie, autorización u otros datos que correspondan al negocio" />
               <div className="form-actions">
                 <Button type="submit" disabled={busy || demo} aria-busy={busy}>
                   {busy ? 'Guardando…' : 'Guardar'}

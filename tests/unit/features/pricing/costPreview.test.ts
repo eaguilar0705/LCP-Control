@@ -40,6 +40,8 @@ const pricing: ProductPricing[] = [
   {
     productId: 'excel',
     averageCost: 15.675,
+    purchasePrice: null,
+    purchaseCurrency: 'USD',
     markups: { emprendedor: 25, vip: 20, premium: null },
     updatedAt: null,
   },
@@ -67,7 +69,7 @@ const preview = (
   })
 
 describe('vista previa de una compra', () => {
-  it('gives the Formulas.xlsx average and the prices of the computed lists', () => {
+  it('gives the Formulas.xlsx average and never touches prices', () => {
     const result = preview([line({})])
     expect(result.ready).toBe(true)
     expect(result.problem).toBeNull()
@@ -78,16 +80,8 @@ describe('vista previa de una compra', () => {
       landed: 16.675,
       nextAverage: 16.281061,
     })
-    expect(row.prices).toEqual([
-      {
-        tier: 'emprendedor',
-        markup: 25,
-        before: 19.59,
-        after: 20.35,
-        afterUsd: 0.56,
-      },
-      { tier: 'vip', markup: 20, before: 18.81, after: 19.54, afterUsd: 0.53 },
-    ])
+    // El costo es contabilidad: los precios salen del precio de compra.
+    expect(row).not.toHaveProperty('prices')
   })
 
   it('spreads the order shipping over every unit and converts with the order rate', () => {

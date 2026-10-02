@@ -448,7 +448,7 @@ export async function renderReportPdf(context: ReportContext): Promise<Blob> {
   )
   y += 11
   text(
-    'Ventas por moneda original; contabilidad en NIO con tasas guardadas. Documento interno, no es un comprobante fiscal.',
+    'Ventas por moneda original; contabilidad en NIO con las tasas registradas en cada operación.',
     left,
     y,
     7.5,

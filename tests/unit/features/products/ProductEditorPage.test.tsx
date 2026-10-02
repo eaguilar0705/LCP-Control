@@ -7,8 +7,8 @@ import type { PriceChange, PricingList, Product } from '@/lib/domain'
 import type { ProductInput } from '@/features/products/product'
 import { ProductEditorPage } from '@/features/products/ProductEditorPage'
 
-const { productService, inventoryService, settingsService } = vi.hoisted(
-  () => ({
+const { productService, inventoryService, settingsService, accountingService } =
+  vi.hoisted(() => ({
     productService: {
       listProducts: vi.fn(),
       saveProduct: vi.fn(),
@@ -26,15 +26,20 @@ const { productService, inventoryService, settingsService } = vi.hoisted(
       })),
     },
     inventoryService: { getInventory: vi.fn(), recordMovement: vi.fn() },
+    accountingService: { setOpeningCost: vi.fn(), recordShipment: vi.fn() },
     // El precio en córdobas sale de esta tasa: sin ella el editor no deja fijar
     // precios, así que la prueba trabaja con una registrada.
     settingsService: {
       getExchangeRate: vi.fn(async () => ({ usdToNio: 37, updatedAt: null })),
     },
-  }),
-)
+  }))
 vi.mock('@/services/useServices', () => ({
-  useServices: () => ({ productService, inventoryService, settingsService }),
+  useServices: () => ({
+    productService,
+    inventoryService,
+    settingsService,
+    accountingService,
+  }),
 }))
 
 it('reloads a newly saved perfume and opens its quantities without a page refresh', async () => {
@@ -198,11 +203,10 @@ it('shows what each price leaves over the cost and the perfume price history', a
       </MemoryRouter>
     </AccessContext.Provider>,
   )
-  // El costo se dice una vez, arriba de las tres listas, y no se escribe.
-  expect(await screen.findByText('Costo promedio vigente')).toBeVisible()
-  expect(screen.getByText('NIO 4,000.00', { selector: 'output' })).toBeVisible()
   // 7844 con costo 4000 deja 49 %; 7400 deja 45,9 %.
-  expect(screen.getByText('Margen sobre el costo promedio: 49%')).toBeVisible()
+  expect(
+    await screen.findByText('Margen sobre el costo promedio: 49%'),
+  ).toBeVisible()
   expect(
     screen.getByText('Margen sobre el costo promedio: 45.9%'),
   ).toBeVisible()
@@ -267,26 +271,73 @@ function renderEditor(product: Product, averageCost: number | null = null) {
   )
 }
 const percent = (tier: string) =>
-  screen.getByLabelText(`% de ganancia sobre el costo · ${tier}`)
+  screen.getByLabelText(`% de ganancia · ${tier}`)
 
-it('computes a list from the read-only average cost and never sends a cost', async () => {
+it('refreshes the cost and product revision after adding a cost from the editor', async () => {
+  HTMLDialogElement.prototype.showModal = function () {
+    this.setAttribute('open', '')
+  }
+  HTMLDialogElement.prototype.close = function () {
+    this.removeAttribute('open')
+  }
+  const product = pricedPerfume()
+  productService.listPricing.mockResolvedValue({ available: true, rows: [] })
+  renderEditor(product)
+  accountingService.setOpeningCost.mockImplementation(async () => {
+    product.revision = 6
+    productService.getProductCost.mockResolvedValue(500)
+    return 'saved'
+  })
+  const user = userEvent.setup()
+  await user.click(
+    await screen.findByRole('button', { name: 'Costo de inventario' }),
+  )
+  const input = await screen.findByLabelText('Costo por unidad (C$)')
+  // El formulario del costo es independiente del formulario del perfume.
+  expect(input.closest('form')?.parentElement?.closest('form')).toBeNull()
+  await user.type(input, '500')
+  await user.type(
+    screen.getByLabelText('Origen del costo / comprobante'),
+    'Factura 123',
+  )
+  await user.click(
+    screen.getByRole('button', { name: 'Guardar costo inicial' }),
+  )
+  expect(
+    await screen.findByText('Costo inicial de «Oud nocturno» registrado.'),
+  ).toBeVisible()
+  // 1295 con costo 500 deja 61,4 %.
+  expect(
+    await screen.findByText('Margen sobre el costo promedio: 61.4%'),
+  ).toBeVisible()
+  expect(
+    screen.getByText('Costo inicial de «Oud nocturno» registrado.'),
+  ).toBeVisible()
+  await user.type(screen.getByLabelText('Nombre del perfume'), ' nuevo')
+  await user.click(screen.getByRole('button', { name: 'Guardar perfume' }))
+  await waitFor(() => expect(productService.saveProduct).toHaveBeenCalledOnce())
+  expect(productService.saveProduct.mock.calls[0][0]).toMatchObject({
+    revision: 6,
+  })
+})
+
+it('computes a list from the purchase price written in the perfume form', async () => {
   productService.listPricing.mockImplementation(async () => ({
     available: true,
     rows: [],
   }))
   renderEditor(pricedPerfume(), 16.281061)
   const user = userEvent.setup()
-  await screen.findByText('Costo promedio vigente')
-  expect(screen.queryByLabelText('Precio de compra')).toBeNull()
+  await user.type(await screen.findByLabelText('Precio de compra'), '20')
+  expect(screen.getByLabelText('Moneda de compra')).toHaveValue('USD')
   await user.type(percent('Emprendedor'), '25')
-  // Costo promedio, porcentaje aplicado, ganancia y precio de venta.
+  // Precio de compra, ganancia y precio de venta.
   const row = screen.getByRole('group', { name: 'Emprendedor' })
-  expect(row).toHaveTextContent('NIO 16.28')
-  expect(row).toHaveTextContent('NIO 4.07')
-  expect(row).toHaveTextContent('25 % sobre el costo')
-  expect(row).toHaveTextContent('NIO 20.35')
-  // 20.35 / 37 = 0.55: el dólar sale de la tasa.
-  expect(row).toHaveTextContent('USD 0.55 con la tasa vigente')
+  expect(row).toHaveTextContent('USD 20.00')
+  expect(row).toHaveTextContent('USD 5.00')
+  expect(row).toHaveTextContent('USD 25.00')
+  // 25 × 37: el córdoba sale de la tasa.
+  expect(row).toHaveTextContent('NIO 925.00')
   expect(row).toHaveTextContent('Calculado')
   // VIP y Premium siguen a mano, con su dólar editable.
   expect(screen.getByLabelText('VIP USD', { exact: true })).toHaveValue(34)
@@ -295,30 +346,34 @@ it('computes a list from the read-only average cost and never sends a cost', asy
   await waitFor(() => expect(productService.saveProduct).toHaveBeenCalledOnce())
   const [payload] = productService.saveProduct.mock.calls[0] as [ProductInput]
   expect(payload.pricing).toEqual({
+    purchasePrice: 20,
+    purchaseCurrency: 'USD',
     markups: { emprendedor: 25, vip: null, premium: null },
   })
   expect(payload.prices).toEqual({
-    emprendedor: { NIO: 20.35, USD: 0.55 },
+    emprendedor: { USD: 25, NIO: 925 },
     vip: { USD: 34, NIO: 1258 },
     premium: { USD: 32, NIO: 1184 },
   })
 })
 
-it('keeps a list with percentage and no cost pending, with its dollar price editable', async () => {
+it('keeps a list with percentage and no purchase price pending, with its dollar price editable', async () => {
   productService.listPricing.mockImplementation(async () => ({
     available: true,
     rows: [],
   }))
   renderEditor(pricedPerfume(), null)
   const user = userEvent.setup()
-  expect(await screen.findByText('Sin costo todavía')).toBeVisible()
-  expect(
-    screen.getByRole('link', { name: /Costo de inventario/ }),
-  ).toHaveAttribute('href', '/prices?apartado=costo')
+  const inventoryCost = await screen.findByRole('button', {
+    name: 'Costo de inventario',
+  })
+  expect(inventoryCost).toBeEnabled()
   await user.type(percent('VIP'), '20')
+  // Con cambios sin guardar el botón espera, sin párrafos de explicación.
+  expect(inventoryCost).toBeDisabled()
+  expect(screen.queryByText(/Guarda los cambios del perfume/)).toBeNull()
   const vip = screen.getByRole('group', { name: 'VIP' })
-  expect(vip).toHaveTextContent('Pendiente de costo')
-  expect(vip).toHaveTextContent('Se calculará con 20 % cuando haya costo.')
+  expect(vip).toHaveTextContent('Falta precio de compra')
   expect(screen.getByLabelText('VIP USD', { exact: true })).toHaveValue(34)
   await user.click(screen.getByRole('button', { name: 'Guardar perfume' }))
   await waitFor(() => expect(productService.saveProduct).toHaveBeenCalledOnce())
@@ -333,7 +388,9 @@ it('keeps the last computed price as the manual one when a percentage is removed
     rows: [
       {
         productId: PRICED,
-        averageCost: 500,
+        averageCost: 450,
+        purchasePrice: 500,
+        purchaseCurrency: 'NIO' as const,
         markups: { emprendedor: 20, vip: 15, premium: 10 },
         updatedAt: null,
       },
@@ -341,7 +398,7 @@ it('keeps the last computed price as the manual one when a percentage is removed
   }))
   renderEditor(pricedPerfume(), 500)
   const user = userEvent.setup()
-  await screen.findByText('Costo promedio vigente')
+  await screen.findByLabelText('Precio de compra')
   const vip = percent('VIP')
   expect(vip).toHaveValue(15)
   expect(screen.getByRole('group', { name: 'VIP' })).toHaveTextContent(
@@ -357,6 +414,7 @@ it('keeps the last computed price as the manual one when a percentage is removed
   await user.click(screen.getByRole('button', { name: 'Guardar perfume' }))
   await waitFor(() => expect(productService.saveProduct).toHaveBeenCalledOnce())
   const [payload] = productService.saveProduct.mock.calls[0] as [ProductInput]
+  expect(payload.pricing?.purchasePrice).toBe(500)
   expect(payload.pricing?.markups).toEqual({
     emprendedor: 20,
     vip: null,
@@ -369,7 +427,7 @@ it('keeps the last computed price as the manual one when a percentage is removed
 it('marks an impossible percentage instead of saving it', async () => {
   renderEditor(pricedPerfume(), 500)
   const user = userEvent.setup()
-  await screen.findByText('Costo promedio vigente')
+  await screen.findByLabelText('Precio de compra')
   await user.type(percent('VIP'), '1000.5')
   await user.click(screen.getByRole('button', { name: 'Guardar perfume' }))
   expect(productService.saveProduct).not.toHaveBeenCalled()
@@ -437,9 +495,9 @@ it('without the database update keeps dollar prices and never sends percentages'
   renderEditor(pricedPerfume())
   const user = userEvent.setup()
   expect(
-    await screen.findByText(/falta aplicar la actualización de precios/),
+    await screen.findByText(/Falta aplicar la actualización de precios/),
   ).toBeVisible()
-  expect(screen.queryByLabelText(/% de ganancia sobre el costo/)).toBeNull()
+  expect(screen.queryByLabelText(/% de ganancia/)).toBeNull()
   await user.click(screen.getByRole('button', { name: 'Guardar perfume' }))
   await waitFor(() => expect(productService.saveProduct).toHaveBeenCalledOnce())
   const [payload] = productService.saveProduct.mock.calls[0] as [ProductInput]

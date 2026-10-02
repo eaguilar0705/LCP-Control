@@ -3,11 +3,16 @@
 // costo inicial, existencias en cero, monedas, cambio de tasa, entradas sin
 // costo, facturas eliminadas, atomicidad, validaciones, permisos, historial y
 // la migración desde el precio de compra. PostgreSQL local y desechable.
+//
+// Desde 20261002120000_purchase_price_pricing la base de las listas es el
+// precio de compra (tests/database/purchase-pricing.mjs). Esta suite comprueba
+// el modelo del costo promedio tal como quedó antes de esa migración.
 import { PGlite } from '@electric-sql/pglite'
 import { readFile, readdir } from 'node:fs/promises'
 import assert from 'node:assert/strict'
 
 const NEW_MIGRATION = '20260927120000_cost_based_pricing.sql'
+const PURCHASE_MIGRATION = '20261002120000_purchase_price_pricing.sql'
 const admin = '11111111-1111-4111-8111-111111111111'
 const operator = '22222222-2222-4222-8222-222222222222'
 const excel = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
@@ -258,9 +263,9 @@ try {
   throw error
 }
 
-// --- El modelo nuevo, de punta a punta -------------------------------------
+// --- El modelo del costo promedio, de punta a punta ------------------------
 try {
-  await bootstrap()
+  await bootstrap(PURCHASE_MIGRATION)
   await identity(admin)
   await setRate(36.6)
   for (const id of [excel, other, pending, empty])

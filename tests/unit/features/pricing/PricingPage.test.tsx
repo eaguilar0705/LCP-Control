@@ -78,8 +78,9 @@ function setup(role: UserRole = 'admin') {
   productService.listProducts.mockImplementation(async () =>
     structuredClone([cedro, jazmin, vainilla]),
   )
-  // Cedro: 13 unidades (5 + 8) al costo del Excel y dos listas calculadas.
-  // Jazmín: 4 unidades con costo y sin porcentajes. Vainilla: sin costo.
+  // Cedro: comprado en US$ 20, con las tres listas calculadas y 13 unidades
+  // al costo del Excel. Jazmín: comprado en C$ 700 y sin porcentajes.
+  // Vainilla: sin precio de compra ni costo.
   inventoryService.getInventory.mockImplementation(async () => [
     { product: cedro, quantities: { store: 5, warehouse: 8 } },
     { product: jazmin, quantities: { store: 4, warehouse: 0 } },
@@ -91,12 +92,16 @@ function setup(role: UserRole = 'admin') {
       {
         productId: cedro.id,
         averageCost: 15.675,
+        purchasePrice: 20,
+        purchaseCurrency: 'USD' as const,
         markups: { emprendedor: 25, vip: 20, premium: 15 },
         updatedAt: null,
       },
       {
         productId: jazmin.id,
-        averageCost: 700,
+        averageCost: 650,
+        purchasePrice: 700,
+        purchaseCurrency: 'NIO' as const,
         markups: { emprendedor: null, vip: null, premium: null },
         updatedAt: null,
       },
@@ -116,13 +121,13 @@ function setup(role: UserRole = 'admin') {
   return userEvent.setup()
 }
 
-it('lists each perfume with its average cost, percentage, profit and sale price', async () => {
+it('lists each perfume with its purchase price, percentage, profit and sale price', async () => {
   setup()
   const cedroRow = (
     await screen.findByRole('button', { name: 'Cedro' })
   ).closest('tr')!
-  expect(cedroRow).toHaveTextContent('NIO 15.68')
-  expect(cedroRow).toHaveTextContent('25 % · gana NIO 3.92')
+  expect(cedroRow).toHaveTextContent('USD 20.00')
+  expect(cedroRow).toHaveTextContent('25 % · gana USD 5.00')
   const jazminRow = screen
     .getByRole('button', { name: 'Jazmín' })
     .closest('tr')!
@@ -151,26 +156,29 @@ it('filters by what is still missing', async () => {
   expect(screen.getByText('No hay resultados')).toBeVisible()
 })
 
-it('keeps percentages without cost pending and saves them with the revision it was read with', async () => {
+it('keeps percentages without a purchase price pending, then computes them once it is written', async () => {
   const user = setup()
   await user.click(
     await screen.findByRole('button', { name: 'Editar precios de Vainilla' }),
   )
   const dialog = screen.getByRole('dialog', { name: 'Vainilla' })
-  expect(within(dialog).getByText('Sin costo todavía')).toBeVisible()
   for (const [tier, value] of [
     ['Emprendedor', '20'],
     ['VIP', '15'],
     ['Premium', '10'],
   ])
     await user.type(
-      within(dialog).getByLabelText(`% de ganancia sobre el costo · ${tier}`),
+      within(dialog).getByLabelText(`% de ganancia · ${tier}`),
       value,
     )
   const emprendedor = within(dialog).getByRole('group', { name: 'Emprendedor' })
-  expect(emprendedor).toHaveTextContent('Pendiente de costo')
-  // Sin costo no se inventa un precio: queda el publicado.
+  expect(emprendedor).toHaveTextContent('Falta precio de compra')
+  // Sin precio de compra no se inventa un precio: queda el publicado.
   expect(emprendedor).toHaveTextContent('NIO 1,464.00')
+  await user.type(within(dialog).getByLabelText('Precio de compra'), '30')
+  expect(emprendedor).toHaveTextContent('Calculado')
+  expect(emprendedor).toHaveTextContent('USD 36.00')
+  expect(emprendedor).toHaveTextContent('NIO 1,317.60')
   await user.click(
     within(dialog).getByRole('button', { name: 'Guardar precios' }),
   )
@@ -179,7 +187,11 @@ it('keeps percentages without cost pending and saves them with the revision it w
       {
         productId: vainilla.id,
         revision: 30,
-        pricing: { markups: { emprendedor: 20, vip: 15, premium: 10 } },
+        pricing: {
+          purchasePrice: 30,
+          purchaseCurrency: 'USD',
+          markups: { emprendedor: 20, vip: 15, premium: 10 },
+        },
       },
     ]),
   )
@@ -191,19 +203,16 @@ it('keeps percentages without cost pending and saves them with the revision it w
   )
 })
 
-it('shows the read-only average cost and computes each list from it', async () => {
+it('computes each list from the editable purchase price', async () => {
   const user = setup()
   await user.click(
     await screen.findByRole('button', { name: 'Editar precios de Jazmín' }),
   )
   const dialog = screen.getByRole('dialog', { name: 'Jazmín' })
-  expect(within(dialog).getByText('Costo promedio vigente')).toBeVisible()
-  // El costo no es un campo: sólo hay un porcentaje por lista.
-  expect(within(dialog).getAllByRole('spinbutton')).toHaveLength(3)
-  await user.type(
-    within(dialog).getByLabelText('% de ganancia sobre el costo · VIP'),
-    '20',
-  )
+  const purchase = within(dialog).getByLabelText('Precio de compra')
+  expect(purchase).toHaveValue(700)
+  expect(within(dialog).getByLabelText('Moneda de compra')).toHaveValue('NIO')
+  await user.type(within(dialog).getByLabelText('% de ganancia · VIP'), '20')
   const vip = within(dialog).getByRole('group', { name: 'VIP' })
   expect(vip).toHaveTextContent('Calculado')
   expect(vip).toHaveTextContent('NIO 840.00')
@@ -212,6 +221,25 @@ it('shows the read-only average cost and computes each list from it', async () =
   expect(
     within(dialog).getByRole('group', { name: 'Premium' }),
   ).toHaveTextContent('A mano')
+  await user.clear(purchase)
+  await user.type(purchase, '800')
+  expect(vip).toHaveTextContent('NIO 960.00')
+  await user.click(
+    within(dialog).getByRole('button', { name: 'Guardar precios' }),
+  )
+  await waitFor(() =>
+    expect(productService.savePricing).toHaveBeenCalledWith([
+      {
+        productId: jazmin.id,
+        revision: 20,
+        pricing: {
+          purchasePrice: 800,
+          purchaseCurrency: 'NIO',
+          markups: { emprendedor: null, vip: 20, premium: null },
+        },
+      },
+    ]),
+  )
 })
 
 it('marks a wrong value on save and clears the mark as soon as it is fixed', async () => {
@@ -220,12 +248,8 @@ it('marks a wrong value on save and clears the mark as soon as it is fixed', asy
     await screen.findByRole('button', { name: 'Editar precios de Vainilla' }),
   )
   const dialog = screen.getByRole('dialog', { name: 'Vainilla' })
-  const vip = within(dialog).getByLabelText(
-    '% de ganancia sobre el costo · VIP',
-  )
-  const premium = within(dialog).getByLabelText(
-    '% de ganancia sobre el costo · Premium',
-  )
+  const vip = within(dialog).getByLabelText('% de ganancia · VIP')
+  const premium = within(dialog).getByLabelText('% de ganancia · Premium')
   await user.type(vip, '1000.5')
   await user.type(premium, '-1')
   // Mientras no se intenta guardar, no se regaña a quien todavía escribe.
@@ -255,7 +279,7 @@ it('marks a wrong value on save and clears the mark as soon as it is fixed', asy
   await waitFor(() => expect(productService.savePricing).toHaveBeenCalledOnce())
 })
 
-it('registers a purchase with a preview of the new average and prices, as in the Excel', async () => {
+it('registers a purchase with a preview of the new average, as in the Excel', async () => {
   const user = setup()
   await user.click(
     await screen.findByRole('button', { name: 'Costo de inventario' }),
@@ -279,10 +303,8 @@ it('registers a purchase with a preview of the new average and prices, as in the
   expect(outcome).toHaveTextContent(
     '13 u. × C$ 15.675 + 20 u. × C$ 16.675 → costo promedio C$ 16.281061',
   )
-  expect(outcome).toHaveTextContent('Emprendedor 25 %:')
-  expect(outcome).toHaveTextContent('NIO 20.35')
-  expect(outcome).toHaveTextContent('VIP 20 %:')
-  expect(outcome).toHaveTextContent('NIO 19.54')
+  // El costo es contabilidad: no cambia precios.
+  expect(outcome).not.toHaveTextContent('Emprendedor')
   await user.click(
     within(dialog).getByRole('button', { name: 'Registrar compra' }),
   )
@@ -373,11 +395,9 @@ it('loads a CSV, previews the changes and the rows it cannot use, then saves the
   expect(
     within(dialog).getByText(/No hay ningún perfume con el código «LCP-0009»/),
   ).toBeVisible()
+  expect(within(dialog).getByText(/no se importa\./)).toBeVisible()
   expect(
-    within(dialog).getByText(/no se importa: el costo sale del costo promedio/),
-  ).toBeVisible()
-  expect(
-    within(dialog).getByText(/Un perfume todavía no tiene costo promedio/),
+    within(dialog).getByText(/Un perfume no tiene precio de compra/),
   ).toBeVisible()
   // Jazmín Emprendedor pasa de C$ 1 098 a C$ 735: más de un 30 %, se avisa.
   expect(
@@ -394,12 +414,20 @@ it('loads a CSV, previews the changes and the rows it cannot use, then saves the
     {
       productId: jazmin.id,
       revision: 20,
-      pricing: { markups: { emprendedor: 5, vip: 15, premium: 10 } },
+      pricing: {
+        purchasePrice: 700,
+        purchaseCurrency: 'NIO',
+        markups: { emprendedor: 5, vip: 15, premium: 10 },
+      },
     },
     {
       productId: vainilla.id,
       revision: 30,
-      pricing: { markups: { emprendedor: 20, vip: 15, premium: 10 } },
+      pricing: {
+        purchasePrice: null,
+        purchaseCurrency: 'USD',
+        markups: { emprendedor: 20, vip: 15, premium: 10 },
+      },
     },
   ])
   expect(

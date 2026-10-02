@@ -1,5 +1,6 @@
 import { supabase } from '../../lib/supabase'
 import { AppError } from '../../lib/errors'
+import { businessFromRow } from '../../lib/business'
 import type {
   BusinessSettings,
   Category,
@@ -80,6 +81,8 @@ interface PriceChangeRow {
 }
 interface PricingRow {
   product_id: string
+  purchase_price: number | string | null
+  purchase_currency: Currency | null
   markup_emprendedor: number | string | null
   markup_vip: number | string | null
   markup_premium: number | string | null
@@ -90,7 +93,7 @@ interface CostRow {
   average_cost_nio: number | string | null
 }
 const pricingSelect =
-  'product_id,markup_emprendedor,markup_vip,markup_premium,updated_at'
+  'product_id,purchase_price,purchase_currency,markup_emprendedor,markup_vip,markup_premium,updated_at'
 function optionalNumber(value: number | string | null | undefined) {
   if (value === null || value === undefined || value === '') return null
   const parsed = Number(value)
@@ -106,6 +109,8 @@ function mergePricing(pricing: PricingRow[], costs: CostRow[]) {
     rows.set(row.product_id, {
       productId: row.product_id,
       averageCost: null,
+      purchasePrice: optionalNumber(row.purchase_price),
+      purchaseCurrency: row.purchase_currency ?? 'USD',
       markups: {
         emprendedor: optionalNumber(row.markup_emprendedor),
         vip: optionalNumber(row.markup_vip),
@@ -122,6 +127,8 @@ function mergePricing(pricing: PricingRow[], costs: CostRow[]) {
       rows.set(cost.product_id, {
         productId: cost.product_id,
         averageCost,
+        purchasePrice: null,
+        purchaseCurrency: 'USD',
         markups: { emprendedor: null, vip: null, premium: null },
         updatedAt: null,
       })
@@ -355,7 +362,7 @@ function toDocument(row: DocumentRow): DocumentRecord {
     customerName: row.customer_name,
     customerPhone: row.customer_phone,
     customerTaxId: row.customer_tax_id ?? '',
-    issuer: row.issuer,
+    issuer: businessFromRow(row.issuer),
     tier: row.tier_code,
     currency: row.currency,
     total: amount(row.total),
@@ -580,7 +587,9 @@ export const supabaseAdapter: DataProvider = {
   async getBusiness() {
     const { data, error } = await client()
       .from('business_settings')
-      .select('name,address,phone')
+      .select(
+        'name,address,phone,legal_name,tax_id,email,branch,billing_details',
+      )
       .limit(1)
       .maybeSingle()
     if (error) fail(error)
@@ -589,7 +598,7 @@ export const supabaseAdapter: DataProvider = {
         'configuration',
         'Falta configurar los datos del negocio en la base de datos.',
       )
-    return data as BusinessSettings
+    return businessFromRow(data as BusinessSettings)
   },
   // Sin la migración de la tasa, la pantalla sigue funcionando: se pide a mano
   // en cada documento, que es como se trabajaba antes.
@@ -613,21 +622,23 @@ export const supabaseAdapter: DataProvider = {
     const { error } = await client().rpc('set_exchange_rate', { p_rate: rate })
     if (error) fail(error)
   },
+  // Todos los clientes, por páginas: un límite fijo dejaba fuera del selector
+  // de la factura, sin aviso, a los que quedaban después del corte.
   async listCustomers() {
-    const { data, error } = await client()
-      .from('customers')
-      .select('id,name,phone,price_tier')
-      .order('name')
-      .limit(500)
-    if (error) fail(error)
-    return (
-      (data ?? []) as {
-        id: string
-        name: string
-        phone: string | null
-        price_tier: PriceTier
-      }[]
-    ).map((row) => ({
+    const { rows } = await readReportPages<{
+      id: string
+      name: string
+      phone: string | null
+      price_tier: PriceTier
+    }>((start, end) =>
+      client()
+        .from('customers')
+        .select('id,name,phone,price_tier', { count: 'exact' })
+        .order('name')
+        .order('id')
+        .range(start, end),
+    ).catch(fail)
+    return rows.map((row) => ({
       id: row.id,
       name: row.name,
       phone: row.phone,

@@ -201,33 +201,39 @@ export function weightedAverageCost(
 // --- Listas calculadas -----------------------------------------------------
 
 export function emptyPricing(): PricingInput {
-  return { markups: { emprendedor: null, vip: null, premium: null } }
+  return {
+    purchasePrice: null,
+    purchaseCurrency: 'USD',
+    markups: { emprendedor: null, vip: null, premium: null },
+  }
+}
+function hasPurchasePrice(pricing: PricingInput | null | undefined) {
+  const price = pricing?.purchasePrice
+  return price != null && Number.isFinite(price) && price > 0
 }
 /**
  * Cómo sale el precio de una lista:
- * - `computed`: tiene porcentaje y el perfume tiene costo promedio.
- * - `pending`: tiene porcentaje, pero todavía no hay costo promedio; conserva
- *   su precio publicado (se fija a mano) hasta que lo haya.
+ * - `computed`: tiene porcentaje y el perfume tiene precio de compra.
+ * - `pending`: tiene porcentaje, pero falta el precio de compra; conserva su
+ *   precio publicado hasta que lo tenga.
  * - `manual`: sin porcentaje; su precio se fija a mano en dólares.
  */
 export type TierStatus = 'computed' | 'pending' | 'manual'
 export function tierStatus(
   pricing: PricingInput | null | undefined,
-  averageCost: number | null | undefined,
   tier: PriceTier,
 ): TierStatus {
   if (pricing?.markups[tier] == null) return 'manual'
-  return averageCost == null || !Number.isFinite(averageCost)
-    ? 'pending'
-    : 'computed'
+  return hasPurchasePrice(pricing) ? 'computed' : 'pending'
 }
 /**
- * El desglose de una lista calculada: costo promedio, porcentaje aplicado,
- * ganancia y precio de venta en córdobas, más el precio en las dos monedas tal
- * como se guardará. `null` si la lista no se calcula.
+ * El desglose de una lista calculada en la moneda de la compra: precio de
+ * compra, porcentaje, ganancia y precio de venta, más el precio en las dos
+ * monedas tal como se guardará. `null` si la lista no se calcula.
  */
 interface TierQuote {
   tier: PriceTier
+  currency: Currency
   cost: number
   percent: number
   profit: number
@@ -236,66 +242,58 @@ interface TierQuote {
 }
 export function tierQuote(
   pricing: PricingInput | null | undefined,
-  averageCost: number | null | undefined,
   tier: PriceTier,
   rate: number | null | undefined,
 ): TierQuote | null {
-  if (tierStatus(pricing, averageCost, tier) !== 'computed') return null
+  if (tierStatus(pricing, tier) !== 'computed') return null
   const percent = pricing!.markups[tier]!
-  const cost = averageCost!
+  const cost = pricing!.purchasePrice!
+  const currency = pricing!.purchaseCurrency
   const price = markupPrice(cost, percent)
   if (Number.isNaN(price)) return null
+  const other: Currency = currency === 'NIO' ? 'USD' : 'NIO'
   return {
     tier,
+    currency,
     cost,
     percent,
-    profit: profitOf(price, cost),
+    profit: subtractPrices(price, cost),
     price,
-    prices: { NIO: price, USD: convertPrice(price, 'NIO', 'USD', rate) },
+    prices: {
+      [currency]: price,
+      [other]: convertPrice(price, currency, other, rate),
+    } as Record<Currency, number>,
   }
-}
-/** Precio menos costo, al centavo (el costo trae seis decimales). */
-function profitOf(price: number, cost: number): number {
-  const priceMicros = units(price, 6)
-  const costMicros = units(cost, 6)
-  if (priceMicros === null || costMicros === null) return NaN
-  const difference = priceMicros - costMicros
-  const cents =
-    difference < 0n
-      ? -divideHalfUp(-difference, 10000n)
-      : divideHalfUp(difference, 10000n)
-  return Number(cents) / 100
 }
 export type TierPrices = Record<PriceTier, Record<Currency, number>>
 /**
  * Los precios del perfume con las listas calculadas ya reemplazadas. Las
- * listas a mano y las pendientes de costo quedan como estaban.
+ * listas a mano y las pendientes quedan como estaban.
  */
 export function applyPricing(
   prices: TierPrices,
   pricing: PricingInput | null | undefined,
-  averageCost: number | null | undefined,
   rate: number | null | undefined,
 ): TierPrices {
   const next = structuredClone(prices)
   for (const tier of priceTiers) {
-    const quote = tierQuote(pricing, averageCost, tier, rate)
+    const quote = tierQuote(pricing, tier, rate)
     if (quote) next[tier] = { ...quote.prices }
   }
   return next
 }
 /** ¿Cambió algo que la base tenga que guardar? */
 export function samePricing(a: PricingInput, b: PricingInput): boolean {
-  return priceTiers.every((tier) => a.markups[tier] === b.markups[tier])
+  return (
+    a.purchasePrice === b.purchasePrice &&
+    (a.purchasePrice === null || a.purchaseCurrency === b.purchaseCurrency) &&
+    priceTiers.every((tier) => a.markups[tier] === b.markups[tier])
+  )
 }
-/** Cuántas listas del perfume salen del costo promedio. */
-export function computedTiers(
-  pricing: PricingInput | null | undefined,
-  averageCost: number | null | undefined,
-) {
-  return priceTiers.filter(
-    (tier) => tierStatus(pricing, averageCost, tier) === 'computed',
-  ).length
+/** Cuántas listas del perfume salen del precio de compra. */
+export function computedTiers(pricing: PricingInput | null | undefined) {
+  return priceTiers.filter((tier) => tierStatus(pricing, tier) === 'computed')
+    .length
 }
 /** El costo promedio con sus seis decimales, sin ceros de sobra. */
 export function exactCost(value: number): string {

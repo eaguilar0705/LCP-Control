@@ -42,24 +42,30 @@ const products = [
   perfume(4, { name: 'Cedro', brand: 'Aurora', size: 3.4, unit: 'oz' }),
   perfume(5, { name: 'Cedro', brand: 'Aurora', size: 1, unit: 'oz' }),
 ]
-// p1: costo promedio 100 con porcentajes; p2 y p5: costo sin porcentajes;
-// p3 y p4: sin costo todavía.
+// p1: compra de C$ 100 con porcentajes; p2 (US$ 20) y p5 (C$ 900): compra
+// sin porcentajes; p3 y p4: sin precio de compra todavía.
 const saved: ProductPricing[] = [
   {
     productId: 'p1',
-    averageCost: 100,
+    averageCost: 80,
+    purchasePrice: 100,
+    purchaseCurrency: 'NIO',
     markups: { emprendedor: 20, vip: 15, premium: 10 },
     updatedAt: null,
   },
   {
     productId: 'p2',
     averageCost: 16.281061,
+    purchasePrice: 20,
+    purchaseCurrency: 'USD',
     markups: { emprendedor: null, vip: null, premium: null },
     updatedAt: null,
   },
   {
     productId: 'p5',
-    averageCost: 900,
+    averageCost: null,
+    purchasePrice: 900,
+    purchaseCurrency: 'NIO',
     markups: { emprendedor: null, vip: null, premium: null },
     updatedAt: null,
   },
@@ -69,7 +75,7 @@ const plan = (rows: SheetRows) =>
 const HEADER = ['Código', '% Emprendedor', '% VIP', '% Premium']
 
 describe('encabezados', () => {
-  it('recognises the columns however they are written and marks the cost ones to ignore', () => {
+  it('recognises the columns however they are written, purchase price and currency included', () => {
     expect(
       [
         'Código',
@@ -108,10 +114,10 @@ describe('encabezados', () => {
       'size',
       'size',
       'ignored',
-      'ignored',
-      'ignored',
-      'ignored',
-      'ignored',
+      'purchase',
+      'purchase',
+      'purchase',
+      'currency',
       'emprendedor',
       'emprendedor',
       'vip',
@@ -142,13 +148,13 @@ describe('encabezados', () => {
         [5, 10],
       ]),
     ).toThrow(/Código/)
-    // Un archivo sólo con precios de compra ya no basta: no trae porcentajes.
-    expect(() =>
+    // Un archivo sólo con precios de compra sirve.
+    expect(
       plan([
         ['Código', 'Precio de compra'],
         ['LCP-0001', 500],
-      ]),
-    ).toThrow(/porcentajes/)
+      ]).changes[0].after.purchasePrice,
+    ).toBe(500)
   })
 
   it('reads currencies written in many ways', () => {
@@ -161,12 +167,12 @@ describe('encabezados', () => {
 })
 
 describe('filas', () => {
-  it('computes the new prices from the average cost, keeping what the row leaves empty', () => {
+  it('computes the new prices from the purchase price, keeping what the row leaves empty', () => {
     const result = plan([
       HEADER,
       // Sólo cambia el porcentaje VIP de un perfume que ya tenía.
       ['LCP-0001', null, 25, null],
-      // El caso del Excel: 25 % sobre 16.281061 → C$ 20.35.
+      // US$ 20 con 25 % → US$ 25.
       ['LCP-0002', '25%', 20, '10,5'],
     ])
     expect(result.problems).toEqual([])
@@ -174,28 +180,30 @@ describe('filas', () => {
     const [first, second] = result.changes
     expect(first.line).toBe(2)
     expect(first.after).toEqual({
+      purchasePrice: 100,
+      purchaseCurrency: 'NIO',
       markups: { emprendedor: 20, vip: 25, premium: 10 },
     })
     expect(first.prices.after.vip).toEqual({ NIO: 125, USD: 3.42 })
-    expect(second.averageCost).toBe(16.281061)
     expect(second.pendingTiers).toEqual([])
     expect(second.prices.after).toEqual({
-      emprendedor: { NIO: 20.35, USD: 0.56 },
-      vip: { NIO: 19.54, USD: 0.53 },
-      premium: { NIO: 17.99, USD: 0.49 },
+      emprendedor: { USD: 25, NIO: 915 },
+      vip: { USD: 24, NIO: 878.4 },
+      premium: { USD: 22.1, NIO: 808.86 },
     })
-    expect(second.largeChanges).toEqual(['emprendedor', 'vip', 'premium'])
+    // Más de un 30 % de diferencia se marca para revisarla.
+    expect(second.largeChanges).toEqual(['premium'])
   })
 
-  it('keeps the published price of a perfume without cost and marks its lists pending', () => {
+  it('keeps the published price of a perfume without purchase price and marks its lists pending', () => {
     const [change] = plan([HEADER, ['LCP-0003', 30, null, null]]).changes
-    expect(change.averageCost).toBeNull()
+    expect(change.after.purchasePrice).toBeNull()
     expect(change.pendingTiers).toEqual(['emprendedor'])
     expect(change.prices.after).toEqual(change.prices.before)
     expect(change.largeChanges).toEqual([])
   })
 
-  it('ignores cost columns, even with values, and says so', () => {
+  it('loads the purchase price and its currency, and ignores the informative cost', () => {
     const result = plan([
       [
         'Código',
@@ -204,17 +212,21 @@ describe('filas', () => {
         'Moneda',
         '% Emprendedor',
       ],
-      ['LCP-0002', 999, 'diez', 'EUR', 50],
+      ['LCP-0003', 999, '500', 'C$', 50],
+      ['LCP-0004', 999, 'diez', 'EUR', 50],
     ])
-    expect(result.problems).toEqual([])
     expect(result.ignoredColumns).toEqual([
       'Costo promedio C$ (informativo, no se importa)',
-      'Precio de compra',
-      'Moneda',
     ])
     const [change] = result.changes
-    expect(change.averageCost).toBe(16.281061)
-    expect(change.prices.after.emprendedor.NIO).toBe(24.42)
+    expect(change.after).toMatchObject({
+      purchasePrice: 500,
+      purchaseCurrency: 'NIO',
+    })
+    expect(change.prices.after.emprendedor.NIO).toBe(750)
+    expect(result.problems.map((problem) => problem.reason)).toEqual([
+      'El precio de compra «diez» no es un número. La moneda «EUR» no se reconoce. Usa C$ o US$.',
+    ])
   })
 
   it('matches by code, manufacturer barcode or brand and name (with size when needed)', () => {
@@ -288,12 +300,12 @@ describe('filas', () => {
     const expensive = planPricingImport({
       rows: [HEADER, ['LCP-0005', 1000]],
       products,
-      pricing: [{ ...saved[2], averageCost: 1_000_000 }],
+      pricing: [{ ...saved[2], purchasePrice: 1_000_000 }],
       rate: 36.6,
     })
     expect(expensive.changes).toEqual([])
     expect(expensive.problems.map((problem) => problem.reason)).toEqual([
-      'El precio de venta de Emprendedor saldría demasiado alto. Revisa el porcentaje.',
+      'El precio de venta de Emprendedor saldría demasiado alto. Revisa el precio de compra y el porcentaje.',
     ])
   })
 
@@ -310,7 +322,7 @@ describe('filas', () => {
 })
 
 describe('plantilla', () => {
-  it('downloads the catalogue with the cost as information and loads back without changes', async () => {
+  it('downloads the catalogue with the purchase price and loads back without changes', async () => {
     const sheet = pricingTemplate(
       [...products, perfume(6, { active: false })],
       saved,
@@ -321,7 +333,8 @@ describe('plantilla', () => {
       'Marca',
       'Perfume',
       'Tamaño',
-      'Costo promedio C$ (informativo, no se importa)',
+      'Precio de compra',
+      'Moneda de compra',
       '% Emprendedor',
       '% VIP',
       '% Premium',
@@ -333,27 +346,26 @@ describe('plantilla', () => {
       'Perfume 1',
       '100 ml',
       100,
+      'C$',
       20,
       15,
       10,
     ])
-    expect(sheet.rows.find((row) => row[0] === 'LCP-0002')?.[4]).toBe(16.281061)
+    expect(
+      sheet.rows.find((row) => row[0] === 'LCP-0002')?.slice(4, 6),
+    ).toEqual([20, 'US$'])
     const rows = await readSpreadsheet(buildWorkbook([sheet]))
     const result = plan(rows)
     expect(result.problems).toEqual([])
     expect(result.changes).toEqual([])
     expect(result.unchanged).toBe(5)
-    expect(result.ignoredColumns).toEqual([
-      'Costo promedio C$ (informativo, no se importa)',
-    ])
-    // Llenar la plantilla y volverla a cargar da los cambios; cambiar el
-    // costo en el archivo no cambia nada.
+    expect(result.ignoredColumns).toEqual([])
+    // Llenar la plantilla y volverla a cargar da los cambios.
     const edited = rows.map((row) =>
-      row[0] === 'LCP-0002' ? [...row.slice(0, 4), 1, 25, 40, 30] : row,
+      row[0] === 'LCP-0002' ? [...row.slice(0, 4), 30, 'US$', 25, 40, 30] : row,
     )
     const [change] = plan(edited).changes
     expect(change.product.id).toBe('p2')
-    expect(change.averageCost).toBe(16.281061)
-    expect(change.prices.after.emprendedor).toEqual({ NIO: 20.35, USD: 0.56 })
+    expect(change.prices.after.emprendedor).toEqual({ USD: 37.5, NIO: 1372.5 })
   })
 })

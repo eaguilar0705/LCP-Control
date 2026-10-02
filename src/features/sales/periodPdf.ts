@@ -1,6 +1,7 @@
 import type { jsPDF } from 'jspdf'
 import {
   documentCopy,
+  bankTransferLabels,
   type Currency,
   type DocumentKind,
   type DocumentRecord,
@@ -69,6 +70,9 @@ const PAYMENTS: { key: PaymentKey; label: string; short: string }[] = [
     short: 'Transferencia',
   },
   { key: 'pending', label: 'Pendiente de pago', short: 'Pendiente' },
+  ...Object.entries(bankTransferLabels).map(([key, label]) => ({
+    key: key as PaymentKey, label, short: label,
+  })),
 ]
 
 function round(value: number) {
@@ -396,7 +400,7 @@ export async function layoutPeriodPdf(
     )
     if (kind === 'invoice')
       text(
-        'Documento de control administrativo. No es comprobante fiscal.',
+        'Resumen de facturas del período seleccionado.',
         LEFT,
         FOOTER_Y + 22,
         6.5,

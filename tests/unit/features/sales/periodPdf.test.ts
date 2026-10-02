@@ -4,7 +4,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { layoutPeriodPdf, periodTotals } from '@/features/sales/periodPdf'
 import { layoutDocumentPdf } from '@/features/sales/pdfLayout'
 import { exampleDocument } from '@/features/sales/example'
-import type { DocumentRecord } from '@/lib/domain'
+import { bankTransferLabels, type DocumentRecord, type PaymentMethod } from '@/lib/domain'
+import { paymentBreakdown } from '@/features/reports/model'
 
 const logo = new Uint8Array(readFileSync('public/brand/wordmark-wine.jpeg'))
 const range = { from: '2026-09-01', to: '2026-09-30' }
@@ -26,6 +27,29 @@ function content(pdf: { internal: unknown }) {
 }
 
 describe('totales del periodo', () => {
+  it('desglosa las seis cuentas sin mezclar la moneda de la factura', async () => {
+    const methods = Object.keys(bankTransferLabels) as PaymentMethod[]
+    const documents = invoices(12, 1).map((document, index) => ({
+      ...document,
+      paymentMethod: methods[index % 6],
+      currency: index < 6 ? 'NIO' as const : 'USD' as const,
+      total: index < 6 ? 100 : 10,
+      exchangeRate: 36.62,
+    }))
+    expect(periodTotals(documents).byPayment.map((row) => row.totals))
+      .toEqual(methods.map(() => ({ NIO: 100, USD: 10 })))
+    for (const currency of ['NIO', 'USD'] as const) {
+      const breakdown = paymentBreakdown(documents, currency)
+      for (const method of methods) {
+        expect(breakdown.find((row) => row.key === method)?.value)
+          .toBe(currency === 'NIO' ? 100 : 10)
+      }
+    }
+    const pdf = await layoutPeriodPdf('invoice', range, documents, logo)
+    for (const label of Object.values(bankTransferLabels))
+      expect(content(pdf)).toContain(label)
+    expect(pdf.getNumberOfPages()).toBe(13)
+  })
   const base = invoices(4)
   const documents: DocumentRecord[] = [
     { ...base[0], currency: 'NIO', total: 1000, paymentMethod: 'cash' },

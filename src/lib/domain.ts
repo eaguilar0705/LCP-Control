@@ -30,13 +30,10 @@ export interface PriceChange {
    * salió del costo: a mano o pendiente de costo.
    */
   averageCost?: number | null
-  /**
-   * Precio de compra del modelo anterior (hasta el 27-09-2026), sólo en los
-   * registros viejos que se calcularon con él.
-   */
+  /** Precio de compra sobre el que se calculó el precio de la lista. */
   purchasePrice?: number | null
   purchaseCurrency?: Currency | null
-  /** El sistema lo cambió solo al cambiar el costo promedio. */
+  /** El sistema lo cambió solo (registros del 27-09 al 02-10-2026). */
   automatic?: boolean
   /** Por qué cambió el costo: una compra, el costo inicial, una factura eliminada… */
   cause?: PriceChangeCause | null
@@ -46,20 +43,23 @@ export interface PriceChange {
 export type PriceChangeCause =
   'purchase' | 'opening_cost' | 'invoice_deleted' | 'migration' | 'cost'
 /**
- * Cuánto se le gana a cada lista sobre el costo promedio del inventario. Una
- * lista con porcentaje se calcula sola en cuanto el perfume tiene costo; una
- * sin porcentaje conserva su precio a mano. Sólo lo leen los dueños.
+ * Precio de compra del perfume y cuánto se le gana en cada lista sobre él. Una
+ * lista con porcentaje se calcula sola en cuanto hay precio de compra; una sin
+ * porcentaje conserva su precio a mano. Sólo lo leen los dueños.
  */
 export interface PricingInput {
-  /** Porcentaje de ganancia sobre el costo promedio, por lista. */
+  /** Lo que el dueño pagó por cada unidad; `null` mientras no se escriba. */
+  purchasePrice: number | null
+  purchaseCurrency: Currency
+  /** Porcentaje de ganancia sobre el precio de compra, por lista. */
   markups: Record<PriceTier, number | null>
 }
 export interface ProductPricing extends PricingInput {
   productId: string
   /**
    * Costo promedio vigente en córdobas (seis decimales), el de la contabilidad
-   * del inventario. `null` mientras no se conozca. Es de sólo lectura: cambia
-   * con las compras y el costo inicial, nunca desde la pantalla de precios.
+   * del inventario. `null` mientras no se conozca. No interviene en el precio
+   * de venta: sirve para el margen y el inventario valorado.
    */
   averageCost: number | null
   updatedAt: string | null
@@ -73,7 +73,26 @@ export interface PricingList {
   available: boolean
   rows: ProductPricing[]
 }
-export type PaymentMethod = 'cash' | 'card_pos' | 'bank_transfer'
+export const bankTransferLabels = {
+  bac_nio: 'Bac C$',
+  bac_usd: 'Bac $',
+  lafise_nio: 'LAFISE C$',
+  lafise_usd: 'LAFISE $',
+  ficohsa_nio: 'Ficohsa C$',
+  ficohsa_usd: 'Ficohsa $',
+} as const
+export const paymentMethods = [
+  'cash',
+  'card_pos',
+  'bank_transfer',
+  'bac_nio',
+  'bac_usd',
+  'lafise_nio',
+  'lafise_usd',
+  'ficohsa_nio',
+  'ficohsa_usd',
+] as const
+export type PaymentMethod = (typeof paymentMethods)[number]
 export interface Product {
   revision?: number
   imagePath?: string | null
@@ -106,6 +125,11 @@ export interface BusinessSettings {
   name: string
   address: string
   phone: string
+  legalName?: string
+  taxId?: string
+  email?: string
+  branch?: string
+  billingDetails?: string
 }
 /**
  * Tasa propuesta, no histórica: cada factura, compra y gasto guarda la suya al
@@ -211,6 +235,7 @@ export const labels = {
     cash: 'Efectivo',
     card_pos: 'POS / Tarjeta',
     bank_transfer: 'Transferencia bancaria',
+    ...bankTransferLabels,
   },
   documentKind: { invoice: 'Factura', proforma: 'Proforma' },
 }
@@ -243,7 +268,7 @@ export const documentCopy: Record<
     prefix: 'FAC-',
     subtitle: 'Cobra y descuenta del inventario.',
     notice:
-      'Al emitirla se descuentan las existencias y se registra el impuesto incluido según la tasa indicada. Es un documento de control administrativo, no un comprobante fiscal.',
+      'Revisa los productos, los datos del cliente y la forma de pago antes de emitir la factura.',
   },
   proforma: {
     title: 'Proformas',

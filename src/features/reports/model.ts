@@ -7,6 +7,7 @@ import type {
   PriceTier,
 } from '../../lib/domain'
 import { productPrice } from '../../lib/pricing'
+import { bankTransferLabels } from '../../lib/domain'
 import { totalStock } from '../inventory/model'
 import type { AccountingSource } from './accounting'
 
@@ -260,6 +261,7 @@ export const paymentLabels: Record<string, string> = {
   cash: 'Efectivo',
   card_pos: 'POS / Tarjeta',
   bank_transfer: 'Transferencia',
+  ...bankTransferLabels,
   pending: 'Pendiente de pago',
 }
 export interface Share {

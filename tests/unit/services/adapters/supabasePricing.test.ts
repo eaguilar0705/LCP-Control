@@ -47,6 +47,8 @@ import { supabaseAdapter } from '@/services/adapters/supabase'
 
 const markups = (index: number) => ({
   product_id: `p${index}`,
+  purchase_price: index === 0 ? '20.00' : null,
+  purchase_currency: 'USD',
   markup_emprendedor: '20.00',
   markup_vip: null,
   markup_premium: '10.50',
@@ -88,6 +90,8 @@ describe('porcentajes y costo promedio en Supabase', () => {
     expect(result.rows[0]).toEqual({
       productId: 'p0',
       averageCost: 16.281061,
+      purchasePrice: 20,
+      purchaseCurrency: 'USD',
       markups: { emprendedor: 20, vip: null, premium: 10.5 },
       updatedAt: '2026-09-26T18:00:00Z',
     })
@@ -98,12 +102,15 @@ describe('porcentajes y costo promedio en Supabase', () => {
     ).toEqual({
       productId: 'sin-porcentajes',
       averageCost: 100,
+      purchasePrice: null,
+      purchaseCurrency: 'USD',
       markups: { emprendedor: null, vip: null, premium: null },
       updatedAt: null,
     })
     expect(result.rows.some((row) => row.productId === 'sin-costo')).toBe(false)
-    // Ya no se pide el precio de compra.
-    expect(state.selections.join(' ')).not.toMatch(/purchase/)
+    expect(state.selections.join(' ')).toMatch(
+      /purchase_price,purchase_currency/,
+    )
   })
 
   it('asks only for one perfume when the editor opens it', async () => {
@@ -138,7 +145,11 @@ describe('porcentajes y costo promedio en Supabase', () => {
       {
         productId: 'p1',
         revision: 3,
-        pricing: { markups: { emprendedor: 20, vip: 15, premium: 10 } },
+        pricing: {
+          purchasePrice: 20,
+          purchaseCurrency: 'USD' as const,
+          markups: { emprendedor: 20, vip: 15, premium: 10 },
+        },
       },
     ]
     rpc.mockResolvedValueOnce({ data: 1, error: null })

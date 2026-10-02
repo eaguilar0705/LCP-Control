@@ -17,9 +17,18 @@ import {
 import type { PricingInput } from '@/lib/domain'
 import { nioFromUsd, pricingInputSchema } from '@/features/products/product'
 
+// Un perfume comprado en US$ 20 con 25 % en Emprendedor y 20 % en VIP.
 const excel: PricingInput = {
+  purchasePrice: 20,
+  purchaseCurrency: 'USD',
   markups: { emprendedor: 25, vip: 20, premium: null },
 }
+const cordobas: PricingInput = {
+  ...excel,
+  purchasePrice: 500,
+  purchaseCurrency: 'NIO',
+}
+const noPurchase: PricingInput = { ...excel, purchasePrice: null }
 // Formulas.xlsx: 13 unidades a 15.675 («15,675» guardado como texto en
 // Hoja 1!F10) y entran 20 a 16.675.
 const EXCEL_EXISTING = Number('15,675'.replace(',', '.'))
@@ -76,15 +85,25 @@ describe('costo promedio ponderado', () => {
   })
 })
 
-describe('costo promedio más porcentaje', () => {
+describe('precio de compra más porcentaje', () => {
   it('breaks a computed list into cost, percentage, profit and price', () => {
-    expect(tierQuote(excel, EXCEL_AVERAGE, 'emprendedor', 36.6)).toEqual({
+    expect(tierQuote(excel, 'emprendedor', 36.6)).toEqual({
       tier: 'emprendedor',
-      cost: 16.281061,
+      currency: 'USD',
+      cost: 20,
       percent: 25,
-      profit: 4.07,
-      price: 20.35,
-      prices: { NIO: 20.35, USD: 0.56 },
+      profit: 5,
+      price: 25,
+      prices: { USD: 25, NIO: 915 },
+    })
+    expect(tierQuote(cordobas, 'vip', 36.6)).toEqual({
+      tier: 'vip',
+      currency: 'NIO',
+      cost: 500,
+      percent: 20,
+      profit: 100,
+      price: 600,
+      prices: { NIO: 600, USD: 16.39 },
     })
     expect(markupPrice(500, 20)).toBe(600)
   })
@@ -120,15 +139,15 @@ describe('costo promedio más porcentaje', () => {
     expect(subtractPrices(575, 500)).toBe(75)
   })
 
-  it('computes a list only with a percentage and a known cost; otherwise it is pending or manual', () => {
-    expect(tierStatus(excel, 16.28, 'emprendedor')).toBe('computed')
-    expect(tierStatus(excel, null, 'emprendedor')).toBe('pending')
-    expect(tierStatus(excel, 16.28, 'premium')).toBe('manual')
-    expect(tierStatus(null, 16.28, 'vip')).toBe('manual')
-    expect(tierQuote(excel, 16.28, 'premium', 36.6)).toBeNull()
-    expect(tierQuote(excel, null, 'emprendedor', 36.6)).toBeNull()
-    expect(computedTiers(excel, 16.28)).toBe(2)
-    expect(computedTiers(excel, null)).toBe(0)
+  it('computes a list only with a percentage and a purchase price; otherwise it is pending or manual', () => {
+    expect(tierStatus(excel, 'emprendedor')).toBe('computed')
+    expect(tierStatus(noPurchase, 'emprendedor')).toBe('pending')
+    expect(tierStatus(excel, 'premium')).toBe('manual')
+    expect(tierStatus(null, 'vip')).toBe('manual')
+    expect(tierQuote(excel, 'premium', 36.6)).toBeNull()
+    expect(tierQuote(noPurchase, 'emprendedor', 36.6)).toBeNull()
+    expect(computedTiers(excel)).toBe(2)
+    expect(computedTiers(noPurchase)).toBe(0)
   })
 
   it('replaces only the computed lists and keeps manual and pending ones', () => {
@@ -137,24 +156,22 @@ describe('costo promedio más porcentaje', () => {
       vip: { USD: 34, NIO: 1244.4 },
       premium: { USD: 32, NIO: 1171.2 },
     }
-    expect(applyPricing(prices, excel, EXCEL_AVERAGE, 36.6)).toEqual({
-      emprendedor: { NIO: 20.35, USD: 0.56 },
-      vip: { NIO: 19.54, USD: 0.53 },
+    expect(applyPricing(prices, excel, 36.6)).toEqual({
+      emprendedor: { USD: 25, NIO: 915 },
+      vip: { USD: 24, NIO: 878.4 },
       premium: { USD: 32, NIO: 1171.2 },
     })
-    // Sin tasa el córdoba se conoce y el dólar no.
-    expect(
-      applyPricing(prices, excel, EXCEL_AVERAGE, null).emprendedor,
-    ).toEqual({
-      NIO: 20.35,
-      USD: Number.NaN,
+    // Sin tasa se conoce el precio en la moneda de la compra y no el otro.
+    expect(applyPricing(prices, excel, null).emprendedor).toEqual({
+      USD: 25,
+      NIO: Number.NaN,
     })
-    // Sin costo nada se inventa: quedan los precios publicados.
-    expect(applyPricing(prices, excel, null, 36.6)).toEqual(prices)
-    // Otra tasa mueve el dólar; el córdoba sale del costo y no cambia.
-    expect(applyPricing(prices, excel, EXCEL_AVERAGE, 37).emprendedor).toEqual({
-      NIO: 20.35,
-      USD: 0.55,
+    // Sin precio de compra nada se inventa: quedan los precios publicados.
+    expect(applyPricing(prices, noPurchase, 36.6)).toEqual(prices)
+    // Otra tasa mueve la otra moneda; la de la compra no cambia.
+    expect(applyPricing(prices, cordobas, 37).emprendedor).toEqual({
+      NIO: 625,
+      USD: 16.89,
     })
     expect(prices.emprendedor.NIO).toBe(1281)
   })
@@ -163,30 +180,46 @@ describe('costo promedio más porcentaje', () => {
     expect(samePricing(emptyPricing(), emptyPricing())).toBe(true)
     expect(samePricing(excel, structuredClone(excel))).toBe(true)
     expect(
-      samePricing(excel, { markups: { ...excel.markups, premium: 0 } }),
+      samePricing(excel, {
+        ...excel,
+        markups: { ...excel.markups, premium: 0 },
+      }),
     ).toBe(false)
+    expect(samePricing(excel, { ...excel, purchasePrice: 21 })).toBe(false)
+    expect(samePricing(excel, { ...excel, purchaseCurrency: 'NIO' })).toBe(
+      false,
+    )
+    // Sin precio de compra la moneda no cuenta como cambio.
+    expect(
+      samePricing(noPurchase, { ...noPurchase, purchaseCurrency: 'NIO' }),
+    ).toBe(true)
   })
 
-  it('validates percentages with messages for the form and never sends a cost', () => {
+  it('validates the purchase price and percentages with messages for the form', () => {
     expect(pricingInputSchema.safeParse(excel).success).toBe(true)
     expect(pricingInputSchema.safeParse(emptyPricing()).success).toBe(true)
-    // Un precio de compra que llegue de otra parte no viaja a la base.
-    expect(pricingInputSchema.parse({ ...excel, purchasePrice: 500 })).toEqual(
+    expect(pricingInputSchema.parse({ ...excel, averageCost: 5 })).toEqual(
       excel,
     )
     const messages = (value: unknown) =>
       pricingInputSchema.safeParse(value).error?.issues.map((i) => i.message)
-    expect(messages({ markups: { ...excel.markups, vip: 1000.5 } })).toEqual([
-      'Usa un porcentaje de hasta 1000.',
+    expect(
+      messages({ ...excel, markups: { ...excel.markups, vip: 1000.5 } }),
+    ).toEqual(['Usa un porcentaje de hasta 1000.'])
+    expect(
+      messages({ ...excel, markups: { ...excel.markups, vip: -1 } }),
+    ).toEqual(['El porcentaje no puede ser negativo.'])
+    expect(
+      messages({ ...excel, markups: { ...excel.markups, vip: 12.345 } }),
+    ).toEqual(['Usa hasta dos decimales.'])
+    expect(
+      messages({ ...excel, markups: { ...excel.markups, vip: Number.NaN } }),
+    ).toEqual(['Escribe el porcentaje o deja el campo vacío.'])
+    expect(messages({ ...excel, purchasePrice: 0 })).toEqual([
+      'El precio de compra debe ser mayor que cero.',
     ])
-    expect(messages({ markups: { ...excel.markups, vip: -1 } })).toEqual([
-      'El porcentaje no puede ser negativo.',
-    ])
-    expect(messages({ markups: { ...excel.markups, vip: 12.345 } })).toEqual([
+    expect(messages({ ...excel, purchasePrice: 10.123 })).toEqual([
       'Usa hasta dos decimales.',
     ])
-    expect(
-      messages({ markups: { ...excel.markups, vip: Number.NaN } }),
-    ).toEqual(['Escribe el porcentaje o deja el campo vacío.'])
   })
 })
