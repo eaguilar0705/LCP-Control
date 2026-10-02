@@ -6,7 +6,6 @@ import { Link, useLocation } from 'react-router-dom'
 import {
   ArrowLeft,
   ArrowRight,
-  BadgePercent,
   Package,
   Plus,
   Pencil,
@@ -127,11 +126,6 @@ export function InventoryPage() {
         description="Fotos, precios y cantidades de Tienda y Bodega, en un solo lugar."
       >
         <div className="inventory-actions">
-          {(can(role, 'product.edit_cost') || demo) && (
-            <Link className="button button-secondary" to={`${base}/prices`}>
-              <BadgePercent size={18} /> Precios y ganancia
-            </Link>
-          )}
           {manage && (
             <Link className="button button-primary" to={`${base}/products/new`}>
               <Plus size={18} /> Nuevo perfume

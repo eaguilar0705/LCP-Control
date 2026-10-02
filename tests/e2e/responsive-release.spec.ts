@@ -24,7 +24,6 @@ test('release screens fit small phones and tablets', async ({ page }, info) => {
       '/demo/customers',
       '/demo/suppliers',
       '/demo/reports',
-      '/demo/prices',
       '/demo/account',
       '/demo/staff',
       '/demo/settings',

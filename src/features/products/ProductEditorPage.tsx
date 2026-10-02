@@ -204,9 +204,7 @@ function ProductForm({
   const invalid = Object.keys(fieldErrors).length
   const form = useRef<HTMLFormElement>(null)
   const [confirmRemove, setConfirmRemove] = useState(false)
-  // Quien llega desde la pantalla Precios vuelve a ella al guardar.
-  const fromPricing = params.get('volver') === 'precios'
-  const back = fromPricing ? `${base}/prices` : `${base}/inventory`
+  const back = `${base}/inventory`
   useEffect(() => {
     return () => {
       if (preview.startsWith('blob:')) URL.revokeObjectURL(preview)
@@ -308,7 +306,7 @@ function ProductForm({
           </p>
         </div>
         <Link className="button button-secondary" to={back}>
-          {fromPricing ? 'Volver a precios' : 'Volver al inventario'}
+          Volver al inventario
         </Link>
       </div>
       {demo && (

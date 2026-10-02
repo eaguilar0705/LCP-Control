@@ -20,8 +20,6 @@ const PRIVATE = [
   "/products/'%20or%201=1--/edit",
   '/products/new?barcode=%3Cscript%3Ealert(1)%3C%2Fscript%3E',
   '/products/new?barcode=' + '9'.repeat(500),
-  '/prices?apartado=%3Cimg%20src=x%3E',
-  '/prices?apartado=costo&volver=precios',
   '/sales/history?desde=ayer&hasta=2026-99-99',
   '/sales/history?periodo=%00',
   '/inventory?q=%E0%A4%A',

@@ -20,8 +20,6 @@ const ROUTES = [
   '/sales/history',
   '/proformas',
   '/proformas/history',
-  '/prices',
-  '/prices?apartado=costo',
   '/customers',
   '/suppliers',
   '/staff',
