@@ -482,52 +482,10 @@ function ProductForm({
                   onClick={() => setCostOpen(true)}
                 >
                   <Coins size={18} />
-<<<<<<< HEAD
                   Costo de inventario
                 </Button>
               )}
             </div>
-=======
-                  {averageCost === null ? 'Agregar costo' : 'Registrar compra'}
-                </Button>
-              )}
-            </div>
-            {product && unsaved && (
-              <p className="muted">
-                Guarda los cambios del perfume antes de registrar su costo.
-              </p>
-            )}
-            {!product && (
-              <p className="muted">
-                Después de guardar el perfume podrás agregar su costo de compra
-                aquí.
-              </p>
-            )}
-            {value.pricing ? (
-              <p className="muted">
-                Escribe el porcentaje de ganancia sobre el costo de cada lista:
-                el precio de venta sale del costo promedio del inventario y se
-                actualiza solo con cada compra. Una lista sin porcentaje (o
-                mientras el perfume no tenga costo) conserva su precio en
-                dólares, que se fija a mano. El costo y los porcentajes sólo los
-                ven Administración y SuperAdmin.
-              </p>
-            ) : (
-              <>
-                <p className="muted">
-                  El precio se fija en dólares. El de córdobas sale de la tasa
-                  vigente
-                  {rate === null ? '' : ` de ${rate} C$ por dólar`} y se
-                  recalcula solo cuando el dueño cambia la tasa en Negocio.
-                </p>
-                <p className="muted pricing-unavailable">
-                  Para calcular precios desde el costo promedio y un porcentaje
-                  de ganancia falta aplicar la actualización de precios en la
-                  base de datos.
-                </p>
-              </>
-            )}
->>>>>>> 85881a23e92f04d83123169ad57854d0f366e907
             {rate === null && (
               <p className="inline-error" role="alert">
                 Falta el tipo de cambio. Regístralo en Negocio.
@@ -541,10 +499,6 @@ function ProductForm({
             {value.pricing ? (
               <PricingFields
                 pricing={value.pricing}
-<<<<<<< HEAD
-=======
-                averageCost={averageCost}
->>>>>>> 85881a23e92f04d83123169ad57854d0f366e907
                 onChange={changePricing}
                 rate={rate}
                 prices={shownPrices}
