@@ -400,7 +400,7 @@ export async function layoutPeriodPdf(
     )
     if (kind === 'invoice')
       text(
-        'Documento de control administrativo. No es comprobante fiscal.',
+        'Resumen de facturas del período seleccionado.',
         LEFT,
         FOOTER_Y + 22,
         6.5,

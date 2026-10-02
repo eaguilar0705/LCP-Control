@@ -118,6 +118,11 @@ export interface BusinessSettings {
   name: string
   address: string
   phone: string
+  legalName?: string
+  taxId?: string
+  email?: string
+  branch?: string
+  billingDetails?: string
 }
 /**
  * Tasa propuesta, no histórica: cada factura, compra y gasto guarda la suya al
@@ -256,7 +261,7 @@ export const documentCopy: Record<
     prefix: 'FAC-',
     subtitle: 'Cobra y descuenta del inventario.',
     notice:
-      'Al emitirla se descuentan las existencias y se registra el impuesto incluido según la tasa indicada. Es un documento de control administrativo, no un comprobante fiscal.',
+      'Revisa los productos, los datos del cliente y la forma de pago antes de emitir la factura.',
   },
   proforma: {
     title: 'Proformas',

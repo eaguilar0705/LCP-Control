@@ -1,5 +1,6 @@
 import { supabase } from '../../lib/supabase'
 import { AppError } from '../../lib/errors'
+import { businessFromRow } from '../../lib/business'
 import type {
   BusinessSettings,
   Category,
@@ -355,7 +356,7 @@ function toDocument(row: DocumentRow): DocumentRecord {
     customerName: row.customer_name,
     customerPhone: row.customer_phone,
     customerTaxId: row.customer_tax_id ?? '',
-    issuer: row.issuer,
+    issuer: businessFromRow(row.issuer),
     tier: row.tier_code,
     currency: row.currency,
     total: amount(row.total),
@@ -580,7 +581,7 @@ export const supabaseAdapter: DataProvider = {
   async getBusiness() {
     const { data, error } = await client()
       .from('business_settings')
-      .select('name,address,phone')
+      .select('name,address,phone,legal_name,tax_id,email,branch,billing_details')
       .limit(1)
       .maybeSingle()
     if (error) fail(error)
@@ -589,7 +590,7 @@ export const supabaseAdapter: DataProvider = {
         'configuration',
         'Falta configurar los datos del negocio en la base de datos.',
       )
-    return data as BusinessSettings
+    return businessFromRow(data as BusinessSettings)
   },
   // Sin la migración de la tasa, la pantalla sigue funcionando: se pide a mano
   // en cada documento, que es como se trabajaba antes.

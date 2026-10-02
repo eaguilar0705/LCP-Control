@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { AccessContext } from '@/app/AccessContext'
 import { BusinessPage } from '@/features/administration/AdministrationPage'
+import { rpc } from '@/services/workspace'
 
 const { saveExchangeRate, rate } = vi.hoisted(() => ({
   saveExchangeRate: vi.fn(),
@@ -24,6 +25,7 @@ const services = {
 vi.mock('@/services/useServices', () => ({ useServices: () => services }))
 vi.mock('@/services/workspace', () => ({ rpc: vi.fn() }))
 beforeEach(() => {
+  vi.mocked(rpc).mockReset().mockResolvedValue(undefined)
   saveExchangeRate.mockReset().mockResolvedValue(undefined)
   HTMLDialogElement.prototype.showModal = function () {
     this.setAttribute('open', '')
@@ -31,6 +33,23 @@ beforeEach(() => {
   HTMLDialogElement.prototype.close = function () {
     this.removeAttribute('open')
   }
+})
+
+it('guarda la identidad completa que usarán las facturas', async () => {
+  const user = await mount()
+  await user.type(screen.getByLabelText('Razón social / Nombre del titular'), 'Perfumes del Centro')
+  await user.type(screen.getByLabelText('RUC del negocio'), 'J0310000000001')
+  await user.type(screen.getByLabelText('Sucursal'), 'Managua')
+  await user.type(screen.getByLabelText('Correo del negocio'), 'tienda@example.test')
+  await user.type(screen.getByLabelText('Datos adicionales de facturación'), 'Serie A')
+  await user.click(screen.getByRole('button', { name: /^Guardar$/ }))
+  await waitFor(() => expect(rpc).toHaveBeenCalledWith('save_business_profile', {
+    p_payload: {
+      name: 'La Casa del Perfume', legalName: 'Perfumes del Centro', taxId: 'J0310000000001',
+      address: 'Managua', phone: '5555 0100', email: 'tienda@example.test', branch: 'Managua', billingDetails: 'Serie A',
+    },
+  }))
+  expect(await screen.findByText('Datos del negocio guardados.')).toBeInTheDocument()
 })
 async function mount() {
   render(

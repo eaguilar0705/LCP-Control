@@ -155,6 +155,33 @@ try {
     await assert.rejects(rpc('create_document', invoice({ paymentMethod: 'unknown_bank' })), /forma de pago/)
     assert.equal(await stock(), before)
   })
+  const business = { name: 'Tienda', legalName: 'Titular de la tienda', taxId: 'J0310000000001', address: 'Managua', phone: '55550100', email: 'tienda@example.test', branch: 'Centro', billingDetails: 'Serie A' }
+  await check('business identity is saved and frozen in invoices and proformas', async () => {
+    await identity(admin)
+    await rpc('save_business_profile', business)
+    const issued = await rpc('create_document', invoice({ items: [{ productId: product, quantity: 1 }] }))
+    const quote = await rpc('create_document', invoice({ kind: 'proforma', validUntil: '2099-01-01', paymentMethod: null, location: null }))
+    assert.equal(issued.issuer.tax_id, business.taxId)
+    assert.equal(quote.issuer.legal_name, business.legalName)
+    assert.equal(issued.issuer.billing_details, 'Serie A')
+    await rpc('save_business_profile', { ...business, taxId: 'J0310000000002' })
+    const stored = (await asOwner('select issuer from public.documents where id=$1', [issued.id]))[0].issuer
+    assert.equal(stored.tax_id, business.taxId)
+    assert.equal(stored.email, business.email)
+    assert.equal(stored.branch, business.branch)
+  })
+  await check('business settings reject invalid input and unauthorized roles', async () => {
+    await identity(admin)
+    await assert.rejects(rpc('save_business_profile', { ...business, taxId: '' }), /Completa/)
+    await assert.rejects(rpc('save_business_profile', { ...business, email: 'incorrecto' }), /correo/)
+    await assert.rejects(rpc('save_business_profile', { ...business, billingDetails: 'x'.repeat(241) }), /Completa/)
+    await identity(operator)
+    await assert.rejects(rpc('save_business_profile', business), /insufficient_privilege|permission denied/)
+    await identity(warehouse)
+    await assert.rejects(rpc('save_business_profile', business), /insufficient_privilege|permission denied/)
+    await identity('', 'anon')
+    await assert.rejects(rpc('save_business_profile', business), /permission denied/)
+  })
   console.log(`${checks} invoice checks passed`)
 } finally {
   await db.close()

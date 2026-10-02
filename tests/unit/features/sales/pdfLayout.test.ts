@@ -5,8 +5,22 @@ import { layoutDocumentPdf, planPdfRows } from '@/features/sales/pdfLayout'
 import { exampleDocument } from '@/features/sales/example'
 import { printDensity } from '@/features/sales/printDensity'
 import { returnPolicy } from '@/lib/domain'
+import { businessIdentityLines, businessFromRow } from '@/lib/business'
 
 const logo = new Uint8Array(readFileSync('public/brand/wordmark-wine.jpeg'))
+
+it.each(['invoice', 'proforma'] as const)('conserva los datos completos del emisor en el PDF de %s', (kind) => {
+  const document = exampleDocument(kind, 40)
+  document.previewKind = undefined
+  document.issuer = businessFromRow({ name: 'La Casa del Perfume', legal_name: 'Perfumes del Centro', tax_id: 'J0310000000001', address: 'Direccion completa del negocio', phone: '55550100', email: 'tienda@example.test', branch: 'Centro', billing_details: 'Serie A' })
+  const pdf = layoutDocumentPdf(document, logo)
+  const pages = (pdf.internal as unknown as { pages: string[][] }).pages.flat().join('\n')
+  const words = [...pages.matchAll(/\(((?:\\.|[^\\)])*)\) Tj/g)].map(match => match[1].replace(/\\([\\()])/g, '$1')).join(' ')
+  for (const line of businessIdentityLines(document.issuer)) expect(words).toContain(line)
+  expect(words).not.toContain('comprobante fiscal')
+  expect(words).not.toContain('Ejemplo de diseño')
+  expect(pdf.getNumberOfPages()).toBe(1)
+})
 
 describe('PDF comprimido de facturas y proformas', () => {
   it.each([

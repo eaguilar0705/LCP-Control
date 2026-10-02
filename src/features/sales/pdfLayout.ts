@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf'
+import { businessIdentityLines } from '../../lib/business'
 import {
   documentCopy,
   labels,
@@ -161,21 +162,10 @@ export function layoutDocumentPdf(
   function header(continued: boolean) {
     pdf.setFillColor(...accent).rect(left, 22, width, 3, 'F')
     pdf.addImage(logo, 'JPEG', left, 31, 118, 53.8, LOGO_ALIAS)
-    const address = wrap(
-      d.issuer.address || 'Dirección: ______________________________',
-      220,
-      8,
-    ).slice(0, 2)
-    text(address, left + 130, 52, 8, false, 'left', MUTED)
-    text(
-      `${d.issuer.phone ? `Tel. ${d.issuer.phone}` : 'Teléfono: ______________'} · RUC: ______________`,
-      left + 130,
-      52 + address.length * 9.2,
-      8,
-      false,
-      'left',
-      MUTED,
+    const identity = businessIdentityLines(d.issuer).flatMap((line) =>
+      wrap(line, 222, 8),
     )
+    text(identity, left + 130, 37, 8, false, 'left', MUTED)
     pdf.setFillColor(246, 241, 234).roundedRect(392, 31, 190, 56, 3, 3, 'F')
     pdf.setFillColor(...accent).rect(392, 31, 2.5, 56, 'F')
     text(documentCopy[d.kind].stamp, 572, 49, 16, true, 'right', accent)
@@ -196,7 +186,7 @@ export function layoutDocumentPdf(
       accent,
     )
     text(`Fecha: ${formatDate(d.createdAt)}`, 572, 83, 8, false, 'right')
-    return 95
+    return Math.max(95, 37 + (identity.length - 1) * 9.2 + 12)
   }
 
   function client(y: number) {
@@ -407,7 +397,7 @@ export function layoutDocumentPdf(
   }
   const lastPage = pdf.getNumberOfPages()
   const pageCount = lastPage - firstPage + 1
-  const notice = `${d.previewKind === 'example' ? 'Ejemplo de diseño; no registra una venta. ' : d.previewKind === 'draft' ? 'Borrador sin emitir. ' : ''}${d.kind === 'invoice' ? 'Documento de control administrativo. No es comprobante fiscal. Desglose según la tasa de impuesto registrada.' : 'Cotización sujeta a disponibilidad. No constituye factura ni comprobante de pago.'}`
+  const notice = `${d.previewKind === 'example' ? 'Ejemplo de diseño; no registra una venta. ' : d.previewKind === 'draft' ? 'Borrador sin emitir. ' : ''}${d.kind === 'invoice' ? '' : 'Cotización sujeta a disponibilidad. No constituye factura ni comprobante de pago.'}`
   for (let page = firstPage; page <= lastPage; page++) {
     pdf.setPage(page)
     pdf
