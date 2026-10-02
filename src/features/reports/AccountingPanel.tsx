@@ -1,6 +1,6 @@
 import { ProductSelect } from '../../components/ProductSelect'
 import { useMemo, useState, type FormEvent, type ReactNode } from 'react'
-import { ArrowDownToLine, BadgeDollarSign, Coins, Plus, ReceiptText, Wallet } from 'lucide-react'
+import { Coins, Plus } from 'lucide-react'
 import { Badge, Button, Card, Dialog, EmptyState, Input, Select } from '../../components/ui'
 import { useAccess } from '../../app/AccessContext'
 import { useServices } from '../../services/useServices'
@@ -14,6 +14,7 @@ import { priceTierLabels } from '../../lib/pricing'
 import { totalStock } from '../inventory/model'
 import { accountOf, accountingByMonth, accountingSummary, belowCostSummary, catalogMargins, categoriesOf, emptyAccounting, expenseAccountOrder, expenseAccounts, expenseLabel, inventoryTurnover, operatingLines, roundMoney, type ExpenseAccount, type ExpenseCategory, type ExpenseInput, type OpeningCostInput } from './accounting'
 import { localDay, type ReportRange } from './model'
+import { closeOf, dailyClose, dailyTotals, incomeStatement, shareOfRevenue, type DailyClose } from './statement'
 import type { ReportData } from './digest'
 import '../../styles/accounting.css'
 
@@ -27,7 +28,7 @@ const roundCost = (value: number) => Math.round((value + Number.EPSILON) * 1e6) 
 const percent = new Intl.NumberFormat('es-NI', { style: 'percent', maximumFractionDigits: 1 })
 const ratio = new Intl.NumberFormat('es-NI', { maximumFractionDigits: 2 })
 const monthName = new Intl.DateTimeFormat('es-NI', { month: 'long', year: 'numeric', timeZone: 'UTC' })
-const tabs = { summary: 'Resumen', expenses: 'Gastos' } as const
+const tabs = { summary: 'Estado de resultados', daily: 'Cierre diario', expenses: 'Gastos' } as const
 type Section = keyof typeof tabs
 type Action = { kind: 'opening' | 'expense'; productId?: string } | { kind: 'void'; expenseId: string }
 const inPeriod = (day: string, range: ReportRange) => day >= range.from && day <= range.to
@@ -43,6 +44,8 @@ export function AccountingPanel({ source, range, onRecorded }: { source: ReportD
   const losses = useMemo(() => belowCostSummary(source, range), [source, range])
   const margins = useMemo(() => catalogMargins(source), [source])
   const months = useMemo(() => accountingByMonth(source, range), [source, range])
+  const statement = useMemo(() => incomeStatement(summary), [summary])
+  const daily = useMemo(() => dailyClose(source, range), [source, range])
   const [section, setSection] = useState<Section>('summary')
   const [action, setAction] = useState<Action | null>(null)
   const [message, setMessage] = useState('')
@@ -63,14 +66,17 @@ export function AccountingPanel({ source, range, onRecorded }: { source: ReportD
     <nav className="accounting-tabs" aria-label="Secciones contables">{Object.entries(tabs).map(([id, label]) => <button key={id} type="button" aria-pressed={section === id} aria-controls="accounting-content" onClick={() => setSection(id as Section)}>{label}</button>)}</nav>
     <div id="accounting-content">
       {section === 'summary' && <>
-        <div className="accounting-metrics">
-          <Metric label="Ventas netas registradas" amount={value(summary.revenueNio)} note={ledger.available ? `Facturas sin el impuesto incluido (${money(summary.salesTaxNio)} de impuesto)` : 'Facturas sin el impuesto incluido'} icon={<BadgeDollarSign size={19} />} />
-          <Metric label="Costo de lo vendido" amount={value(summary.costOfSalesNio)} note={summary.missingCostUnits ? `${summary.missingCostUnits} unidades pendientes de costo` : 'Costo guardado al emitir cada venta'} icon={<ArrowDownToLine size={19} />} />
-          <Metric label="Margen bruto" amount={value(summary.grossProfitNio)} note="Ventas netas menos costo vendido" />
-          <Metric label="Gastos del negocio" amount={value(summary.expensesNio)} note={summary.loanPaymentsNio > 0 ? `Ventas, impuestos e intereses · ${money(summary.loanPaymentsNio)} de préstamos aparte` : 'Gastos de ventas, impuestos y gastos financieros'} icon={<ReceiptText size={19} />} />
-          <Metric label="Mermas y otras salidas" amount={value(summary.inventoryWriteOffNio)} note="Costo de daños, salidas y ajustes negativos" />
-          <Metric label="Resultado operativo registrado" amount={value(summary.netProfitNio)} note="Margen menos gastos, mermas y salidas" icon={<Wallet size={19} />} highlight />
-        </div>
+        <Card className="accounting-card"><div className="statement-heading"><h3>Estado de resultados</h3><p>Del {formatDate(range.from)} al {formatDate(range.to)} · Cifras en córdobas</p></div>
+          <div className="accounting-table-scroll" tabIndex={0} role="region" aria-label="Estado de resultados"><table className="statement-table"><caption className="sr-only">Estado de resultados</caption>
+            <thead><tr><th scope="col">Concepto</th><th scope="col" className="num">Importe</th><th scope="col" className="num">% de ventas</th></tr></thead>
+            <tbody>{statement.map((row) => {
+              const share = shareOfRevenue(row.amount, summary.revenueNio)
+              return row.kind === 'heading'
+                ? <tr key={row.key} className="statement-group"><th scope="rowgroup" colSpan={3}>{row.label}</th></tr>
+                : <tr key={row.key} className={`statement-${row.kind}`}><th scope="row">{row.label}</th><td className="num">{row.negative && ledger.available && row.amount !== null ? `(${value(row.amount)})` : value(row.amount)}</td><td className="num">{row.kind === 'info' || share === null || !ledger.available ? '' : percent.format(share)}</td></tr>
+            })}</tbody>
+          </table></div>
+        </Card>
         <div className="accounting-two-columns">
           <Card className="accounting-card"><h3>Lo que costó traer la mercadería</h3><dl className="accounting-breakdown"><Line label="Precio de los perfumes" amount={value(summary.purchaseGoodsNio)} /><Line label="Envío cobrado por peso" amount={value(summary.purchaseShippingNio)} /><Line label="Total invertido en pedidos" amount={value(summary.purchasesNio)} /><Line label="Unidades recibidas" amount={String(summary.purchasedUnits)} /><Line label="Envío por unidad" amount={summary.purchasedUnits ? money(roundMoney(summary.purchaseShippingNio / summary.purchasedUnits)) : '—'} /></dl><p className="accounting-note">La agencia cobra el peso del paquete y nada más. Ese cobro se reparte por igual entre las unidades del pedido, así que el costo de cada perfume es su precio de compra más lo que pesó traerlo.</p></Card>
           <Card className="accounting-card"><h3>Capital en productos</h3><dl className="accounting-breakdown"><Line label="Inventario actual a costo conocido" amount={value(summary.inventoryCostNio)} /><Line label="Pedidos recibidos en el período" amount={value(summary.purchasesNio)} /><Line label="Productos sin valoración completa" amount={String(summary.unvaluedProducts)} /><Line label="Rotación anual del inventario" amount={turnover.turnoverPerYear === null ? 'Pendiente' : `${ratio.format(turnover.turnoverPerYear)} veces`} /><Line label="Días que dura el inventario" amount={turnover.daysOnHand === null ? 'Pendiente' : `${ratio.format(turnover.daysOnHand)} días`} /></dl><p className="accounting-note">El inventario muestra las existencias actuales. La rotación proyecta a un año el costo vendido del período y queda pendiente mientras haya productos sin costo.</p></Card>
@@ -107,6 +113,7 @@ export function AccountingPanel({ source, range, onRecorded }: { source: ReportD
         </Card>
         <p className="accounting-note">Control administrativo basado en operaciones registradas. El resultado incluye ventas pendientes de pago; no representa saldo de caja ni balance general.</p>
       </>}
+      {section === 'daily' && <DailyClosePanel rows={daily} range={range} />}
       {section === 'expenses' && <Card className="accounting-card"><div className="section-heading"><div><h3>Gastos del negocio</h3><p className="accounting-note">Las cinco cuentas en las que el negocio lleva sus gastos. Cada renglón conserva su comprobante y se anula, nunca se borra.</p></div><Button disabled={!writable} onClick={() => setAction({ kind: 'expense' })}><Plus size={17} />Registrar gasto</Button></div>
         {expenseAccountOrder.map((account) => {
           const total = summary.expenseByAccount.find((row) => row.account === account)
@@ -130,9 +137,6 @@ export function AccountingPanel({ source, range, onRecorded }: { source: ReportD
   </section>
 }
 
-function Metric({ label, amount, note, icon, highlight = false }: { label: string; amount: string; note: string; icon?: ReactNode; highlight?: boolean }) {
-  return <div className={`accounting-metric ${highlight ? 'accounting-metric-highlight' : ''}`}><span>{label}{icon}</span><strong>{amount}</strong><small>{note}</small></div>
-}
 function Line({ label, amount }: { label: string; amount: string }) { return <div><dt>{label}</dt><dd>{amount}</dd></div> }
 /** `numeric` son los índices de columna que llevan cifras: encabezado y celdas
  *  se alinean a la derecha para que los dígitos queden uno debajo del otro. */
@@ -145,6 +149,38 @@ function Line({ label, amount }: { label: string; amount: string }) { return <di
 function LedgerTable({ label, headings, numeric = [], columns, children }: { label: string; headings: string[]; numeric?: number[]; columns?: string[]; children: ReactNode }) { return <div className="accounting-table-scroll" tabIndex={0} role="region" aria-label={label}><table className={columns ? 'accounting-table accounting-table-aligned' : 'accounting-table'}><caption className="sr-only">{label}</caption>{columns && <colgroup>{columns.map((width, index) => <col key={index} style={{ width }} />)}</colgroup>}<thead><tr>{headings.map((heading, index) => <th scope="col" className={numeric.includes(index) ? 'num' : undefined} key={index}>{heading || <span className="sr-only">Acciones</span>}</th>)}</tr></thead><tbody>{children}</tbody></table></div> }
 /** Las seis columnas de las cuentas tecleadas, iguales en las cuatro tablas. */
 const expenseColumns = ['21%', '25%', '15%', '14%', '13%', '12%']
+
+/** El día elegido arriba y, debajo, cada día del período con movimiento. */
+function DailyClosePanel({ rows, range }: { rows: DailyClose[]; range: ReportRange }) {
+  const today = localDay(new Date())
+  const [day, setDay] = useState(today >= range.from && today <= range.to ? today : range.to)
+  // Si el período cambia y deja fuera el día elegido, se muestra su último día.
+  const shown = day >= range.from && day <= range.to ? day : range.to
+  const close = closeOf(rows, shown)
+  const totals = dailyTotals(rows)
+  const cells = (row: Omit<DailyClose, 'day'>) => <><td className="num">{row.invoices}</td><td className="num">{money(row.sales.NIO)}</td><td className="num">{formatCurrency(row.sales.USD, 'USD')}</td><td className="num">{money(row.purchasesNio)}</td><td className="num">{money(row.expensesNio)}</td></>
+  return <>
+    <Card className="accounting-card"><div className="section-heading"><div className="statement-heading"><h3>Cierre del día</h3><p>{formatDate(shown)}</p></div><Input label="Día" type="date" min={range.from} max={range.to} value={shown} onChange={(event) => { if (event.target.value) setDay(event.target.value) }} /></div>
+      <div className="accounting-table-scroll" tabIndex={0} role="region" aria-label="Cierre del día"><table className="statement-table"><caption className="sr-only">Cierre del día</caption>
+        <thead><tr><th scope="col">Concepto</th><th scope="col" className="num">Importe</th></tr></thead>
+        <tbody>
+          <tr className="statement-line"><th scope="row">Facturas emitidas</th><td className="num">{close.invoices}</td></tr>
+          <tr className="statement-line"><th scope="row">Ventas en córdobas</th><td className="num">{money(close.sales.NIO)}</td></tr>
+          <tr className="statement-line"><th scope="row">Ventas en dólares</th><td className="num">{formatCurrency(close.sales.USD, 'USD')}</td></tr>
+          <tr className="statement-line"><th scope="row">Compras de mercadería</th><td className="num">{money(close.purchasesNio)}</td></tr>
+          <tr className="statement-line"><th scope="row">Gastos</th><td className="num">{money(close.expensesNio)}</td></tr>
+        </tbody>
+      </table></div>
+    </Card>
+    <Card className="accounting-card"><div className="statement-heading"><h3>Desempeño por día</h3><p>Del {formatDate(range.from)} al {formatDate(range.to)}</p></div>
+      {rows.length ? <div className="accounting-table-scroll" tabIndex={0} role="region" aria-label="Desempeño por día"><table className="statement-table statement-daily"><caption className="sr-only">Desempeño por día</caption>
+        <thead><tr><th scope="col">Día</th><th scope="col" className="num">Facturas</th><th scope="col" className="num">Ventas C$</th><th scope="col" className="num">Ventas US$</th><th scope="col" className="num">Compras</th><th scope="col" className="num">Gastos</th></tr></thead>
+        <tbody>{rows.map((row) => <tr key={row.day} className="statement-line" aria-current={row.day === shown ? 'true' : undefined}><th scope="row"><button type="button" className="statement-day" onClick={() => setDay(row.day)}>{formatDate(row.day)}</button></th>{cells(row)}</tr>)}</tbody>
+        <tfoot><tr className="statement-total"><th scope="row">Total del período</th>{cells(totals)}</tr></tfoot>
+      </table></div> : <EmptyState title="Sin movimiento en este período" />}
+    </Card>
+  </>
+}
 
 function AccountingAction({ action, source, writable, defaultRate, onClose, onRecorded }: { action: Action; source: ReportData; writable: boolean; defaultRate: number | null; onClose: () => void; onRecorded: (message: string) => void }) {
   const { accountingService } = useServices()

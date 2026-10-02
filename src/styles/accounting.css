@@ -78,6 +78,24 @@
 .accounting-account header strong { font-size: 17px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .accounting-account .accounting-table-scroll { margin-top: 12px; }
 .accounting-account .accounting-note { margin-bottom: 0; }
+/* Estado de resultados y cierre diario: una tabla contable, con subtotales
+   subrayados y el resultado final a doble raya. */
+.statement-heading h3 { margin: 0; }
+.statement-heading p { margin: 4px 0 14px; color: var(--muted); font-size: 12px; }
+.statement-table { width: 100%; max-width: 760px; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.statement-table.statement-daily { max-width: none; }
+.statement-table thead th { padding: 10px 12px; color: var(--muted); background: #faf7f3; font-size: 11px; text-align: left; text-transform: uppercase; letter-spacing: .4px; white-space: nowrap; border-bottom: 1px solid var(--line); }
+.statement-table tbody th, .statement-table tbody td, .statement-table tfoot th, .statement-table tfoot td { padding: 10px 12px; text-align: left; font-weight: 400; white-space: nowrap; }
+.statement-table th.num, .statement-table td.num { text-align: right; }
+.statement-line th, .statement-info th { padding-left: 28px; }
+.statement-daily .statement-line th { padding-left: 12px; }
+.statement-daily tbody tr { border-bottom: 1px solid var(--line); }
+.statement-daily tbody tr[aria-current='true'] { background: #f7f1ea; }
+.statement-group th { padding-top: 18px; color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
+.statement-table .statement-subtotal th, .statement-table .statement-subtotal td { font-weight: 600; border-top: 1px solid var(--ink); }
+.statement-table .statement-total th, .statement-table .statement-total td { font-weight: 700; color: var(--wine); border-top: 1px solid var(--ink); border-bottom: 3px double var(--ink); }
+.statement-info th, .statement-info td { color: var(--muted); }
+.statement-day { padding: 0; border: 0; background: none; color: var(--wine); font: inherit; font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 @media (max-width: 1000px) { .accounting-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .accounting-two-columns, .accounting-wide-left { grid-template-columns: 1fr; gap: 0; } }
 @media (max-width: 600px) { .accounting-heading { flex-direction: column; padding: 20px; gap: 8px; } .accounting-badges { flex-direction: row; flex-wrap: wrap; align-items: flex-start; } .accounting-heading h2 { font-size: 23px; } .accounting-tabs { padding: 6px; } .accounting-tabs button { padding: 11px 13px; font-size: 12px; } .accounting-metrics { gap: 10px; } .accounting-metric { padding: 16px; gap: 10px; } .accounting-metric > span { font-size: 12px; } .accounting-metric > span svg { display: none; } .accounting-metric strong { font-size: 21px; letter-spacing: -.7px; } .accounting-metric small { font-size: 11px; } .accounting-card { padding: 18px; } .accounting-callout { padding: 14px; } .accounting-form .form-grid { grid-template-columns: 1fr; } }
 @media print { .accounting-tabs, .accounting-card .button { display: none; } .accounting-table-scroll { overflow: visible; } .accounting-metric-highlight { background: #fff; color: var(--ink); } .accounting-metric-highlight > span, .accounting-metric-highlight small { color: var(--muted); } }
