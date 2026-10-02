@@ -107,14 +107,13 @@ Las pruebas unitarias importan el código con el alias `@/`, que apunta a `src/`
 npm run check
 npm run test:db
 npm run test:e2e
-npm run test:flows
 npm run test:scripts
 npm run test:credentials
 npm run test:audit
 npm run test:coverage
 ```
 
-`check` ejecuta lint, pruebas unitarias/integración y compilación. `test:db` ejecuta las suites de catálogo y contabilidad en PostgreSQL desechable, incluidas las migraciones de precios en dólares. Playwright utiliza Chrome instalado y prueba escritorio y móvil con un servidor propio en el puerto 5174 y credenciales vacías. El puerto debe estar libre. Las pruebas de interfaz no realizan operaciones contra la base real. `test:flows` recorre la pantalla Precios en Chrome contra PostgreSQL desechable (PGlite con todas las migraciones) detrás de una API de Supabase simulada, en el puerto 5177: validaciones, datos guardados, carga de CSV, cambio de tasa, teclado, teléfono y permisos de Ventas. `test:credentials` arranca su propio servidor (puerto 5176) contra un Supabase simulado y revisa el almacenamiento del navegador y el perfil escrito en disco. `test:audit` (auditoría del 29-09-2026, unos 4 minutos) mete datos de prueba en PostgreSQL desechable con la cuenta de cada rol, los borra y comprueba que la base quede idéntica; repite lo mismo por las pantallas, prueba 47 formularios con datos errados y 24 direcciones dañadas. `test:audit:buttons` pulsa cada botón de cada pantalla (unos 30 minutos por tamaño de pantalla; `VIEWPORTS=mobile` para el teléfono) y `test:audit:inputs` escribe datos errados campo por campo en todos los formularios (más de una hora). `test:coverage` mide la cobertura de las pruebas unitarias en `output/coverage`.
+`check` ejecuta lint, pruebas unitarias/integración y compilación. `test:db` ejecuta las suites de catálogo y contabilidad en PostgreSQL desechable, incluidas las migraciones de precios en dólares. Playwright utiliza Chrome instalado y prueba escritorio y móvil con un servidor propio en el puerto 5174 y credenciales vacías. El puerto debe estar libre. Las pruebas de interfaz no realizan operaciones contra la base real. `test:credentials` arranca su propio servidor (puerto 5176) contra un Supabase simulado y revisa el almacenamiento del navegador y el perfil escrito en disco. `test:audit` (auditoría del 29-09-2026, unos 4 minutos) mete datos de prueba en PostgreSQL desechable con la cuenta de cada rol, los borra y comprueba que la base quede idéntica; repite lo mismo por las pantallas, prueba 47 formularios con datos errados y 24 direcciones dañadas. `test:audit:buttons` pulsa cada botón de cada pantalla (unos 30 minutos por tamaño de pantalla; `VIEWPORTS=mobile` para el teléfono) y `test:audit:inputs` escribe datos errados campo por campo en todos los formularios (más de una hora). `test:coverage` mide la cobertura de las pruebas unitarias en `output/coverage`.
 
 Para limpiar salidas generadas, detener antes las pruebas y el servidor de preview:
 

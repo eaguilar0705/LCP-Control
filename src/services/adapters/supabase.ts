@@ -247,7 +247,14 @@ function client() {
 export function toAppError(
   error: { message?: string; code?: string } | null,
 ): AppError {
-  const message = error?.message?.trim()
+  // La base todavía nombra la pantalla Precios, que ya no existe: el costo se
+  // registra desde la ficha del perfume.
+  const message = error?.message
+    ?.trim()
+    .replace(
+      'Precios → Costo de inventario',
+      'Editar perfume → Costo de inventario',
+    )
   const readable = message && message.length <= 300 ? message : null
   if (error?.code === 'PGRST301' || error?.code === '42501')
     return new AppError(

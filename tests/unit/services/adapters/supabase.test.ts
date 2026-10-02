@@ -38,4 +38,13 @@ describe('errores de Supabase hacia la pantalla', () => {
         .message,
     ).toBe('Existencias insuficientes.')
   })
+  it('lleva a la ficha del perfume los avisos que nombraban la pantalla Precios', () => {
+    expect(
+      toAppError({
+        code: 'P0001',
+        message:
+          '«Oud» ya tiene costo promedio. Registra esta mercadería como compra con su costo (Precios → Costo de inventario → Registrar compra) para que el promedio y los precios se actualicen.',
+      }).message,
+    ).toContain('(Editar perfume → Costo de inventario → Registrar compra)')
+  })
 })

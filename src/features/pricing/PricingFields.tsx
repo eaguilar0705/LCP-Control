@@ -20,12 +20,11 @@ const statusLabels: Record<TierStatus, string> = {
 /**
  * El precio de compra del perfume y el porcentaje de ganancia de cada lista,
  * con el desglose a la vista: porcentaje, ganancia y precio de venta. Se usa en
- * la ficha del perfume y en la pantalla Precios.
+ * la ficha del perfume.
  *
  * precio de venta = precio de compra × (1 + % ÷ 100), en la moneda de la
  * compra; la otra moneda sale de la tasa. Una lista sin porcentaje conserva su
- * precio a mano: en la ficha del perfume se escribe en dólares (`manual`); en
- * la pantalla Precios sólo se enseña.
+ * precio a mano, que se escribe en dólares (`manual`).
  */
 export function PricingFields({
   pricing,
