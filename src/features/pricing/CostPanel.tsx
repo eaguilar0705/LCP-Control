@@ -359,7 +359,7 @@ const round6 = (value: number) => Math.round(value * 1e6) / 1e6
  * envío del pedido. Mientras se escribe se ve, por renglón, el promedio que va
  * a quedar y el precio de cada lista calculada.
  */
-function PurchaseDialog({
+export function PurchaseDialog({
   inventory,
   pricing,
   catalogRate,
@@ -742,7 +742,7 @@ function CostOutcome({
  * El costo de las unidades que ya estaban contadas cuando se empezó a llevar
  * el costo. Sólo para perfumes con existencias y sin costo promedio.
  */
-function OpeningCostDialog({
+export function OpeningCostDialog({
   item,
   pricing,
   catalogRate,

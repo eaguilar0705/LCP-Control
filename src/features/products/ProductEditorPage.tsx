@@ -1,4 +1,5 @@
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, Coins } from 'lucide-react'
+import { ProductCostDialog } from './ProductCostDialog'
 import { ScanButton } from '../scanner/ScanButton'
 import { ProductStockEditor } from './ProductStockEditor'
 import { can } from '../../lib/permissions'
@@ -79,6 +80,7 @@ function ProductNotFound() {
 }
 function ProductLoader() {
   const { id } = useParams()
+  const [costMessage, setCostMessage] = useState('')
   const { productService, settingsService } = useServices()
   // Los porcentajes, el costo promedio y la tasa llegan junto con el perfume:
   // el formulario arranca con todo lo que necesita para calcular, y nada se
@@ -105,14 +107,25 @@ function ProductLoader() {
   if (id && !product) return <ProductNotFound />
   const saved = data?.pricing?.rows.find((row) => row.productId === id)
   return (
-    <ProductForm
-      key={`${id ?? 'new'}:${product?.revision}`}
-      product={product}
-      brands={[...new Set(data?.products.map((p) => p.brand))]}
-      pricing={data?.pricing?.available ? pricingInput(saved) : null}
-      averageCost={data?.cost ?? null}
-      rate={data?.rate ?? null}
-    />
+    <>
+      {costMessage && (
+        <p role="status" className="workspace-feedback">
+          {costMessage}
+        </p>
+      )}
+      <ProductForm
+        key={`${id ?? 'new'}:${product?.revision}`}
+        product={product}
+        brands={[...new Set(data?.products.map((p) => p.brand))]}
+        pricing={data?.pricing?.available ? pricingInput(saved) : null}
+        averageCost={data?.cost ?? null}
+        rate={data?.rate ?? null}
+        onCostRecorded={(message) => {
+          setCostMessage(message)
+          retry()
+        }}
+      />
+    </>
   )
 }
 function ProductForm({
@@ -121,6 +134,7 @@ function ProductForm({
   pricing,
   averageCost,
   rate,
+  onCostRecorded,
 }: {
   product?: Product
   brands: string[]
@@ -136,8 +150,9 @@ function ProductForm({
    * un precio, así que el formulario lo dice y no deja guardar a ciegas.
    */
   rate: number | null
+  onCostRecorded: (message: string) => void
 }) {
-  const { base, demo } = useAccess()
+  const { base, demo, role } = useAccess()
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const { productService } = useServices()
@@ -147,6 +162,8 @@ function ProductForm({
       product?.manufacturerBarcode ?? params.get('barcode') ?? '',
     ...(pricing ? { pricing } : {}),
   }))
+  const [initialValue] = useState(() => JSON.stringify(value))
+  const [costOpen, setCostOpen] = useState(false)
   // Lo que se ve y lo que se guarda: las listas con porcentaje ya calculadas.
   const shownPrices = applyPricing(
     value.prices,
@@ -180,6 +197,7 @@ function ProductForm({
     })
   }
   const [file, setFile] = useState<Blob | null>(null)
+  const unsaved = file !== null || JSON.stringify(value) !== initialValue
   const [preview, setPreview] = useState(product?.imageUrl ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -465,7 +483,31 @@ function ProductForm({
             </div>
           </Card>
           <Card className="form-card product-prices" id="precios">
-            <h2>Listas de precios</h2>
+            <div className="section-heading">
+              <h2>Listas de precios</h2>
+              {product && (demo || can(role, 'product.edit_cost')) && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={busy || demo || unsaved || !product.active}
+                  onClick={() => setCostOpen(true)}
+                >
+                  <Coins size={18} />
+                  {averageCost === null ? 'Agregar costo' : 'Registrar compra'}
+                </Button>
+              )}
+            </div>
+            {product && unsaved && (
+              <p className="muted">
+                Guarda los cambios del perfume antes de registrar su costo.
+              </p>
+            )}
+            {!product && (
+              <p className="muted">
+                Después de guardar el perfume podrás agregar su costo de compra
+                aquí.
+              </p>
+            )}
             {value.pricing ? (
               <p className="muted">
                 Escribe el porcentaje de ganancia sobre el costo de cada lista:
@@ -507,16 +549,6 @@ function ProductForm({
               <PricingFields
                 pricing={value.pricing}
                 averageCost={averageCost}
-                costHelp={
-                  product && (
-                    <Link
-                      className="text-link"
-                      to={`${base}/prices?apartado=costo`}
-                    >
-                      Registrar el costo en Precios → Costo de inventario
-                    </Link>
-                  )
-                }
                 onChange={changePricing}
                 rate={rate}
                 prices={shownPrices}
@@ -645,9 +677,21 @@ function ProductForm({
           )}
         </div>
       </form>
+      {costOpen && product && (
+        <ProductCostDialog
+          productId={product.id}
+          onClose={() => setCostOpen(false)}
+          onRecorded={(message) => {
+            setCostOpen(false)
+            onCostRecorded(message)
+          }}
+        />
+      )}
       {product && <PriceHistory productId={product.id} />}
       {product ? (
-        <ProductStockEditor product={product} disabled={busy} />
+        <section id="cantidades-perfume" tabIndex={-1}>
+          <ProductStockEditor product={product} disabled={busy} />
+        </section>
       ) : (
         <p className="page-feedback">
           Guarda el perfume para registrar sus cantidades en Tienda y Bodega.

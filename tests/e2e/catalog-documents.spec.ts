@@ -8,6 +8,9 @@ test('product editor exposes all fields and photo replacement without real write
   await page.getByLabel('Buscar producto').fill('Cedro 01')
   await page.getByRole('link', { name: 'Editar', exact: true }).click()
   await expect(page.getByLabel('Nombre del perfume')).toHaveValue('Cedro 01')
+  await expect(
+    page.getByRole('button', { name: /^(Agregar costo|Registrar compra)$/ }),
+  ).toBeDisabled()
   await page.getByLabel('Nombre del perfume').fill('Nombre revisado')
   await page.getByLabel('Categoría', { exact: true }).selectOption('niche')
   await page.getByLabel('Tamaño (vacío si falta confirmar)').fill('100')
