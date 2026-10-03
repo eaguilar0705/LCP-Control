@@ -550,3 +550,28 @@
 .finance-balances .accounting-metric strong {
   font-size: clamp(18px, 1.6vw, 24px);
 }
+.period-export {
+  display: flex;
+  align-items: flex-end;
+}
+.expense-weight {
+  display: inline-block;
+  width: 60px;
+  height: 6px;
+  margin-right: 8px;
+  vertical-align: middle;
+  background: var(--line);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.expense-weight > span {
+  display: block;
+  height: 100%;
+  background: var(--wine);
+}
+.ratio-list dt small {
+  display: block;
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 12px;
+}

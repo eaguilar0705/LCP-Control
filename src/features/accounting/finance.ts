@@ -27,7 +27,10 @@ export const financeAccounts = {
 export type FinanceAccount = keyof typeof financeAccounts
 
 /** Cómo se pagó un pedido: con dinero del negocio o a crédito del proveedor. */
-export const shipmentPayments = { ...moneyAccounts, credito: 'Crédito del proveedor' } as const
+export const shipmentPayments = {
+  ...moneyAccounts,
+  credito: 'Crédito del proveedor',
+} as const
 export type ShipmentPayment = keyof typeof shipmentPayments
 
 export const financeKinds = {
@@ -84,7 +87,12 @@ export interface FinanceSource {
   /** Movimientos del contador hasta `at`, anulados incluidos. */
   entries: FinanceEntryRecord[]
   /** Gastos desde `startOn` hasta `at`, anulados incluidos. */
-  expenses: { amountNio: number; account: MoneyAccount; financing: boolean; voided: boolean }[]
+  expenses: {
+    amountNio: number
+    account: MoneyAccount
+    financing: boolean
+    voided: boolean
+  }[]
   /** Pedidos desde `startOn` hasta `at`. */
   shipments: { amountNio: number; account: ShipmentPayment }[]
   sales: SalesByPayment
@@ -108,13 +116,27 @@ export interface FinanceLedger {
   expenses: PaidExpense[]
 }
 
-export const emptySales: SalesByPayment = { caja: 0, banco: 0, cobrar: 0, missing: 0 }
+export const emptySales: SalesByPayment = {
+  caja: 0,
+  banco: 0,
+  cobrar: 0,
+  missing: 0,
+}
 export const emptyPosition: FinancePosition = {
-  started: false, startOn: null, cash: { caja: 0, banco: 0 },
-  receivablesNio: 0, loansNio: 0, payablesNio: 0, capitalNio: 0, missingSales: 0,
+  started: false,
+  startOn: null,
+  cash: { caja: 0, banco: 0 },
+  receivablesNio: 0,
+  loansNio: 0,
+  payablesNio: 0,
+  capitalNio: 0,
+  missingSales: 0,
 }
 export const emptyLedger: FinanceLedger = {
-  available: false, position: emptyPosition, entries: [], expenses: [],
+  available: false,
+  position: emptyPosition,
+  entries: [],
+  expenses: [],
 }
 
 export const toNio = (row: { amount: number; exchangeRate: number }) =>
@@ -131,21 +153,31 @@ export const reducesLoan = (expense: Pick<ExpenseRecord, 'category'>) => {
 export function financeStart(entries: FinanceEntryRecord[], at: string) {
   let start: string | null = null
   for (const row of entries)
-    if (row.kind === 'opening' && !row.voidedAt && row.occurredOn <= at && (!start || row.occurredOn < start))
+    if (
+      row.kind === 'opening' &&
+      !row.voidedAt &&
+      row.occurredOn <= at &&
+      (!start || row.occurredOn < start)
+    )
       start = row.occurredOn
   return start
 }
 
 export function financePosition(source: FinanceSource): FinancePosition {
   const { startOn, at } = source
-  if (!source.available || !startOn) return { ...emptyPosition, cash: { ...emptyPosition.cash } }
-  const cash: Record<MoneyAccount, number> = { caja: source.sales.caja, banco: source.sales.banco }
+  if (!source.available || !startOn)
+    return { ...emptyPosition, cash: { ...emptyPosition.cash } }
+  const cash: Record<MoneyAccount, number> = {
+    caja: source.sales.caja,
+    banco: source.sales.banco,
+  }
   let receivables = source.sales.cobrar
   let loans = 0
   let payables = 0
   let capital = 0
   for (const row of source.entries) {
-    if (row.voidedAt || row.occurredOn < startOn || row.occurredOn > at) continue
+    if (row.voidedAt || row.occurredOn < startOn || row.occurredOn > at)
+      continue
     const amount = toNio(row)
     const money = isMoneyAccount(row.account) ? row.account : null
     switch (row.kind) {
@@ -154,7 +186,10 @@ export function financePosition(source: FinanceSource): FinancePosition {
         else if (row.account === 'cobrar') receivables += amount
         else if (row.account === 'prestamos') loans += amount
         else payables += amount
-        capital += row.account === 'prestamos' || row.account === 'proveedores' ? -amount : amount
+        capital +=
+          row.account === 'prestamos' || row.account === 'proveedores'
+            ? -amount
+            : amount
         break
       case 'capital':
         if (money) cash[money] += amount
@@ -205,7 +240,8 @@ export function financePosition(source: FinanceSource): FinancePosition {
   }
 }
 
-const inRange = (day: string, range: ReportRange) => day >= range.from && day <= range.to
+const inRange = (day: string, range: ReportRange) =>
+  day >= range.from && day <= range.to
 /**
  * Arma lo que enseña la pestaña de movimientos a partir de filas ya leídas:
  * todos los movimientos del contador hasta el fin del período, los gastos y
@@ -215,13 +251,18 @@ export function financeLedger(
   rows: {
     entries: FinanceEntryRecord[]
     expenses: PaidExpense[]
-    shipments: { incurredOn: string; amountNio: number; account: ShipmentPayment }[]
+    shipments: {
+      incurredOn: string
+      amountNio: number
+      account: ShipmentPayment
+    }[]
     sales: SalesByPayment
   },
   range: ReportRange,
 ): FinanceLedger {
   const startOn = financeStart(rows.entries, range.to)
-  const sinceStart = (day: string) => !!startOn && day >= startOn && day <= range.to
+  const sinceStart = (day: string) =>
+    !!startOn && day >= startOn && day <= range.to
   const position = financePosition({
     available: true,
     startOn,
@@ -229,12 +270,20 @@ export function financeLedger(
     entries: rows.entries,
     expenses: rows.expenses
       .filter((row) => sinceStart(row.incurredOn))
-      .map((row) => ({ amountNio: toNio(row), account: row.account, financing: reducesLoan(row), voided: !!row.voidedAt })),
+      .map((row) => ({
+        amountNio: toNio(row),
+        account: row.account,
+        financing: reducesLoan(row),
+        voided: !!row.voidedAt,
+      })),
     shipments: rows.shipments.filter((row) => sinceStart(row.incurredOn)),
     sales: startOn ? rows.sales : emptySales,
   })
-  const byDate = <T extends { createdAt: string }>(a: T, b: T, day: (row: T) => string) =>
-    day(b).localeCompare(day(a)) || b.createdAt.localeCompare(a.createdAt)
+  const byDate = <T extends { createdAt: string }>(
+    a: T,
+    b: T,
+    day: (row: T) => string,
+  ) => day(b).localeCompare(day(a)) || b.createdAt.localeCompare(a.createdAt)
   return {
     available: true,
     position,

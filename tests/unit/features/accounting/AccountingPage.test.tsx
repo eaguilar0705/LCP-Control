@@ -86,6 +86,9 @@ beforeEach(() => {
   financeService.getLedger.mockImplementation((range: ReportRange) =>
     catalogAdapter.getFinance(range),
   )
+  reportService.getSource.mockImplementation(async (range: ReportRange) =>
+    digestFromSource(await catalogAdapter.getReportSource(range), range),
+  )
   financeService.recordEntry.mockReset()
   financeService.recordEntry.mockResolvedValue('nuevo')
 })
@@ -208,9 +211,6 @@ it('shows the margin over the average cost and the price history', async () => {
 })
 
 it('switches to the financial statements and between income statement and balance sheet', async () => {
-  reportService.getSource.mockImplementation(async (range: ReportRange) =>
-    digestFromSource(await catalogAdapter.getReportSource(range), range),
-  )
   renderPage()
   const user = userEvent.setup()
   await user.click(
@@ -259,4 +259,40 @@ it('shows cash and debt balances and records a transfer', async () => {
     ),
   )
   expect(await screen.findByText('Registrado: transferencia.')).toBeVisible()
+})
+
+it('weighs each expense account and category against the total and sales', async () => {
+  renderPage()
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: 'Gastos' }))
+  const accounts = await screen.findByRole('table', {
+    name: 'Gastos por cuenta',
+  })
+  expect(accounts).toHaveTextContent('Gastos de ventas')
+  expect(accounts).toHaveTextContent('% de ventas')
+  expect(
+    screen.getByRole('table', { name: 'Gasto ponderado por categoría' }),
+  ).toHaveTextContent('Renta')
+})
+
+it('lists the weighted average cost of each perfume', async () => {
+  renderPage()
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: 'Costos' }))
+  expect(
+    await screen.findByRole('table', {
+      name: 'Costo promedio ponderado por perfume',
+    }),
+  ).toHaveTextContent('Costo promedio')
+})
+
+it('shows the financial ratios', async () => {
+  renderPage()
+  const user = userEvent.setup()
+  await user.click(
+    await screen.findByRole('button', { name: 'Razones financieras' }),
+  )
+  expect(await screen.findByText('Razón corriente')).toBeVisible()
+  expect(screen.getByText('Margen neto')).toBeVisible()
+  expect(screen.getByText('Días de inventario')).toBeVisible()
 })

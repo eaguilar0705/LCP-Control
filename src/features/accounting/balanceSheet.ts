@@ -34,8 +34,18 @@ export function balanceSheet(
   const earlier = net === null ? null : roundMoney(equity - capital - net)
   return [
     { key: 'assets', label: 'Activos', amount: null, kind: 'heading' },
-    { key: 'cash', label: 'Caja', amount: known(position.cash.caja), kind: started ? 'line' : 'info' },
-    { key: 'bank', label: 'Banco', amount: known(position.cash.banco), kind: started ? 'line' : 'info' },
+    {
+      key: 'cash',
+      label: 'Caja',
+      amount: known(position.cash.caja),
+      kind: started ? 'line' : 'info',
+    },
+    {
+      key: 'bank',
+      label: 'Banco',
+      amount: known(position.cash.banco),
+      kind: started ? 'line' : 'info',
+    },
     {
       key: 'receivables',
       label: 'Cuentas por cobrar',
@@ -48,7 +58,12 @@ export function balanceSheet(
       amount: summary.inventoryCostNio,
       kind: 'line',
     },
-    { key: 'assetsTotal', label: 'Total activos', amount: assets, kind: 'subtotal' },
+    {
+      key: 'assetsTotal',
+      label: 'Total activos',
+      amount: assets,
+      kind: 'subtotal',
+    },
     { key: 'liabilities', label: 'Pasivos', amount: null, kind: 'heading' },
     {
       key: 'loans',
@@ -62,7 +77,12 @@ export function balanceSheet(
       amount: known(position.payablesNio),
       kind: started ? 'line' : 'info',
     },
-    { key: 'liabilitiesTotal', label: 'Total pasivos', amount: liabilities, kind: 'subtotal' },
+    {
+      key: 'liabilitiesTotal',
+      label: 'Total pasivos',
+      amount: liabilities,
+      kind: 'subtotal',
+    },
     { key: 'equity', label: 'Patrimonio', amount: null, kind: 'heading' },
     { key: 'capital', label: 'Capital', amount: capital, kind: 'line' },
     {
@@ -71,8 +91,18 @@ export function balanceSheet(
       amount: earlier,
       kind: 'line',
     },
-    { key: 'net', label: 'Utilidad neta del período', amount: net, kind: 'line' },
-    { key: 'equityTotal', label: 'Total patrimonio', amount: equity, kind: 'subtotal' },
+    {
+      key: 'net',
+      label: 'Utilidad neta del período',
+      amount: net,
+      kind: 'line',
+    },
+    {
+      key: 'equityTotal',
+      label: 'Total patrimonio',
+      amount: equity,
+      kind: 'subtotal',
+    },
     {
       key: 'total',
       label: 'Total pasivo y patrimonio',

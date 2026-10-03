@@ -1,4 +1,4 @@
-import { useCallback, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Plus } from 'lucide-react'
 import {
   Badge,
@@ -6,15 +6,11 @@ import {
   Card,
   Dialog,
   EmptyState,
-  ErrorState,
   Input,
-  LoadingState,
   Select,
 } from '../../components/ui'
-import { useAccess } from '../../app/AccessContext'
 import { useServices } from '../../services/useServices'
 import { useQuery } from '../../lib/useQuery'
-import { can } from '../../lib/permissions'
 import { errorMessage } from '../../lib/errors'
 import { formatCurrency, formatDate } from '../../lib/format'
 import { createIdempotentOperation } from '../../lib/idempotentOperation'
@@ -29,113 +25,44 @@ import {
   type ExpenseCategory,
   type ExpenseInput,
 } from '../reports/accounting'
-import {
-  localDay,
-  presetLabels,
-  presetRange,
-  type Preset,
-  type ReportRange,
-} from '../reports/model'
+import { localDay } from '../reports/model'
 import {
   financeAccounts,
   financeKindOrder,
   financeKinds,
   moneyAccountOrder,
   moneyAccounts,
-  reducesLoan,
-  toNio,
   type FinanceAccount,
   type FinanceEntryInput,
   type FinanceKind,
   type FinanceLedger,
   type MoneyAccount,
 } from './finance'
+import { rowsOf, useWritable, type Row } from './financeRows'
 
 const money = (amount: number) => formatCurrency(amount, 'NIO')
 const roundRate = (value: number) => Math.round(value * 1e6) / 1e6
-/** Una fila de la lista: un movimiento del contador o un gasto. */
-interface Row {
-  id: string
-  source: 'entry' | 'expense'
-  day: string
-  createdAt: string
-  type: string
-  detail: string
-  account: string
-  amountNio: number
-  /** Positivo si entra dinero o baja una deuda a favor; negativo si sale. */
-  sign: 1 | -1 | 0
-  voidReason: string | null
-}
 type Action = { kind: 'record' } | { kind: 'void'; row: Row }
-
-/** Si el movimiento suma o resta en la cuenta que se muestra en la fila. */
-const entrySign = (kind: FinanceKind): Row['sign'] =>
-  kind === 'withdrawal' || kind === 'supplier_payment'
-    ? -1
-    : kind === 'transfer'
-      ? 0
-      : 1
-
-function rowsOf(ledger: FinanceLedger): Row[] {
-  const entries = ledger.entries.map(
-    (entry): Row => ({
-      id: entry.id,
-      source: 'entry',
-      day: entry.occurredOn,
-      createdAt: entry.createdAt,
-      type: financeKinds[entry.kind],
-      detail: [entry.counterparty, entry.description].filter(Boolean).join(' · '),
-      account: entry.toAccount
-        ? `${financeAccounts[entry.account]} → ${moneyAccounts[entry.toAccount]}`
-        : financeAccounts[entry.account],
-      amountNio: toNio(entry),
-      sign: entrySign(entry.kind),
-      voidReason: entry.voidedAt ? (entry.voidReason ?? '') : null,
-    }),
-  )
-  const expenses = ledger.expenses.map(
-    (expense): Row => ({
-      id: expense.id,
-      source: 'expense',
-      day: expense.incurredOn,
-      createdAt: expense.createdAt,
-      type: reducesLoan(expense)
-        ? `Pago de préstamo · ${expenseLabel(expense.category)}`
-        : (expenseLabel(expense.category) ?? 'Gasto'),
-      detail: expense.description,
-      account: moneyAccounts[expense.account] ?? expense.account,
-      amountNio: toNio(expense),
-      sign: -1,
-      voidReason: expense.voidedAt ? (expense.voidReason ?? '') : null,
-    }),
-  )
-  return [...entries, ...expenses].sort(
-    (a, b) =>
-      b.day.localeCompare(a.day) || b.createdAt.localeCompare(a.createdAt),
-  )
-}
 
 /**
  * Movimientos: los saldos de caja, bancos y deudas al fin del período, y lo
  * que el contador registró en él. Las ventas, compras y gastos mueven los
  * saldos solos; aquí se teclea lo demás.
  */
-export function FinanceMovements() {
-  const { demo, role } = useAccess()
-  const { financeService } = useServices()
-  const [preset, setPreset] = useState<Preset>('30d')
-  const [range, setRange] = useState<ReportRange>(() => presetRange('30d'))
+export function FinanceMovements({
+  ledger: data,
+  at,
+  onChanged: retry,
+}: {
+  ledger: FinanceLedger
+  at: string
+  onChanged: () => void
+}) {
   const [action, setAction] = useState<Action | null>(null)
   const [message, setMessage] = useState('')
-  const load = useCallback(
-    () => financeService.getLedger(range),
-    [financeService, range],
-  )
-  const { data, loading, error, retry } = useQuery(load)
-  const writable = !demo && can(role, 'finance.read') && !!data?.available
-  const rows = data ? rowsOf(data) : []
-  const position = data?.position
+  const writable = useWritable(data)
+  const rows = rowsOf(data)
+  const position = data.position
   const balance = (amount: number | undefined) =>
     !position?.started || amount === undefined ? '—' : money(amount)
   return (
@@ -159,140 +86,118 @@ export function FinanceMovements() {
             Registrar
           </Button>
         </div>
-        <div className="filter-grid">
-          <Select
-            label="Período"
-            value={preset}
-            onChange={(event) => {
-              const next = event.target.value as Preset
-              setPreset(next)
-              setRange(presetRange(next))
-            }}
-          >
-            {(Object.keys(presetLabels) as Preset[]).map((key) => (
-              <option key={key} value={key}>
-                {presetLabels[key]}
-              </option>
-            ))}
-          </Select>
-        </div>
-        {loading ? (
-          <LoadingState />
-        ) : error || !data ? (
-          <ErrorState message={error ?? 'Sin datos.'} retry={retry} />
-        ) : (
-          <>
-            {!data.available && (
-              <p className="inline-error" role="alert">
-                Falta aplicar la actualización de contabilidad en la base de
-                datos.
-              </p>
-            )}
-            {data.available && !position?.started && (
-              <p className="accounting-callout" role="status">
-                Registra el saldo inicial de caja y banco.
-              </p>
-            )}
-            {position?.started && position.missingSales > 0 && (
-              <p className="accounting-callout" role="status">
-                {position.missingSales} factura(s) sin importe contable.
-              </p>
-            )}
-            <div className="finance-balances" aria-label="Saldos al fin del período">
-              {moneyAccountOrder.map((account) => (
-                <div className="accounting-metric" key={account}>
-                  <span>{moneyAccounts[account]}</span>
-                  <strong>{balance(position?.cash[account])}</strong>
-                </div>
-              ))}
-              <div className="accounting-metric">
-                <span>Por cobrar</span>
-                <strong>{balance(position?.receivablesNio)}</strong>
-              </div>
-              <div className="accounting-metric">
-                <span>Préstamos</span>
-                <strong>{balance(position?.loansNio)}</strong>
-              </div>
-              <div className="accounting-metric">
-                <span>Proveedores</span>
-                <strong>{balance(position?.payablesNio)}</strong>
-              </div>
-            </div>
-            <p className="accounting-note">
-              Al {formatDate(range.to)}
-              {position?.startOn
-                ? ` · desde el ${formatDate(position.startOn)}`
-                : ''}
+        <>
+          {data.available && !position?.started && (
+            <p className="accounting-callout" role="status">
+              Registra el saldo inicial de caja y banco.
             </p>
-            {rows.length === 0 ? (
-              <EmptyState title="Sin movimientos en este período" />
-            ) : (
-              <div
-                className="accounting-table-scroll"
-                tabIndex={0}
-                role="region"
-                aria-label="Movimientos del período"
-              >
-                <table className="accounting-table">
-                  <caption className="sr-only">Movimientos del período</caption>
-                  <thead>
-                    <tr>
-                      <th scope="col">Fecha / tipo</th>
-                      <th scope="col">Detalle</th>
-                      <th scope="col">Cuenta</th>
-                      <th scope="col" className="num">
-                        Importe C$
-                      </th>
-                      <th scope="col">
-                        <span className="sr-only">Acciones</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((row) => (
-                      <tr
-                        key={`${row.source}:${row.id}`}
-                        className={
-                          row.voidReason !== null ? 'accounting-voided' : undefined
-                        }
-                      >
-                        <th scope="row">
-                          {formatDate(row.day)}
-                          <small>{row.type}</small>
-                        </th>
-                        <td>{row.detail || '—'}</td>
-                        <td>{row.account}</td>
-                        <td className="num">
-                          {row.sign < 0 ? `(${money(row.amountNio)})` : money(row.amountNio)}
-                        </td>
-                        <td>
-                          {row.voidReason !== null ? (
-                            <>
-                              <Badge>Anulado</Badge>
-                              <small>{row.voidReason}</small>
-                            </>
-                          ) : (
-                            <Button
-                              variant="ghost"
-                              disabled={!writable}
-                              aria-label={`Anular ${row.type} del ${formatDate(row.day)}`}
-                              onClick={() => {
-                                setMessage('')
-                                setAction({ kind: 'void', row })
-                              }}
-                            >
-                              Anular
-                            </Button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          )}
+          {position?.started && position.missingSales > 0 && (
+            <p className="accounting-callout" role="status">
+              {position.missingSales} factura(s) sin importe contable.
+            </p>
+          )}
+          <div
+            className="finance-balances"
+            aria-label="Saldos al fin del período"
+          >
+            {moneyAccountOrder.map((account) => (
+              <div className="accounting-metric" key={account}>
+                <span>{moneyAccounts[account]}</span>
+                <strong>{balance(position?.cash[account])}</strong>
               </div>
-            )}
-          </>
-        )}
+            ))}
+            <div className="accounting-metric">
+              <span>Por cobrar</span>
+              <strong>{balance(position?.receivablesNio)}</strong>
+            </div>
+            <div className="accounting-metric">
+              <span>Préstamos</span>
+              <strong>{balance(position?.loansNio)}</strong>
+            </div>
+            <div className="accounting-metric">
+              <span>Proveedores</span>
+              <strong>{balance(position?.payablesNio)}</strong>
+            </div>
+          </div>
+          <p className="accounting-note">
+            Al {formatDate(at)}
+            {position?.startOn
+              ? ` · desde el ${formatDate(position.startOn)}`
+              : ''}
+          </p>
+          {rows.length === 0 ? (
+            <EmptyState title="Sin movimientos en este período" />
+          ) : (
+            <div
+              className="accounting-table-scroll"
+              tabIndex={0}
+              role="region"
+              aria-label="Movimientos del período"
+            >
+              <table className="accounting-table">
+                <caption className="sr-only">Movimientos del período</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Fecha / tipo</th>
+                    <th scope="col">Detalle</th>
+                    <th scope="col">Cuenta</th>
+                    <th scope="col" className="num">
+                      Importe C$
+                    </th>
+                    <th scope="col">
+                      <span className="sr-only">Acciones</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row) => (
+                    <tr
+                      key={`${row.source}:${row.id}`}
+                      className={
+                        row.voidReason !== null
+                          ? 'accounting-voided'
+                          : undefined
+                      }
+                    >
+                      <th scope="row">
+                        {formatDate(row.day)}
+                        <small>{row.type}</small>
+                      </th>
+                      <td>{row.detail || '—'}</td>
+                      <td>{row.account}</td>
+                      <td className="num">
+                        {row.sign < 0
+                          ? `(${money(row.amountNio)})`
+                          : money(row.amountNio)}
+                      </td>
+                      <td>
+                        {row.voidReason !== null ? (
+                          <>
+                            <Badge>Anulado</Badge>
+                            <small>{row.voidReason}</small>
+                          </>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            disabled={!writable}
+                            aria-label={`Anular ${row.type} del ${formatDate(row.day)}`}
+                            onClick={() => {
+                              setMessage('')
+                              setAction({ kind: 'void', row })
+                            }}
+                          >
+                            Anular
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       </Card>
       {action?.kind === 'record' && (
         <RecordDialog
@@ -320,7 +225,7 @@ export function FinanceMovements() {
 }
 
 /** Lo que se puede registrar: un gasto o uno de los movimientos del contador. */
-type RecordKind = FinanceKind | 'expense'
+export type RecordKind = FinanceKind | 'expense'
 const recordKinds: Record<RecordKind, string> = {
   expense: 'Gasto',
   ...financeKinds,
@@ -342,10 +247,12 @@ const counterpartyLabel: Partial<Record<RecordKind, string>> = {
   collection: 'Cliente',
 }
 
-function RecordDialog({
+export function RecordDialog({
+  initialKind = 'expense',
   onClose,
   onRecorded,
 }: {
+  initialKind?: RecordKind
   onClose: () => void
   onRecorded: (message: string) => void
 }) {
@@ -362,7 +269,7 @@ function RecordDialog({
     ),
   )
   const today = localDay(new Date())
-  const [kind, setKind] = useState<RecordKind>('expense')
+  const [kind, setKind] = useState<RecordKind>(initialKind)
   const [account, setAccount] = useState<FinanceAccount>('caja')
   const [toAccount, setToAccount] = useState<MoneyAccount>('banco')
   const [expenseAccount, setExpenseAccount] = useState<ExpenseAccount>('ventas')
@@ -565,7 +472,9 @@ function RecordDialog({
                 min="0.000001"
                 step="0.000001"
                 required
-                value={rateText || (savedRate ? String(savedRate.usdToNio) : '')}
+                value={
+                  rateText || (savedRate ? String(savedRate.usdToNio) : '')
+                }
                 onChange={(event) => setRateText(event.target.value)}
               />
             )}
@@ -619,7 +528,7 @@ function RecordDialog({
   )
 }
 
-function VoidDialog({
+export function VoidDialog({
   row,
   onClose,
   onVoided,

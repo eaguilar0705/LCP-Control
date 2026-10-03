@@ -3,7 +3,6 @@ import { formatCurrency, formatDate } from '../../lib/format'
 import { priceTierLabels } from '../../lib/pricing'
 import { buildWorkbook, type Sheet } from '../../lib/xlsx'
 import { totalStock } from '../inventory/model'
-import { accountingSheets } from './accountingExport'
 import { fillDays, type ReportRange } from './model'
 import { DIGEST_LIST_LIMIT, reportView, type ReportData } from './digest'
 
@@ -22,7 +21,7 @@ function fileName(range: ReportRange, extension: string) {
     .concat(extension)
 }
 
-function download(blob: Blob, name: string) {
+export function download(blob: Blob, name: string) {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
@@ -62,9 +61,10 @@ function buildReportWorkbook({
   const header = [
     business.name,
     `Reporte del ${formatDate(range.from)} al ${formatDate(range.to)}`,
-    'Ventas comerciales por moneda original; contabilidad en NIO con la tasa guardada por operación.',
+    'Ventas comerciales por moneda original.',
   ]
-  const sheets: Sheet[] = accountingSheets(report, range, business.name)
+  // La contabilidad se descarga desde Contabilidad.
+  const sheets: Sheet[] = []
 
   sheets.push({
     name: 'Resumen',

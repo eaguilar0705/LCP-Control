@@ -48,7 +48,12 @@ const expense = (changes: Partial<PaidExpense>): PaidExpense => ({
 describe('financePosition', () => {
   it('sin saldo inicial no inventa saldos', () => {
     const ledger = financeLedger(
-      { entries: [entry({ kind: 'capital' })], expenses: [], shipments: [], sales: emptySales },
+      {
+        entries: [entry({ kind: 'capital' })],
+        expenses: [],
+        shipments: [],
+        sales: emptySales,
+      },
       range,
     )
     expect(ledger.position.started).toBe(false)
@@ -62,16 +67,53 @@ describe('financePosition', () => {
           entry({ account: 'caja', amount: 1000 }),
           entry({ account: 'banco', amount: 5000 }),
           entry({ account: 'prestamos', amount: 3000 }),
-          entry({ kind: 'transfer', account: 'caja', toAccount: 'banco', amount: 200, occurredOn: '2026-09-05' }),
-          entry({ kind: 'loan', account: 'banco', amount: 2000, occurredOn: '2026-09-06' }),
-          entry({ kind: 'collection', account: 'banco', amount: 300, occurredOn: '2026-09-07' }),
-          entry({ kind: 'supplier_payment', account: 'banco', amount: 400, occurredOn: '2026-09-08' }),
-          entry({ kind: 'withdrawal', account: 'caja', amount: 100, occurredOn: '2026-09-09' }),
-          entry({ kind: 'capital', account: 'caja', amount: 50, occurredOn: '2026-09-09', voidedAt: '2026-09-09T13:00:00Z', voidReason: 'Error' }),
+          entry({
+            kind: 'transfer',
+            account: 'caja',
+            toAccount: 'banco',
+            amount: 200,
+            occurredOn: '2026-09-05',
+          }),
+          entry({
+            kind: 'loan',
+            account: 'banco',
+            amount: 2000,
+            occurredOn: '2026-09-06',
+          }),
+          entry({
+            kind: 'collection',
+            account: 'banco',
+            amount: 300,
+            occurredOn: '2026-09-07',
+          }),
+          entry({
+            kind: 'supplier_payment',
+            account: 'banco',
+            amount: 400,
+            occurredOn: '2026-09-08',
+          }),
+          entry({
+            kind: 'withdrawal',
+            account: 'caja',
+            amount: 100,
+            occurredOn: '2026-09-09',
+          }),
+          entry({
+            kind: 'capital',
+            account: 'caja',
+            amount: 50,
+            occurredOn: '2026-09-09',
+            voidedAt: '2026-09-09T13:00:00Z',
+            voidReason: 'Error',
+          }),
         ],
         expenses: [
           expense({ account: 'caja', amount: 80 }),
-          expense({ account: 'banco', category: 'prestamo_bancario', amount: 500 }),
+          expense({
+            account: 'banco',
+            category: 'prestamo_bancario',
+            amount: 500,
+          }),
           // Anterior al saldo inicial: no cuenta.
           expense({ incurredOn: '2026-08-20', amount: 999 }),
         ],

@@ -1,6 +1,5 @@
 import { jsPDF } from 'jspdf'
-import { formatCurrency, formatDate } from '../../lib/format'
-import { accountingByMonth, accountingSummary, belowCostSummary, expenseAccounts, inventoryTurnover } from './accounting'
+import { formatDate } from '../../lib/format'
 import { priceTierLabels } from '../../lib/pricing'
 import { reportTables, type ReportContext } from './export'
 
@@ -132,74 +131,6 @@ export async function renderReportPdf(context: ReportContext): Promise<Blob> {
   y = 112
   pdf.setFillColor(...WINE).rect(left, y, width, 2.5, 'F')
   y += 10
-
-  heading('Contabilidad · costo promedio ponderado · NIO')
-  const accounting = accountingSummary(context.report, range)
-  const turnover = inventoryTurnover(accounting, range)
-  const losses = belowCostSummary(context.report, range)
-  const nio = (amount: number | null) => amount === null ? 'Sin determinar' : formatCurrency(amount, 'NIO')
-  if (!context.report.accounting.available) {
-    text('Sin fuente contable disponible. Los precios de venta no son costos de compra.', left, (y += 14), 9)
-  } else {
-    if (!accounting.complete) {
-      text('RESULTADO INCOMPLETO: faltan costos, datos históricos o filas del periodo.', left, (y += 14), 9, true)
-    }
-    table([{ label: 'ESTADO DE RESULTADOS', width: 362 }, { label: 'IMPORTE NIO', width: 170, align: 'right' }], [
-      ['Ventas netas (parte documentada)', nio(accounting.revenueNio)],
-      ['Costo de ventas conocido', nio(accounting.costOfSalesNio)],
-      ['Utilidad bruta', nio(accounting.grossProfitNio)],
-      ['Gastos reconocidos (los que restan)', nio(accounting.expensesNio)],
-      ['Mermas y salidas a costo conocido', nio(accounting.inventoryWriteOffNio)],
-      ['Resultado operativo registrado', nio(accounting.netProfitNio)],
-    ])
-    heading('Pedidos de importación e inventario')
-    table([{ label: 'CONCEPTO', width: 362 }, { label: 'IMPORTE NIO', width: 170, align: 'right' }], [
-      ['Precio de los perfumes pedidos', nio(accounting.purchaseGoodsNio)],
-      ['Envío cobrado por la agencia (peso)', nio(accounting.purchaseShippingNio)],
-      ['Total invertido en pedidos', `${nio(accounting.purchasesNio)} · ${accounting.purchasedUnits} uds.`],
-      ['Inventario actual a costo conocido', nio(accounting.inventoryCostNio)],
-      ['Rotación anual del inventario', turnover.turnoverPerYear === null ? 'Sin determinar' : `${turnover.turnoverPerYear} veces`],
-      ['Días que dura el inventario', turnover.daysOnHand === null ? 'Sin determinar' : `${turnover.daysOnHand} días`],
-    ])
-    heading('Gastos por cuenta')
-    table([{ label: 'CUENTA', width: 362 }, { label: 'IMPORTE NIO', width: 170, align: 'right' }],
-      accounting.expenseByAccount.map((row) => [
-        expenseAccounts[row.account].label + (row.deducts ? '' : ' — no resta del resultado'),
-        nio(row.amountNio),
-      ]))
-    text('El pago de préstamos devuelve capital: lo que cuesta el préstamo son sus intereses. Los gastos operativos son los pedidos del periodo y pesan en el resultado al vender la mercadería.', left, (y += 14), 8)
-    text(`${accounting.missingCostUnits} unidades vendidas sin costo; ${accounting.unvaluedProducts} productos sin valoración de inventario.`, left, (y += 14), 8)
-    text('Inventario actual. Costo puesto = precio del proveedor + envío por unidad. Los pedidos se descuentan al vender.', left, (y += 13), 8)
-    heading('Evolución del resultado operativo')
-    table([
-      { label: 'MES', width: 65 }, { label: 'VENTA NETA*', width: 112, align: 'right' },
-      { label: 'COSTO VENTAS*', width: 112, align: 'right' }, { label: 'GASTOS + SALIDAS*', width: 125, align: 'right' },
-      { label: 'RESULTADO', width: 118, align: 'right' },
-    ], accountingByMonth(context.report, range).map(({ month, totals }) => [month, nio(totals.revenueNio), nio(totals.costOfSalesNio), nio(totals.expensesNio + totals.inventoryWriteOffNio), nio(totals.netProfitNio)]))
-    text('* Parte documentada. Las cifras parciales no determinan una utilidad total.', left, (y += 13), 8)
-    if (accounting.products.length) {
-      heading('Rentabilidad por producto')
-      table([
-        { label: 'PRODUCTO', width: 220 }, { label: 'VENTA NETA*', width: 104, align: 'right' },
-        { label: 'COSTO*', width: 100, align: 'right' }, { label: 'UTILIDAD', width: 108, align: 'right' },
-      ], accounting.products.slice(0, 15).map((row) => [row.description.slice(0, 42), nio(row.netRevenueNio), nio(row.costNio), nio(row.profitNio)]))
-    }
-    if (accounting.tiers.length) {
-      heading('Rentabilidad por lista de precios')
-      table([
-        { label: 'LISTA', width: 220 }, { label: 'VENTA NETA*', width: 104, align: 'right' },
-        { label: 'COSTO*', width: 100, align: 'right' }, { label: 'UTILIDAD', width: 108, align: 'right' },
-      ], accounting.tiers.map((row) => [priceTierLabels[row.tier], nio(row.netRevenueNio), nio(row.costNio), nio(row.profitNio)]))
-    }
-    if (losses.count) {
-      heading('Ventas por debajo del costo')
-      table([
-        { label: 'DOCUMENTO', width: 96 }, { label: 'PRODUCTO', width: 190 },
-        { label: 'VENTA NETA', width: 118, align: 'right' }, { label: 'PÉRDIDA', width: 128, align: 'right' },
-      ], losses.rows.slice(0, 15).map((row) => [row.number, row.description.slice(0, 36), nio(row.netRevenueNio), nio(row.lossNio)]))
-      text(`${losses.count} renglón(es) se facturaron bajo su propio costo registrado (${nio(losses.lossNio)} de pérdida).`, left, (y += 13), 8)
-    }
-  }
 
   if (!tables.currencies.length) {
     heading('Sin ventas en el periodo')

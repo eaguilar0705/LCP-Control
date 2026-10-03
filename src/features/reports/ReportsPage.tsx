@@ -29,7 +29,6 @@ import { formatCurrency, formatDate } from '../../lib/format'
 import { errorMessage } from '../../lib/errors'
 import type { Currency, PriceTier } from '../../lib/domain'
 import { priceTierLabels } from '../../lib/pricing'
-import { AccountingPanel } from './AccountingPanel'
 import {
   change,
   concentration,
@@ -213,11 +212,6 @@ function Reports() {
               Actualización de reportes pendiente.
             </p>
           )}
-          <AccountingPanel
-            source={data}
-            range={data.range}
-            onRecorded={retry}
-          />
           <ReportBody report={data} tier={tier} />
         </>
       )}

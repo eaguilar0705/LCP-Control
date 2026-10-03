@@ -27,8 +27,8 @@ import { pricingInput, pricingInputSchema } from '../products/product'
 import { PricingFields } from '../pricing/PricingFields'
 import { PriceMargin } from '../pricing/PriceMargin'
 import { PriceHistory } from '../pricing/PriceHistory'
-import { FinancialStatements } from './FinancialStatements'
-import { FinanceMovements } from './FinanceMovements'
+import { PeriodSections } from './PeriodSections'
+import { periodSections, type PeriodSection } from './sections'
 import '../../styles/accounting.css'
 
 interface PricedProduct {
@@ -37,15 +37,11 @@ interface PricedProduct {
 }
 
 /**
- * Contabilidad: el precio de compra de cada perfume y el porcentaje de
- * ganancia de cada tipo de cliente (precio de venta = compra + porcentaje),
- * los movimientos de caja, bancos y deudas, y los estados financieros.
+ * Contabilidad: los precios de cada perfume (precio de venta = compra +
+ * porcentaje por tipo de cliente), y por período los gastos, caja y bancos,
+ * costos, cierre diario, estados financieros y razones financieras.
  */
-const tabs = {
-  prices: 'Precios',
-  movements: 'Caja y bancos',
-  statements: 'Estados financieros',
-} as const
+const tabs = { prices: 'Precios', ...periodSections } as const
 type Tab = keyof typeof tabs
 
 export function AccountingPage() {
@@ -72,9 +68,11 @@ export function AccountingPage() {
           </button>
         ))}
       </nav>
-      {tab === 'prices' && <PricesTab />}
-      {tab === 'movements' && <FinanceMovements />}
-      {tab === 'statements' && <FinancialStatements />}
+      {tab === 'prices' ? (
+        <PricesTab />
+      ) : (
+        <PeriodSections section={tab as PeriodSection} />
+      )}
     </>
   )
 }

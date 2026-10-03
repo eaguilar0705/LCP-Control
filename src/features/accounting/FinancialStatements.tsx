@@ -1,15 +1,7 @@
-import { useCallback, useMemo, useState } from 'react'
-import { Card, ErrorState, LoadingState, Select } from '../../components/ui'
-import { useServices } from '../../services/useServices'
-import { useQuery } from '../../lib/useQuery'
+import { useMemo, useState } from 'react'
+import { Card, Select } from '../../components/ui'
 import { formatCurrency, formatDate } from '../../lib/format'
 import { accountingSummary } from '../reports/accounting'
-import {
-  presetLabels,
-  presetRange,
-  type Preset,
-  type ReportRange,
-} from '../reports/model'
 import {
   incomeStatement,
   shareOfRevenue,
@@ -29,19 +21,14 @@ const percent = new Intl.NumberFormat('es-NI', {
   maximumFractionDigits: 1,
 })
 
-export function FinancialStatements() {
-  const { reportService, financeService } = useServices()
+export function FinancialStatements({
+  report,
+  position,
+}: {
+  report: ReportData
+  position: FinancePosition
+}) {
   const [statement, setStatement] = useState<Statement>('income')
-  const [preset, setPreset] = useState<Preset>('30d')
-  const [range, setRange] = useState<ReportRange>(() => presetRange('30d'))
-  const load = useCallback(async () => {
-    const [report, finance] = await Promise.all([
-      reportService.getSource(range),
-      financeService.getLedger(range),
-    ])
-    return { report, position: finance.position }
-  }, [reportService, financeService, range])
-  const { data, loading, error, retry } = useQuery(load)
   return (
     <Card className="accounting-card">
       <div className="filter-grid">
@@ -56,33 +43,12 @@ export function FinancialStatements() {
             </option>
           ))}
         </Select>
-        <Select
-          label="Período"
-          value={preset}
-          onChange={(event) => {
-            const next = event.target.value as Preset
-            setPreset(next)
-            setRange(presetRange(next))
-          }}
-        >
-          {(Object.keys(presetLabels) as Preset[]).map((key) => (
-            <option key={key} value={key}>
-              {presetLabels[key]}
-            </option>
-          ))}
-        </Select>
       </div>
-      {loading ? (
-        <LoadingState />
-      ) : error || !data ? (
-        <ErrorState message={error ?? 'Sin datos.'} retry={retry} />
-      ) : (
-        <StatementTable
-          report={data.report}
-          position={data.position}
-          statement={statement}
-        />
-      )}
+      <StatementTable
+        report={report}
+        position={position}
+        statement={statement}
+      />
     </Card>
   )
 }
