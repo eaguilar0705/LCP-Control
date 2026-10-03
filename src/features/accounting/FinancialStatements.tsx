@@ -17,6 +17,7 @@ import {
 } from '../reports/statement'
 import type { ReportData } from '../reports/digest'
 import { balanceSheet } from './balanceSheet'
+import type { FinancePosition } from './finance'
 
 const statements = {
   income: 'Estado de resultados',
@@ -29,14 +30,17 @@ const percent = new Intl.NumberFormat('es-NI', {
 })
 
 export function FinancialStatements() {
-  const { reportService } = useServices()
+  const { reportService, financeService } = useServices()
   const [statement, setStatement] = useState<Statement>('income')
   const [preset, setPreset] = useState<Preset>('30d')
   const [range, setRange] = useState<ReportRange>(() => presetRange('30d'))
-  const load = useCallback(
-    () => reportService.getSource(range),
-    [reportService, range],
-  )
+  const load = useCallback(async () => {
+    const [report, finance] = await Promise.all([
+      reportService.getSource(range),
+      financeService.getLedger(range),
+    ])
+    return { report, position: finance.position }
+  }, [reportService, financeService, range])
   const { data, loading, error, retry } = useQuery(load)
   return (
     <Card className="accounting-card">
@@ -73,7 +77,11 @@ export function FinancialStatements() {
       ) : error || !data ? (
         <ErrorState message={error ?? 'Sin datos.'} retry={retry} />
       ) : (
-        <StatementTable report={data} statement={statement} />
+        <StatementTable
+          report={data.report}
+          position={data.position}
+          statement={statement}
+        />
       )}
     </Card>
   )
@@ -81,9 +89,11 @@ export function FinancialStatements() {
 
 function StatementTable({
   report,
+  position,
   statement,
 }: {
   report: ReportData
+  position: FinancePosition
   statement: Statement
 }) {
   const summary = useMemo(
@@ -92,7 +102,9 @@ function StatementTable({
   )
   const available = report.accounting?.available ?? false
   const income = statement === 'income'
-  const rows = income ? incomeStatement(summary) : balanceSheet(summary)
+  const rows = income
+    ? incomeStatement(summary)
+    : balanceSheet(summary, position)
   const title = statements[statement]
   const amount = (row: StatementRow) => {
     if (!available) return 'Sin activar'
@@ -103,7 +115,7 @@ function StatementTable({
   }
   const period = income
     ? `Del ${formatDate(report.range.from)} al ${formatDate(report.range.to)}`
-    : `Al ${formatDate(report.range.to)} · Solo el inventario está registrado`
+    : `Al ${formatDate(report.range.to)}${position.started ? '' : ' · Falta el saldo inicial de caja y banco'}`
   return (
     <>
       <div className="statement-heading">

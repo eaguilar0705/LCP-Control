@@ -16,6 +16,7 @@ import { accountOf, accountingByMonth, accountingSummary, belowCostSummary, cata
 import { localDay, type ReportRange } from './model'
 import { closeOf, dailyClose, dailyTotals, incomeStatement, shareOfRevenue, type DailyClose } from './statement'
 import type { ReportData } from './digest'
+import { moneyAccountOrder, moneyAccounts, type MoneyAccount } from '../accounting/finance'
 import '../../styles/accounting.css'
 
 const money = (amount: number) => formatCurrency(amount, 'NIO')
@@ -197,6 +198,7 @@ function AccountingAction({ action, source, writable, defaultRate, onClose, onRe
   // una lista de dieciséis a la media docena que toca.
   const [account, setAccount] = useState<ExpenseAccount>('ventas')
   const [category, setCategory] = useState<ExpenseCategory>('renta')
+  const [paidFrom, setPaidFrom] = useState<MoneyAccount>('caja')
   const [busy, setBusy] = useState(false)
   const [failure, setFailure] = useState('')
   const isOpening = action.kind === 'opening'
@@ -225,7 +227,7 @@ function AccountingAction({ action, source, writable, defaultRate, onClose, onRe
         await openingOperation.execute({ productId, unitCost: roundCost(total), currency, exchangeRate: roundCost(rate), note: note.trim() })
         onRecorded('Costo inicial registrado para las existencias actuales. Las ventas anteriores conservan su información original.')
       } else {
-        await expenseOperation.execute({ incurredOn, category, description: note.trim(), amount: roundMoney(total), currency, exchangeRate: roundCost(rate), reference: reference.trim() })
+        await expenseOperation.execute({ incurredOn, category, description: note.trim(), amount: roundMoney(total), currency, exchangeRate: roundCost(rate), reference: reference.trim(), account: paidFrom })
         onRecorded('Gasto registrado en el período correspondiente.')
       }
     } catch (error) { setFailure(errorMessage(error)) } finally { setBusy(false) }
@@ -240,6 +242,7 @@ function AccountingAction({ action, source, writable, defaultRate, onClose, onRe
         {!isOpening && <Input label="Fecha del comprobante" type="date" required max={localDay(new Date())} value={incurredOn} onChange={(event) => setIncurredOn(event.target.value)} />}
         {!isOpening && <Select label="Cuenta" value={account} onChange={(event) => { const next = event.target.value as ExpenseAccount; setAccount(next); setCategory(categoriesOf(next)[0]) }}>{expenseAccountOrder.filter((id) => id !== 'operativos').map((id) => <option key={id} value={id}>{expenseAccounts[id].label}</option>)}</Select>}
         {!isOpening && <Select label="Categoría del gasto" value={category} onChange={(event) => setCategory(event.target.value as ExpenseCategory)}>{categoriesOf(account).map((id) => <option key={id} value={id}>{expenseLabel(id)}</option>)}</Select>}
+        {!isOpening && <Select label="Pagado desde" value={paidFrom} onChange={(event) => setPaidFrom(event.target.value as MoneyAccount)}>{moneyAccountOrder.map((id) => <option key={id} value={id}>{moneyAccounts[id]}</option>)}</Select>}
         <Select label="Moneda del comprobante" value={currency} onChange={(event) => setCurrency(event.target.value as Currency)}><option value="NIO">NIO · Córdobas</option><option value="USD">USD · Dólares</option></Select>
         {currency === 'USD' && <Input label="Tipo de cambio (NIO por 1 USD)" type="number" min="0.000001" max={1000000} step="0.000001" required value={exchange} onChange={(event) => setExchange(event.target.value)} />}
         <Input label={isOpening ? `Costo inicial por unidad (${currency})` : `Importe del gasto (${currency})`} type="number" min={isOpening ? 0 : 0.01} max={10000000} step="0.01" required value={amount} onChange={(event) => setAmount(event.target.value)} />

@@ -11,6 +11,17 @@ import {
   type ShipmentRecord,
 } from '../../features/reports/accounting'
 import { addDays, type ReportRange } from '../../features/reports/model'
+import {
+  emptyLedger,
+  financeLedger,
+  financeStart,
+  type FinanceEntryInput,
+  type FinanceEntryRecord,
+  type FinanceLedger,
+  type PaidExpense,
+  type SalesByPayment,
+  type ShipmentPayment,
+} from '../../features/accounting/finance'
 
 type DatabaseError = { code?: string; message?: string }
 type PageResult = {
@@ -121,6 +132,27 @@ function toExpense(row: AccountingRow): ExpenseRecord {
   }
 }
 
+function toFinanceEntry(row: AccountingRow): FinanceEntryRecord {
+  return {
+    id: row.id as string,
+    requestId: row.request_id as string,
+    occurredOn: row.occurred_on as string,
+    kind: row.kind as FinanceEntryRecord['kind'],
+    account: row.account as FinanceEntryRecord['account'],
+    toAccount: (row.to_account ?? null) as FinanceEntryRecord['toAccount'],
+    amount: numeric(row.amount),
+    currency: row.currency as FinanceEntryRecord['currency'],
+    exchangeRate: numeric(row.exchange_rate),
+    counterparty: row.counterparty as string,
+    description: row.description as string,
+    reference: row.reference as string,
+    createdAt: row.created_at as string,
+    voidedAt: row.voided_at as string | null,
+    voidReason: row.void_reason as string | null,
+  }
+}
+const noRows = { rows: [] as AccountingRow[], truncated: false }
+
 export function createAccountingAdapter(
   client: () => SupabaseClient,
   errorToApp: (error: DatabaseError | null) => AppError,
@@ -151,6 +183,107 @@ export function createAccountingAdapter(
       write('record_expense', { p_input: input }),
     voidExpense: (id: string, reason: string) =>
       write('void_expense', { p_id: id, p_reason: reason }),
+    recordFinanceEntry: (input: FinanceEntryInput) =>
+      write('record_finance_entry', { p_input: input }),
+    voidFinanceEntry: (id: string, reason: string) =>
+      write('void_finance_entry', { p_id: id, p_reason: reason }),
+    /**
+     * Los movimientos del contador son pocos y se leen todos hasta el fin del
+     * período; con el primer saldo inicial se sabe desde cuándo sumar gastos,
+     * pedidos y lo facturado, que la base devuelve ya sumado.
+     */
+    async getFinance(range: ReportRange): Promise<FinanceLedger> {
+      try {
+        const entries = (
+          await readReportPages<AccountingRow>((start, end) =>
+            client()
+              .from('finance_entries')
+              .select(
+                'id,request_id,occurred_on,kind,account,to_account,amount,currency,exchange_rate,counterparty,description,reference,created_at,voided_at,void_reason',
+                { count: 'exact' },
+              )
+              .lte('occurred_on', range.to)
+              .order('occurred_on')
+              .order('id')
+              .range(start, end),
+          )
+        ).rows.map(toFinanceEntry)
+        const startOn = financeStart(entries, range.to)
+        const from = startOn && startOn < range.from ? startOn : range.from
+        const [expenses, shipments, sales] = await Promise.all([
+          readReportPages<AccountingRow>((start, end) =>
+            client()
+              .from('expense_records')
+              .select(
+                'id,request_id,incurred_on,category,description,amount,currency,exchange_rate,reference,account,created_at,voided_at,void_reason',
+                { count: 'exact' },
+              )
+              .gte('incurred_on', from)
+              .lte('incurred_on', range.to)
+              .order('incurred_on')
+              .order('id')
+              .range(start, end),
+          ),
+          startOn
+            ? readReportPages<AccountingRow>((start, end) =>
+                client()
+                  .from('purchase_shipments')
+                  .select(
+                    'id,incurred_on,goods_amount,shipping_amount,exchange_rate,account',
+                    { count: 'exact' },
+                  )
+                  .gte('incurred_on', startOn)
+                  .lte('incurred_on', range.to)
+                  .order('incurred_on')
+                  .order('id')
+                  .range(start, end),
+              )
+            : Promise.resolve(noRows),
+          startOn
+            ? client()
+                .rpc('finance_sales', { p_from: startOn, p_to: range.to })
+                .then(({ data, error }) => {
+                  if (error) throw error
+                  return data as Record<string, unknown> | null
+                })
+            : Promise.resolve(null),
+        ])
+        const totals: SalesByPayment = {
+          caja: numeric(sales?.caja ?? 0),
+          banco: numeric(sales?.banco ?? 0),
+          cobrar: numeric(sales?.cobrar ?? 0),
+          missing: numeric(sales?.missing ?? 0),
+        }
+        return financeLedger(
+          {
+            entries,
+            expenses: expenses.rows.map(
+              (row): PaidExpense => ({
+                ...toExpense(row),
+                account: row.account as PaidExpense['account'],
+              }),
+            ),
+            shipments: shipments.rows.map((row) => {
+              const rate = numeric(row.exchange_rate)
+              return {
+                incurredOn: row.incurred_on as string,
+                account: row.account as ShipmentPayment,
+                amountNio:
+                  Math.round(numeric(row.goods_amount) * rate * 100) / 100 +
+                  Math.round(numeric(row.shipping_amount) * rate * 100) / 100,
+              }
+            }),
+            sales: totals,
+          },
+          range,
+        )
+      } catch (error) {
+        if (error instanceof AppError) throw error
+        if (accountingSchemaMissing((error ?? {}) as DatabaseError))
+          return structuredClone(emptyLedger)
+        throw errorToApp(error as DatabaseError)
+      }
+    },
     /**
      * `lines: false` omite los costos de cada renglón vendido y de cada salida:
      * con el resumen de la base ya vienen sumados y son las tablas que crecen.

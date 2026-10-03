@@ -14,6 +14,10 @@ import {
   type ProductPricing,
 } from '../../lib/domain'
 import type { OpeningCostInput, ShipmentInput } from '../reports/accounting'
+import {
+  shipmentPayments,
+  type ShipmentPayment,
+} from '../accounting/finance'
 import { localDay } from '../reports/model'
 import {
   hasDecimals,
@@ -69,6 +73,7 @@ export function PurchaseDialog({
   const [incurredOn, setIncurredOn] = useState(localDay(new Date()))
   const [supplier, setSupplier] = useState('')
   const [reference, setReference] = useState('')
+  const [payment, setPayment] = useState<ShipmentPayment>('caja')
   const [currency, setCurrency] = useState<Currency>('NIO')
   const [rateText, setRateText] = useState(
     catalogRate ? String(catalogRate) : '',
@@ -121,6 +126,7 @@ export function PurchaseDialog({
         currency,
         exchangeRate: rate,
         shippingAmount: round2(typed(shipping)),
+        account: payment,
         lines: preview.lines.map((line, index) => ({
           productId: line.productId,
           location: lines[index].location,
@@ -170,6 +176,21 @@ export function PurchaseDialog({
               value={reference}
               onChange={(event) => setReference(event.target.value)}
             />
+            <Select
+              label="Pago"
+              value={payment}
+              onChange={(event) =>
+                setPayment(event.target.value as ShipmentPayment)
+              }
+            >
+              {(Object.keys(shipmentPayments) as ShipmentPayment[]).map(
+                (id) => (
+                  <option key={id} value={id}>
+                    {shipmentPayments[id]}
+                  </option>
+                ),
+              )}
+            </Select>
             <Select
               label="Moneda de la compra"
               value={currency}

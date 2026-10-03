@@ -102,8 +102,9 @@ try {
     const doc = await rpc('create_document', invoice({ items: [{ productId: legacy, quantity: 1 }] }))
     const snapshot = (await rows('document_item_costs')).find((r) => r.document_id === doc.id)
     assert.equal(snapshot.unit_cost_nio, null)
-    assert.equal(Number(snapshot.net_revenue_nio), 100)
-    assert.equal(Number(snapshot.tax_nio), 15)
+    // Sin IVA: toda la venta es venta neta aunque la solicitud traiga una tasa.
+    assert.equal(Number(snapshot.net_revenue_nio), 115)
+    assert.equal(Number(snapshot.tax_nio), 0)
   })
   await check('explicit opening basis is idempotent, audited and cannot silently overwrite known cost', async () => {
     const input = opening()
@@ -130,14 +131,14 @@ try {
     await assert.rejects(rpc('record_shipment', { ...input, shippingAmount: 101 }), /otros datos/)
     assert.equal((await rows('purchase_shipments')).length, 1)
   })
-  await check('sales freeze average and included taxes before stock deduction', async () => {
+  await check('sales freeze average before stock deduction and no longer split taxes', async () => {
     const input = invoice()
     const doc = await rpc('create_document', input)
     assert.equal((await rpc('create_document', input)).id, doc.id)
     const snapshot = (await rows('document_item_costs')).find((r) => r.document_id === doc.id)
     assert.equal(Number(snapshot.unit_cost_nio), 82.5)
-    assert.equal(Number(snapshot.net_revenue_nio), 200)
-    assert.equal(Number(snapshot.tax_nio), 30)
+    assert.equal(Number(snapshot.net_revenue_nio), 230)
+    assert.equal(Number(snapshot.tax_nio), 0)
     assert.equal(await quantity(), 18)
     assert.equal((await rows('inventory_movement_costs')).length, 0)
   })

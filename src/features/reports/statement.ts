@@ -51,7 +51,6 @@ export function incomeStatement(summary: AccountingSummary): StatementRow[] {
     { key: 'memo', label: 'Partidas informativas', amount: null, kind: 'heading' },
     { key: 'loans', label: 'Pago de préstamos', amount: summary.loanPaymentsNio, kind: 'info' },
     { key: 'purchases', label: 'Compras de mercadería', amount: summary.purchasesNio, kind: 'info' },
-    { key: 'tax', label: 'Impuesto cobrado en ventas', amount: summary.salesTaxNio, kind: 'info' },
   ]
 }
 /** Parte de las ventas netas que representa un renglón; `null` sin ventas. */

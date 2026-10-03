@@ -47,7 +47,6 @@ import {
   draftStorageKey,
   draftTotal,
   isoDate,
-  includedTax,
   type DocumentDraft,
   type DraftLine,
 } from './document'
@@ -92,7 +91,6 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
     retry: retryDrafts,
   } = useWorkspaceDrafts(draftStorageKey(kind), documentDraftSchema)
   const [currency, setCurrency] = useState<Currency>('NIO')
-  const [taxRate, setTaxRate] = useState(0)
   // `null` significa «no lo he tocado»: entonces rige la tasa del negocio. Una
   // cadena vacía es una decisión del usuario y deja el campo en blanco.
   const [exchangeText, setExchangeText] = useState<string | null>(null)
@@ -141,7 +139,6 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
       line.quantity <= 9999,
   )
   const total = valid ? draftTotal(lines, tier, currency) : null
-  const validTax = Number.isFinite(taxRate) && taxRate >= 0 && taxRate <= 100
   const validExchange =
     currency === 'NIO' ||
     (exchangeRate !== null &&
@@ -201,7 +198,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
           : undefined
   const dataIssues = !!(customerIssue || phoneIssue || validityIssue)
   const draft: DocumentDraft | null =
-    lines.length && valid && validTax
+    lines.length && valid
       ? {
           id: current?.id ?? 'preview',
           kind,
@@ -211,7 +208,6 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
           phone,
           taxId,
           currency,
-          taxRate,
           exchangeRate: currency === 'NIO' ? 1 : exchangeRate,
           tier,
           payment,
@@ -282,14 +278,13 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
       validUntil,
       notes,
       currency,
-      taxRate,
       exchangeRate: currency === 'NIO' ? 1 : exchangeRate,
       tier,
       lines,
     })
     if (!result.success) {
       setMessage(
-        'Agrega productos y revisa las cantidades, tasa de impuesto y tipo de cambio.',
+        'Agrega productos y revisa las cantidades y el tipo de cambio.',
       )
       return
     }
@@ -340,7 +335,6 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
     if (
       !lines.length ||
       !valid ||
-      !validTax ||
       shortages > 0 ||
       dataIssues ||
       (kind === 'invoice' && !validExchange) ||
@@ -361,7 +355,6 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
         customerPhone: whatsappNumber(phone),
         tier,
         currency,
-        taxRate,
         // Una proforma en dólares puede emitirse sin tasa: el contrato la
         // omite en lugar de guardar un nulo que la base rechazaría.
         exchangeRate: currency === 'NIO' ? 1 : (exchangeRate ?? undefined),
@@ -399,7 +392,6 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
     setCurrent(item)
     setIssued(null)
     setCurrency(item.currency)
-    setTaxRate(item.taxRate ?? 0)
     setExchangeText(
       item.currency === 'USD' && item.exchangeRate != null
         ? String(item.exchangeRate)
@@ -450,7 +442,6 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
     setCustomer('')
     setPhone('')
     setTaxId('')
-    setTaxRate(0)
     setExchangeText(null)
     setNotes('')
     setLines([])
@@ -496,7 +487,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
   if (loadError) return <ErrorState message={loadError} retry={retry} />
   if (businessError)
     return <ErrorState message={businessError} retry={retryBusiness} />
-  const ready = !!lines.length && valid && validTax
+  const ready = !!lines.length && valid
   // Guardar un borrador o imprimirlo no toca el inventario; emitir sí, así que
   // sólo la emisión exige que cada renglón tenga existencias suficientes.
   const issuable =
@@ -526,14 +517,6 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
           issued?.currency ?? currency,
           displayedRate,
         )
-  const displayedTaxRate = issued ? issued.taxRate : taxRate
-  const taxBreakdown =
-    displayedTotal !== null &&
-    displayedTaxRate !== undefined &&
-    displayedTaxRate !== null &&
-    Number.isFinite(displayedTaxRate)
-      ? includedTax(displayedTotal, displayedTaxRate)
-      : null
   return (
     <>
       <div className="page-heading no-print">
@@ -707,16 +690,6 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
               )}
             </div>
             <div className="form-grid">
-              <Input
-                label="Impuesto incluido en el precio (%)"
-                type="number"
-                min={0}
-                max={100}
-                step="0.01"
-                value={Number.isNaN(taxRate) ? '' : taxRate}
-                error={!validTax ? 'Indica una tasa entre 0 y 100.' : undefined}
-                onChange={(event) => setTaxRate(event.target.valueAsNumber)}
-              />
               {currency === 'USD' && (
                 <Input
                   label="Tipo de cambio (NIO por 1 USD)"
@@ -875,28 +848,6 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
               ))
             )}
           </div>
-          {taxBreakdown && (
-            <div className="invoice-meta">
-              <p>
-                Venta sin impuesto
-                <small>
-                  {formatCurrency(
-                    taxBreakdown.net,
-                    issued?.currency ?? currency,
-                  )}
-                </small>
-              </p>
-              <p>
-                Impuesto incluido ({displayedTaxRate} %)
-                <small>
-                  {formatCurrency(
-                    taxBreakdown.tax,
-                    issued?.currency ?? currency,
-                  )}
-                </small>
-              </p>
-            </div>
-          )}
           <div className="invoice-total">
             <span>Total de la {copy.singular}</span>
             <strong>

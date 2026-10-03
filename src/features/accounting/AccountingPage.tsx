@@ -28,6 +28,7 @@ import { PricingFields } from '../pricing/PricingFields'
 import { PriceMargin } from '../pricing/PriceMargin'
 import { PriceHistory } from '../pricing/PriceHistory'
 import { FinancialStatements } from './FinancialStatements'
+import { FinanceMovements } from './FinanceMovements'
 import '../../styles/accounting.css'
 
 interface PricedProduct {
@@ -37,17 +38,16 @@ interface PricedProduct {
 
 /**
  * Contabilidad: el precio de compra de cada perfume y el porcentaje de
- * ganancia de cada tipo de cliente. Precio de venta = compra + porcentaje.
+ * ganancia de cada tipo de cliente (precio de venta = compra + porcentaje),
+ * los movimientos de caja, bancos y deudas, y los estados financieros.
  */
 const tabs = {
   prices: 'Precios',
+  movements: 'Caja y bancos',
   statements: 'Estados financieros',
 } as const
 type Tab = keyof typeof tabs
 
-/**
- * Contabilidad: los precios de cada perfume y los estados financieros.
- */
 export function AccountingPage() {
   const [tab, setTab] = useState<Tab>('prices')
   return (
@@ -72,7 +72,9 @@ export function AccountingPage() {
           </button>
         ))}
       </nav>
-      {tab === 'prices' ? <PricesTab /> : <FinancialStatements />}
+      {tab === 'prices' && <PricesTab />}
+      {tab === 'movements' && <FinanceMovements />}
+      {tab === 'statements' && <FinancialStatements />}
     </>
   )
 }

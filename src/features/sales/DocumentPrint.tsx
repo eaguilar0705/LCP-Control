@@ -8,7 +8,6 @@ import {
 } from '../../lib/domain'
 import { formatCurrency, formatDate } from '../../lib/format'
 import { equivalentAmount, priceTierLabels } from '../../lib/pricing'
-import { includedTax } from './document'
 import { printDensity } from './printDensity'
 
 /**
@@ -20,10 +19,6 @@ import { printDensity } from './printDensity'
 export function DocumentPrint({ document: d }: { document: DocumentRecord }) {
   const copy = documentCopy[d.kind]
   const density = printDensity(d)
-  const tax =
-    d.taxRate === undefined || d.taxRate === null
-      ? null
-      : includedTax(d.total, d.taxRate)
   // La tasa con la que se cotizó el documento. Una factura vieja conserva la
   // suya: el equivalente impreso es el de su día, no el del dólar de hoy.
   const rate = d.catalogRate ?? (d.currency === 'USD' ? d.exchangeRate : null)
@@ -148,17 +143,9 @@ export function DocumentPrint({ document: d }: { document: DocumentRecord }) {
         </div>
         <div className="letter-totals">
           <p>
-            <span>
-              {tax ? 'Subtotal sin impuesto' : 'Subtotal (sin desglose)'}
-            </span>
-            <b>{formatCurrency(tax?.net ?? d.total, d.currency)}</b>
+            <span>Subtotal</span>
+            <b>{formatCurrency(d.total, d.currency)}</b>
           </p>
-          {tax && (
-            <p>
-              <span>Impuesto incluido ({d.taxRate} %)</span>
-              <b>{formatCurrency(tax.tax, d.currency)}</b>
-            </p>
-          )}
           <p className="letter-grand-total">
             <span>TOTAL {d.currency}</span>
             <b>{formatCurrency(d.total, d.currency)}</b>

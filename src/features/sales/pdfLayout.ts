@@ -8,7 +8,6 @@ import {
 } from '../../lib/domain'
 import { formatCurrency, formatDate } from '../../lib/format'
 import { equivalentAmount, priceTierLabels } from '../../lib/pricing'
-import { includedTax } from './document'
 
 /**
  * PDF de factura/proforma en carta. Coordenadas en puntos (612 × 792).
@@ -105,7 +104,6 @@ export function layoutDocumentPdf(
   logo: Uint8Array,
   target?: jsPDF,
 ): jsPDF {
-  const tax = d.taxRate == null ? null : includedTax(d.total, d.taxRate)
   // La tasa con la que se cotizó este documento, no la del dólar de hoy.
   const rate = d.catalogRate ?? (d.currency === 'USD' ? d.exchangeRate : null)
   const equivalent = equivalentAmount(d.total, d.currency, rate)
@@ -264,7 +262,7 @@ export function layoutDocumentPdf(
       ? `Entrega desde: ${labels.location[d.location]}`
       : null
   const notesHeight = 22 + notes.length * 9.2 + (location ? 11 : 0)
-  const totalsHeight = 12 + (tax ? 12 : 0) + 26 + (equivalent ? 12 : 0)
+  const totalsHeight = 12 + 26 + (equivalent ? 12 : 0)
   const summaryHeight = Math.max(notesHeight, totalsHeight)
 
   function summary(top: number) {
@@ -274,14 +272,9 @@ export function layoutDocumentPdf(
     text(notes, left, top + 28, 8)
     if (location) text(location, left, top + 28 + notes.length * 9.2 + 2, 8)
     const x = 372
-    let y = top + 8
-    text(tax ? 'Subtotal sin impuesto' : 'Subtotal (sin desglose)', x, y, 8.5)
-    text(money(tax?.net ?? d.total), right, y, 9, true, 'right')
-    if (tax) {
-      y += 12
-      text(`Impuesto incluido (${d.taxRate} %)`, x, y, 8.5)
-      text(money(tax.tax), right, y, 9, true, 'right')
-    }
+    const y = top + 8
+    text('Subtotal', x, y, 8.5)
+    text(money(d.total), right, y, 9, true, 'right')
     pdf
       .setFillColor(...accent)
       .roundedRect(x - 4, y + 5, right - x + 4, 22, 3, 3, 'F')

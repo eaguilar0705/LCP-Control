@@ -20,6 +20,10 @@ import type {
   OpeningCostInput,
   ShipmentInput,
 } from '../features/reports/accounting'
+import type {
+  FinanceEntryInput,
+  FinanceLedger,
+} from '../features/accounting/finance'
 /** Una página del historial dentro de un periodo. */
 export interface DocumentQuery {
   range: ReportRange
@@ -101,4 +105,8 @@ export interface DataProvider {
   setOpeningCost(input: OpeningCostInput): Promise<string>
   recordExpense(input: ExpenseInput): Promise<string>
   voidExpense(id: string, reason: string): Promise<string>
+  /** Saldos de caja, bancos y deudas al fin del período y lo registrado en él. */
+  getFinance(range: ReportRange): Promise<FinanceLedger>
+  recordFinanceEntry(input: FinanceEntryInput): Promise<string>
+  voidFinanceEntry(id: string, reason: string): Promise<string>
 }

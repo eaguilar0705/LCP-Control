@@ -763,6 +763,9 @@ export const supabaseAdapter: DataProvider = {
   setOpeningCost: accounting.setOpeningCost,
   recordExpense: accounting.recordExpense,
   voidExpense: accounting.voidExpense,
+  getFinance: accounting.getFinance,
+  recordFinanceEntry: accounting.recordFinanceEntry,
+  voidFinanceEntry: accounting.voidFinanceEntry,
   // Managua no aplica horario de verano, así que el desfase es fijo: el día del
   // negocio va de las 00:00 a las 24:00 en -06:00, no en UTC.
   async getReportSource(range: ReportRange): Promise<ReportSource> {

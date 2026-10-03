@@ -537,3 +537,16 @@
   border-top: 1px solid var(--line);
   border-radius: 12px;
 }
+.finance-balances {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+.finance-balances .accounting-metric {
+  padding: 16px;
+  gap: 6px;
+}
+.finance-balances .accounting-metric strong {
+  font-size: clamp(18px, 1.6vw, 24px);
+}

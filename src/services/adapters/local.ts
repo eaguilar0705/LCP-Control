@@ -1,6 +1,7 @@
 import { AppError } from '../../lib/errors'
 import type { BusinessSettings, DocumentKind } from '../../lib/domain'
 import type { DataProvider } from '../contracts'
+import { emptyLedger } from '../../features/accounting/finance'
 // Shared by the catalog and demo providers: the local views read the catalogue
 // but must never look as if they issued a document or moved real stock.
 // Invented business details: the local view never shows the real ones.
@@ -56,6 +57,9 @@ export const unconfiguredAdapter: DataProvider = {
   setOpeningCost: async () => missingConfiguration(),
   recordExpense: async () => missingConfiguration(),
   voidExpense: async () => missingConfiguration(),
+  getFinance: async () => missingConfiguration(),
+  recordFinanceEntry: async () => missingConfiguration(),
+  voidFinanceEntry: async () => missingConfiguration(),
 }
 export const localWrites = {
   listProducts: async () => unavailable(),
@@ -101,4 +105,10 @@ export const localWrites = {
   setOpeningCost: async () => unavailable(),
   recordExpense: async () => unavailable(),
   voidExpense: async () => unavailable(),
+  // Sin movimientos propios: la pestaña queda sin saldo inicial.
+  async getFinance() {
+    return structuredClone(emptyLedger)
+  },
+  recordFinanceEntry: async () => unavailable(),
+  voidFinanceEntry: async () => unavailable(),
 }

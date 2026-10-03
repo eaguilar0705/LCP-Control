@@ -107,7 +107,6 @@ it('orders the period result as an income statement', () => {
     'memo',
     'loans',
     'purchases',
-    'tax',
   ])
   expect(amount('gross')).toBe(800)
   expect(amount('ventas')).toBe(300)

@@ -311,14 +311,6 @@ try {
       'más de lo que hay en tienda (7)',
       (p) => p.getByLabel(/^Cantidad de .*Oud/).fill('50'),
     ],
-    [
-      'impuesto 150 %',
-      (p) => p.getByLabel('Impuesto incluido en el precio (%)').fill('150'),
-    ],
-    [
-      'impuesto negativo',
-      (p) => p.getByLabel('Impuesto incluido en el precio (%)').fill('-15'),
-    ],
     ['WhatsApp «123»', (p) => p.getByLabel('WhatsApp del cliente').fill('123')],
     [
       'sin nombre de cliente',

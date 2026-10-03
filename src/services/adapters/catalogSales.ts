@@ -8,8 +8,17 @@ import type {
   SaleCostSnapshot,
 } from '../../features/reports/accounting'
 import {
+  financeLedger,
+  salesByPayment,
+  type FinanceAccount,
+  type FinanceEntryRecord,
+  type FinanceKind,
+  type FinanceLedger,
+} from '../../features/accounting/finance'
+import {
   addDays,
   localDay,
+  type ReportRange,
   type ReportCustomer,
   type ReportDocument,
   type ReportMovement,
@@ -304,4 +313,86 @@ export function syntheticSales(today = localDay(new Date())): SyntheticSales {
       movementCosts,
     },
   }
+}
+
+/**
+ * Caja, bancos y deudas de muestra sobre el mismo año de ventas: saldos
+ * iniciales el primer día, un préstamo, y cada mes una transferencia a banco,
+ * un cobro, un pago al proveedor y un retiro del dueño. La renta, la planilla
+ * y el préstamo se pagan desde el banco; lo demás, de caja. Uno de cada tres
+ * pedidos queda a crédito del proveedor.
+ */
+export function syntheticFinance(range: ReportRange, today = localDay(new Date())): FinanceLedger {
+  const sales = syntheticSales(today)
+  const start = addDays(today, -364)
+  const entries: FinanceEntryRecord[] = []
+  const entry = (
+    occurredOn: string,
+    kind: FinanceKind,
+    account: FinanceAccount,
+    amount: number,
+    description: string,
+    changes: Partial<FinanceEntryRecord> = {},
+  ) =>
+    entries.push({
+      id: `mov-${entries.length + 1}`,
+      requestId: `mov-${entries.length + 1}`,
+      occurredOn,
+      kind,
+      account,
+      toAccount: null,
+      amount,
+      currency: 'NIO',
+      exchangeRate: 1,
+      counterparty: '',
+      description,
+      reference: '',
+      createdAt: `${occurredOn}T08:00:00Z`,
+      voidedAt: null,
+      voidReason: null,
+      ...changes,
+    })
+  entry(start, 'opening', 'caja', 45000, 'Arqueo de apertura')
+  entry(start, 'opening', 'banco', 320000, 'Estado de cuenta de apertura')
+  entry(start, 'opening', 'prestamos', 280000, 'Saldo del préstamo bancario', { counterparty: 'Banco de muestra' })
+  entry(addDays(start, 40), 'loan', 'banco', 150000, 'Préstamo para inventario', { counterparty: 'Banco de muestra' })
+  for (let back = 360; back >= 0; back--) {
+    const day = addDays(today, -back)
+    if (day.endsWith('-05'))
+      entry(day, 'transfer', 'caja', 90000, 'Depósito de ventas en efectivo', { toAccount: 'banco' })
+    if (day.endsWith('-15')) {
+      entry(day, 'collection', 'banco', 85000, 'Cobro de facturas pendientes', { counterparty: 'Clientes varios' })
+      entry(day, 'supplier_payment', 'banco', 15000, 'Abono al proveedor', { counterparty: 'Importadora del Golfo' })
+    }
+    if (day.endsWith('-28'))
+      entry(day, 'withdrawal', 'caja', 18000, 'Retiro del dueño')
+  }
+  const bank = new Set<ExpenseCategory>(['renta', 'salario', 'prestamo_bancario', 'interes_bancario'])
+  return financeLedger(
+    {
+      entries,
+      expenses: sales.accounting.expenses.map((row) => ({
+        ...row,
+        account: bank.has(row.category) ? 'banco' : 'caja',
+      })),
+      shipments: sales.accounting.shipments.map((row, index) => ({
+        incurredOn: row.incurredOn,
+        account: index % 3 === 0 ? 'credito' : 'banco',
+        amountNio: round(row.goodsAmount * row.exchangeRate) + round(row.shippingAmount * row.exchangeRate),
+      })),
+      sales: salesByPayment(
+        sales.documents
+          .filter((row) => row.kind === 'invoice')
+          .filter((row) => {
+            const day = row.createdAt.slice(0, 10)
+            return day >= start && day <= range.to
+          })
+          .map((row) => ({
+            paymentMethod: row.paymentMethod ?? null,
+            amountNio: round(row.total * (row.currency === 'USD' ? DEMO_RATE : 1)),
+          })),
+      ),
+    },
+    range,
+  )
 }

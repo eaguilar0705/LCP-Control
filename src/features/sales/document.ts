@@ -30,6 +30,7 @@ export const documentDraftSchema = z.object({
   // se guardaría sin problema y fallaría recién al emitir el documento.
   taxId: z.string().max(80),
   currency: z.enum(['NIO', 'USD']),
+  // Borradores guardados antes de quitar el IVA: se leen y se ignoran.
   taxRate: z.number().finite().min(0).max(100).optional(),
   exchangeRate: z
     .number()
@@ -48,12 +49,6 @@ export const documentDraftSchema = z.object({
 })
 export type DocumentDraft = z.infer<typeof documentDraftSchema>
 export type DraftLine = z.infer<typeof draftLineSchema>
-/** Catalogue totals already include the explicitly recorded tax. */
-export function includedTax(total: number, rate: number) {
-  const totalCents = Math.round(total * 100)
-  const netCents = Math.round(totalCents / (1 + rate / 100))
-  return { net: netCents / 100, tax: (totalCents - netCents) / 100 }
-}
 export function draftTotal(
   lines: DraftLine[],
   tier: PriceTier,
@@ -106,7 +101,6 @@ export function draftPreview(
     issuer,
     tier: draft.tier,
     currency: draft.currency,
-    taxRate: draft.taxRate,
     exchangeRate: draft.currency === 'NIO' ? 1 : draft.exchangeRate,
     total: draftTotal(draft.lines, draft.tier, draft.currency),
     location: draft.kind === 'invoice' ? draft.location : null,

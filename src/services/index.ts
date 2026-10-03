@@ -18,6 +18,7 @@ import type {
   OpeningCostInput,
   ShipmentInput,
 } from '../features/reports/accounting'
+import type { FinanceEntryInput } from '../features/accounting/finance'
 export function createServices(provider: DataProvider) {
   return {
     mode: provider.mode,
@@ -71,6 +72,13 @@ export function createServices(provider: DataProvider) {
       recordExpense: (input: ExpenseInput) => provider.recordExpense(input),
       voidExpense: (id: string, reason: string) =>
         provider.voidExpense(id, reason),
+    },
+    financeService: {
+      getLedger: (range: ReportRange) => provider.getFinance(range),
+      recordEntry: (input: FinanceEntryInput) =>
+        provider.recordFinanceEntry(input),
+      voidEntry: (id: string, reason: string) =>
+        provider.voidFinanceEntry(id, reason),
     },
     settingsService: {
       getExchangeRate: () => provider.getExchangeRate(),

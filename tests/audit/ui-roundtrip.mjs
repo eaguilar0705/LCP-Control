@@ -159,7 +159,6 @@ try {
       .first()
       .click()
     await salesPage.getByLabel('Forma de pago').selectOption({ index: 1 })
-    await salesPage.getByLabel('Impuesto incluido en el precio (%)').fill('15')
     await salesPage
       .getByLabel('Sale de')
       .selectOption('store')
@@ -198,15 +197,10 @@ try {
     )?.quantity === 4,
     'la factura descontó 1 unidad de tienda',
   )
-  // El impuesto elegido se ve en la factura recién emitida y al reabrirla.
+  // Sin IVA: la factura no desglosa impuesto, ni recién emitida ni al reabrirla.
   const printed = async () =>
-    /Impuesto incluido \(15 %\)/.test(
-      await salesPage.evaluate(() => document.body.innerText),
-    )
-  check(
-    await printed(),
-    'la factura emitida muestra «Impuesto incluido (15 %)»',
-  )
+    !/Impuesto/.test(await salesPage.evaluate(() => document.body.innerText))
+  check(await printed(), 'la factura emitida no desglosa impuesto')
   await step(salesPage, 'reabrir la factura desde el historial', async () => {
     await go(salesPage, '/sales/history')
     await salesPage
@@ -215,7 +209,7 @@ try {
       .click()
     await settle(salesPage)
   })
-  check(await printed(), 'reabierta desde el historial conserva el impuesto')
+  check(await printed(), 'reabierta desde el historial tampoco lo desglosa')
   await salesContext.close()
 
   // 6. La dueña elimina la factura desde el historial.

@@ -191,6 +191,10 @@ export const catalogAdapter: DataProvider = {
     return { count: 0, totals: { NIO: 0, USD: 0 } }
   },
   ...localWrites,
+  async getFinance(range: ReportRange) {
+    const { syntheticFinance } = await import('./catalogSales')
+    return syntheticFinance(range)
+  },
   async listProducts() {
     return pricedCatalog()
   },

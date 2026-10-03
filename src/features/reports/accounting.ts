@@ -32,6 +32,8 @@ export interface ShipmentInput {
   /** Lo que cobró la agencia por el peso de todo el pedido. */
   shippingAmount: number
   lines: ShipmentLineInput[]
+  /** Con qué se pagó: caja, banco o a crédito del proveedor. */
+  account?: 'caja' | 'banco' | 'credito'
 }
 export interface OpeningCostInput {
   requestId: string
@@ -99,6 +101,8 @@ export interface ExpenseInput {
   currency: Currency
   exchangeRate: number
   reference: string
+  /** De dónde salió el dinero. */
+  account?: 'caja' | 'banco'
 }
 export interface ShipmentLine extends ShipmentLineInput {
   id: string

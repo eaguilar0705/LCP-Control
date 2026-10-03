@@ -145,7 +145,7 @@ export async function renderReportPdf(context: ReportContext): Promise<Blob> {
       text('RESULTADO INCOMPLETO: faltan costos, datos históricos o filas del periodo.', left, (y += 14), 9, true)
     }
     table([{ label: 'ESTADO DE RESULTADOS', width: 362 }, { label: 'IMPORTE NIO', width: 170, align: 'right' }], [
-      ['Ventas sin impuesto (parte documentada)', nio(accounting.revenueNio)],
+      ['Ventas netas (parte documentada)', nio(accounting.revenueNio)],
       ['Costo de ventas conocido', nio(accounting.costOfSalesNio)],
       ['Utilidad bruta', nio(accounting.grossProfitNio)],
       ['Gastos reconocidos (los que restan)', nio(accounting.expensesNio)],
@@ -157,7 +157,6 @@ export async function renderReportPdf(context: ReportContext): Promise<Blob> {
       ['Precio de los perfumes pedidos', nio(accounting.purchaseGoodsNio)],
       ['Envío cobrado por la agencia (peso)', nio(accounting.purchaseShippingNio)],
       ['Total invertido en pedidos', `${nio(accounting.purchasesNio)} · ${accounting.purchasedUnits} uds.`],
-      ['Impuesto incluido en ventas documentadas', nio(accounting.salesTaxNio)],
       ['Inventario actual a costo conocido', nio(accounting.inventoryCostNio)],
       ['Rotación anual del inventario', turnover.turnoverPerYear === null ? 'Sin determinar' : `${turnover.turnoverPerYear} veces`],
       ['Días que dura el inventario', turnover.daysOnHand === null ? 'Sin determinar' : `${turnover.daysOnHand} días`],

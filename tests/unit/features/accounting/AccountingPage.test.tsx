@@ -9,8 +9,20 @@ import { catalogAdapter } from '@/services/adapters/catalog'
 import { digestFromSource } from '@/features/reports/digest'
 import type { ReportRange } from '@/features/reports/model'
 
-const { productService, settingsService, reportService } = vi.hoisted(() => ({
+const {
+  productService,
+  settingsService,
+  reportService,
+  financeService,
+  accountingService,
+} = vi.hoisted(() => ({
   reportService: { getSource: vi.fn() },
+  financeService: {
+    getLedger: vi.fn(),
+    recordEntry: vi.fn(),
+    voidEntry: vi.fn(),
+  },
+  accountingService: { recordExpense: vi.fn(), voidExpense: vi.fn() },
   productService: {
     listProducts: vi.fn(),
     listPricing: vi.fn<(id?: string) => Promise<PricingList>>(),
@@ -24,7 +36,13 @@ const { productService, settingsService, reportService } = vi.hoisted(() => ({
   },
 }))
 vi.mock('@/services/useServices', () => ({
-  useServices: () => ({ productService, settingsService, reportService }),
+  useServices: () => ({
+    productService,
+    settingsService,
+    reportService,
+    financeService,
+    accountingService,
+  }),
 }))
 
 const ID = '0f3c2b6e-8d1a-4c5e-9b7f-2a1d3c4e5f60'
@@ -65,6 +83,11 @@ beforeEach(() => {
   }))
   productService.savePricing.mockReset()
   productService.savePricing.mockResolvedValue(1)
+  financeService.getLedger.mockImplementation((range: ReportRange) =>
+    catalogAdapter.getFinance(range),
+  )
+  financeService.recordEntry.mockReset()
+  financeService.recordEntry.mockResolvedValue('nuevo')
 })
 
 function renderPage() {
@@ -201,6 +224,39 @@ it('switches to the financial statements and between income statement and balanc
     'balance',
   )
   const balance = screen.getByRole('table', { name: 'Balance general' })
-  expect(balance).toHaveTextContent('Inventario de mercadería')
+  expect(balance).toHaveTextContent('Inventario (costo promedio)')
+  expect(balance).toHaveTextContent('Préstamos por pagar')
   expect(balance).toHaveTextContent('Total pasivo y patrimonio')
+})
+
+it('shows cash and debt balances and records a transfer', async () => {
+  renderPage()
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: 'Caja y bancos' }))
+  const balances = await screen.findByLabelText('Saldos al fin del período')
+  expect(within(balances).getByText('Caja')).toBeVisible()
+  expect(within(balances).getByText('Préstamos')).toBeVisible()
+  expect(
+    screen.getByRole('table', { name: 'Movimientos del período' }),
+  ).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'Registrar' }))
+  const dialog = await screen.findByRole('dialog', {
+    name: 'Registrar movimiento',
+  })
+  await user.selectOptions(within(dialog).getByLabelText('Tipo'), 'transfer')
+  await user.type(within(dialog).getByLabelText('Importe (NIO)'), '1500')
+  await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
+  await waitFor(() =>
+    expect(financeService.recordEntry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'transfer',
+        account: 'caja',
+        toAccount: 'banco',
+        amount: 1500,
+        currency: 'NIO',
+        exchangeRate: 1,
+      }),
+    ),
+  )
+  expect(await screen.findByText('Registrado: transferencia.')).toBeVisible()
 })
