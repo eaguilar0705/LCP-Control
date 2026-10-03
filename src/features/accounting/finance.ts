@@ -59,6 +59,10 @@ export interface FinanceEntryInput {
   counterparty: string
   description: string
   reference: string
+  /** Factura a crédito que se cobra; sólo en `collection`. */
+  documentId?: string | null
+  /** Pedido a crédito que se paga; sólo en `supplier_payment`. */
+  shipmentId?: string | null
 }
 export interface FinanceEntryRecord extends FinanceEntryInput {
   id: string
@@ -100,6 +104,8 @@ export interface FinanceSource {
 export interface FinancePosition {
   started: boolean
   startOn: string | null
+  /** Cuentas con un saldo inicial explícito (también cuando su importe es cero). */
+  openedAccounts?: FinanceAccount[]
   cash: Record<MoneyAccount, number>
   receivablesNio: number
   loansNio: number
@@ -116,6 +122,39 @@ export interface FinanceLedger {
   expenses: PaidExpense[]
 }
 
+/** Una factura, un pedido o el saldo inicial agregado pendiente de liquidar. */
+export interface CreditAccount {
+  id: string
+  kind: 'receivable' | 'payable'
+  counterparty: string
+  reference: string
+  occurredOn: string
+  /** `null` indica una factura histórica sin importe contable congelado. */
+  originalNio: number | null
+  paidNio: number | null
+  balanceNio: number | null
+  documentId: string | null
+  shipmentId: string | null
+}
+export interface CreditLedger {
+  available: boolean
+  at: string
+  startOn: string | null
+  rows: CreditAccount[]
+  /** El saldo inicial no tiene detalle de facturas o pedidos anteriores. */
+  unallocatedNio: { receivables: number; payables: number }
+  /** Movimientos anteriores que no identificaban la deuda liquidada. */
+  legacyPayments: number
+}
+export const emptyCredits: CreditLedger = {
+  available: false,
+  at: '',
+  startOn: null,
+  rows: [],
+  unallocatedNio: { receivables: 0, payables: 0 },
+  legacyPayments: 0,
+}
+
 export const emptySales: SalesByPayment = {
   caja: 0,
   banco: 0,
@@ -125,6 +164,7 @@ export const emptySales: SalesByPayment = {
 export const emptyPosition: FinancePosition = {
   started: false,
   startOn: null,
+  openedAccounts: [],
   cash: { caja: 0, banco: 0 },
   receivablesNio: 0,
   loansNio: 0,
@@ -231,6 +271,19 @@ export function financePosition(source: FinanceSource): FinancePosition {
   return {
     started: true,
     startOn,
+    openedAccounts: [
+      ...new Set(
+        source.entries
+          .filter(
+            (row) =>
+              row.kind === 'opening' &&
+              !row.voidedAt &&
+              row.occurredOn >= startOn &&
+              row.occurredOn <= at,
+          )
+          .map((row) => row.account),
+      ),
+    ],
     cash: { caja: roundMoney(cash.caja), banco: roundMoney(cash.banco) },
     receivablesNio: roundMoney(receivables),
     loansNio: roundMoney(loans),

@@ -195,6 +195,14 @@ export const catalogAdapter: DataProvider = {
     const { syntheticFinance } = await import('./catalogSales')
     return syntheticFinance(range)
   },
+  async getCredits(at: string) {
+    const { syntheticCredits } = await import('./catalogSales')
+    return syntheticCredits(at)
+  },
+  async getCashflow(range: ReportRange) {
+    const { syntheticCashflow } = await import('./catalogSales')
+    return syntheticCashflow(range)
+  },
   async listProducts() {
     return pricedCatalog()
   },

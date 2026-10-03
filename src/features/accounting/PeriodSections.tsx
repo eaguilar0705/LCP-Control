@@ -21,40 +21,64 @@ import { FinancialStatements } from './FinancialStatements'
 import { FinanceMovements } from './FinanceMovements'
 import { CostsTab, DailyCloseTab, ExpensesTab, RatiosTab } from './AnalysisTabs'
 import type { PeriodSection } from './sections'
+import { AccountingOverview } from './AccountingOverview'
+import { CreditAccounts } from './CreditAccounts'
+import { CashflowPanel } from './CashflowPanel'
+import { CashCountPanel } from './CashCountPanel'
 
 /**
  * Un solo período para todas las secciones: lo que se ve en gastos, caja,
  * costos, estados y razones sale de las mismas cifras.
  */
-export function PeriodSections({ section }: { section: PeriodSection }) {
+export function PeriodSections({
+  section,
+  onNavigate,
+}: {
+  section: PeriodSection
+  onNavigate: (section: PeriodSection) => void
+}) {
   const { reportService, financeService, salesService } = useServices()
   const [preset, setPreset] = useState<Preset | null>('30d')
   const [range, setRange] = useState<ReportRange>(() => presetRange('30d'))
   const [exporting, setExporting] = useState(false)
   const [failure, setFailure] = useState('')
   const load = useCallback(async () => {
-    const [report, ledger] = await Promise.all([
+    const [report, ledger, credits, cashflow] = await Promise.all([
       reportService.getSource(range),
       financeService.getLedger(range),
+      section === 'credits'
+        ? financeService.getCredits(range.to)
+        : Promise.resolve(null),
+      section === 'cashflow'
+        ? financeService.getCashflow(range)
+        : Promise.resolve(null),
     ])
-    return { report, ledger }
-  }, [reportService, financeService, range])
+    return { report, ledger, credits, cashflow }
+  }, [reportService, financeService, range, section])
   const { data, loading, error, retry, refresh } = useQuery(load)
+  const current =
+    data?.report.range.from === range.from && data?.report.range.to === range.to
 
   async function exportExcel() {
-    if (!data) return
+    if (!data || !current || exporting) return
+    const exportRange = { ...data.report.range }
     setExporting(true)
     setFailure('')
     try {
-      const [{ accountingWorkbook }, business] = await Promise.all([
-        import('./accountingWorkbook'),
-        salesService.getBusiness().catch(() => null),
-      ])
+      const [{ accountingWorkbook }, business, credits, cashflow, closings] =
+        await Promise.all([
+          import('./accountingWorkbook'),
+          salesService.getBusiness().catch(() => null),
+          financeService.getCredits(exportRange.to),
+          financeService.getCashflow(exportRange),
+          financeService.getCashClosings(exportRange),
+        ])
       accountingWorkbook(
         data.report,
         data.ledger.position,
         data.report.range,
         business?.name ?? 'La Casa del Perfume',
+        { ledger: data.ledger, credits, cashflow, closings },
       )
     } catch (e) {
       setFailure(errorMessage(e))
@@ -111,7 +135,7 @@ export function PeriodSections({ section }: { section: PeriodSection }) {
           <div className="period-export">
             <Button
               variant="secondary"
-              disabled={!data || exporting}
+              disabled={!data || !current || exporting}
               onClick={() => void exportExcel()}
             >
               <FileSpreadsheet size={17} />
@@ -125,12 +149,25 @@ export function PeriodSections({ section }: { section: PeriodSection }) {
           </p>
         )}
       </Card>
-      {loading && !data ? (
+      {(loading && !data) || (data && !current) ? (
         <LoadingState />
       ) : error || !data ? (
         <ErrorState message={error ?? 'Sin datos.'} retry={retry} />
       ) : (
         <>
+          {section === 'overview' && (
+            <AccountingOverview
+              report={data.report}
+              ledger={data.ledger}
+              onNavigate={onNavigate}
+            />
+          )}
+          {section === 'credits' && data.credits && (
+            <CreditAccounts ledger={data.credits} onChanged={refresh} />
+          )}
+          {section === 'cashflow' && data.cashflow && (
+            <CashflowPanel ledger={data.cashflow} />
+          )}
           {!data.ledger.available && (
             <p className="inline-error" role="alert">
               Falta aplicar la actualización de contabilidad en la base de
@@ -156,7 +193,14 @@ export function PeriodSections({ section }: { section: PeriodSection }) {
             <CostsTab report={data.report} range={data.report.range} />
           )}
           {section === 'daily' && (
-            <DailyCloseTab report={data.report} range={data.report.range} />
+            <>
+              <CashCountPanel
+                key={`${data.report.range.from}:${data.report.range.to}`}
+                range={data.report.range}
+                onChanged={refresh}
+              />
+              <DailyCloseTab report={data.report} range={data.report.range} />
+            </>
           )}
           {section === 'statements' && (
             <FinancialStatements

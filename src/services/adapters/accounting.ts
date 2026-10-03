@@ -13,11 +13,14 @@ import {
 import { addDays, type ReportRange } from '../../features/reports/model'
 import {
   emptyLedger,
+  emptyCredits,
   financeLedger,
   financeStart,
   type FinanceEntryInput,
   type FinanceEntryRecord,
   type FinanceLedger,
+  type CreditLedger,
+  type CreditAccount,
   type PaidExpense,
   type SalesByPayment,
   type ShipmentPayment,
@@ -146,12 +149,22 @@ function toFinanceEntry(row: AccountingRow): FinanceEntryRecord {
     counterparty: row.counterparty as string,
     description: row.description as string,
     reference: row.reference as string,
+    documentId: (row.document_id ?? null) as string | null,
+    shipmentId: (row.shipment_id ?? null) as string | null,
     createdAt: row.created_at as string,
     voidedAt: row.voided_at as string | null,
     voidReason: row.void_reason as string | null,
   }
 }
 const noRows = { rows: [] as AccountingRow[], truncated: false }
+
+function requireComplete(rows: { truncated: boolean }) {
+  if (rows.truncated)
+    throw new AppError(
+      'validation',
+      'Hay demasiados movimientos para calcular los saldos completos. Contacta al administrador para revisar el libro contable.',
+    )
+}
 
 export function createAccountingAdapter(
   client: () => SupabaseClient,
@@ -187,6 +200,45 @@ export function createAccountingAdapter(
       write('record_finance_entry', { p_input: input }),
     voidFinanceEntry: (id: string, reason: string) =>
       write('void_finance_entry', { p_id: id, p_reason: reason }),
+    async getCredits(at: string): Promise<CreditLedger> {
+      const { data, error } = await client().rpc('credit_accounts', {
+        p_at: at,
+      })
+      if (error) {
+        if (accountingSchemaMissing(error))
+          return { ...structuredClone(emptyCredits), at }
+        throw errorToApp(error)
+      }
+      if (!data || typeof data !== 'object' || !Array.isArray(data.rows))
+        throw new AppError(
+          'unexpected',
+          'No se recibió el detalle de créditos.',
+        )
+      return {
+        available: true,
+        at: data.at as string,
+        startOn: (data.startOn ?? null) as string | null,
+        legacyPayments: numeric(data.legacyPayments),
+        unallocatedNio: {
+          receivables: numeric(data.unallocatedNio?.receivables),
+          payables: numeric(data.unallocatedNio?.payables),
+        },
+        rows: (data.rows as Record<string, unknown>[]).map(
+          (row): CreditAccount => ({
+            id: row.id as string,
+            kind: row.kind as CreditAccount['kind'],
+            counterparty: row.counterparty as string,
+            reference: row.reference as string,
+            occurredOn: row.occurredOn as string,
+            originalNio: nullableNumeric(row.originalNio),
+            paidNio: nullableNumeric(row.paidNio),
+            balanceNio: nullableNumeric(row.balanceNio),
+            documentId: (row.documentId ?? null) as string | null,
+            shipmentId: (row.shipmentId ?? null) as string | null,
+          }),
+        ),
+      }
+    },
     /**
      * Los movimientos del contador son pocos y se leen todos hasta el fin del
      * período; con el primer saldo inicial se sabe desde cuándo sumar gastos,
@@ -194,23 +246,23 @@ export function createAccountingAdapter(
      */
     async getFinance(range: ReportRange): Promise<FinanceLedger> {
       try {
-        const entries = (
-          await readReportPages<AccountingRow>((start, end) =>
-            client()
-              .from('finance_entries')
-              .select(
-                'id,request_id,occurred_on,kind,account,to_account,amount,currency,exchange_rate,counterparty,description,reference,created_at,voided_at,void_reason',
-                { count: 'exact' },
-              )
-              .lte('occurred_on', range.to)
-              .order('occurred_on')
-              .order('id')
-              .range(start, end),
-          )
-        ).rows.map(toFinanceEntry)
+        const entryRows = await readReportPages<AccountingRow>((start, end) =>
+          client()
+            .from('finance_entries')
+            .select(
+              'id,request_id,occurred_on,kind,account,to_account,amount,currency,exchange_rate,counterparty,description,reference,document_id,shipment_id,created_at,voided_at,void_reason',
+              { count: 'exact' },
+            )
+            .lte('occurred_on', range.to)
+            .order('occurred_on')
+            .order('id')
+            .range(start, end),
+        )
+        requireComplete(entryRows)
+        const entries = entryRows.rows.map(toFinanceEntry)
         const startOn = financeStart(entries, range.to)
         const from = startOn && startOn < range.from ? startOn : range.from
-        const [expenses, shipments, sales] = await Promise.all([
+        const results = await Promise.allSettled([
           readReportPages<AccountingRow>((start, end) =>
             client()
               .from('expense_records')
@@ -248,6 +300,22 @@ export function createAccountingAdapter(
                 })
             : Promise.resolve(null),
         ])
+        const failures = results.filter(
+          (result) => result.status === 'rejected',
+        )
+        const unexpected = failures.find(
+          (result) => !accountingSchemaMissing(result.reason ?? {}),
+        )
+        if (unexpected) throw unexpected.reason
+        const [expenseResult, shipmentResult, salesResult] = results
+        if (expenseResult.status === 'rejected') throw expenseResult.reason
+        if (shipmentResult.status === 'rejected') throw shipmentResult.reason
+        if (salesResult.status === 'rejected') throw salesResult.reason
+        const expenses = expenseResult.value
+        const shipments = shipmentResult.value
+        const sales = salesResult.value
+        requireComplete(expenses)
+        requireComplete(shipments)
         const totals: SalesByPayment = {
           caja: numeric(sales?.caja ?? 0),
           banco: numeric(sales?.banco ?? 0),
@@ -257,12 +325,10 @@ export function createAccountingAdapter(
         return financeLedger(
           {
             entries,
-            expenses: expenses.rows.map(
-              (row): PaidExpense => ({
-                ...toExpense(row),
-                account: row.account as PaidExpense['account'],
-              }),
-            ),
+            expenses: expenses.rows.map((row): PaidExpense => ({
+              ...toExpense(row),
+              account: row.account as PaidExpense['account'],
+            })),
             shipments: shipments.rows.map((row) => {
               const rate = numeric(row.exchange_rate)
               return {
@@ -350,30 +416,34 @@ export function createAccountingAdapter(
             .order('id')
             .range(start, end),
         ),
-        lines ? readReportPages<AccountingRow>((start, end) =>
-          client()
-            .from('document_item_costs')
-            .select(
-              'document_item_id,document_id,product_id,quantity,unit_cost_nio,net_revenue_nio,tax_nio,documents!inner(created_at)',
-              { count: 'exact' },
+        lines
+          ? readReportPages<AccountingRow>((start, end) =>
+              client()
+                .from('document_item_costs')
+                .select(
+                  'document_item_id,document_id,product_id,quantity,unit_cost_nio,net_revenue_nio,tax_nio,documents!inner(created_at)',
+                  { count: 'exact' },
+                )
+                .gte('documents.created_at', from)
+                .lt('documents.created_at', until)
+                .order('document_item_id')
+                .range(start, end),
             )
-            .gte('documents.created_at', from)
-            .lt('documents.created_at', until)
-            .order('document_item_id')
-            .range(start, end),
-        ) : Promise.resolve({ rows: [] as AccountingRow[], truncated: false }),
-        lines ? readReportPages<AccountingRow>((start, end) =>
-          client()
-            .from('inventory_movement_costs')
-            .select(
-              'movement_id,product_id,type,quantity,unit_cost_nio,created_at',
-              { count: 'exact' },
+          : Promise.resolve({ rows: [] as AccountingRow[], truncated: false }),
+        lines
+          ? readReportPages<AccountingRow>((start, end) =>
+              client()
+                .from('inventory_movement_costs')
+                .select(
+                  'movement_id,product_id,type,quantity,unit_cost_nio,created_at',
+                  { count: 'exact' },
+                )
+                .gte('created_at', from)
+                .lt('created_at', until)
+                .order('movement_id')
+                .range(start, end),
             )
-            .gte('created_at', from)
-            .lt('created_at', until)
-            .order('movement_id')
-            .range(start, end),
-        ) : Promise.resolve({ rows: [] as AccountingRow[], truncated: false }),
+          : Promise.resolve({ rows: [] as AccountingRow[], truncated: false }),
       ])
       const failures = results.filter((result) => result.status === 'rejected')
       // A missing table must not hide a simultaneous permission or network error.

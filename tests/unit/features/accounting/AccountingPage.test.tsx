@@ -1,5 +1,11 @@
 import { beforeEach, expect, it, vi } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { AccessContext } from '@/app/AccessContext'
@@ -7,7 +13,7 @@ import type { PriceChange, PricingList, Product } from '@/lib/domain'
 import { AccountingPage } from '@/features/accounting/AccountingPage'
 import { catalogAdapter } from '@/services/adapters/catalog'
 import { digestFromSource } from '@/features/reports/digest'
-import type { ReportRange } from '@/features/reports/model'
+import { addDays, localDay, type ReportRange } from '@/features/reports/model'
 
 const {
   productService,
@@ -19,6 +25,11 @@ const {
   reportService: { getSource: vi.fn() },
   financeService: {
     getLedger: vi.fn(),
+    getCredits: vi.fn(),
+    getCashflow: vi.fn(),
+    getCashClosings: vi.fn(),
+    recordCashClosing: vi.fn(),
+    voidCashClosing: vi.fn(),
     recordEntry: vi.fn(),
     voidEntry: vi.fn(),
   },
@@ -91,6 +102,16 @@ beforeEach(() => {
   )
   financeService.recordEntry.mockReset()
   financeService.recordEntry.mockResolvedValue('nuevo')
+  financeService.getCredits.mockImplementation((at: string) =>
+    catalogAdapter.getCredits(at),
+  )
+  financeService.getCashflow.mockImplementation((range: ReportRange) =>
+    catalogAdapter.getCashflow(range),
+  )
+  financeService.getCashClosings.mockResolvedValue([])
+  financeService.recordCashClosing.mockReset()
+  financeService.recordCashClosing.mockResolvedValue('arqueo')
+  financeService.voidCashClosing.mockReset()
 })
 
 function renderPage() {
@@ -106,6 +127,7 @@ function renderPage() {
 it('saves the purchase price and the percentage of each client type', async () => {
   renderPage()
   const user = userEvent.setup()
+  await user.click(screen.getByRole('button', { name: 'Precios' }))
   await user.click(
     await screen.findByRole('button', {
       name: 'Editar precios de Oud nocturno',
@@ -146,6 +168,7 @@ it('saves the purchase price and the percentage of each client type', async () =
 it('marks an impossible percentage instead of saving it', async () => {
   renderPage()
   const user = userEvent.setup()
+  await user.click(screen.getByRole('button', { name: 'Precios' }))
   await user.click(
     await screen.findByRole('button', {
       name: 'Editar precios de Oud nocturno',
@@ -191,6 +214,7 @@ it('shows the margin over the average cost and the price history', async () => {
   ])
   renderPage()
   const user = userEvent.setup()
+  await user.click(screen.getByRole('button', { name: 'Precios' }))
   // La tabla dice el precio de compra y el porcentaje de cada tipo de cliente.
   const table = await screen.findByRole('table')
   expect(table).toHaveTextContent('NIO 500.00')
@@ -224,7 +248,7 @@ it('switches to the financial statements and between income statement and balanc
     'balance',
   )
   const balance = screen.getByRole('table', { name: 'Balance general' })
-  expect(balance).toHaveTextContent('Inventario (costo promedio)')
+  expect(balance).toHaveTextContent('Inventario actual (costo promedio)')
   expect(balance).toHaveTextContent('Préstamos por pagar')
   expect(balance).toHaveTextContent('Total pasivo y patrimonio')
 })
@@ -296,3 +320,28 @@ it('shows the financial ratios', async () => {
   expect(screen.getByText('Margen neto')).toBeVisible()
   expect(screen.getByText('Días de inventario')).toBeVisible()
 })
+
+it('disables export while the displayed data belongs to a previous range', async () => {
+  renderPage()
+  const user = userEvent.setup()
+  await screen.findByRole('heading', {
+    name: 'Control contable de La Casa del Perfume',
+  })
+  reportService.getSource.mockImplementationOnce(() => new Promise(() => {}))
+  await user.click(screen.getByRole('button', { name: 'Últimos 7 días' }))
+  expect(screen.getByRole('button', { name: 'Descargar Excel' })).toBeDisabled()
+})
+
+it('clears physical cash counts when changing the parent reporting date', async () => {
+  renderPage()
+  const user = userEvent.setup()
+  await user.click(screen.getByRole('button', { name: 'Cierre diario' }))
+  await user.type(await screen.findByLabelText('C$ 100 · cantidad'), '2')
+  expect(screen.getByLabelText('C$ 100 · cantidad')).toHaveValue(2)
+  fireEvent.change(screen.getByLabelText('Hasta'), {
+    target: { value: addDays(localDay(new Date()), -1) },
+  })
+  await waitFor(() =>
+    expect(screen.getByLabelText('C$ 100 · cantidad')).toHaveValue(null),
+  )
+}, 15000)

@@ -19,6 +19,7 @@ import type {
   ShipmentInput,
 } from '../features/reports/accounting'
 import type { FinanceEntryInput } from '../features/accounting/finance'
+import type { CashClosingInput } from '../features/accounting/cashflow'
 export function createServices(provider: DataProvider) {
   return {
     mode: provider.mode,
@@ -75,6 +76,13 @@ export function createServices(provider: DataProvider) {
     },
     financeService: {
       getLedger: (range: ReportRange) => provider.getFinance(range),
+      getCredits: (at: string) => provider.getCredits(at),
+      getCashflow: (range: ReportRange) => provider.getCashflow(range),
+      getCashClosings: (range: ReportRange) => provider.getCashClosings(range),
+      recordCashClosing: (input: CashClosingInput) =>
+        provider.recordCashClosing(input),
+      voidCashClosing: (id: string, reason: string) =>
+        provider.voidCashClosing(id, reason),
       recordEntry: (input: FinanceEntryInput) =>
         provider.recordFinanceEntry(input),
       voidEntry: (id: string, reason: string) =>

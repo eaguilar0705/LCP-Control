@@ -127,6 +127,7 @@ describe('financePosition', () => {
     )
     const { position } = ledger
     expect(position.startOn).toBe('2026-09-01')
+    expect(position.openedAccounts).toEqual(['caja', 'banco', 'prestamos'])
     // 1000 − 200 − 100 − 80 + 1500
     expect(position.cash.caja).toBe(2120)
     // 5000 + 200 + 2000 + 300 − 400 − 500 − 700 + 2500
@@ -154,6 +155,24 @@ describe('financePosition', () => {
       sales: emptySales,
     })
     expect(position.cash.caja).toBe(365)
+  })
+
+  it('distingue la apertura de cero de una cuenta que nunca se abrió', () => {
+    const ledger = financeLedger(
+      {
+        entries: [
+          entry({ account: 'caja', amount: 0 }),
+          entry({ account: 'banco', amount: 100, voidedAt: '2026-09-02' }),
+        ],
+        expenses: [],
+        shipments: [],
+        sales: emptySales,
+      },
+      range,
+    )
+    expect(ledger.position.started).toBe(true)
+    expect(ledger.position.openedAccounts).toEqual(['caja'])
+    expect(ledger.position.cash.caja).toBe(0)
   })
 })
 

@@ -26,6 +26,7 @@ import {
   createAccountingAdapter,
   readReportPages,
 } from './accounting'
+import { createCashflowAdapter } from './cashflow'
 import {
   addDays,
   localDay,
@@ -393,6 +394,7 @@ function toDocument(row: DocumentRow): DocumentRecord {
 }
 
 const accounting = createAccountingAdapter(client, toAppError)
+const cashflow = createCashflowAdapter(client, toAppError)
 
 /** Catálogo con existencias para los reportes, con sus fotos ya firmadas. */
 async function reportInventoryRows() {
@@ -764,6 +766,11 @@ export const supabaseAdapter: DataProvider = {
   recordExpense: accounting.recordExpense,
   voidExpense: accounting.voidExpense,
   getFinance: accounting.getFinance,
+  getCredits: accounting.getCredits,
+  getCashflow: cashflow.getCashflow,
+  getCashClosings: cashflow.getCashClosings,
+  recordCashClosing: cashflow.recordCashClosing,
+  voidCashClosing: cashflow.voidCashClosing,
   recordFinanceEntry: accounting.recordFinanceEntry,
   voidFinanceEntry: accounting.voidFinanceEntry,
   // Managua no aplica horario de verano, así que el desfase es fijo: el día del

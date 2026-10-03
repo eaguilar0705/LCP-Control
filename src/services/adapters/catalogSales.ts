@@ -9,12 +9,21 @@ import type {
 } from '../../features/reports/accounting'
 import {
   financeLedger,
+  isMoneyAccount,
+  reducesLoan,
   salesByPayment,
+  type CreditAccount,
+  type CreditLedger,
   type FinanceAccount,
   type FinanceEntryRecord,
   type FinanceKind,
   type FinanceLedger,
 } from '../../features/accounting/finance'
+import {
+  cashflowTotals,
+  type CashflowReport,
+  type CashflowRow,
+} from '../../features/accounting/cashflow'
 import {
   addDays,
   localDay,
@@ -77,7 +86,10 @@ const round = (value: number) => Math.round(value * 100) / 100
 export const demoAverageCost = new Map(
   catalogProducts.map((product, index) => [
     product.id,
-    round((product.prices?.emprendedor.NIO ?? product.price) * (0.52 + (index % 11) * 0.03)),
+    round(
+      (product.prices?.emprendedor.NIO ?? product.price) *
+        (0.52 + (index % 11) * 0.03),
+    ),
   ]),
 )
 
@@ -160,7 +172,9 @@ export function syntheticSales(today = localDay(new Date())): SyntheticSales {
             productId: item.productId,
             quantity: item.quantity,
             unitCostNio: round(average * (0.88 + (back % 9) * 0.03)),
-            netRevenueNio: round(item.lineTotal * (currency === 'USD' ? DEMO_RATE : 1)),
+            netRevenueNio: round(
+              item.lineTotal * (currency === 'USD' ? DEMO_RATE : 1),
+            ),
             taxNio: 0,
           })
         }
@@ -206,7 +220,11 @@ export function syntheticSales(today = localDay(new Date())): SyntheticSales {
       // Un pedido de muestra es una caja con varios perfumes: la agencia cobra
       // una sola vez, por el peso del paquete, y ese cobro se reparte por igual
       // entre las unidades que venían dentro.
-      const picked: { productId: string; quantity: number; unitPrice: number }[] = []
+      const picked: {
+        productId: string
+        quantity: number
+        unitPrice: number
+      }[] = []
       const chosen = new Set<string>()
       for (let line = 0; line < 2 + Math.floor(random() * 3); line++) {
         const product = catalogProducts[Math.floor(random() * 20)]
@@ -234,10 +252,14 @@ export function syntheticSales(today = localDay(new Date())): SyntheticSales {
         requestId: `pedido-${day}`,
         incurredOn: day,
         createdAt: `${day}T09:00:00Z`,
-        supplier: ['Importadora del Golfo', 'Perfumes de Oriente', 'Distribuidora Central'][
+        supplier: [
+          'Importadora del Golfo',
+          'Perfumes de Oriente',
+          'Distribuidora Central',
+        ][Math.floor(random() * 3)],
+        agency: ['Aeropaq', 'Cargo Express', 'Trans-Express'][
           Math.floor(random() * 3)
         ],
-        agency: ['Aeropaq', 'Cargo Express', 'Trans-Express'][Math.floor(random() * 3)],
         reference: `PED-${day.replace(/-/g, '')}`,
         note: 'Pedido de muestra',
         currency: 'NIO',
@@ -255,7 +277,8 @@ export function syntheticSales(today = localDay(new Date())): SyntheticSales {
           quantity: line.quantity,
           unitPrice: line.unitPrice,
           goodsAmount: round(line.quantity * line.unitPrice),
-          shippingShare: Math.round(line.quantity * shippingPerUnit * 1e6) / 1e6,
+          shippingShare:
+            Math.round(line.quantity * shippingPerUnit * 1e6) / 1e6,
           landedUnitCostNio:
             Math.round((line.unitPrice + shippingPerUnit) * 1e6) / 1e6,
         })),
@@ -264,21 +287,22 @@ export function syntheticSales(today = localDay(new Date())): SyntheticSales {
     // Los gastos fijos se registran el primero de cada mes.
     if (day.endsWith('-01'))
       expenses.push(
-        ...([
-          ['renta', 'Alquiler del local', 14000],
-          ['salario', 'Planilla del mes', 21500],
-          ['agua_luz', 'Energía y agua', 3100],
-          ['internet', 'Servicio de internet', 1200],
-          ['marketing', 'Pauta en redes sociales', 2600],
-          ['combustible', 'Combustible de entregas', 1450],
-          ['papeleria', 'Papelería y facturas', 620],
-          ['limpieza', 'Artículos de limpieza', 480],
-          ['viatico', 'Viáticos de la ruta', 900],
-          ['impuestos_dgi', 'Anticipo mensual DGI', 3800],
-          ['impuestos_alma', 'Matrícula y basura ALMA', 1100],
-          ['interes_bancario', 'Intereses del préstamo', 2450],
-          ['prestamo_bancario', 'Cuota de capital del préstamo', 7800],
-        ] as [ExpenseCategory, string, number][]
+        ...(
+          [
+            ['renta', 'Alquiler del local', 14000],
+            ['salario', 'Planilla del mes', 21500],
+            ['agua_luz', 'Energía y agua', 3100],
+            ['internet', 'Servicio de internet', 1200],
+            ['marketing', 'Pauta en redes sociales', 2600],
+            ['combustible', 'Combustible de entregas', 1450],
+            ['papeleria', 'Papelería y facturas', 620],
+            ['limpieza', 'Artículos de limpieza', 480],
+            ['viatico', 'Viáticos de la ruta', 900],
+            ['impuestos_dgi', 'Anticipo mensual DGI', 3800],
+            ['impuestos_alma', 'Matrícula y basura ALMA', 1100],
+            ['interes_bancario', 'Intereses del préstamo', 2450],
+            ['prestamo_bancario', 'Cuota de capital del préstamo', 7800],
+          ] as [ExpenseCategory, string, number][]
         ).map(([category, description, amount], index) => ({
           id: `gasto-${day}-${index}`,
           requestId: `gasto-${day}-${index}`,
@@ -322,8 +346,59 @@ export function syntheticSales(today = localDay(new Date())): SyntheticSales {
  * y el préstamo se pagan desde el banco; lo demás, de caja. Uno de cada tres
  * pedidos queda a crédito del proveedor.
  */
-export function syntheticFinance(range: ReportRange, today = localDay(new Date())): FinanceLedger {
-  const sales = syntheticSales(today)
+function syntheticCreditRows(sales: SyntheticSales): CreditAccount[] {
+  return [
+    ...sales.documents
+      .filter(
+        (row) => row.kind === 'invoice' && row.paymentMethod === 'pending',
+      )
+      .map((row): CreditAccount => {
+        const amount = round(
+          row.total * (row.currency === 'USD' ? DEMO_RATE : 1),
+        )
+        return {
+          id: `invoice:${row.id}`,
+          kind: 'receivable',
+          counterparty: row.customerName,
+          reference: row.number,
+          occurredOn: localDay(row.createdAt),
+          originalNio: amount,
+          paidNio: 0,
+          balanceNio: amount,
+          documentId: row.id,
+          shipmentId: null,
+        }
+      }),
+    ...sales.accounting.shipments
+      .filter((_, index) => index % 3 === 0)
+      .map((row): CreditAccount => {
+        const amount =
+          round(row.goodsAmount * row.exchangeRate) +
+          round(row.shippingAmount * row.exchangeRate)
+        return {
+          id: `shipment:${row.id}`,
+          kind: 'payable',
+          counterparty: row.supplier,
+          reference: row.reference,
+          occurredOn: row.incurredOn,
+          originalNio: amount,
+          paidNio: 0,
+          balanceNio: amount,
+          documentId: null,
+          shipmentId: row.id,
+        }
+      }),
+  ].sort(
+    (a, b) =>
+      a.occurredOn.localeCompare(b.occurredOn) || a.id.localeCompare(b.id),
+  )
+}
+
+/** En la muestra cada abono identifica la factura o el pedido que liquida. */
+function syntheticEntries(
+  sales: SyntheticSales,
+  today: string,
+): FinanceEntryRecord[] {
   const start = addDays(today, -364)
   const entries: FinanceEntryRecord[] = []
   const entry = (
@@ -354,20 +429,117 @@ export function syntheticFinance(range: ReportRange, today = localDay(new Date()
     })
   entry(start, 'opening', 'caja', 45000, 'Arqueo de apertura')
   entry(start, 'opening', 'banco', 320000, 'Estado de cuenta de apertura')
-  entry(start, 'opening', 'prestamos', 280000, 'Saldo del préstamo bancario', { counterparty: 'Banco de muestra' })
-  entry(addDays(start, 40), 'loan', 'banco', 150000, 'Préstamo para inventario', { counterparty: 'Banco de muestra' })
+  entry(start, 'opening', 'cobrar', 0, 'Sin saldos de clientes al iniciar')
+  entry(
+    start,
+    'opening',
+    'proveedores',
+    0,
+    'Sin saldos de proveedores al iniciar',
+  )
+  entry(start, 'opening', 'prestamos', 280000, 'Saldo del préstamo bancario', {
+    counterparty: 'Banco de muestra',
+  })
+  entry(
+    addDays(start, 40),
+    'loan',
+    'banco',
+    150000,
+    'Préstamo para inventario',
+    { counterparty: 'Banco de muestra' },
+  )
+  const debts = syntheticCreditRows(sales)
+  const pay = (
+    day: string,
+    kind: 'collection' | 'supplier_payment',
+    budget: number,
+  ) => {
+    const type = kind === 'collection' ? 'receivable' : 'payable'
+    for (const debt of debts) {
+      if (budget <= 0) break
+      if (debt.kind !== type || debt.occurredOn > day || !debt.balanceNio)
+        continue
+      const amount = Math.min(budget, debt.balanceNio)
+      entry(day, kind, 'banco', amount, `Abono a ${debt.reference}`, {
+        counterparty: debt.counterparty,
+        reference: debt.reference,
+        documentId: debt.documentId,
+        shipmentId: debt.shipmentId,
+      })
+      debt.balanceNio = round(debt.balanceNio - amount)
+      budget = round(budget - amount)
+    }
+  }
   for (let back = 360; back >= 0; back--) {
     const day = addDays(today, -back)
     if (day.endsWith('-05'))
-      entry(day, 'transfer', 'caja', 90000, 'Depósito de ventas en efectivo', { toAccount: 'banco' })
+      entry(day, 'transfer', 'caja', 90000, 'Depósito de ventas en efectivo', {
+        toAccount: 'banco',
+      })
     if (day.endsWith('-15')) {
-      entry(day, 'collection', 'banco', 85000, 'Cobro de facturas pendientes', { counterparty: 'Clientes varios' })
-      entry(day, 'supplier_payment', 'banco', 15000, 'Abono al proveedor', { counterparty: 'Importadora del Golfo' })
+      pay(day, 'collection', 85000)
+      pay(day, 'supplier_payment', 15000)
     }
     if (day.endsWith('-28'))
       entry(day, 'withdrawal', 'caja', 18000, 'Retiro del dueño')
   }
-  const bank = new Set<ExpenseCategory>(['renta', 'salario', 'prestamo_bancario', 'interes_bancario'])
+  return entries
+}
+
+export function syntheticCredits(
+  at: string,
+  today = localDay(new Date()),
+): CreditLedger {
+  const sales = syntheticSales(today)
+  const entries = syntheticEntries(sales, today).filter(
+    (row) => row.occurredOn <= at,
+  )
+  const rows = syntheticCreditRows(sales).filter((row) => row.occurredOn <= at)
+  for (const debt of rows) {
+    const paid = round(
+      entries
+        .filter((entry) =>
+          debt.documentId
+            ? entry.documentId === debt.documentId
+            : entry.shipmentId === debt.shipmentId,
+        )
+        .reduce((sum, entry) => sum + entry.amount * entry.exchangeRate, 0),
+    )
+    debt.paidNio = paid
+    debt.balanceNio = round((debt.originalNio ?? 0) - paid)
+  }
+  const start = addDays(today, -364)
+  return {
+    available: true,
+    at,
+    startOn: at >= start ? start : null,
+    rows,
+    unallocatedNio: { receivables: 0, payables: 0 },
+    legacyPayments: 0,
+  }
+}
+
+export function syntheticFinance(
+  range: ReportRange,
+  today = localDay(new Date()),
+): FinanceLedger {
+  const sales = syntheticSales(today)
+  return syntheticFinanceOf(sales, syntheticEntries(sales, today), range, today)
+}
+
+function syntheticFinanceOf(
+  sales: SyntheticSales,
+  entries: FinanceEntryRecord[],
+  range: ReportRange,
+  today: string,
+): FinanceLedger {
+  const start = addDays(today, -364)
+  const bank = new Set<ExpenseCategory>([
+    'renta',
+    'salario',
+    'prestamo_bancario',
+    'interes_bancario',
+  ])
   return financeLedger(
     {
       entries,
@@ -378,7 +550,9 @@ export function syntheticFinance(range: ReportRange, today = localDay(new Date()
       shipments: sales.accounting.shipments.map((row, index) => ({
         incurredOn: row.incurredOn,
         account: index % 3 === 0 ? 'credito' : 'banco',
-        amountNio: round(row.goodsAmount * row.exchangeRate) + round(row.shippingAmount * row.exchangeRate),
+        amountNio:
+          round(row.goodsAmount * row.exchangeRate) +
+          round(row.shippingAmount * row.exchangeRate),
       })),
       sales: salesByPayment(
         sales.documents
@@ -389,10 +563,124 @@ export function syntheticFinance(range: ReportRange, today = localDay(new Date()
           })
           .map((row) => ({
             paymentMethod: row.paymentMethod ?? null,
-            amountNio: round(row.total * (row.currency === 'USD' ? DEMO_RATE : 1)),
+            amountNio: round(
+              row.total * (row.currency === 'USD' ? DEMO_RATE : 1),
+            ),
           })),
       ),
     },
     range,
   )
+}
+
+/** El mismo dinero de la muestra de créditos y estados, agrupado por día. */
+export function syntheticCashflow(
+  range: ReportRange,
+  today = localDay(new Date()),
+): CashflowReport {
+  const sales = syntheticSales(today)
+  const entries = syntheticEntries(sales, today)
+  const groups = new Map<string, CashflowRow>()
+  const add = (
+    day: string,
+    account: CashflowRow['account'],
+    category: CashflowRow['category'],
+    inflowNio: number,
+    outflowNio: number,
+  ) => {
+    if (day < range.from || day > range.to) return
+    const key = `${day}:${account}:${category}`
+    const row = groups.get(key) ?? {
+      day,
+      account,
+      category,
+      inflowNio: 0,
+      outflowNio: 0,
+      operations: 0,
+      missingSales: 0,
+    }
+    row.inflowNio = round(row.inflowNio + inflowNio)
+    row.outflowNio = round(row.outflowNio + outflowNio)
+    row.operations++
+    groups.set(key, row)
+  }
+  for (const invoice of sales.documents) {
+    if (invoice.kind !== 'invoice' || invoice.paymentMethod === 'pending')
+      continue
+    add(
+      localDay(invoice.createdAt),
+      invoice.paymentMethod === 'cash' ? 'caja' : 'banco',
+      'sales',
+      round(invoice.total * (invoice.currency === 'USD' ? DEMO_RATE : 1)),
+      0,
+    )
+  }
+  for (const entry of entries) {
+    if (!isMoneyAccount(entry.account)) continue
+    const amount = round(entry.amount * entry.exchangeRate)
+    if (entry.kind === 'transfer' && entry.toAccount) {
+      add(entry.occurredOn, entry.account, 'transfer', 0, amount)
+      add(entry.occurredOn, entry.toAccount, 'transfer', amount, 0)
+    } else {
+      const outgoing =
+        entry.kind === 'withdrawal' || entry.kind === 'supplier_payment'
+      add(
+        entry.occurredOn,
+        entry.account,
+        entry.kind,
+        outgoing ? 0 : amount,
+        outgoing ? amount : 0,
+      )
+    }
+  }
+  for (const [index, shipment] of sales.accounting.shipments.entries()) {
+    if (index % 3 === 0) continue
+    add(
+      shipment.incurredOn,
+      'banco',
+      'purchases',
+      0,
+      round(shipment.goodsAmount * shipment.exchangeRate) +
+        round(shipment.shippingAmount * shipment.exchangeRate),
+    )
+  }
+  const bank = new Set<ExpenseCategory>([
+    'renta',
+    'salario',
+    'prestamo_bancario',
+    'interes_bancario',
+  ])
+  for (const expense of sales.accounting.expenses) {
+    if (expense.voidedAt) continue
+    add(
+      expense.incurredOn,
+      bank.has(expense.category) ? 'banco' : 'caja',
+      reducesLoan(expense) ? 'loan_payment' : 'expense',
+      0,
+      round(expense.amount * expense.exchangeRate),
+    )
+  }
+  const rows = [...groups.values()].sort(
+    (a, b) =>
+      b.day.localeCompare(a.day) ||
+      a.account.localeCompare(b.account) ||
+      a.category.localeCompare(b.category),
+  )
+  const prior = syntheticFinanceOf(
+    sales,
+    entries,
+    { from: range.from, to: addDays(range.from, -1) },
+    today,
+  ).position
+  const current = syntheticFinanceOf(sales, entries, range, today).position
+  return {
+    available: true,
+    ...range,
+    startOn: current.startOn,
+    opening: prior.started ? prior.cash : { caja: null, banco: null },
+    closing: current.started ? current.cash : { caja: null, banco: null },
+    missingSales: 0,
+    rows,
+    totals: cashflowTotals(rows),
+  }
 }

@@ -1,6 +1,7 @@
 import { roundMoney, type accountingSummary } from '../reports/accounting'
 import type { StatementRow } from '../reports/statement'
-import type { FinancePosition } from './finance'
+import type { FinanceAccount, FinancePosition } from './finance'
+import { localDay } from '../reports/model'
 
 type AccountingSummary = ReturnType<typeof accountingSummary>
 
@@ -10,52 +11,70 @@ type AccountingSummary = ReturnType<typeof accountingSummary>
  * gastos y movimientos registrados desde el primer saldo inicial. Mientras no
  * haya saldo inicial esas cuentas quedan sin importe.
  *
- * El capital es lo registrado como saldo inicial y aportes, menos retiros. Lo
- * que falta para cuadrar —el inventario que ya había, resultados de períodos
- * anteriores— se muestra aparte, así el balance siempre cuadra y la diferencia
- * queda a la vista.
+ * No se utiliza una diferencia como si fuera una utilidad histórica. Hasta
+ * registrar el patrimonio inicial y los resultados acumulados, el patrimonio
+ * total queda pendiente. El inventario leído es actual: no se presenta como
+ * una valoración histórica cuando el corte pertenece a otro día.
  */
 export function balanceSheet(
   summary: AccountingSummary,
   position: FinancePosition,
+  at = localDay(new Date()),
 ): StatementRow[] {
-  const started = position.started
-  const known = (amount: number) => (started ? amount : null)
+  const started = position.started && position.missingSales === 0
+  const opened = (account: FinanceAccount) =>
+    started && (position.openedAccounts?.includes(account) ?? true)
+  const known = (amount: number, account: FinanceAccount) =>
+    opened(account) ? amount : null
+  const completeOpening = [
+    'caja',
+    'banco',
+    'cobrar',
+    'prestamos',
+    'proveedores',
+  ].every((account) => opened(account as FinanceAccount))
+  const inventory =
+    at === localDay(new Date()) && !summary.unvaluedProducts
+      ? summary.inventoryCostNio
+      : null
   const cash = roundMoney(position.cash.caja + position.cash.banco)
-  const assets = roundMoney(
-    summary.inventoryCostNio + (started ? cash + position.receivablesNio : 0),
-  )
-  const liabilities = started
-    ? roundMoney(position.loansNio + position.payablesNio)
-    : 0
-  const equity = roundMoney(assets - liabilities)
-  const capital = started ? position.capitalNio : 0
+  const assets =
+    opened('caja') && opened('banco') && opened('cobrar') && inventory !== null
+      ? roundMoney(inventory + cash + position.receivablesNio)
+      : null
+  const liabilities =
+    opened('prestamos') && opened('proveedores')
+      ? roundMoney(position.loansNio + position.payablesNio)
+      : null
+  const capital = completeOpening ? position.capitalNio : null
   const net = summary.netProfitNio
-  const earlier = net === null ? null : roundMoney(equity - capital - net)
   return [
     { key: 'assets', label: 'Activos', amount: null, kind: 'heading' },
     {
       key: 'cash',
       label: 'Caja',
-      amount: known(position.cash.caja),
+      amount: known(position.cash.caja, 'caja'),
       kind: started ? 'line' : 'info',
     },
     {
       key: 'bank',
       label: 'Banco',
-      amount: known(position.cash.banco),
+      amount: known(position.cash.banco, 'banco'),
       kind: started ? 'line' : 'info',
     },
     {
       key: 'receivables',
       label: 'Cuentas por cobrar',
-      amount: known(position.receivablesNio),
+      amount: known(position.receivablesNio, 'cobrar'),
       kind: started ? 'line' : 'info',
     },
     {
       key: 'inventory',
-      label: 'Inventario (costo promedio)',
-      amount: summary.inventoryCostNio,
+      label:
+        at === localDay(new Date())
+          ? 'Inventario actual (costo promedio)'
+          : 'Inventario al corte (pendiente de reconstruir)',
+      amount: inventory,
       kind: 'line',
     },
     {
@@ -68,13 +87,13 @@ export function balanceSheet(
     {
       key: 'loans',
       label: 'Préstamos por pagar',
-      amount: known(position.loansNio),
+      amount: known(position.loansNio, 'prestamos'),
       kind: started ? 'line' : 'info',
     },
     {
       key: 'payables',
       label: 'Cuentas por pagar a proveedores',
-      amount: known(position.payablesNio),
+      amount: known(position.payablesNio, 'proveedores'),
       kind: started ? 'line' : 'info',
     },
     {
@@ -87,8 +106,8 @@ export function balanceSheet(
     { key: 'capital', label: 'Capital', amount: capital, kind: 'line' },
     {
       key: 'earlier',
-      label: 'Resultados anteriores y ajustes',
-      amount: earlier,
+      label: 'Patrimonio inicial y resultados acumulados por conciliar',
+      amount: null,
       kind: 'line',
     },
     {
@@ -100,13 +119,13 @@ export function balanceSheet(
     {
       key: 'equityTotal',
       label: 'Total patrimonio',
-      amount: equity,
+      amount: null,
       kind: 'subtotal',
     },
     {
       key: 'total',
       label: 'Total pasivo y patrimonio',
-      amount: roundMoney(liabilities + equity),
+      amount: null,
       kind: 'total',
     },
   ]

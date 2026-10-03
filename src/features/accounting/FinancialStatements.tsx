@@ -9,6 +9,7 @@ import {
 } from '../reports/statement'
 import type { ReportData } from '../reports/digest'
 import { balanceSheet } from './balanceSheet'
+import { localDay } from '../reports/model'
 import type { FinancePosition } from './finance'
 
 const statements = {
@@ -70,7 +71,7 @@ function StatementTable({
   const income = statement === 'income'
   const rows = income
     ? incomeStatement(summary)
-    : balanceSheet(summary, position)
+    : balanceSheet(summary, position, report.range.to)
   const title = statements[statement]
   const amount = (row: StatementRow) => {
     if (!available) return 'Sin activar'
@@ -88,6 +89,32 @@ function StatementTable({
         <h2>{title}</h2>
         <p>{period} · C$</p>
       </div>
+      {income && !summary.complete && (
+        <p className="accounting-callout" role="status">
+          Estado de resultados incompleto: los importes disponibles son
+          parciales. Hay {summary.missingCostUnits} unidades vendidas sin costo,{' '}
+          {summary.missingRevenueLines} renglones sin ingreso confirmado y{' '}
+          {summary.missingWriteOffUnits} unidades de salida sin valorar. La
+          utilidad queda pendiente hasta completar la información del período.
+        </p>
+      )}
+      {!income && (
+        <div className="accounting-callout" role="status">
+          <strong>Balance provisional</strong>
+          <p>
+            El patrimonio inicial y los resultados acumulados requieren
+            conciliación.
+            {report.range.to !== localDay(new Date())
+              ? ' El inventario disponible corresponde a hoy; su valor histórico queda pendiente.'
+              : summary.unvaluedProducts > 0
+                ? ` Hay ${summary.unvaluedProducts} perfumes con existencias sin valorar.`
+                : ''}
+            {position.missingSales > 0
+              ? ` Hay ${position.missingSales} facturas sin importe contable confirmado.`
+              : ''}
+          </p>
+        </div>
+      )}
       <div
         className="accounting-table-scroll"
         tabIndex={0}

@@ -2,6 +2,9 @@ import { AppError } from '../../lib/errors'
 import type { BusinessSettings, DocumentKind } from '../../lib/domain'
 import type { DataProvider } from '../contracts'
 import { emptyLedger } from '../../features/accounting/finance'
+import type { CreditLedger } from '../../features/accounting/finance'
+import { emptyCashflow } from '../../features/accounting/cashflow'
+import type { ReportRange } from '../../features/reports/model'
 // Shared by the catalog and demo providers: the local views read the catalogue
 // but must never look as if they issued a document or moved real stock.
 // Invented business details: the local view never shows the real ones.
@@ -58,6 +61,11 @@ export const unconfiguredAdapter: DataProvider = {
   recordExpense: async () => missingConfiguration(),
   voidExpense: async () => missingConfiguration(),
   getFinance: async () => missingConfiguration(),
+  getCredits: async () => missingConfiguration(),
+  getCashflow: async () => missingConfiguration(),
+  getCashClosings: async () => missingConfiguration(),
+  recordCashClosing: async () => missingConfiguration(),
+  voidCashClosing: async () => missingConfiguration(),
   recordFinanceEntry: async () => missingConfiguration(),
   voidFinanceEntry: async () => missingConfiguration(),
 }
@@ -109,6 +117,24 @@ export const localWrites = {
   async getFinance() {
     return structuredClone(emptyLedger)
   },
+  async getCredits(at: string): Promise<CreditLedger> {
+    return {
+      available: false,
+      at,
+      startOn: null,
+      rows: [],
+      unallocatedNio: { receivables: 0, payables: 0 },
+      legacyPayments: 0,
+    }
+  },
+  async getCashflow(range: ReportRange) {
+    return { ...structuredClone(emptyCashflow), ...range }
+  },
+  async getCashClosings() {
+    return []
+  },
+  recordCashClosing: async () => unavailable(),
+  voidCashClosing: async () => unavailable(),
   recordFinanceEntry: async () => unavailable(),
   voidFinanceEntry: async () => unavailable(),
 }

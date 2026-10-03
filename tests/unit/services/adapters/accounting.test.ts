@@ -99,6 +99,127 @@ function connection(
 const window = { from: '2026-09-01', to: '2026-09-13' }
 
 describe('private accounting adapter', () => {
+  const opening = {
+    id: 'opening',
+    request_id: 'opening-request',
+    occurred_on: '2026-09-01',
+    kind: 'opening',
+    account: 'caja',
+    to_account: null,
+    amount: '0',
+    currency: 'NIO',
+    exchange_rate: '1',
+    counterparty: '',
+    description: 'Apertura',
+    reference: '',
+    created_at: '2026-09-01T12:00:00Z',
+    voided_at: null,
+    void_reason: null,
+  }
+  it('never shows partial financial balances after a truncated read', async () => {
+    const entries = connection({ finance_entries: { count: 1, data: [] } })
+    await expect(entries.adapter.getFinance(window)).rejects.toThrow(
+      'saldos completos',
+    )
+    const expenses = connection({
+      finance_entries: { data: [opening] },
+      expense_records: { count: 1, data: [] },
+    })
+    await expect(expenses.adapter.getFinance(window)).rejects.toThrow(
+      'saldos completos',
+    )
+    const shipments = connection({
+      finance_entries: { data: [opening] },
+      purchase_shipments: { count: 1, data: [] },
+    })
+    await expect(shipments.adapter.getFinance(window)).rejects.toThrow(
+      'saldos completos',
+    )
+  })
+  it('preserves linked credit sources and an explicitly zero opening', async () => {
+    const { adapter } = connection({
+      finance_entries: {
+        data: [
+          opening,
+          {
+            ...opening,
+            id: 'collection',
+            kind: 'collection',
+            amount: '15',
+            document_id: 'invoice-1',
+          },
+        ],
+      },
+    })
+    const ledger = await adapter.getFinance(window)
+    expect(ledger.position.started).toBe(true)
+    expect(ledger.position.cash.caja).toBe(15)
+    expect(ledger.entries.find((row) => row.id === 'collection')).toMatchObject(
+      {
+        documentId: 'invoice-1',
+        shipmentId: null,
+      },
+    )
+  })
+  it('does not hide simultaneous finance transport failures behind a missing schema', async () => {
+    const { adapter } = connection({
+      finance_entries: { data: [opening] },
+      expense_records: { error: { code: '42P01' } },
+      purchase_shipments: { error: { code: '42501' } },
+    })
+    await expect(adapter.getFinance(window)).rejects.toThrow('42501')
+  })
+  it('reads credit amounts from the server and preserves unknown historical debt', async () => {
+    const { adapter, rpc } = connection()
+    rpc.mockResolvedValueOnce({
+      error: null,
+      data: {
+        at: window.to,
+        startOn: window.from,
+        legacyPayments: '2',
+        unallocatedNio: { receivables: '100', payables: '0' },
+        rows: [
+          {
+            id: 'invoice-1',
+            kind: 'receivable',
+            counterparty: 'Cliente',
+            reference: 'F-1',
+            occurredOn: window.from,
+            originalNio: null,
+            paidNio: '0',
+            balanceNio: null,
+            documentId: 'invoice-1',
+            shipmentId: null,
+          },
+        ],
+      },
+    })
+    expect(await adapter.getCredits(window.to)).toMatchObject({
+      available: true,
+      legacyPayments: 2,
+      unallocatedNio: { receivables: 100, payables: 0 },
+      rows: [
+        {
+          originalNio: null,
+          paidNio: 0,
+          balanceNio: null,
+          documentId: 'invoice-1',
+        },
+      ],
+    })
+    expect(rpc).toHaveBeenCalledWith('credit_accounts', { p_at: window.to })
+    rpc.mockResolvedValueOnce({ data: null, error: { code: 'PGRST202' } })
+    expect(await adapter.getCredits(window.to)).toMatchObject({
+      available: false,
+      at: window.to,
+    })
+    rpc.mockResolvedValueOnce({ data: null, error: { code: '42501' } })
+    await expect(adapter.getCredits(window.to)).rejects.toThrow('42501')
+    rpc.mockResolvedValueOnce({ data: null, error: null })
+    await expect(adapter.getCredits(window.to)).rejects.toThrow(
+      'detalle de créditos',
+    )
+  })
   it.each(['operator', 'warehouse', 'viewer'])(
     'never requests cost tables for %s',
     async (role) => {

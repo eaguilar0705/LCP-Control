@@ -41,16 +41,18 @@ interface PricedProduct {
  * porcentaje por tipo de cliente), y por período los gastos, caja y bancos,
  * costos, cierre diario, estados financieros y razones financieras.
  */
-const tabs = { prices: 'Precios', ...periodSections } as const
+const { overview, ...analysisSections } = periodSections
+const tabs = { overview, prices: 'Precios', ...analysisSections } as const
 type Tab = keyof typeof tabs
 
 export function AccountingPage() {
-  const [tab, setTab] = useState<Tab>('prices')
+  const [tab, setTab] = useState<Tab>('overview')
   return (
     <>
       <div className="page-heading">
         <div>
           <h1>Contabilidad</h1>
+          <p>Inventario, utilidad, cobros y dinero del negocio.</p>
         </div>
       </div>
       <nav
@@ -71,7 +73,7 @@ export function AccountingPage() {
       {tab === 'prices' ? (
         <PricesTab />
       ) : (
-        <PeriodSections section={tab as PeriodSection} />
+        <PeriodSections section={tab as PeriodSection} onNavigate={setTab} />
       )}
     </>
   )

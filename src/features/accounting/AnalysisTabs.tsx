@@ -770,6 +770,12 @@ export function RatiosTab({
           endeudamiento.
         </p>
       )}
+      {range.to !== localDay(new Date()) && (
+        <p className="accounting-callout" role="status">
+          Las razones que necesitan inventario al corte quedan pendientes: las
+          existencias y su costo disponibles corresponden a hoy.
+        </p>
+      )}
       <div className="accounting-two-columns">
         {groups.map((group) => (
           <Card className="accounting-card" key={group.key}>

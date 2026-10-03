@@ -147,6 +147,46 @@
   line-height: 1.65;
   margin: 9px 0 13px;
 }
+.accounting-overview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.accounting-workflow {
+  padding-left: 22px;
+  line-height: 1.7;
+}
+.accounting-workflow li {
+  margin: 12px 0;
+}
+.cash-count-fields {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+}
+.cash-count-denominations {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.cash-count-denominations legend {
+  color: var(--wine);
+  font-weight: 600;
+  padding: 0 6px;
+}
+.cash-count-denominations .field span {
+  font-size: 12px;
+}
+@media (max-width: 560px) {
+  .cash-count-denominations {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
 .accounting-breakdown {
   margin: 16px 0;
 }

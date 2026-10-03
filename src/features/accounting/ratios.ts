@@ -3,8 +3,8 @@ import {
   roundMoney,
   type accountingSummary,
 } from '../reports/accounting'
-import { daysBetween, type ReportRange } from '../reports/model'
-import type { FinancePosition } from './finance'
+import { daysBetween, localDay, type ReportRange } from '../reports/model'
+import type { FinanceAccount, FinancePosition } from './finance'
 
 type AccountingSummary = ReturnType<typeof accountingSummary>
 
@@ -35,17 +35,29 @@ export function financialRatios(
   summary: AccountingSummary,
   position: FinancePosition,
   range: ReportRange,
+  inventoryAt = localDay(new Date()),
 ): RatioGroup[] {
-  const started = position.started
+  const started = position.started && position.missingSales === 0
+  const opened = (account: FinanceAccount) =>
+    started && (position.openedAccounts?.includes(account) ?? true)
   const days = Math.max(1, daysBetween(range.from, range.to) + 1)
-  const cash = started ? position.cash.caja + position.cash.banco : null
-  const receivables = started ? position.receivablesNio : null
-  const inventory = summary.unvaluedProducts ? null : summary.inventoryCostNio
+  const cash =
+    opened('caja') && opened('banco')
+      ? position.cash.caja + position.cash.banco
+      : null
+  const receivables = opened('cobrar') ? position.receivablesNio : null
+  const inventory =
+    summary.unvaluedProducts || inventoryAt !== range.to
+      ? null
+      : summary.inventoryCostNio
   const current =
     cash === null || receivables === null || inventory === null
       ? null
       : cash + receivables + inventory
-  const liabilities = started ? position.loansNio + position.payablesNio : null
+  const liabilities =
+    opened('prestamos') && opened('proveedores')
+      ? position.loansNio + position.payablesNio
+      : null
   const equity =
     current === null || liabilities === null ? null : current - liabilities
   const revenue = summary.revenueNio > 0 ? summary.revenueNio : null
@@ -68,7 +80,7 @@ export function financialRatios(
           key: 'quick',
           label: 'Prueba ácida',
           value: divide(
-            current === null || inventory === null ? null : current - inventory,
+            cash === null || receivables === null ? null : cash + receivables,
             liabilities,
           ),
           format: 'times',
@@ -161,14 +173,14 @@ export function financialRatios(
         {
           key: 'inventoryTurnover',
           label: 'Rotación de inventario',
-          value: turnover.turnoverPerYear,
+          value: inventory === null ? null : turnover.turnoverPerYear,
           format: 'times',
           formula: 'Costo de ventas anual ÷ inventario',
         },
         {
           key: 'inventoryDays',
           label: 'Días de inventario',
-          value: turnover.daysOnHand,
+          value: inventory === null ? null : turnover.daysOnHand,
           format: 'days',
           formula: 'Inventario ÷ costo de ventas diario',
         },
@@ -183,7 +195,7 @@ export function financialRatios(
           key: 'paymentDays',
           label: 'Días de pago a proveedores',
           value: divide(
-            started ? position.payablesNio : null,
+            opened('proveedores') ? position.payablesNio : null,
             perDay(summary.purchasesNio > 0 ? summary.purchasesNio : null),
           ),
           format: 'days',

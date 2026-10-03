@@ -21,9 +21,15 @@ import type {
   ShipmentInput,
 } from '../features/reports/accounting'
 import type {
+  CreditLedger,
   FinanceEntryInput,
   FinanceLedger,
 } from '../features/accounting/finance'
+import type {
+  CashClosingInput,
+  CashClosingRecord,
+  CashflowReport,
+} from '../features/accounting/cashflow'
 /** Una página del historial dentro de un periodo. */
 export interface DocumentQuery {
   range: ReportRange
@@ -107,6 +113,12 @@ export interface DataProvider {
   voidExpense(id: string, reason: string): Promise<string>
   /** Saldos de caja, bancos y deudas al fin del período y lo registrado en él. */
   getFinance(range: ReportRange): Promise<FinanceLedger>
+  /** Deudas por factura, pedido y saldo inicial, con sus abonos a la fecha. */
+  getCredits(at: string): Promise<CreditLedger>
+  getCashflow(range: ReportRange): Promise<CashflowReport>
+  getCashClosings(range: ReportRange): Promise<CashClosingRecord[]>
+  recordCashClosing(input: CashClosingInput): Promise<string>
+  voidCashClosing(id: string, reason: string): Promise<string>
   recordFinanceEntry(input: FinanceEntryInput): Promise<string>
   voidFinanceEntry(id: string, reason: string): Promise<string>
 }

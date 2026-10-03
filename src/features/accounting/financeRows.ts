@@ -41,7 +41,9 @@ export function rowsOf(ledger: FinanceLedger): Row[] {
     day: entry.occurredOn,
     createdAt: entry.createdAt,
     type: financeKinds[entry.kind],
-    detail: [entry.counterparty, entry.description].filter(Boolean).join(' · '),
+    detail: [entry.counterparty, entry.reference, entry.description]
+      .filter(Boolean)
+      .join(' · '),
     account: entry.toAccount
       ? `${financeAccounts[entry.account]} → ${moneyAccounts[entry.toAccount]}`
       : financeAccounts[entry.account],

@@ -34,7 +34,7 @@ const value = (groups: ReturnType<typeof financialRatios>, key: string) =>
     .value
 
 it('calcula liquidez, deuda, rentabilidad y actividad', () => {
-  const groups = financialRatios(summary, position, range)
+  const groups = financialRatios(summary, position, range, range.to)
   // Activo corriente 45 000; pasivo 20 000; patrimonio 25 000.
   expect(value(groups, 'current')).toBeCloseTo(2.25)
   expect(value(groups, 'quick')).toBeCloseTo(1.25)
@@ -55,4 +55,23 @@ it('sin saldo inicial deja en blanco lo que depende del balance', () => {
   expect(value(groups, 'current')).toBeNull()
   expect(value(groups, 'roe')).toBeNull()
   expect(value(groups, 'grossMargin')).toBeCloseTo(0.4)
+})
+
+it('mantiene liquidez sin inventario y deja pendientes razones de inventario histórico', () => {
+  const groups = financialRatios(summary, position, range, '2026-10-03')
+  expect(value(groups, 'current')).toBeNull()
+  expect(value(groups, 'quick')).toBeCloseTo(1.25)
+  expect(value(groups, 'inventoryTurnover')).toBeNull()
+  expect(value(groups, 'roe')).toBeNull()
+})
+
+it('deja pendientes los indicadores de saldo si faltan importes de ventas', () => {
+  const groups = financialRatios(
+    summary,
+    { ...position, missingSales: 1 },
+    range,
+    range.to,
+  )
+  expect(value(groups, 'quick')).toBeNull()
+  expect(value(groups, 'cash')).toBeNull()
 })

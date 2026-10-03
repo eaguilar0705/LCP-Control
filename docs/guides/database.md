@@ -102,6 +102,8 @@ Corregido el 22 de septiembre de 2026. Antes, `signUp` no enviaba `emailRedirect
 
 ## Contabilidad de costos
 
+La ampliación del 3 de octubre añade crédito con abonos vinculados, flujo de efectivo y arqueos persistentes. Su instalación, fecha de arranque, saldos iniciales y límites están en [Contabilidad de La Casa del Perfume](contabilidad.md). Estas migraciones nuevas están **pendientes de aplicar en la base real**; las comprobaciones de PostgreSQL se hicieron en una base desechable.
+
 El costo se registra donde ocurre la compra, no como un campo de la ficha del perfume que alguien deba recordar actualizar. Todo el módulo vive en **Reportes → Costos, margen y gastos**, visible sólo para Administrador y SuperAdmin (`product.edit_cost` y la política `owner_accounting_read`). Los precios del catálogo son precios de venta y nunca se usan como costo.
 
 - **Estado:** aplicado. Las 260 filas de `product_costs` existen con el promedio en blanco; cada perfume adquiere su costo al registrar su costo inicial o su primera compra.

@@ -156,11 +156,85 @@ try {
     await db.query('delete from storage.objects where owner=$1', [target])
   })
   await check(
-    'admin deletes ordinary credentials, staff and sessions; old tokens lose access',
+    'admin deletes credentials while preserving finance and closing authorship; old tokens lose access',
     async () => {
+      const today = new Date(Date.now() - 6 * 3600000)
+        .toISOString()
+        .slice(0, 10)
+      const record = async (name, input) =>
+        (
+          await db.query(`select public.${name}($1::jsonb) as id`, [
+            JSON.stringify(input),
+          ])
+        ).rows[0].id
+      const financialInput = (kind, amount) => ({
+        requestId: crypto.randomUUID(),
+        occurredOn: today,
+        kind,
+        account: 'caja',
+        toAccount: null,
+        amount,
+        currency: 'NIO',
+        exchangeRate: 1,
+        counterparty: '',
+        description: 'Historia contable del usuario',
+        reference: '',
+      })
+      await identity(target)
+      const opening = await record(
+        'record_finance_entry',
+        financialInput('opening', 100),
+      )
+      const capital = await record(
+        'record_finance_entry',
+        financialInput('capital', 20),
+      )
+      await db.query('select public.void_finance_entry($1,$2)', [
+        capital,
+        'Corrección del aporte',
+      ])
+      const closing = await record('record_cash_closing', {
+        requestId: crypto.randomUUID(),
+        closedOn: today,
+        countedNio: 100,
+        countedUsd: 0,
+        exchangeRate: null,
+        note: '',
+      })
+      await db.query('select public.void_cash_closing($1,$2)', [
+        closing,
+        'Repetir conteo',
+      ])
       await identity(admin)
       await remove('target@example.test', target, 'admin')
       await db.exec('reset role')
+      const history = (
+        await db.query(
+          'select id,created_by,voided_by from public.finance_entries where id in ($1,$2)',
+          [opening, capital],
+        )
+      ).rows
+      assert.equal(history.length, 2)
+      assert.equal(
+        history.every((row) => row.created_by === target),
+        true,
+      )
+      assert.equal(history.find((row) => row.id === capital).voided_by, target)
+      const cashHistory = (
+        await db.query(
+          'select created_by,voided_by from public.cash_closings where id=$1',
+          [closing],
+        )
+      ).rows[0]
+      assert.deepEqual(cashHistory, { created_by: target, voided_by: target })
+      assert.ok(
+        (
+          await db.query(
+            'select deleted_at from private.business_actors where id=$1',
+            [target],
+          )
+        ).rows[0].deleted_at,
+      )
       for (const [table, col] of [
         ['auth.users', 'id'],
         ['public.staff_members', 'user_id'],

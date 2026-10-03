@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useCallback, useState, type FormEvent } from 'react'
 import { Plus } from 'lucide-react'
 import {
   Badge,
@@ -32,6 +32,7 @@ import {
   financeKinds,
   moneyAccountOrder,
   moneyAccounts,
+  type CreditAccount,
   type FinanceAccount,
   type FinanceEntryInput,
   type FinanceKind,
@@ -63,8 +64,20 @@ export function FinanceMovements({
   const writable = useWritable(data)
   const rows = rowsOf(data)
   const position = data.position
-  const balance = (amount: number | undefined) =>
-    !position?.started || amount === undefined ? '—' : money(amount)
+  const openedAccounts = position?.openedAccounts
+  const unopened = openedAccounts
+    ? (Object.keys(financeAccounts) as FinanceAccount[]).filter(
+        (account) => !openedAccounts.includes(account),
+      )
+    : []
+  const balance = (account: FinanceAccount, amount: number | undefined) =>
+    !(position?.openedAccounts?.includes(account) ?? position?.started) ||
+    amount === undefined
+      ? '—'
+      : position.missingSales > 0 &&
+          ['caja', 'banco', 'cobrar'].includes(account)
+        ? 'Pendiente'
+        : money(amount)
   return (
     <>
       {message && (
@@ -92,6 +105,13 @@ export function FinanceMovements({
               Registra el saldo inicial de caja y banco.
             </p>
           )}
+          {position?.started && unopened.length > 0 && (
+            <p className="accounting-callout" role="status">
+              Faltan saldos iniciales de{' '}
+              {unopened.map((account) => financeAccounts[account]).join(', ')}.
+              Registra cero si una cuenta empieza sin saldo.
+            </p>
+          )}
           {position?.started && position.missingSales > 0 && (
             <p className="accounting-callout" role="status">
               {position.missingSales} factura(s) sin importe contable.
@@ -104,20 +124,20 @@ export function FinanceMovements({
             {moneyAccountOrder.map((account) => (
               <div className="accounting-metric" key={account}>
                 <span>{moneyAccounts[account]}</span>
-                <strong>{balance(position?.cash[account])}</strong>
+                <strong>{balance(account, position?.cash[account])}</strong>
               </div>
             ))}
             <div className="accounting-metric">
               <span>Por cobrar</span>
-              <strong>{balance(position?.receivablesNio)}</strong>
+              <strong>{balance('cobrar', position?.receivablesNio)}</strong>
             </div>
             <div className="accounting-metric">
               <span>Préstamos</span>
-              <strong>{balance(position?.loansNio)}</strong>
+              <strong>{balance('prestamos', position?.loansNio)}</strong>
             </div>
             <div className="accounting-metric">
               <span>Proveedores</span>
-              <strong>{balance(position?.payablesNio)}</strong>
+              <strong>{balance('proveedores', position?.payablesNio)}</strong>
             </div>
           </div>
           <p className="accounting-note">
@@ -249,10 +269,13 @@ const counterpartyLabel: Partial<Record<RecordKind, string>> = {
 
 export function RecordDialog({
   initialKind = 'expense',
+  initialCredit,
   onClose,
   onRecorded,
 }: {
   initialKind?: RecordKind
+  /** Documento seleccionado desde cuentas por cobrar o pagar. */
+  initialCredit?: CreditAccount
   onClose: () => void
   onRecorded: (message: string) => void
 }) {
@@ -269,7 +292,13 @@ export function RecordDialog({
     ),
   )
   const today = localDay(new Date())
-  const [kind, setKind] = useState<RecordKind>(initialKind)
+  const [kind, setKind] = useState<RecordKind>(
+    initialCredit
+      ? initialCredit.kind === 'receivable'
+        ? 'collection'
+        : 'supplier_payment'
+      : initialKind,
+  )
   const [account, setAccount] = useState<FinanceAccount>('caja')
   const [toAccount, setToAccount] = useState<MoneyAccount>('banco')
   const [expenseAccount, setExpenseAccount] = useState<ExpenseAccount>('ventas')
@@ -278,9 +307,12 @@ export function RecordDialog({
   const [currency, setCurrency] = useState<Currency>('NIO')
   const [rateText, setRateText] = useState('')
   const [amountText, setAmountText] = useState('')
-  const [counterparty, setCounterparty] = useState('')
+  const [counterparty, setCounterparty] = useState(
+    initialCredit?.counterparty ?? '',
+  )
   const [description, setDescription] = useState('')
-  const [reference, setReference] = useState('')
+  const [reference, setReference] = useState(initialCredit?.reference ?? '')
+  const [creditId, setCreditId] = useState(initialCredit?.id ?? '')
   const [busy, setBusy] = useState(false)
   const [failure, setFailure] = useState('')
   const rate =
@@ -298,6 +330,26 @@ export function RecordDialog({
       ? moneyAccountOrder.find((id) => id !== shownAccount)!
       : toAccount
   const needsDescription = kind === 'expense'
+  const creditKind =
+    kind === 'collection'
+      ? 'receivable'
+      : kind === 'supplier_payment'
+        ? 'payable'
+        : null
+  const loadCredits = useCallback(
+    () =>
+      creditKind && occurredOn
+        ? financeService.getCredits(occurredOn)
+        : Promise.resolve(null),
+    [financeService, creditKind, occurredOn],
+  )
+  const credits = useQuery(loadCredits)
+  // Un cambio de fecha no debe usar el saldo de la consulta anterior mientras
+  // llega la nueva lectura; la base vuelve a validarlo al guardar.
+  const creditData = credits.data?.at === occurredOn ? credits.data : null
+  const selectedCredit = creditData?.rows.find(
+    (row) => row.id === creditId && row.kind === creditKind,
+  )
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -307,17 +359,53 @@ export function RecordDialog({
       setFailure('Elige una fecha que no sea futura.')
       return
     }
-    if (!Number.isFinite(amount) || amount <= 0) {
-      setFailure('El importe debe ser mayor que cero.')
+    if (
+      !amountText.trim() ||
+      !Number.isFinite(amount) ||
+      amount < 0 ||
+      (roundMoney(amount) === 0 && kind !== 'opening')
+    ) {
+      setFailure(
+        kind === 'opening'
+          ? 'Indica un saldo inicial igual o mayor que cero.'
+          : 'El importe debe ser mayor que cero.',
+      )
       return
     }
-    if (!Number.isFinite(rate) || rate <= 0) {
+    if (!Number.isFinite(rate) || roundRate(rate) <= 0) {
       setFailure('Indica el tipo de cambio.')
       return
     }
     if (needsDescription && description.trim().length < 3) {
       setFailure('Describe el gasto.')
       return
+    }
+    if (creditKind) {
+      if (!creditData?.available || !selectedCredit) {
+        setFailure(
+          'Selecciona la factura, el pedido o el saldo inicial que vas a abonar.',
+        )
+        return
+      }
+      if (selectedCredit.balanceNio === null) {
+        setFailure(
+          'Este documento no tiene importe contable. Revisa su registro antes de abonarlo.',
+        )
+        return
+      }
+      if (
+        roundMoney(roundMoney(amount) * roundRate(rate)) >
+        selectedCredit.balanceNio
+      ) {
+        setFailure(
+          `El abono supera el saldo pendiente de ${money(selectedCredit.balanceNio)}.`,
+        )
+        return
+      }
+      if (selectedCredit.balanceNio <= 0) {
+        setFailure('Esta cuenta ya está saldada.')
+        return
+      }
     }
     setBusy(true)
     try {
@@ -342,9 +430,11 @@ export function RecordDialog({
           amount: roundMoney(amount),
           currency,
           exchangeRate: roundRate(rate),
-          counterparty: counterparty.trim(),
+          counterparty: selectedCredit?.counterparty ?? counterparty.trim(),
           description: description.trim(),
           reference: reference.trim(),
+          documentId: selectedCredit?.documentId ?? null,
+          shipmentId: selectedCredit?.shipmentId ?? null,
         })
         onRecorded(`Registrado: ${financeKinds[kind].toLowerCase()}.`)
       }
@@ -358,7 +448,7 @@ export function RecordDialog({
   return (
     <Dialog
       open
-      title="Registrar movimiento"
+      title={initialCredit ? 'Registrar abono' : 'Registrar movimiento'}
       onClose={() => {
         if (!busy) onClose()
       }}
@@ -369,7 +459,11 @@ export function RecordDialog({
             <Select
               label="Tipo"
               value={kind}
-              onChange={(event) => setKind(event.target.value as RecordKind)}
+              disabled={!!initialCredit}
+              onChange={(event) => {
+                setKind(event.target.value as RecordKind)
+                setCreditId('')
+              }}
             >
               {(['expense', ...financeKindOrder] as RecordKind[]).map((id) => (
                 <option key={id} value={id}>
@@ -385,6 +479,35 @@ export function RecordDialog({
               value={occurredOn}
               onChange={(event) => setOccurredOn(event.target.value)}
             />
+            {creditKind && (
+              <Select
+                label={
+                  creditKind === 'receivable'
+                    ? 'Factura o saldo inicial'
+                    : 'Pedido o saldo inicial'
+                }
+                value={creditId}
+                required
+                disabled={!!initialCredit || !creditData?.available}
+                onChange={(event) => setCreditId(event.target.value)}
+              >
+                <option value="">Selecciona la cuenta a abonar</option>
+                {creditData?.rows
+                  .filter((row) => row.kind === creditKind)
+                  .map((row) => (
+                    <option
+                      key={row.id}
+                      value={row.id}
+                      disabled={row.balanceNio === null || row.balanceNio <= 0}
+                    >
+                      {row.reference} · {row.counterparty} ·{' '}
+                      {row.balanceNio === null
+                        ? 'Importe pendiente'
+                        : money(row.balanceNio)}
+                    </option>
+                  ))}
+              </Select>
+            )}
             {kind === 'expense' && (
               <>
                 <Select
@@ -453,7 +576,12 @@ export function RecordDialog({
               <Input
                 label={counterpartyLabel[kind]}
                 maxLength={160}
-                value={counterparty}
+                readOnly={!!creditKind}
+                value={
+                  creditKind
+                    ? (selectedCredit?.counterparty ?? '')
+                    : counterparty
+                }
                 onChange={(event) => setCounterparty(event.target.value)}
               />
             )}
@@ -481,7 +609,7 @@ export function RecordDialog({
             <Input
               label={`Importe (${currency})`}
               type="number"
-              min="0.01"
+              min={kind === 'opening' ? '0' : '0.01'}
               step="0.01"
               required
               value={amountText}
@@ -494,6 +622,45 @@ export function RecordDialog({
               onChange={(event) => setReference(event.target.value)}
             />
           </div>
+          {creditKind && (
+            <>
+              {credits.error ? (
+                <p className="inline-error" role="alert">
+                  {credits.error}{' '}
+                  <Button type="button" variant="ghost" onClick={credits.retry}>
+                    Reintentar
+                  </Button>
+                </p>
+              ) : !creditData ? (
+                <p className="accounting-note" role="status">
+                  Consultando el saldo pendiente…
+                </p>
+              ) : !creditData.available ? (
+                <p className="inline-error" role="alert">
+                  Falta aplicar la actualización de cuentas por cobrar y pagar
+                  en la base de datos.
+                </p>
+              ) : (
+                selectedCredit && (
+                  <p className="accounting-callout" role="status">
+                    {selectedCredit.reference} · Saldo al{' '}
+                    {formatDate(occurredOn)}:{' '}
+                    <strong>
+                      {selectedCredit.balanceNio === null
+                        ? 'Importe pendiente'
+                        : money(selectedCredit.balanceNio)}
+                    </strong>
+                  </p>
+                )
+              )}
+              {creditData?.available && creditId && !selectedCredit && (
+                <p className="inline-error" role="alert">
+                  Esta cuenta no está disponible en la fecha elegida. Revisa la
+                  fecha o actualiza las cuentas.
+                </p>
+              )}
+            </>
+          )}
           <Input
             label="Descripción"
             maxLength={300}
@@ -504,8 +671,11 @@ export function RecordDialog({
           <div className="accounting-form-total">
             <span>En córdobas</span>
             <strong>
-              {Number.isFinite(amount) && amount > 0 && rate > 0
-                ? money(roundMoney(amount * rate))
+              {amountText.trim() &&
+              Number.isFinite(amount) &&
+              (amount > 0 || (kind === 'opening' && amount === 0)) &&
+              rate > 0
+                ? money(roundMoney(roundMoney(amount) * roundRate(rate)))
                 : '—'}
             </strong>
           </div>
@@ -515,7 +685,17 @@ export function RecordDialog({
             </p>
           )}
           <div className="form-actions">
-            <Button type="submit" aria-busy={busy}>
+            <Button
+              type="submit"
+              aria-busy={busy}
+              disabled={
+                !!creditKind &&
+                (!creditData?.available ||
+                  !selectedCredit ||
+                  selectedCredit.balanceNio === null ||
+                  selectedCredit.balanceNio <= 0)
+              }
+            >
               {busy ? 'Guardando…' : 'Guardar'}
             </Button>
             <Button type="button" variant="secondary" onClick={onClose}>
