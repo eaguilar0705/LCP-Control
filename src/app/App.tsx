@@ -31,10 +31,7 @@ function AccessGate({
   return demo || can(role, permission) ? (
     children
   ) : (
-    <EmptyState
-      title="No tienes permiso para esta pantalla."
-      description="Pídele acceso a un administrador si necesitas trabajar aquí."
-    />
+    <EmptyState title="No tienes permiso para esta pantalla." />
   )
 }
 // Fuera del panel no hay menú lateral ni barra inferior: sin un enlace de

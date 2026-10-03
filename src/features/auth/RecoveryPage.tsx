@@ -84,11 +84,6 @@ export function RecoveryPage({ reset = false }: { reset?: boolean }) {
           </>
         ) : (
           <>
-            <p className="muted">
-              {reset
-                ? 'Elige una contraseña de 12 a 72 caracteres que no uses en otros servicios.'
-                : 'Escribe el correo de tu cuenta. Te enviaremos un enlace para elegir una contraseña nueva.'}
-            </p>
             <form onSubmit={submit}>
               {reset ? (
                 <>

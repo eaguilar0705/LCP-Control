@@ -98,10 +98,7 @@ export function HomeCharts() {
             />
           </>
         ) : (
-          <EmptyState
-            title="Todavía no hay ventas"
-            description="Al emitir la primera factura aparecerá aquí el movimiento de los últimos 30 días."
-          />
+          <EmptyState title="Todavía no hay ventas" />
         )}
       </Card>
 
@@ -120,10 +117,7 @@ export function HomeCharts() {
             }))}
           />
         ) : (
-          <EmptyState
-            title="Sin ventas aún"
-            description="El ranking se arma con las facturas emitidas."
-          />
+          <EmptyState title="Sin ventas aún" />
         )}
       </Card>
 
@@ -135,10 +129,7 @@ export function HomeCharts() {
           </Link>
         </div>
         {health.uncounted === data.inventory.length ? (
-          <EmptyState
-            title="Ningún producto tiene conteo"
-            description="Registra las existencias con un ajuste desde Inventario para ver aquí el estado del catálogo."
-          />
+          <EmptyState title="Ningún producto tiene conteo" />
         ) : (
           <SplitBar
             label="Productos por estado de existencias"

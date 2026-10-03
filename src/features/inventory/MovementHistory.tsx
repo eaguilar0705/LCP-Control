@@ -26,7 +26,7 @@ export function MovementHistory() {
       <WorkspaceHeading
         eyebrow="CONTROL DE EXISTENCIAS"
         title="Movimientos de inventario"
-        description="Cada entrada, salida y ajuste, con su motivo y fecha."
+
         icon={ClipboardList}
       />
       {loading && <LoadingState />}
@@ -75,11 +75,7 @@ export function MovementHistory() {
         })}
       </div>
       {!loading && !error && data?.length === 0 && (
-        <WorkspaceEmpty
-          icon={ClipboardList}
-          title="Cada movimiento cuenta"
-          description="Las entradas, salidas, daños y conteos aparecerán aquí cuando los registres en Inventario."
-        />
+        <WorkspaceEmpty icon={ClipboardList} title="Cada movimiento cuenta" />
       )}
     </>
   )

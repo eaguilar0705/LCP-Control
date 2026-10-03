@@ -93,7 +93,6 @@ function LocalSuppliersPage() {
       <div className="page-heading">
         <div>
           <h1>Proveedores</h1>
-          <p className="muted">Contactos, marcas y condiciones de compra.</p>
         </div>
         <Button
           type="button"
@@ -107,10 +106,7 @@ function LocalSuppliersPage() {
           Nuevo proveedor
         </Button>
       </div>
-      <p className="workspace-disclaimer">
-        Este registro se guarda en este navegador. No se comparte con otros
-        equipos.
-      </p>
+
       {message && (
         <p className="page-feedback" role="status">
           {message}
@@ -256,7 +252,6 @@ function LocalSuppliersPage() {
         <Card>
           <EmptyState
             title={search ? 'No hay coincidencias' : 'Aún no hay proveedores'}
-            description="Registra el primer proveedor para tener sus datos a mano."
           />
         </Card>
       )}

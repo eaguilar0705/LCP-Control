@@ -63,12 +63,7 @@ const shortDay = new Intl.DateTimeFormat('es-NI', {
 export function ReportsPage() {
   const { role, demo } = useAccess()
   if (!can(role, 'finance.read') && !demo)
-    return (
-      <EmptyState
-        title="No tienes permiso para ver los reportes."
-        description="Los reportes del negocio son para las cuentas de administración."
-      />
-    )
+    return <EmptyState title="No tienes permiso para ver los reportes." />
   return <Reports />
 }
 
@@ -215,13 +210,14 @@ function Reports() {
               llega el nuevo, lo mostrado sigue siendo coherente consigo mismo. */}
           {data.computedIn === 'browser' && !demo && (
             <p className="page-feedback" role="status">
-              Estos reportes se están calculando en este equipo porque a la
-              base de datos le falta la actualización de reportes
-              (20260926120000_report_digest.sql). Funcionan igual, pero con
-              períodos largos tardan más y pueden quedar incompletos.
+              Actualización de reportes pendiente.
             </p>
           )}
-          <AccountingPanel source={data} range={data.range} onRecorded={retry} />
+          <AccountingPanel
+            source={data}
+            range={data.range}
+            onRecorded={retry}
+          />
           <ReportBody report={data} tier={tier} />
         </>
       )}
@@ -264,29 +260,30 @@ function Stat({
 function ReportBody({ report, tier }: { report: ReportData; tier: PriceTier }) {
   const view = useMemo(() => reportView(report), [report])
   const { currencies, first } = view
-  const health = useMemo(() => view.inventoryHealth(tier, first), [view, tier, first])
+  const health = useMemo(
+    () => view.inventoryHealth(tier, first),
+    [view, tier, first],
+  )
   const movements = view.movementSummary()
   const coverage = useMemo(() => view.stockCoverage(first), [view, first])
   const idle = useMemo(() => view.idleStock(tier, first), [view, tier, first])
-  const damaged = useMemo(() => view.shrinkage(tier, first), [view, tier, first])
+  const damaged = useMemo(
+    () => view.shrinkage(tier, first),
+    [view, tier, first],
+  )
   const money = (value: number) => formatCurrency(value, first)
 
   return (
     <>
       {report.truncated && (
         <p className="page-feedback" role="status">
-          El periodo tiene más documentos de los que se consultan de una vez.
-          Las cifras corresponden a las filas consultadas; acorta el rango para
-          un total exacto.
+          Resultados parciales. Reduce el período.
         </p>
       )}
 
       {currencies.length === 0 ? (
         <Card>
-          <EmptyState
-            title="Sin ventas en este periodo"
-            description="Cuando emitas facturas en este rango aparecerán aquí los ingresos, los productos más vendidos y los clientes."
-          />
+          <EmptyState title="Sin ventas en este periodo" />
         </Card>
       ) : (
         currencies.map((currency) => (
@@ -300,9 +297,7 @@ function ReportBody({ report, tier }: { report: ReportData; tier: PriceTier }) {
           <div className="section-heading">
             <h2>Qué reponer primero</h2>
           </div>
-          <p className="muted report-note">
-            Días que duran las existencias al ritmo de venta del periodo.
-          </p>
+
           {coverage.length ? (
             /* La barra mide los días que aguantan las existencias y la lista
                va de menos a más: lo urgente queda arriba, con la barra corta.
@@ -318,10 +313,7 @@ function ReportBody({ report, tier }: { report: ReportData; tier: PriceTier }) {
               }))}
             />
           ) : (
-            <EmptyState
-              title="Sin ritmo que proyectar"
-              description="Hacen falta ventas del periodo y conteos de inventario para estimar la cobertura."
-            />
+            <EmptyState title="Sin ritmo que proyectar" />
           )}
         </Card>
 
@@ -330,8 +322,7 @@ function ReportBody({ report, tier }: { report: ReportData; tier: PriceTier }) {
             <h2>Capital detenido</h2>
           </div>
           <p className="muted report-note">
-            Con existencias y sin una sola venta en el periodo, valorado a
-            precio de lista {priceTierLabels[tier]}.
+            Precio de lista {priceTierLabels[tier]}
           </p>
           {idle.length ? (
             <RankedBars
@@ -344,10 +335,7 @@ function ReportBody({ report, tier }: { report: ReportData; tier: PriceTier }) {
               }))}
             />
           ) : (
-            <EmptyState
-              title="Todo se movió"
-              description="Cada producto con existencias vendió al menos una unidad."
-            />
+            <EmptyState title="Todo se movió" />
           )}
         </Card>
 
@@ -358,9 +346,7 @@ function ReportBody({ report, tier }: { report: ReportData; tier: PriceTier }) {
           </div>
           <p className="report-figure">{money(health.listValue)}</p>
           <p className="muted report-note">
-            Valor a precio de lista de {whole.format(health.units)} unidades
-            contadas. No es el costo de compra: ese está arriba, en el panel de
-            contabilidad, calculado con el costo promedio de cada perfume.
+            {whole.format(health.units)} unidades · valor a precio de lista
           </p>
           <SplitBar
             label="Estado de las existencias"
@@ -516,17 +502,13 @@ function CurrencyReport({
               />
               {productShare !== null && (
                 <p className="muted report-note report-foot">
-                  Los diez primeros concentran el{' '}
-                  <strong>{percent.format(productShare)}</strong> de los
-                  ingresos.
+                  Top 10: <strong>{percent.format(productShare)}</strong> de los
+                  ingresos
                 </p>
               )}
             </>
           ) : (
-            <EmptyState
-              title="Sin renglones"
-              description="Las facturas del periodo no tienen productos registrados."
-            />
+            <EmptyState title="Sin renglones" />
           )}
         </Card>
 
@@ -557,9 +539,8 @@ function CurrencyReport({
               />
               {clientShare !== null && (
                 <p className="muted report-note report-foot">
-                  Los cinco primeros concentran el{' '}
-                  <strong>{percent.format(clientShare)}</strong> de los
-                  ingresos.
+                  Top 5: <strong>{percent.format(clientShare)}</strong> de los
+                  ingresos
                 </p>
               )}
             </>
@@ -570,9 +551,7 @@ function CurrencyReport({
           <div className="section-heading">
             <h2>Clientes que no volvieron</h2>
           </div>
-          <p className="muted report-note">
-            Compraron en el periodo anterior y no en éste.
-          </p>
+
           {lapsed.length ? (
             <ul className="lapsed-list">
               {lapsed.map((client) => (
@@ -589,10 +568,7 @@ function CurrencyReport({
               ))}
             </ul>
           ) : (
-            <EmptyState
-              title="Ninguno se enfrió"
-              description="Todos los que compraron el periodo anterior volvieron a comprar."
-            />
+            <EmptyState title="Ninguno se enfrió" />
           )}
         </Card>
 
@@ -618,10 +594,7 @@ function CurrencyReport({
               ))}
             </ul>
           ) : (
-            <EmptyState
-              title="Sin compras registradas"
-              description="La frecuencia se calcula con el historial cargado."
-            />
+            <EmptyState title="Sin compras registradas" />
           )}
         </Card>
 

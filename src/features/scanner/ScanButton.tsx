@@ -91,11 +91,6 @@ function ScanCapture({
       title={manufacturer ? 'Código del fabricante' : 'Buscar con un código'}
       onClose={onClose}
     >
-      <p className="muted">
-        {manufacturer
-          ? 'Escanea la etiqueta del envase para completar el código del perfume.'
-          : 'Escanea la etiqueta y verás el perfume en la búsqueda de esta pantalla.'}
-      </p>
       <div className={`camera-stage ${cameraActive ? 'camera-active' : ''}`}>
         <div id={elementId} className="camera-reader" />
         {!cameraActive && (

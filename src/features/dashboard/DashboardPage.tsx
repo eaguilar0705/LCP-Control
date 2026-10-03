@@ -16,25 +16,10 @@ import { Reflection } from './Reflection'
 import { HomeCharts } from './HomeCharts'
 import { can } from '../../lib/permissions'
 const actions = [
-  ['/products', 'Catálogo', 'Consultar perfumes, fotos y precios.', Package],
-  [
-    '/sales',
-    'Facturación',
-    'Preparar un borrador en córdobas o dólares.',
-    ReceiptText,
-  ],
-  [
-    '/inventory',
-    'Inventario',
-    'Preparar entradas, salidas y daños.',
-    Warehouse,
-  ],
-  [
-    '/suppliers',
-    'Proveedores',
-    'Guardar contactos y datos comerciales.',
-    Truck,
-  ],
+  ['/products', 'Catálogo', Package],
+  ['/sales', 'Facturación', ReceiptText],
+  ['/inventory', 'Inventario', Warehouse],
+  ['/suppliers', 'Proveedores', Truck],
 ] as const
 export function DashboardPage() {
   const { inventoryService } = useServices()
@@ -104,20 +89,17 @@ export function DashboardPage() {
                   ? can(role, 'supplier.read')
                   : true),
           )
-          .map(([path, title, description, Icon]) => (
+          .map(([path, title, Icon]) => (
             <Link className="home-action card" key={path} to={`${base}${path}`}>
               <Icon size={22} />
               <h2>{title}</h2>
-              <p>{description}</p>
+
               <ArrowRight size={18} />
             </Link>
           ))}
       </div>
       {pending > 0 && (
-        <p className="workspace-disclaimer">
-          Hay {pending} saldo(s) sin contar. Complétalos desde Inventario para
-          que las existencias y el inventario valorado cuadren.
-        </p>
+        <p className="workspace-disclaimer">{pending} saldos sin conteo.</p>
       )}
     </>
   )

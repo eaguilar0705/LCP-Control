@@ -55,13 +55,13 @@ export function AccountingPanel({ source, range, onRecorded }: { source: ReportD
 
   return <section className="accounting-panel" aria-label="Contabilidad del negocio">
     <div className="accounting-heading">
-      <div><span className="eyebrow">LA CASA DEL PERFUME · CONTROL DEL NEGOCIO</span><h2>Costos, margen y gastos</h2><p>Del {formatDate(range.from)} al {formatDate(range.to)} · Consolidado en córdobas con el tipo de cambio de cada operación.</p></div>
+      <div><span className="eyebrow">LA CASA DEL PERFUME · CONTROL DEL NEGOCIO</span><h2>Costos, margen y gastos</h2><p>{formatDate(range.from)} — {formatDate(range.to)} · C$</p></div>
       <div className="accounting-badges">
         {savedRate && <Badge tone="neutral"><Coins size={14} /> 1 USD = {savedRate.usdToNio} C$</Badge>}
       </div>
     </div>
-    {(demo || !ledger.available) && <div className="accounting-callout" role="status"><strong>{demo ? 'Explora el módulo contable' : 'El registro contable está pendiente de activar'}</strong><p>{demo ? 'Los pedidos, los costos y los gastos de esta vista son inventados, para poder recorrer las pantallas antes de conectar la base de datos. No se puede registrar nada aquí.' : 'La base de datos necesita la actualización de contabilidad para registrar pedidos, costos iniciales y gastos. Los reportes de ventas siguen disponibles.'} Los precios del catálogo son precios de venta; no se usan como costos de compra.</p></div>}
-    {ledger.available && !summary.complete && <div className="accounting-callout" role="status"><strong>El resultado del período está incompleto</strong><p>{summary.missingCostUnits > 0 && `${summary.missingCostUnits} unidades vendidas sin costo registrado. `}{summary.missingRevenueLines > 0 && `${summary.missingRevenueLines} renglones sin desglose de venta o tipo de cambio. `}{summary.missingWriteOffUnits > 0 && `${summary.missingWriteOffUnits} unidades de salida o merma sin costo. `}{(source.truncated || ledger.truncated) && 'La consulta alcanzó su límite; selecciona un período más corto. '}Las cifras conocidas se muestran por separado; la utilidad queda pendiente hasta tener información completa.</p></div>}
+    {(demo || !ledger.available) && <div className="accounting-callout" role="status"><strong>{demo ? 'Explora el módulo contable' : 'El registro contable está pendiente de activar'}</strong></div>}
+    {ledger.available && !summary.complete && <div className="accounting-callout" role="status"><strong>El resultado del período está incompleto</strong></div>}
     {message && <p role="status" className="page-feedback">{message}</p>}
     <nav className="accounting-tabs" aria-label="Secciones contables">{Object.entries(tabs).map(([id, label]) => <button key={id} type="button" aria-pressed={section === id} aria-controls="accounting-content" onClick={() => setSection(id as Section)}>{label}</button>)}</nav>
     <div id="accounting-content">
@@ -78,22 +78,22 @@ export function AccountingPanel({ source, range, onRecorded }: { source: ReportD
           </table></div>
         </Card>
         <div className="accounting-two-columns">
-          <Card className="accounting-card"><h3>Lo que costó traer la mercadería</h3><dl className="accounting-breakdown"><Line label="Precio de los perfumes" amount={value(summary.purchaseGoodsNio)} /><Line label="Envío cobrado por peso" amount={value(summary.purchaseShippingNio)} /><Line label="Total invertido en pedidos" amount={value(summary.purchasesNio)} /><Line label="Unidades recibidas" amount={String(summary.purchasedUnits)} /><Line label="Envío por unidad" amount={summary.purchasedUnits ? money(roundMoney(summary.purchaseShippingNio / summary.purchasedUnits)) : '—'} /></dl><p className="accounting-note">La agencia cobra el peso del paquete y nada más. Ese cobro se reparte por igual entre las unidades del pedido, así que el costo de cada perfume es su precio de compra más lo que pesó traerlo.</p></Card>
-          <Card className="accounting-card"><h3>Capital en productos</h3><dl className="accounting-breakdown"><Line label="Inventario actual a costo conocido" amount={value(summary.inventoryCostNio)} /><Line label="Pedidos recibidos en el período" amount={value(summary.purchasesNio)} /><Line label="Productos sin valoración completa" amount={String(summary.unvaluedProducts)} /><Line label="Rotación anual del inventario" amount={turnover.turnoverPerYear === null ? 'Pendiente' : `${ratio.format(turnover.turnoverPerYear)} veces`} /><Line label="Días que dura el inventario" amount={turnover.daysOnHand === null ? 'Pendiente' : `${ratio.format(turnover.daysOnHand)} días`} /></dl><p className="accounting-note">El inventario muestra las existencias actuales. La rotación proyecta a un año el costo vendido del período y queda pendiente mientras haya productos sin costo.</p></Card>
+          <Card className="accounting-card"><h3>Lo que costó traer la mercadería</h3><dl className="accounting-breakdown"><Line label="Precio de los perfumes" amount={value(summary.purchaseGoodsNio)} /><Line label="Envío cobrado por peso" amount={value(summary.purchaseShippingNio)} /><Line label="Total invertido en pedidos" amount={value(summary.purchasesNio)} /><Line label="Unidades recibidas" amount={String(summary.purchasedUnits)} /><Line label="Envío por unidad" amount={summary.purchasedUnits ? money(roundMoney(summary.purchaseShippingNio / summary.purchasedUnits)) : '—'} /></dl></Card>
+          <Card className="accounting-card"><h3>Capital en productos</h3><dl className="accounting-breakdown"><Line label="Inventario actual a costo conocido" amount={value(summary.inventoryCostNio)} /><Line label="Pedidos recibidos en el período" amount={value(summary.purchasesNio)} /><Line label="Productos sin valoración completa" amount={String(summary.unvaluedProducts)} /><Line label="Rotación anual del inventario" amount={turnover.turnoverPerYear === null ? 'Pendiente' : `${ratio.format(turnover.turnoverPerYear)} veces`} /><Line label="Días que dura el inventario" amount={turnover.daysOnHand === null ? 'Pendiente' : `${ratio.format(turnover.daysOnHand)} días`} /></dl></Card>
         </div>
-        {losses.count > 0 && <Card className="accounting-card accounting-alert"><div className="section-heading"><div><h3>Ventas por debajo del costo</h3><p className="accounting-note">Renglones donde el costo congelado al emitir superó la venta neta. Sólo aparecen los que tienen ambas cifras registradas.</p></div><Badge tone="danger">{money(losses.lossNio)} de pérdida</Badge></div>
+        {losses.count > 0 && <Card className="accounting-card accounting-alert"><div className="section-heading"><div><h3>Ventas por debajo del costo</h3></div><Badge tone="danger">{money(losses.lossNio)} de pérdida</Badge></div>
           <LedgerTable label="Ventas por debajo del costo" headings={['Documento', 'Producto', 'Unidades', 'Venta neta', 'Costo', 'Pérdida']} numeric={[2, 3, 4, 5]}>
             {losses.rows.slice(0, 25).map((row) => <tr key={`${row.documentId}:${row.productId}`}><th scope="row">{row.number}<small>{formatDate(row.createdAt)}</small></th><td>{row.description}</td><td className="num">{row.quantity}</td><td className="num">{money(row.netRevenueNio)}</td><td className="num">{money(row.costNio)}</td><td className="num">{money(row.lossNio)}</td></tr>)}
           </LedgerTable>
-          {losses.count > 25 && <p className="accounting-note">Se muestran las 25 mayores de {losses.count}. La exportación a Excel incluye hasta {Math.min(losses.count, losses.rows.length)}.</p>}
+          {losses.count > 25 && <p className="accounting-note">25 de {losses.count} resultados</p>}
         </Card>}
-        <Card className="accounting-card"><div className="section-heading"><div><h3>Rentabilidad por producto vendido</h3><p className="accounting-note">El costo histórico de una venta se conserva aunque cambie el precio de compra.</p></div><Badge tone={summary.complete ? 'success' : 'warning'}>{summary.coverage === null ? 'Sin ventas' : `${Math.round(summary.coverage * 100)} % con costo`}</Badge></div>
+        <Card className="accounting-card"><div className="section-heading"><div><h3>Rentabilidad por producto vendido</h3></div><Badge tone={summary.complete ? 'success' : 'warning'}>{summary.coverage === null ? 'Sin ventas' : `${Math.round(summary.coverage * 100)} % con costo`}</Badge></div>
           {summary.products.length ? <LedgerTable label="Rentabilidad por producto" headings={['Producto', 'Unidades', 'Venta neta', 'Costo conocido', 'Margen bruto']} numeric={[1, 2, 3, 4]}>
             {summary.products.map((item) => <tr key={item.productId}><th scope="row">{item.description}{item.missingUnits > 0 && <small>{item.missingUnits} unidades sin costo</small>}</th><td className="num">{item.quantity}</td><td className="num">{money(item.netRevenueNio)}</td><td className="num">{money(item.costNio)}</td><td className="num">{item.profitNio === null ? <Badge tone="warning">Pendiente</Badge> : money(item.profitNio)}</td></tr>)}
-          </LedgerTable> : <EmptyState title="Sin ventas en este período" description="Las facturas emitidas aparecerán aquí con el costo que tenían al venderse." />}
+          </LedgerTable> : <EmptyState title="Sin ventas en este período"  />}
         </Card>
         <div className="accounting-two-columns accounting-wide-left">
-          <Card className="accounting-card"><h3>Rentabilidad por lista de precios</h3><p className="accounting-note">Lo vendido en el período con cada lista, y el margen que la lista deja hoy sobre el costo promedio de todo el catálogo.</p>
+          <Card className="accounting-card"><h3>Rentabilidad por lista de precios</h3>
             <LedgerTable label="Rentabilidad por lista de precios" headings={['Lista', 'Venta neta del período', 'Margen del período', 'Margen hoy']} numeric={[1, 2, 3]}>
               {margins.map((catalog) => {
                 const sold = summary.tiers.find((row) => row.tier === catalog.tier)
@@ -101,25 +101,25 @@ export function AccountingPanel({ source, range, onRecorded }: { source: ReportD
               })}
             </LedgerTable>
           </Card>
-          <Card className="accounting-card"><h3>Gastos por cuenta</h3><p className="accounting-note">Las cinco cuentas del negocio en el período. Sólo las tres marcadas como gasto bajan el resultado.</p>
+          <Card className="accounting-card"><h3>Gastos por cuenta</h3>
             <dl className="accounting-breakdown">{summary.expenseByAccount.map((row) => <Line key={row.account} label={expenseAccounts[row.account].label + (row.deducts ? '' : ' · no resta')} amount={value(row.amountNio)} />)}<Line label="Total que resta del resultado" amount={value(summary.expensesNio)} /></dl>
             <Button variant="secondary" onClick={() => setSection('expenses')}>Ir a gastos</Button>
           </Card>
         </div>
-        <Card className="accounting-card"><h3>Evolución mes a mes</h3><p className="accounting-note">Cada mes calendario recortado al período elegido, con el mismo criterio de la contabilidad. Una utilidad pendiente indica meses con información incompleta.</p>
+        <Card className="accounting-card"><h3>Evolución mes a mes</h3>
           <LedgerTable label="Evolución mensual del resultado" headings={['Mes', 'Venta neta', 'Costo de ventas', 'Gastos y mermas', 'Resultado']} numeric={[1, 2, 3, 4]}>
             {months.map(({ month, totals }) => <tr key={month}><th scope="row">{monthName.format(new Date(`${month}-01T12:00:00Z`))}</th><td className="num">{money(totals.revenueNio)}</td><td className="num">{money(totals.costOfSalesNio)}</td><td className="num">{money(totals.expensesNio + totals.inventoryWriteOffNio)}</td><td className="num">{totals.netProfitNio === null ? <Badge tone="warning">Pendiente</Badge> : money(totals.netProfitNio)}</td></tr>)}
           </LedgerTable>
         </Card>
-        <p className="accounting-note">Control administrativo basado en operaciones registradas. El resultado incluye ventas pendientes de pago; no representa saldo de caja ni balance general.</p>
+
       </>}
       {section === 'daily' && <DailyClosePanel rows={daily} range={range} />}
-      {section === 'expenses' && <Card className="accounting-card"><div className="section-heading"><div><h3>Gastos del negocio</h3><p className="accounting-note">Las cinco cuentas en las que el negocio lleva sus gastos. Cada renglón conserva su comprobante y se anula, nunca se borra.</p></div><Button disabled={!writable} onClick={() => setAction({ kind: 'expense' })}><Plus size={17} />Registrar gasto</Button></div>
+      {section === 'expenses' && <Card className="accounting-card"><div className="section-heading"><div><h3>Gastos del negocio</h3></div><Button disabled={!writable} onClick={() => setAction({ kind: 'expense' })}><Plus size={17} />Registrar gasto</Button></div>
         {expenseAccountOrder.map((account) => {
           const total = summary.expenseByAccount.find((row) => row.account === account)
           const rows = expenses.filter((expense) => accountOf(expense.category) === account)
           return <section className="accounting-account" key={account}>
-            <header><div><h4>{expenseAccounts[account].label}</h4>{!total?.deducts && <small>{account === 'prestamos' ? 'Devuelve capital: no resta del resultado. Sus intereses sí, en gastos financieros.' : 'Sale de los pedidos registrados y pesa en el resultado cuando se vende la mercadería.'}</small>}</div><strong>{value(total?.amountNio ?? 0)}</strong></header>
+            <header><div><h4>{expenseAccounts[account].label}</h4></div><strong>{value(total?.amountNio ?? 0)}</strong></header>
             {account === 'operativos'
               ? <LedgerTable label="Gastos operativos del período" headings={['Concepto', 'Origen', 'Importe NIO']} numeric={[2]}>
                   <tr><th scope="row">{operatingLines.goods}</th><td>Precio de los perfumes de los pedidos recibidos</td><td className="num">{value(summary.purchaseGoodsNio)}</td></tr>
@@ -128,7 +128,7 @@ export function AccountingPanel({ source, range, onRecorded }: { source: ReportD
               : rows.length ? <LedgerTable label={`Gastos de ${expenseAccounts[account].label} del período`} headings={['Fecha / categoría', 'Descripción', 'Importe original', 'Importe NIO', 'Estado', '']} numeric={[2, 3]} columns={expenseColumns}>
                   {rows.map((expense) => <tr key={expense.id} className={expense.voidedAt ? 'accounting-voided' : undefined}><th scope="row">{formatDate(expense.incurredOn)}<small>{expenseLabel(expense.category)}</small></th><td>{expense.description}<small>{expense.reference || 'Sin referencia'}</small></td><td className="num">{formatCurrency(expense.amount, expense.currency)}{expense.currency === 'USD' && <small>TC {expense.exchangeRate} NIO/USD</small>}</td><td className="num">{money(roundMoney(expense.amount * expense.exchangeRate))}</td><td><Badge tone={expense.voidedAt ? 'neutral' : 'success'}>{expense.voidedAt ? 'Anulado' : 'Registrado'}</Badge>{expense.voidedAt && <small>{expense.voidReason}</small>}</td><td>{!expense.voidedAt && <Button variant="ghost" disabled={!writable} onClick={() => setAction({ kind: 'void', expenseId: expense.id })} aria-label={`Anular gasto ${expense.description}`}>Anular</Button>}</td></tr>)}
                 </LedgerTable>
-              : <p className="accounting-note">Sin movimientos en esta cuenta durante el período. Categorías: {categoriesOf(account).map(expenseLabel).join(', ')}.</p>}
+              : <p className="accounting-note">Sin movimientos</p>}
           </section>
         })}
       </Card>}
@@ -234,8 +234,8 @@ function AccountingAction({ action, source, writable, defaultRate, onClose, onRe
   return <Dialog open title={titles[action.kind]} onClose={() => { if (!busy) onClose() }}><form className="accounting-form" onSubmit={submit}><fieldset disabled={busy}>
     {isVoid ? <><p>La anulación excluye este gasto del resultado y conserva el comprobante en el historial.</p><Input label="Motivo de anulación" required minLength={5} maxLength={500} value={note} onChange={(event) => setNote(event.target.value)} /></> : <>
       {isOpening && <ProductSelect label="Producto" products={products.map(({ product }) => product)} value={productId} onChange={setProductId} />}
-      {!isOpening && !isVoid && account === 'prestamos' && <p className="accounting-callout">Una cuota de préstamo devuelve capital: se registra y se ve en su cuenta, pero no baja el resultado del período. Lo que sí cuesta es el interés, y ése se registra en <strong>Gastos financieros</strong>.</p>}
-      {isOpening && <p className="accounting-callout">Asigna el costo de compra documentado a las {stock ?? '—'} unidades actuales. No modifica cantidades ni recalcula ventas pasadas. Incluye en este costo unitario la parte del envío que le tocó al perfume.</p>}
+
+      {isOpening && <p className="accounting-callout">Existencias: {stock ?? '—'} unidades</p>}
       <div className="form-grid">
         {!isOpening && <Input label="Fecha del comprobante" type="date" required max={localDay(new Date())} value={incurredOn} onChange={(event) => setIncurredOn(event.target.value)} />}
         {!isOpening && <Select label="Cuenta" value={account} onChange={(event) => { const next = event.target.value as ExpenseAccount; setAccount(next); setCategory(categoriesOf(next)[0]) }}>{expenseAccountOrder.filter((id) => id !== 'operativos').map((id) => <option key={id} value={id}>{expenseAccounts[id].label}</option>)}</Select>}

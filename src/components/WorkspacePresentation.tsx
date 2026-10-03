@@ -2,13 +2,11 @@ import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
 export function WorkspaceHeading({
   title,
-  description,
   eyebrow,
   icon: Icon,
   children,
 }: {
   title: string
-  description: string
   eyebrow: string
   icon: LucideIcon
   children?: ReactNode
@@ -22,7 +20,6 @@ export function WorkspaceHeading({
         <div>
           <span className="section-kicker">{eyebrow}</span>
           <h1>{title}</h1>
-          <p>{description}</p>
         </div>
       </div>
       {children && <div className="workspace-heading-action">{children}</div>}
@@ -31,11 +28,9 @@ export function WorkspaceHeading({
 }
 export function WorkspaceEmpty({
   title,
-  description,
   icon: Icon,
 }: {
   title: string
-  description: string
   icon: LucideIcon
 }) {
   return (
@@ -44,7 +39,6 @@ export function WorkspaceEmpty({
         <Icon size={28} strokeWidth={1.4} />
       </span>
       <h2>{title}</h2>
-      <p>{description}</p>
     </div>
   )
 }

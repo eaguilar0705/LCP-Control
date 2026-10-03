@@ -830,6 +830,7 @@
     border-radius: 12px;
   }
   .workspace-heading-copy {
+    flex: 0 1 auto;
     gap: 13px;
   }
   .workspace-heading-action {

@@ -122,7 +122,7 @@ export function StaffPage() {
       <WorkspaceHeading
         eyebrow="EQUIPO DE LA TIENDA"
         title="Usuarios y permisos"
-        description="Autoriza el correo y los permisos de cada persona; ella activa su propia cuenta."
+
         icon={UsersRound}
       >
         <Button
@@ -292,11 +292,7 @@ export function StaffPage() {
         ))}
       </div>
       {!loading && !error && !data?.length && (
-        <WorkspaceEmpty
-          icon={UsersRound}
-          title="Tu equipo comienza aquí"
-          description="Las cuentas autorizadas aparecerán con su rol y estado de activación."
-        />
+        <WorkspaceEmpty icon={UsersRound} title="Tu equipo comienza aquí" />
       )}
       <Dialog
         open={!!removing}
@@ -394,8 +390,16 @@ export function BusinessPage() {
     try {
       await rpc('save_business_profile', {
         p_payload: Object.fromEntries(
-          ['name', 'legalName', 'taxId', 'address', 'phone', 'email', 'branch', 'billingDetails']
-            .map((field) => [field, String(f.get(field) ?? '').trim()]),
+          [
+            'name',
+            'legalName',
+            'taxId',
+            'address',
+            'phone',
+            'email',
+            'branch',
+            'billingDetails',
+          ].map((field) => [field, String(f.get(field) ?? '').trim()]),
         ),
       })
       setMessage('Datos del negocio guardados.')
@@ -411,7 +415,7 @@ export function BusinessPage() {
       <WorkspaceHeading
         eyebrow="IDENTIDAD COMERCIAL"
         title="Datos del negocio"
-        description="La información que acompaña a cada factura y proforma."
+
         icon={Store}
       />
       {loading && <LoadingState />}
@@ -421,16 +425,6 @@ export function BusinessPage() {
           <Brand wordmark />
           <span className="section-kicker">LA CASA DEL PERFUME</span>
           <h2>El sello de tu negocio</h2>
-          <p>
-            Mantén tus datos de contacto al día para que tus clientes siempre
-            sepan dónde encontrarte.
-          </p>
-          <div className="business-note">
-            <ShieldCheck size={18} />
-            <span>
-              Los documentos emitidos conservan su información original.
-            </span>
-          </div>
         </Card>
         <Card className="form-card record-form">
           <div className="section-heading">
@@ -448,12 +442,26 @@ export function BusinessPage() {
                 maxLength={160}
                 defaultValue={data.name}
               />
-              <Input label="Razón social / Nombre del titular" name="legalName"
-                required maxLength={160} defaultValue={data.legalName ?? ''} />
-              <Input label="RUC del negocio" name="taxId"
-                required maxLength={40} defaultValue={data.taxId ?? ''} />
-              <Input label="Sucursal" name="branch"
-                maxLength={100} defaultValue={data.branch ?? ''} />
+              <Input
+                label="Razón social / Nombre del titular"
+                name="legalName"
+                required
+                maxLength={160}
+                defaultValue={data.legalName ?? ''}
+              />
+              <Input
+                label="RUC del negocio"
+                name="taxId"
+                required
+                maxLength={40}
+                defaultValue={data.taxId ?? ''}
+              />
+              <Input
+                label="Sucursal"
+                name="branch"
+                maxLength={100}
+                defaultValue={data.branch ?? ''}
+              />
               <Input
                 label="Dirección"
                 name="address"
@@ -468,11 +476,20 @@ export function BusinessPage() {
                 maxLength={60}
                 defaultValue={data.phone}
               />
-              <Input label="Correo del negocio" name="email" type="email"
-                maxLength={160} defaultValue={data.email ?? ''} />
-              <Input label="Datos adicionales de facturación" name="billingDetails"
-                maxLength={240} defaultValue={data.billingDetails ?? ''}
-                placeholder="Serie, autorización u otros datos que correspondan al negocio" />
+              <Input
+                label="Correo del negocio"
+                name="email"
+                type="email"
+                maxLength={160}
+                defaultValue={data.email ?? ''}
+              />
+              <Input
+                label="Datos adicionales de facturación"
+                name="billingDetails"
+                maxLength={240}
+                defaultValue={data.billingDetails ?? ''}
+                placeholder="Serie, autorización u otros datos que correspondan al negocio"
+              />
               <div className="form-actions">
                 <Button type="submit" disabled={busy || demo} aria-busy={busy}>
                   {busy ? 'Guardando…' : 'Guardar'}
@@ -608,21 +625,7 @@ function ExchangeRateCard() {
               </div>
             </form>
           )}
-          {editable && (
-            <p className="exchange-rate-warning" role="note">
-              Cambiar la tasa recalcula la otra moneda de cada precio: el
-              córdoba de los perfumes con precio en dólares y el dólar de los
-              que se calculan desde una compra en córdobas. El precio que
-              fijaste no se toca.
-            </p>
-          )}
-          <p className="muted exchange-rate-note">
-            El precio de cada perfume se fija en dólares —o se calcula desde su
-            precio de compra, en la moneda en que se compró— y la otra moneda
-            sale de esta tasa. También se propone al facturar en dólares y al
-            registrar compras y gastos: cada operación guarda la tasa con la que
-            se registró, así que cambiarla no altera nada de lo ya emitido.
-          </p>
+
           {message && (
             <p role="status" className="workspace-feedback">
               {message}

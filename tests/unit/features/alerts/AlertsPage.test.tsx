@@ -29,7 +29,7 @@ const withStock = (
   minimumStock: number | null,
 ) => ({ ...item, quantities, product: { ...item.product, minimumStock } })
 
-it('explica que faltan conteos y mínimos, como en la base real de hoy', async () => {
+it('conserva el título de conteos pendientes sin párrafos explicativos', async () => {
   mount(
     catalogue.map((item) =>
       withStock(item, { warehouse: null, store: null }, 0),
@@ -38,8 +38,12 @@ it('explica que faltan conteos y mínimos, como en la base real de hoy', async (
   expect(
     await screen.findByRole('heading', { name: 'Conteos pendientes' }),
   ).toBeInTheDocument()
-  expect(screen.getByText(/3 perfumes no tienen conteo/)).toBeInTheDocument()
-  expect(screen.getByText(/Ningún perfume tiene un mínimo/)).toBeInTheDocument()
+  expect(
+    screen.queryByText(/3 perfumes no tienen conteo/),
+  ).not.toBeInTheDocument()
+  expect(
+    screen.queryByText(/Ningún perfume tiene un mínimo/),
+  ).not.toBeInTheDocument()
 })
 
 it('no dice «conteos pendientes» si todo está contado pero sin mínimos', async () => {

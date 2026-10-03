@@ -18,23 +18,12 @@ function emptyReason(items: InventoryItem[]) {
   const withMinimum = items.filter(
     (item) => (item.product.minimumStock ?? 0) > 0,
   ).length
-  const notes: string[] = []
-  if (uncounted)
-    notes.push(
-      `${uncounted} ${uncounted === 1 ? 'perfume no tiene' : 'perfumes no tienen'} conteo completo en Tienda y Bodega y no se pueden evaluar.`,
-    )
-  if (!withMinimum)
-    notes.push(
-      'Ningún perfume tiene un mínimo de inventario mayor que cero: defínelo al editar cada perfume para recibir alertas.',
-    )
-  if (!notes.length)
-    return {
-      title: 'Sin alertas',
-      description: 'Ningún perfume está por debajo de su mínimo.',
-    }
   return {
-    title: uncounted ? 'Conteos pendientes' : 'Sin mínimos configurados',
-    description: notes.join(' '),
+    title: uncounted
+      ? 'Conteos pendientes'
+      : !withMinimum
+        ? 'Sin mínimos configurados'
+        : 'Sin alertas',
   }
 }
 
@@ -51,9 +40,6 @@ export function AlertsPage() {
         <div>
           <span className="eyebrow">EXISTENCIAS</span>
           <h1>Alertas de inventario</h1>
-          <p className="muted">
-            Productos cuyo total está por debajo del mínimo configurado.
-          </p>
         </div>
         <Link className="button button-secondary" to={`${base}/inventory`}>
           Ver inventario <ArrowRight size={17} />

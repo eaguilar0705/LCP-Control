@@ -28,10 +28,6 @@ export function DocumentExamplePage() {
               ? 'Ejemplo de factura'
               : 'Ejemplo de proforma'}
           </h1>
-          <p className="muted">
-            Carta o A4 · datos de muestra · sin emisión. Hasta 40 productos
-            caben en una hoja.
-          </p>
         </div>
         <div className="form-actions">
           <Select

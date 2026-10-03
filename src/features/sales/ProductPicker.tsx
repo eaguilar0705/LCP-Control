@@ -146,7 +146,7 @@ export function ProductPicker({
         <div className="workspace-empty">
           <PackageSearch size={30} />
           <h3>No encontramos ese perfume</h3>
-          <p>Prueba con otra marca, nombre o código.</p>
+
           <Button
             variant="ghost"
             onClick={() => {

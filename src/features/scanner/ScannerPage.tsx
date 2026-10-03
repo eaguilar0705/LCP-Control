@@ -12,8 +12,7 @@ import { ScannerSession, type ScanState } from './ScannerSession'
 import { useServices } from '../../services/useServices'
 import { ScannerResult, UnknownProduct } from './ScannerResult'
 export function ScannerPage() {
-  const { productService, mode } = useServices()
-  const example = mode === 'demo' ? 'DEMO-0001' : 'LCP-0001'
+  const { productService } = useServices()
   const id = useId().replaceAll(':', '')
   const elementId = `camera-${id}`
   const controller = useRef<ScannerSession | null>(null)
@@ -52,7 +51,6 @@ export function ScannerPage() {
         <div>
           <span className="eyebrow">LECTOR DE PRODUCTOS</span>
           <h1>Escanear producto</h1>
-          <p className="muted">Consulta un producto por su etiqueta interna.</p>
         </div>
       </div>
       <div className="scanner-grid">
@@ -73,7 +71,6 @@ export function ScannerPage() {
                   <Camera size={45} strokeWidth={1} />
                 </div>
                 <h3>Acerca el código a la cámara</h3>
-                <p>Usaremos la cámara trasera cuando esté disponible.</p>
               </div>
             )}
             {state.status === 'starting' && (
@@ -125,7 +122,7 @@ export function ScannerPage() {
               <Input
                 label="Código del producto"
                 name="barcode"
-                placeholder={`Ej. ${example}`}
+                placeholder="Código de barras"
                 maxLength={128}
                 required
                 disabled={busy}
@@ -134,12 +131,6 @@ export function ScannerPage() {
                 Buscar
               </Button>
             </form>
-            {/* El ejemplo sigue al catálogo activo. Nombrar aquí un perfume
-                concreto envejece mal: basta con que retiren ese producto. */}
-            <p>
-              Usa el código de la etiqueta interna (<code>{example}</code>) o el
-              EAN del fabricante.
-            </p>
           </div>
         </Card>
         <div>
@@ -160,28 +151,21 @@ export function ScannerPage() {
                   <span>01</span>
                   <div>
                     <h3>Activa tu cámara</h3>
-                    <p>Permite el acceso cuando el navegador lo solicite.</p>
                   </div>
                 </li>
                 <li>
                   <span>02</span>
                   <div>
                     <h3>Apunta al código</h3>
-                    <p>Coloca el QR o código de barras dentro del marco.</p>
                   </div>
                 </li>
                 <li>
                   <span>03</span>
                   <div>
                     <h3>Consulta y continúa</h3>
-                    <p>Revisa las existencias y las acciones autorizadas.</p>
                   </div>
                 </li>
               </ol>
-              <div className="feedback">
-                La cámara se detiene al leer un código y al salir de esta
-                pantalla.
-              </div>
             </Card>
           )}
         </div>

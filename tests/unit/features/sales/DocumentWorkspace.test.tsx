@@ -1,6 +1,12 @@
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { DocumentWorkspace } from '@/features/sales/DocumentWorkspace'
 import { AccessContext } from '@/app/AccessContext'
@@ -250,7 +256,7 @@ it('muestra el mismo total en la otra moneda con la tasa del catálogo', async (
   const onScreen = () => document.querySelector('.invoice-equivalent')
   await waitFor(() => expect(onScreen()).toBeInTheDocument())
   expect(onScreen()).toHaveTextContent(/25\.00/)
-  expect(onScreen()).toHaveTextContent('A 36.6 C$ por dólar')
+  expect(onScreen()).toHaveTextContent('36.6 C$ por dólar')
   expect(document.querySelector('.invoice-total')).toHaveTextContent(/915\.00/)
 
   // Al cobrar en dólares se invierte: el total pasa a 25 y el equivalente a 915.

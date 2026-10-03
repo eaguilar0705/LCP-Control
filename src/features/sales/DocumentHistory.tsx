@@ -45,7 +45,8 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
   const { salesService } = useServices()
   const { base, demo, role } = useAccess()
   const { singular, plural } = documentCopy[kind]
-  const noun = (n: number) => `${counts.format(n)} ${n === 1 ? singular : plural}`
+  const noun = (n: number) =>
+    `${counts.format(n)} ${n === 1 ? singular : plural}`
   // `null`: fechas elegidas a mano, ningún atajo queda marcado.
   const [preset, setPreset] = useState<HistoryPreset | null>('month')
   const [range, setRange] = useState<ReportRange>(() => historyRange('month'))
@@ -124,10 +125,7 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
       const seen = new Set(documents.map((d) => d.id))
       setMore({
         from: current,
-        documents: [
-          ...extra,
-          ...page.documents.filter((d) => !seen.has(d.id)),
-        ],
+        documents: [...extra, ...page.documents.filter((d) => !seen.has(d.id))],
       })
     } catch (e) {
       setMoreError(errorMessage(e))
@@ -150,7 +148,9 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
       }
       setExporting('Generando PDF…')
       await downloadPeriodPdf(kind, range, found, (done, all) =>
-        setExporting(`Generando ${counts.format(done)} de ${counts.format(all)}…`),
+        setExporting(
+          `Generando ${counts.format(done)} de ${counts.format(all)}…`,
+        ),
       )
       setExportNotice({
         tone: 'info',
@@ -175,7 +175,10 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
     setDeleting(true)
     setRemoveError('')
     try {
-      const number = await salesService.deleteInvoice(removing.id, reason.trim())
+      const number = await salesService.deleteInvoice(
+        removing.id,
+        reason.trim(),
+      )
       if (selected?.id === removing.id) setSelected(null)
       setRemoving(null)
       setNotice(
@@ -196,7 +199,7 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
           title={
             kind === 'invoice' ? 'Facturas emitidas' : 'Proformas emitidas'
           }
-          description="Consulta tus documentos y vuelve a imprimirlos cuando lo necesites."
+
           icon={FileText}
         >
           <Link
@@ -210,17 +213,19 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
         <Card className="report-filters history-filters">
           <div className="preset-row" role="group" aria-label="Periodo">
             <CalendarRange size={17} />
-            {(Object.keys(historyPresetLabels) as HistoryPreset[]).map((key) => (
-              <button
-                key={key}
-                type="button"
-                className={`preset ${preset === key ? 'preset-active' : ''}`}
-                aria-pressed={preset === key}
-                onClick={() => choosePreset(key)}
-              >
-                {historyPresetLabels[key]}
-              </button>
-            ))}
+            {(Object.keys(historyPresetLabels) as HistoryPreset[]).map(
+              (key) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={`preset ${preset === key ? 'preset-active' : ''}`}
+                  aria-pressed={preset === key}
+                  onClick={() => choosePreset(key)}
+                >
+                  {historyPresetLabels[key]}
+                </button>
+              ),
+            )}
           </div>
           <div className="history-filter-grid">
             <Input
@@ -249,9 +254,6 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
                   <FileDown size={17} />
                   {exporting || 'Exportar PDF del período'}
                 </Button>
-                <small className="muted">
-                  Listado con totales y cada {singular} completa.
-                </small>
               </div>
             )}
           </div>
@@ -353,13 +355,6 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
                 ? 'No encontramos ese documento'
                 : `Sin ${plural} en este período`
             }
-            description={
-              searching
-                ? documents.length < total
-                  ? 'Busca entre las que faltan con «Cargar más» o acorta el período.'
-                  : 'Prueba con otro nombre o número.'
-                : 'Elige otras fechas. Los documentos que emitas aparecerán aquí con su detalle y su PDF.'
-            }
           />
         )}
         {selected && (
@@ -422,8 +417,10 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
               <p>
                 ¿Eliminar la factura <strong>{removing.number}</strong> de{' '}
                 {removing.customerName} por{' '}
-                <strong>{formatCurrency(removing.total, removing.currency)}</strong>?
-                Esta acción no se puede deshacer.
+                <strong>
+                  {formatCurrency(removing.total, removing.currency)}
+                </strong>
+                ? Esta acción no se puede deshacer.
               </p>
               <p className="muted">
                 Los productos vuelven al inventario de{' '}

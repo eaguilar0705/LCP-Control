@@ -20,7 +20,6 @@ import { useQuery } from '../../lib/useQuery'
 import { useServices } from '../../services/useServices'
 import { createIdempotentOperation } from '../../lib/idempotentOperation'
 import { errorMessage } from '../../lib/errors'
-import { EntryCostNotice } from '../inventory/EntryCostNotice'
 
 const actions: {
   type: MovementRequest['type']
@@ -136,10 +135,7 @@ export function ProductStockEditor({
         </div>
         <Package size={25} />
       </div>
-      <p className="muted">
-        Suma o descuenta unidades aquí. Cada cambio se guarda con su motivo,
-        fecha y responsable.
-      </p>
+
       {loading ? (
         <LoadingState />
       ) : loadError ? (
@@ -197,13 +193,7 @@ export function ProductStockEditor({
                     ))}
                   </Select>
                 </div>
-                {initial && (
-                  <p className="stock-help">
-                    Primero registra el total que contaste en esta ubicación.
-                    Cero significa que no hay unidades.
-                  </p>
-                )}
-                {movementType === 'ENTRY' && <EntryCostNotice />}
+
                 <div className="stock-adjustment-row">
                   <div className="quantity-stepper">
                     <Button

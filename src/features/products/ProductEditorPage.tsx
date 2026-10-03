@@ -335,13 +335,10 @@ function ProductForm({
                 e.target.value = ''
               }}
             />
-            <small className="muted">
-              JPG, PNG o WebP. Se ajusta a 1200 píxeles para cargar más rápido.
-            </small>
+            <small className="muted">JPG, PNG o WebP</small>
             {file && (
               <p className="optimized-photo-note">
-                WebP · {Math.max(1, Math.round(file.size / 1024))} KB · Lista
-                para guardar en Supabase
+                WebP · {Math.max(1, Math.round(file.size / 1024))} KB
               </p>
             )}
             <Button

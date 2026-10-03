@@ -176,10 +176,8 @@ export function LoadingState() {
 }
 export function EmptyState({
   title = 'No hay resultados',
-  description = 'Prueba con otra búsqueda o cambia los filtros.',
 }: {
   title?: string
-  description?: string
 }) {
   return (
     <div className="state">
@@ -187,7 +185,6 @@ export function EmptyState({
       {/* Encabeza la sección donde aparece, casi siempre justo bajo el título
           de la pantalla: un h3 ahí deja un nivel sin usar. */}
       <h2>{title}</h2>
-      <p>{description}</p>
     </div>
   )
 }

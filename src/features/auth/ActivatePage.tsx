@@ -103,10 +103,7 @@ export function ActivatePage({
       <Card className="form-card">
         <Brand wordmark />
         <h1>Activar mi cuenta</h1>
-        <p>
-          Solo pueden registrarse los correos autorizados por el administrador.
-          Elige una contraseña personal.
-        </p>
+
         <form onSubmit={submit}>
           <Input
             label="Correo autorizado"

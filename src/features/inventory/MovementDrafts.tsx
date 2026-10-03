@@ -46,9 +46,7 @@ export function MovementDrafts({ items }: { items: InventoryItem[] }) {
           </Button>
         ))}
       </div>
-      <p className="workspace-disclaimer">
-        Prepara movimientos pendientes. Las cantidades de inventario no cambian.
-      </p>
+
       {drafts.length > 0 && (
         <Card className="movement-history">
           <h2>Movimientos pendientes ({drafts.length})</h2>
@@ -154,10 +152,7 @@ function MovementForm({
           maxLength={1000}
           required
         />
-        <p className="workspace-disclaimer">
-          Se guardará como pendiente en este navegador. No modifica las
-          existencias.
-        </p>
+
         {(message || error) && (
           <p role="alert" className="inline-error">
             {message || error}

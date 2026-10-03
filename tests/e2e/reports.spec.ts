@@ -119,7 +119,7 @@ test('muestra la variación contra el periodo anterior y los indicadores de segu
   await expect(
     page.getByRole('img', { name: /Ingresos por día de la semana/ }).first(),
   ).toBeVisible()
-  await expect(cordobas.getByText(/concentran el \d+%/).first()).toBeVisible()
+  await expect(cordobas.getByText(/Top (5|10):.*\d+%/).first()).toBeVisible()
 
   await expect(
     page.getByRole('heading', { name: 'Qué reponer primero' }),

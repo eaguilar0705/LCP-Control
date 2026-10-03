@@ -539,7 +539,6 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
       <div className="page-heading no-print">
         <div>
           <h1>{copy.title}</h1>
-          <p className="muted">{copy.subtitle}</p>
         </div>
         {demo && (
           <a
@@ -735,13 +734,6 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
                 />
               )}
             </div>
-            <p className="muted">
-              El precio de catálogo es el total a cobrar; la tasa separa el
-              impuesto incluido.
-              {currency === 'USD' &&
-                savedRate &&
-                ` Tipo de cambio propuesto por el negocio: ${savedRate.usdToNio} C$ por dólar. Cambiarlo aquí afecta sólo a este documento.`}
-            </p>
           </Card>
           {drafts.length > 0 && (
             <Card className="form-card">
@@ -816,9 +808,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
                 </div>
               ))
             ) : lines.length === 0 ? (
-              <p className="empty-lines">
-                Agrega productos para ver el detalle de la {copy.singular}.
-              </p>
+              <p className="empty-lines">Sin productos</p>
             ) : (
               lines.map((line) => (
                 <div className="invoice-line" key={line.productId}>
@@ -925,11 +915,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
                   {formatCurrency(equivalent.amount, equivalent.currency)}
                 </strong>
               </span>
-              <small>
-                A {displayedRate} C$ por dólar. Cambia la moneda arriba para
-                cobrar en{' '}
-                {equivalent.currency === 'USD' ? 'dólares' : 'córdobas'}.
-              </small>
+              <small>{displayedRate} C$ por dólar</small>
             </p>
           )}
           <label className="field no-print">
@@ -943,7 +929,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
             />
           </label>
           <p className="print-only">{notes}</p>
-          <p className="invoice-notice">{copy.notice}</p>
+
           {!issued && shortages > 0 && (
             <p className="inline-error no-print" role="status">
               {shortages === 1
@@ -1027,13 +1013,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
               {sharing ? 'Generando PDF…' : 'Compartir PDF'}
             </Button>
           </div>
-          <p className="whatsapp-hint no-print">
-            {demo
-              ? 'La vista local comparte el borrador; no emite documentos.'
-              : issued
-                ? `Se comparte la ${copy.singular} ${issued.number} tal como quedó registrada.`
-                : `Aún sin emitir: se comparte el borrador. Emite la ${copy.singular} para enviarla con su número definitivo.`}
-          </p>
+
           {message && (
             <p role="status" className="page-feedback no-print">
               {message}

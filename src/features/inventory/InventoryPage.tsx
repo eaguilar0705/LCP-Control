@@ -123,7 +123,6 @@ export function InventoryPage() {
         title="Inventario"
         eyebrow="PERFUMES Y EXISTENCIAS"
         icon={Package}
-        description="Fotos, precios y cantidades de Tienda y Bodega, en un solo lugar."
       >
         <div className="inventory-actions">
           {manage && (
@@ -561,9 +560,8 @@ function InventoryTotals({
         <strong>{totals.total.toLocaleString('es-NI')}</strong>
       </div>
       <p className="inventory-totals-note">
-        Unidades de los {count} productos que muestran los filtros.
-        {totals.uncounted > 0 &&
-          ` ${totals.uncounted} sin conteo completo no suman al total.`}
+        {count} productos
+        {totals.uncounted > 0 && ` · ${totals.uncounted} sin conteo completo`}
       </p>
     </div>
   )

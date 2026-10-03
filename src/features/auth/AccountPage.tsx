@@ -142,9 +142,6 @@ function AccountForm({ initialName }: { initialName: string }) {
       <div className="page-heading">
         <div>
           <h1>Mi cuenta</h1>
-          <p className="muted">
-            Actualiza tu nombre y los datos con los que entras al sistema.
-          </p>
         </div>
       </div>
       {demo && (

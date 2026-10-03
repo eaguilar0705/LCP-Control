@@ -154,11 +154,7 @@ export function ContactsPage({ kind }: { kind: Kind }) {
       <WorkspaceHeading
         eyebrow="RELACIONES DEL NEGOCIO"
         title={supplier ? 'Proveedores' : 'Clientes'}
-        description={
-          supplier
-            ? 'Contactos, marcas y acuerdos, siempre a la mano.'
-            : 'Conoce a tus clientes y ten sus datos listos para cada venta.'
-        }
+
         icon={supplier ? Truck : Users}
       >
         {editable && (
@@ -346,13 +342,6 @@ export function ContactsPage({ kind }: { kind: Kind }) {
               : supplier
                 ? 'Tus proveedores, en un solo lugar'
                 : 'Aquí empieza la relación con tus clientes'
-          }
-          description={
-            data?.length
-              ? 'Prueba otra búsqueda o cambia el estado seleccionado.'
-              : supplier
-                ? 'Registra tu primer proveedor para guardar sus contactos y condiciones.'
-                : 'Registra tu primer cliente y selecciónalo al preparar una factura o proforma.'
           }
         />
       )}

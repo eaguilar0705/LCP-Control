@@ -11,7 +11,6 @@ import {
 import { can, type Capability } from '../../lib/permissions'
 import { errorMessage } from '../../lib/errors'
 import { createIdempotentOperation } from '../../lib/idempotentOperation'
-import { EntryCostNotice } from './EntryCostNotice'
 
 // `title` y `done` se escriben enteros: «Dañado» y «Ajuste» no concuerdan con
 // «de inventario … registrada» como sí lo hacen «Entrada» y «Salida».
@@ -155,10 +154,7 @@ export function InventoryMovements({
             </Button>
           ))}
       </div>
-      <p className="workspace-disclaimer">
-        Los movimientos confirmados actualizan las existencias. Ajuste establece
-        el conteo total de la ubicación.
-      </p>
+
       {message && (
         <p role="status" className="page-feedback">
           {message}
@@ -206,7 +202,6 @@ export function InventoryMovements({
                 step={1}
               />
               <Input label="Motivo" name="note" required maxLength={2000} />
-              {action.type === 'ENTRY' && <EntryCostNotice />}
             </fieldset>
             {error && (
               <p role="alert" className="inline-error">

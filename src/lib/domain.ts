@@ -256,8 +256,6 @@ export const documentCopy: Record<
     plural: string
     stamp: string
     prefix: string
-    subtitle: string
-    notice: string
   }
 > = {
   invoice: {
@@ -266,9 +264,6 @@ export const documentCopy: Record<
     plural: 'facturas',
     stamp: 'FACTURA',
     prefix: 'FAC-',
-    subtitle: 'Cobra y descuenta del inventario.',
-    notice:
-      'Revisa los productos, los datos del cliente y la forma de pago antes de emitir la factura.',
   },
   proforma: {
     title: 'Proformas',
@@ -276,8 +271,5 @@ export const documentCopy: Record<
     plural: 'proformas',
     stamp: 'PROFORMA',
     prefix: 'PRO-',
-    subtitle: 'Cotiza sin cobrar ni mover inventario.',
-    notice:
-      'Es una cotización con vigencia. No cobra, no descuenta existencias y no sustituye a una factura. Los precios rigen hasta la fecha de vigencia indicada.',
   },
 }

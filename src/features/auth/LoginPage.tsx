@@ -57,7 +57,7 @@ export function LoginPage() {
           </span>
           <span className="eyebrow">ACCESO AL SISTEMA</span>
           <h2>Iniciar sesión</h2>
-          <p className="muted">Ingresa con la cuenta de tu tienda.</p>
+
           <form onSubmit={submit}>
             <Input
               label="Correo electrónico"
@@ -94,10 +94,6 @@ export function LoginPage() {
               Activar mi cuenta
             </Link>
           )}
-          <p className="login-note">
-            <ShieldCheck size={16} /> Acceso privado. Solicita tu cuenta al
-            administrador.
-          </p>
         </div>
       </section>
     </main>

@@ -79,9 +79,7 @@ export function ScannerResult({ product }: { product: Product }) {
       {demo && (
         <>
           <h3>Continuar con una acción</h3>
-          <p className="muted">
-            Vista previa del flujo. No modifica el inventario.
-          </p>
+
           <div className="scan-actions">
             {actions
               .filter((action) => can(role, action.capability))
@@ -96,11 +94,7 @@ export function ScannerResult({ product }: { product: Product }) {
                 </Button>
               ))}
           </div>
-          {role === 'operator' && (
-            <small>
-              Los movimientos preparados quedan pendientes de registrar.
-            </small>
-          )}
+
           <Dialog
             open={!!action}
             title={`${action} de inventario`}
@@ -109,10 +103,7 @@ export function ScannerResult({ product }: { product: Product }) {
             <p>
               <strong>{product.name}</strong> · {product.barcode}
             </p>
-            <p>
-              Puedes preparar este movimiento desde Inventario. Se guardará como
-              pendiente, sin cambiar las existencias.
-            </p>
+
             <Button onClick={() => setAction('')}>Entendido</Button>
           </Dialog>
         </>
@@ -127,11 +118,7 @@ export function UnknownProduct({ code }: { code: string }) {
       <Badge tone="warning">Código no registrado</Badge>
       <h2>No encontramos este producto.</h2>
       <code>{code}</code>
-      <p className="muted">
-        {can(role, 'product.manage')
-          ? 'Puedes preparar el alta con este código. El código del fabricante se verificará al registrar el producto.'
-          : 'Solicita al administrador que registre o verifique este código.'}
-      </p>
+
       {can(role, 'product.manage') && (
         <Link
           className="button button-secondary"

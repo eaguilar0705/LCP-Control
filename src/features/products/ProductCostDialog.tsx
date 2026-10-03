@@ -67,14 +67,8 @@ function CostLoader({
           <p>Reactiva y guarda el perfume antes de registrar su costo.</p>
         ) : (
           <>
-            <p>
-              Primero registra las cantidades actuales de este perfume en Tienda
-              y Bodega. Así el costo se asignará a las unidades que realmente
-              tienes.
-            </p>
-            <p className="muted">
-              Si no hay unidades en una ubicación, registra cero.
-            </p>
+            <p>Falta el conteo de Tienda o Bodega.</p>
+
             <Button
               type="button"
               onClick={() => {
