@@ -85,3 +85,17 @@ it('tocar el velo cierra el menú y no pulsa lo que hay debajo', async () => {
   expect(document.querySelector('.sidebar-backdrop')).not.toBeInTheDocument()
   expect(pageAction).not.toHaveBeenCalled()
 })
+
+it.each([
+  ['admin', true],
+  ['superadmin', true],
+  ['operator', false],
+  ['warehouse', false],
+  ['viewer', false],
+] as const)('Contabilidad en el menú para %s: %s', (role, visible) => {
+  mount(role)
+  const side = screen.getByRole('navigation', { name: 'Navegación principal' })
+  const link = within(side).queryByRole('link', { name: 'Contabilidad' })
+  if (visible) expect(link).toBeInTheDocument()
+  else expect(link).not.toBeInTheDocument()
+})

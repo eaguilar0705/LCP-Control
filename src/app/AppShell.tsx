@@ -13,6 +13,7 @@ import {
   X,
   UserRound,
   ChartColumn,
+  Calculator,
 } from 'lucide-react'
 import { useAuth } from '../features/auth/AuthContext'
 import { AccessContext } from './AccessContext'
@@ -26,6 +27,7 @@ const links = [
   ['/sales', 'Facturación', ShoppingBag],
   ['/proformas', 'Proformas', FileText],
   ['/reports', 'Reportes', ChartColumn],
+  ['/accounting', 'Contabilidad', Calculator],
   ['/alerts', 'Alertas', Bell],
   ['/suppliers', 'Proveedores', Truck],
   ['/account', 'Mi cuenta', UserRound],
@@ -43,6 +45,7 @@ const linkPermission: Record<string, Capability> = {
   '/customers': 'customer.read',
   '/suppliers': 'supplier.read',
   '/reports': 'finance.read',
+  '/accounting': 'pricing.manage',
   '/staff': 'staff.manage',
   '/settings': 'settings.manage',
 }

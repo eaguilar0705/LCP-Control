@@ -4,13 +4,7 @@ import { ScanButton } from '../scanner/ScanButton'
 import { ProductStockEditor } from './ProductStockEditor'
 import { can } from '../../lib/permissions'
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
-import {
-  Link,
-  useLocation,
-  useNavigate,
-  useParams,
-  useSearchParams,
-} from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   Button,
   Card,
@@ -26,14 +20,12 @@ import { useQuery } from '../../lib/useQuery'
 import { errorMessage, issuesByField } from '../../lib/errors'
 import {
   labels,
-  type PriceChange,
   type PricingInput,
   type Product,
   type PriceTier,
 } from '../../lib/domain'
 import {
   applyPricing,
-  marginRate,
   priceTierLabels,
   priceTiers,
   tierQuote,
@@ -45,7 +37,7 @@ import {
   productInput,
   productInputSchema,
 } from './product'
-import { formatCurrency, formatDate } from '../../lib/format'
+import { formatCurrency } from '../../lib/format'
 import { PricingFields } from '../pricing/PricingFields'
 
 export function ProductEditorPage() {
@@ -81,30 +73,25 @@ function ProductLoader() {
   const { id } = useParams()
   const [costMessage, setCostMessage] = useState('')
   const { productService, settingsService } = useServices()
-  // Los porcentajes, el costo promedio y la tasa llegan junto con el perfume:
-  // el formulario arranca con todo lo que necesita para calcular, y nada se
-  // sobrescribe mientras alguien ya está escribiendo. Quien no puede leer
-  // costos recibe nulo sin error.
+  // Los precios de un perfume existente se editan en Contabilidad; aquí sólo
+  // un perfume nuevo necesita porcentajes y tasa para salir con precio.
   const load = useCallback(async () => {
     const products = await productService.listProducts()
     // Un perfume que no está en el catálogo (una dirección escrita a mano o
     // de un perfume borrado) no se sigue consultando: la base respondería con
     // un error técnico en lugar de «no encontrado».
-    if (id && !products.some((p) => p.id === id))
-      return { products, pricing: null, rate: null, cost: null }
-    const [pricing, rate, cost] = await Promise.all([
-      productService.listPricing(id ?? NEW_PRODUCT),
+    if (id) return { products, pricing: null, rate: null }
+    const [pricing, rate] = await Promise.all([
+      productService.listPricing(NEW_PRODUCT),
       settingsService.getExchangeRate(),
-      id ? productService.getProductCost(id) : Promise.resolve(null),
     ])
-    return { products, pricing, rate: rate?.usdToNio ?? null, cost }
+    return { products, pricing, rate: rate?.usdToNio ?? null }
   }, [id, productService, settingsService])
   const { data, loading, error, retry } = useQuery(load)
   if (loading) return <LoadingState />
   if (error) return <ErrorState message={error} retry={retry} />
   const product = data?.products.find((p) => p.id === id)
   if (id && !product) return <ProductNotFound />
-  const saved = data?.pricing?.rows.find((row) => row.productId === id)
   return (
     <>
       {costMessage && (
@@ -116,8 +103,7 @@ function ProductLoader() {
         key={`${id ?? 'new'}:${product?.revision}`}
         product={product}
         brands={[...new Set(data?.products.map((p) => p.brand))]}
-        pricing={data?.pricing?.available ? pricingInput(saved) : null}
-        averageCost={data?.cost ?? null}
+        pricing={data?.pricing?.available ? pricingInput() : null}
         rate={data?.rate ?? null}
         onCostRecorded={(message) => {
           setCostMessage(message)
@@ -131,19 +117,16 @@ function ProductForm({
   product,
   brands,
   pricing,
-  averageCost,
   rate,
   onCostRecorded,
 }: {
   product?: Product
   brands: string[]
-  /** `null` mientras la base no guarde porcentajes de ganancia. */
-  pricing: PricingInput | null
   /**
-   * Costo promedio vigente en C$ (de sólo lectura): sólo para enseñar el
-   * margen de cada precio. `null` mientras no se conozca.
+   * Sólo en un perfume nuevo; `null` al editar (sus precios viven en
+   * Contabilidad) o mientras la base no guarde porcentajes.
    */
-  averageCost: number | null
+  pricing: PricingInput | null
   /**
    * El precio en córdobas se calcula con esta tasa. Sin ella no se puede fijar
    * un precio, así que el formulario lo dice y no deja guardar a ciegas.
@@ -210,12 +193,6 @@ function ProductForm({
       if (preview.startsWith('blob:')) URL.revokeObjectURL(preview)
     }
   }, [preview])
-  // Desde Precios se llega directo a las listas de precios.
-  const { hash } = useLocation()
-  useEffect(() => {
-    if (hash === '#precios')
-      document.getElementById('precios')?.scrollIntoView?.({ block: 'start' })
-  }, [hash])
   function update<K extends keyof typeof value>(
     key: K,
     next: (typeof value)[K],
@@ -305,9 +282,22 @@ function ProductForm({
             {product?.barcode ?? 'El código interno se asignará al guardar.'}
           </p>
         </div>
-        <Link className="button button-secondary" to={back}>
-          Volver al inventario
-        </Link>
+        <div className="form-actions">
+          {product && (demo || can(role, 'product.edit_cost')) && (
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={busy || demo || unsaved || !product.active}
+              onClick={() => setCostOpen(true)}
+            >
+              <Coins size={18} />
+              Costo de inventario
+            </Button>
+          )}
+          <Link className="button button-secondary" to={back}>
+            Volver al inventario
+          </Link>
+        </div>
       </div>
       {demo && (
         <p className="page-feedback">
@@ -466,48 +456,79 @@ function ProductForm({
               </Select>
             </div>
           </Card>
-          <Card className="form-card product-prices" id="precios">
-            <div className="section-heading">
+          {!product && (
+            <Card className="form-card product-prices">
               <h2>Listas de precios</h2>
-              {product && (demo || can(role, 'product.edit_cost')) && (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={busy || demo || unsaved || !product.active}
-                  onClick={() => setCostOpen(true)}
-                >
-                  <Coins size={18} />
-                  Costo de inventario
-                </Button>
+              {rate === null && (
+                <p className="inline-error" role="alert">
+                  Falta el tipo de cambio. Regístralo en Negocio.
+                </p>
               )}
-            </div>
-            {rate === null && (
-              <p className="inline-error" role="alert">
-                Falta el tipo de cambio. Regístralo en Negocio.
-              </p>
-            )}
-            {!value.pricing && (
-              <p className="muted pricing-unavailable">
-                Falta aplicar la actualización de precios en la base de datos.
-              </p>
-            )}
-            {value.pricing ? (
-              <PricingFields
-                pricing={value.pricing}
-                onChange={changePricing}
-                rate={rate}
-                prices={shownPrices}
-                errors={fieldErrors}
-                manual={(tier) => {
+              {!value.pricing && (
+                <p className="muted pricing-unavailable">
+                  Falta aplicar la actualización de precios en la base de datos.
+                </p>
+              )}
+              {value.pricing ? (
+                <PricingFields
+                  pricing={value.pricing}
+                  onChange={changePricing}
+                  rate={rate}
+                  prices={shownPrices}
+                  errors={fieldErrors}
+                  manual={(tier) => {
+                    const nio = value.prices[tier].NIO
+                    // Un dólar vacío ya deja su propio aviso en el campo;
+                    // repetirlo bajo el córdoba sería marcar dos veces lo mismo.
+                    const usdError = fieldErrors[`prices.${tier}.USD`]
+                    const nioError = usdError
+                      ? undefined
+                      : fieldErrors[`prices.${tier}.NIO`]
+                    return (
+                      <div className="pricing-manual">
+                        <Input
+                          label={`${priceTierLabels[tier]} USD`}
+                          error={usdError}
+                          type="number"
+                          min={0.01}
+                          max={10000000}
+                          step={0.01}
+                          required
+                          value={
+                            Number.isNaN(value.prices[tier].USD)
+                              ? ''
+                              : value.prices[tier].USD
+                          }
+                          onChange={(e) => {
+                            const usd = e.target.valueAsNumber
+                            update('prices', {
+                              ...value.prices,
+                              [tier]: { USD: usd, NIO: nioFromUsd(usd, rate) },
+                            })
+                          }}
+                        />
+                        <small className={nioError ? 'field-error' : undefined}>
+                          {nioError ??
+                            (Number.isNaN(nio)
+                              ? '—'
+                              : formatCurrency(nio, 'NIO'))}
+                        </small>
+                      </div>
+                    )
+                  }}
+                />
+              ) : (
+                (Object.keys(priceTierLabels) as PriceTier[]).map((tier) => {
                   const nio = value.prices[tier].NIO
-                  // Un dólar vacío ya deja su propio aviso en el campo;
-                  // repetirlo bajo el córdoba sería marcar dos veces lo mismo.
+                  // Un dólar vacío ya deja su propio aviso en el campo; repetirlo
+                  // bajo el córdoba sería marcar dos veces el mismo descuido.
                   const usdError = fieldErrors[`prices.${tier}.USD`]
                   const nioError = usdError
                     ? undefined
                     : fieldErrors[`prices.${tier}.NIO`]
                   return (
-                    <div className="pricing-manual">
+                    <div className="product-price-row" key={tier}>
+                      <h3>{priceTierLabels[tier]}</h3>
                       <Input
                         label={`${priceTierLabels[tier]} USD`}
                         error={usdError}
@@ -529,77 +550,23 @@ function ProductForm({
                           })
                         }}
                       />
-                      <small className={nioError ? 'field-error' : undefined}>
-                        {nioError ??
-                          (Number.isNaN(nio)
-                            ? '—'
-                            : formatCurrency(nio, 'NIO'))}
-                      </small>
+                      <div
+                        className={`product-price-derived ${nioError ? 'field-invalid' : ''}`}
+                      >
+                        <span>{priceTierLabels[tier]} NIO</span>
+                        <strong>
+                          {Number.isNaN(nio) ? '—' : formatCurrency(nio, 'NIO')}
+                        </strong>
+                        {nioError && (
+                          <small className="field-error">{nioError}</small>
+                        )}
+                      </div>
                     </div>
                   )
-                }}
-                after={(_tier, priceNio) => (
-                  <PriceMargin
-                    priceNio={priceNio}
-                    costNio={averageCost}
-                    show={!!product}
-                  />
-                )}
-              />
-            ) : (
-              (Object.keys(priceTierLabels) as PriceTier[]).map((tier) => {
-                const nio = value.prices[tier].NIO
-                // Un dólar vacío ya deja su propio aviso en el campo; repetirlo
-                // bajo el córdoba sería marcar dos veces el mismo descuido.
-                const usdError = fieldErrors[`prices.${tier}.USD`]
-                const nioError = usdError
-                  ? undefined
-                  : fieldErrors[`prices.${tier}.NIO`]
-                return (
-                  <div className="product-price-row" key={tier}>
-                    <h3>{priceTierLabels[tier]}</h3>
-                    <Input
-                      label={`${priceTierLabels[tier]} USD`}
-                      error={usdError}
-                      type="number"
-                      min={0.01}
-                      max={10000000}
-                      step={0.01}
-                      required
-                      value={
-                        Number.isNaN(value.prices[tier].USD)
-                          ? ''
-                          : value.prices[tier].USD
-                      }
-                      onChange={(e) => {
-                        const usd = e.target.valueAsNumber
-                        update('prices', {
-                          ...value.prices,
-                          [tier]: { USD: usd, NIO: nioFromUsd(usd, rate) },
-                        })
-                      }}
-                    />
-                    <div
-                      className={`product-price-derived ${nioError ? 'field-invalid' : ''}`}
-                    >
-                      <span>{priceTierLabels[tier]} NIO</span>
-                      <strong>
-                        {Number.isNaN(nio) ? '—' : formatCurrency(nio, 'NIO')}
-                      </strong>
-                      {nioError && (
-                        <small className="field-error">{nioError}</small>
-                      )}
-                    </div>
-                    <PriceMargin
-                      priceNio={Number.isNaN(nio) ? null : nio}
-                      costNio={averageCost}
-                      show={!!product}
-                    />
-                  </div>
-                )
-              })
-            )}
-          </Card>
+                })
+              )}
+            </Card>
+          )}
         </fieldset>
         {(invalid > 0 || error) && (
           <p role="alert" className="inline-error">
@@ -634,7 +601,6 @@ function ProductForm({
           }}
         />
       )}
-      {product && <PriceHistory productId={product.id} />}
       {product ? (
         <section id="cantidades-perfume" tabIndex={-1}>
           <ProductStockEditor product={product} disabled={busy} />
@@ -673,142 +639,5 @@ function ProductForm({
         </Dialog>
       )}
     </>
-  )
-}
-
-const percentFormat = new Intl.NumberFormat('es-NI', {
-  style: 'percent',
-  maximumFractionDigits: 1,
-})
-/**
- * Lo que queda del precio después del costo, escrito junto al precio que lo
- * produce. Cambiar el precio en una pantalla y descubrir el margen en otra es
- * como se termina vendiendo bajo costo sin enterarse. Bajo el 15 % se marca en
- * rojo; por debajo de cero se dice con todas las letras.
- */
-function PriceMargin({
-  priceNio,
-  costNio,
-  show,
-}: {
-  priceNio: number | null
-  costNio: number | null | undefined
-  show: boolean
-}) {
-  const rate = show ? marginRate(priceNio, costNio) : null
-  if (rate === null) return null
-  return (
-    <p
-      className={`product-price-margin ${rate < 0.15 ? 'product-price-margin-thin' : ''}`}
-    >
-      {rate < 0
-        ? `Bajo el costo promedio: pierde ${percentFormat.format(Math.abs(rate))}`
-        : `Margen sobre el costo promedio: ${percentFormat.format(rate)}`}
-    </p>
-  )
-}
-const causeLabels: Record<NonNullable<PriceChange['cause']>, string> = {
-  purchase: 'Compra',
-  opening_cost: 'Costo inicial',
-  invoice_deleted: 'Factura eliminada',
-  migration: 'Cambio a precios por costo promedio',
-  cost: 'Cambio del costo promedio',
-}
-/** Cómo se calculó el precio de la lista, en una línea. */
-function priceBasis(change: PriceChange): string | null {
-  if (change.markup == null) return null
-  if (change.averageCost != null)
-    return `${change.markup} % sobre el costo promedio de ${formatCurrency(change.averageCost, 'NIO')}`
-  if (change.purchasePrice != null && change.purchaseCurrency)
-    return `${change.markup} % sobre la compra de ${formatCurrency(change.purchasePrice, change.purchaseCurrency)}`
-  return `${change.markup} % configurado · falta precio de compra`
-}
-/**
- * Los cambios de precio del perfume, del más reciente al más antiguo. Un
- * cambio hecho por una persona dice quién fue; uno que hizo el sistema al
- * cambiar el costo promedio se marca «Automático» con su causa (la compra, el
- * costo inicial, la factura eliminada) y quién registró esa operación. Un
- * cambio sin «antes» es el precio con el que el perfume entró al catálogo.
- */
-function PriceHistory({ productId }: { productId: string }) {
-  const { productService } = useServices()
-  const load = useCallback(
-    () => productService.listPriceChanges(productId),
-    [productId, productService],
-  )
-  const { data, error, loading, retry } = useQuery(load)
-  return (
-    <Card className="form-card price-history">
-      <h2>Historial de precios</h2>
-      {loading && <LoadingState />}
-      {error && <ErrorState message={error} retry={retry} />}
-      {!loading && !error && data?.length === 0 && (
-        <p className="page-feedback">Sin cambios de precio todavía.</p>
-      )}
-      <div className="price-history-list">
-        {data?.map((change, index) => {
-          const basis = priceBasis(change)
-          // Un precio que sale de un costo en córdobas se lee primero en
-          // córdobas: es el que queda fijo cuando cambia la tasa.
-          const cordobasFirst =
-            change.markup != null &&
-            (change.averageCost != null || change.purchaseCurrency === 'NIO')
-          return (
-            <article
-              className={`price-history-record ${change.automatic ? 'is-automatic' : ''}`}
-              key={`${change.changedAt}:${change.tier}:${index}`}
-            >
-              <div>
-                <h3>{priceTierLabels[change.tier]}</h3>
-                <p>
-                  {formatDate(change.changedAt)} ·{' '}
-                  {change.automatic ? 'Automático' : change.actor}
-                </p>
-                {change.automatic && (
-                  <small className="price-history-cause">
-                    {causeLabels[change.cause ?? 'cost']}
-                    {change.causeReference ? ` ${change.causeReference}` : ''}
-                    {change.actor !== 'Sistema' &&
-                      ` · registrada por ${change.actor}`}
-                  </small>
-                )}
-              </div>
-              <div className="price-history-amounts">
-                {(cordobasFirst
-                  ? (['NIO', 'USD'] as const)
-                  : (['USD', 'NIO'] as const)
-                ).map((currency, position) => {
-                  const before =
-                    currency === 'USD' ? change.beforeUsd : change.beforeNio
-                  const after =
-                    currency === 'USD' ? change.afterUsd : change.afterNio
-                  const text =
-                    before === null
-                      ? formatCurrency(after, currency)
-                      : `${formatCurrency(before, currency)} → ${formatCurrency(after, currency)}`
-                  return position === 0 ? (
-                    <strong key={currency}>{text}</strong>
-                  ) : (
-                    <small key={currency}>{text}</small>
-                  )
-                })}
-                {basis && (
-                  <small className="price-history-markup">{basis}</small>
-                )}
-                {change.automatic ? (
-                  <span className="record-badge is-automatic">Automático</span>
-                ) : (
-                  change.beforeUsd === null && (
-                    <span className="record-badge is-muted">
-                      Precio inicial
-                    </span>
-                  )
-                )}
-              </div>
-            </article>
-          )
-        })}
-      </div>
-    </Card>
   )
 }

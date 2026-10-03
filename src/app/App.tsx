@@ -53,6 +53,11 @@ const ReportsPage = lazy(() =>
     default: page.ReportsPage,
   })),
 )
+const AccountingPage = lazy(() =>
+  import('../features/accounting/AccountingPage').then((page) => ({
+    default: page.AccountingPage,
+  })),
+)
 const StaffPage = lazy(() =>
   import('../features/administration/AdministrationPage').then((page) => ({
     default: page.StaffPage,
@@ -153,6 +158,14 @@ export function App() {
         element={
           <AccessGate permission="finance.read">
             <ReportsPage />
+          </AccessGate>
+        }
+      />
+      <Route
+        path="accounting"
+        element={
+          <AccessGate permission="pricing.manage">
+            <AccountingPage />
           </AccessGate>
         }
       />
