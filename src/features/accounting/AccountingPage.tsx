@@ -27,6 +27,7 @@ import { pricingInput, pricingInputSchema } from '../products/product'
 import { PricingFields } from '../pricing/PricingFields'
 import { PriceMargin } from '../pricing/PriceMargin'
 import { PriceHistory } from '../pricing/PriceHistory'
+import { FinancialStatements } from './FinancialStatements'
 import '../../styles/accounting.css'
 
 interface PricedProduct {
@@ -38,7 +39,45 @@ interface PricedProduct {
  * Contabilidad: el precio de compra de cada perfume y el porcentaje de
  * ganancia de cada tipo de cliente. Precio de venta = compra + porcentaje.
  */
+const tabs = {
+  prices: 'Precios',
+  statements: 'Estados financieros',
+} as const
+type Tab = keyof typeof tabs
+
+/**
+ * Contabilidad: los precios de cada perfume y los estados financieros.
+ */
 export function AccountingPage() {
+  const [tab, setTab] = useState<Tab>('prices')
+  return (
+    <>
+      <div className="page-heading">
+        <div>
+          <h1>Contabilidad</h1>
+        </div>
+      </div>
+      <nav
+        className="accounting-tabs accounting-tabs-standalone"
+        aria-label="Secciones de contabilidad"
+      >
+        {(Object.keys(tabs) as Tab[]).map((id) => (
+          <button
+            key={id}
+            type="button"
+            aria-pressed={tab === id}
+            onClick={() => setTab(id)}
+          >
+            {tabs[id]}
+          </button>
+        ))}
+      </nav>
+      {tab === 'prices' ? <PricesTab /> : <FinancialStatements />}
+    </>
+  )
+}
+
+function PricesTab() {
   const { demo } = useAccess()
   const { productService, settingsService } = useServices()
   const [query, setQuery] = useState('')
@@ -70,11 +109,6 @@ export function AccountingPage() {
     .map((product) => ({ product, pricing: byProduct.get(product.id) }))
   return (
     <>
-      <div className="page-heading">
-        <div>
-          <h1>Contabilidad</h1>
-        </div>
-      </div>
       {message && (
         <p role="status" className="workspace-feedback">
           {message}

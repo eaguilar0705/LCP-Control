@@ -1,103 +1,539 @@
-.accounting-panel { margin: 24px 0 32px; }
-.accounting-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding: 26px; background: #f3eee5; border: 1px solid var(--line); border-radius: 14px 14px 0 0; }
-.accounting-heading h2 { color: var(--wine); font-size: 26px; margin: 8px 0; }
-.accounting-heading p { max-width: 720px; color: var(--muted); }
-.accounting-heading .badge { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
-.accounting-badges { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; margin-top: 6px; }
-.accounting-tabs { display: flex; gap: 4px; padding: 10px; margin-bottom: 20px; background: #fff; border: 1px solid var(--line); border-top: 0; border-radius: 0 0 12px 12px; overflow-x: auto; }
-.accounting-tabs button { padding: 12px 18px; min-height: 44px; flex-shrink: 0; border-radius: 7px; border: 0; background: transparent; color: var(--muted); font-weight: 600; }
-.accounting-tabs button[aria-pressed='true'] { background: var(--wine); color: #fff; }
-.accounting-callout { padding: 16px 20px; background: #fffaed; border: 1px solid #e7d7ad; border-radius: 9px; color: #70521d; margin: 14px 0; line-height: 1.65; }
-.accounting-callout p { margin-top: 4px; }
-.accounting-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
-.accounting-metric { border: 1px solid var(--line); border-radius: 12px; padding: 22px; background: #fff; display: flex; flex-direction: column; gap: 12px; }
-.accounting-metric > span { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-weight: 600; color: var(--muted); }
-.accounting-metric strong { font-size: clamp(20px, 2.1vw, 31px); letter-spacing: -1px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.accounting-metric small { color: var(--muted); line-height: 1.5; }
-.accounting-metric-highlight { background: var(--wine); color: #fff; border-color: var(--wine); }
-.accounting-metric-highlight > span, .accounting-metric-highlight small { color: #f0ddd4; }
-.accounting-two-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-.accounting-wide-left { grid-template-columns: 1.75fr 1fr; }
-.accounting-card { padding: 24px; margin-bottom: 18px; min-width: 0; }
-.accounting-card h3 { font-size: 17px; color: var(--ink); }
-.accounting-card .section-heading { flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
-.accounting-card .state { padding: 40px 18px; min-height: 0; }
-.accounting-card .state p { max-width: 560px; }
-.accounting-note { color: var(--muted); font-size: 12px; line-height: 1.65; margin: 9px 0 13px; }
-.accounting-breakdown { margin: 16px 0; }
-.accounting-breakdown > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
-.accounting-breakdown dt { color: var(--muted); }
-.accounting-breakdown dd { margin: 0; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.accounting-panel {
+  margin: 24px 0 32px;
+}
+.accounting-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 26px;
+  background: #f3eee5;
+  border: 1px solid var(--line);
+  border-radius: 14px 14px 0 0;
+}
+.accounting-heading h2 {
+  color: var(--wine);
+  font-size: 26px;
+  margin: 8px 0;
+}
+.accounting-heading p {
+  max-width: 720px;
+  color: var(--muted);
+}
+.accounting-heading .badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.accounting-badges {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}
+.accounting-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 10px;
+  margin-bottom: 20px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-top: 0;
+  border-radius: 0 0 12px 12px;
+  overflow-x: auto;
+}
+.accounting-tabs button {
+  padding: 12px 18px;
+  min-height: 44px;
+  flex-shrink: 0;
+  border-radius: 7px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 600;
+}
+.accounting-tabs button[aria-pressed='true'] {
+  background: var(--wine);
+  color: #fff;
+}
+.accounting-callout {
+  padding: 16px 20px;
+  background: #fffaed;
+  border: 1px solid #e7d7ad;
+  border-radius: 9px;
+  color: #70521d;
+  margin: 14px 0;
+  line-height: 1.65;
+}
+.accounting-callout p {
+  margin-top: 4px;
+}
+.accounting-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.accounting-metric {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 22px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.accounting-metric > span {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.accounting-metric strong {
+  font-size: clamp(20px, 2.1vw, 31px);
+  letter-spacing: -1px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.accounting-metric small {
+  color: var(--muted);
+  line-height: 1.5;
+}
+.accounting-metric-highlight {
+  background: var(--wine);
+  color: #fff;
+  border-color: var(--wine);
+}
+.accounting-metric-highlight > span,
+.accounting-metric-highlight small {
+  color: #f0ddd4;
+}
+.accounting-two-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.accounting-wide-left {
+  grid-template-columns: 1.75fr 1fr;
+}
+.accounting-card {
+  padding: 24px;
+  margin-bottom: 18px;
+  min-width: 0;
+}
+.accounting-card h3 {
+  font-size: 17px;
+  color: var(--ink);
+}
+.accounting-card .section-heading {
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.accounting-card .state {
+  padding: 40px 18px;
+  min-height: 0;
+}
+.accounting-card .state p {
+  max-width: 560px;
+}
+.accounting-note {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.65;
+  margin: 9px 0 13px;
+}
+.accounting-breakdown {
+  margin: 16px 0;
+}
+.accounting-breakdown > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.accounting-breakdown dt {
+  color: var(--muted);
+}
+.accounting-breakdown dd {
+  margin: 0;
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
 /* La tabla se desplaza dentro de su tarjeta, no arrastrando la página. Sin
    `contain: paint` el ancho de la tabla llega hasta la ventana: en el teléfono,
    las pestañas «Costos y precios» y «Gastos» se deslizaban de lado y dejaban la
    pantalla en blanco. `overflow-x` solo no lo impide; el contenido de pintado
    acotado sí. `min-width: 0` deja que el envoltorio se encoja bajo su contenido. */
-.accounting-table-scroll { overflow-x: auto; max-width: 100%; min-width: 0; contain: paint; }
-.accounting-account, .accounting-card { min-width: 0; }
-.accounting-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.accounting-table thead th { color: var(--muted); background: #faf7f3; font-size: 11px; text-align: left; text-transform: uppercase; letter-spacing: .4px; padding: 12px; white-space: nowrap; }
-.accounting-table tbody th, .accounting-table tbody td { padding: 16px 12px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; font-variant-numeric: tabular-nums; }
+.accounting-table-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+  min-width: 0;
+  contain: paint;
+}
+.accounting-account,
+.accounting-card {
+  min-width: 0;
+}
+.accounting-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.accounting-table thead th {
+  color: var(--muted);
+  background: #faf7f3;
+  font-size: 11px;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 12px;
+  white-space: nowrap;
+}
+.accounting-table tbody th,
+.accounting-table tbody td {
+  padding: 16px 12px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
 /* Las columnas de cifras van a la derecha: con tabular-nums los dígitos
    quedan uno debajo del otro y dos importes se comparan de un vistazo. */
-.accounting-table th.num, .accounting-table td.num { text-align: right; }
-.accounting-table td.num small { text-align: right; }
+.accounting-table th.num,
+.accounting-table td.num {
+  text-align: right;
+}
+.accounting-table td.num small {
+  text-align: right;
+}
 /* Con anchos declarados la tabla deja de medirse por su contenido, así que
    varias tablas seguidas comparten la misma rejilla. El ancho mínimo mantiene
    las columnas legibles y deja que el contenedor haga scroll en pantallas
    estrechas, igual que las demás. */
-.accounting-table-aligned { table-layout: fixed; min-width: 860px; }
-.accounting-table-aligned tbody th, .accounting-table-aligned tbody td { min-width: 0; overflow-wrap: anywhere; }
-.accounting-table tbody th { min-width: 210px; max-width: 330px; font-weight: 600; }
-.accounting-table tbody td { min-width: 125px; }
-.accounting-two-columns .accounting-table tbody th { min-width: 130px; }
-.accounting-two-columns .accounting-table tbody td { min-width: 96px; }
-.accounting-table small { display: block; margin-top: 6px; color: var(--muted); font-size: 11px; line-height: 1.5; font-weight: 400; }
-.accounting-table .button { min-height: 38px; font-size: 12px; }
-.accounting-voided { background: #f7f4f0; }
-.accounting-alert { border-color: #e2b6b6; }
-.accounting-alert h3 { color: #a13c3c; }
+.accounting-table-aligned {
+  table-layout: fixed;
+  min-width: 860px;
+}
+.accounting-table-aligned tbody th,
+.accounting-table-aligned tbody td {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.accounting-table tbody th {
+  min-width: 210px;
+  max-width: 330px;
+  font-weight: 600;
+}
+.accounting-table tbody td {
+  min-width: 125px;
+}
+.accounting-two-columns .accounting-table tbody th {
+  min-width: 130px;
+}
+.accounting-two-columns .accounting-table tbody td {
+  min-width: 96px;
+}
+.accounting-table small {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+  font-weight: 400;
+}
+.accounting-table .button {
+  min-height: 38px;
+  font-size: 12px;
+}
+.accounting-voided {
+  background: #f7f4f0;
+}
+.accounting-alert {
+  border-color: #e2b6b6;
+}
+.accounting-alert h3 {
+  color: #a13c3c;
+}
 /* Un margen delgado se marca en el mismo lugar donde se lee el precio: es el
    dato que decide si esa lista todavía tiene sentido. */
-.accounting-table small.accounting-thin, .accounting-thin { color: #a13c3c; font-weight: 600; }
-.accounting-form textarea { width: 100%; min-height: 150px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
-.accounting-form .accounting-table-scroll { border: 1px solid var(--line); border-radius: 8px; }
-.accounting-form { max-width: 660px; }
-.accounting-form fieldset { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 15px; min-width: 0; }
-.accounting-form .form-grid { align-items: start; }
-.accounting-form .accounting-callout, .accounting-form .accounting-note { margin: 0; }
-.accounting-form-total { padding: 17px; border: 1px solid var(--line); border-radius: 8px; background: #f7f4ee; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 10px; }
-.accounting-form-total strong { color: var(--wine); font-size: 21px; }
-.accounting-form-total small { width: 100%; color: var(--muted); }
+.accounting-table small.accounting-thin,
+.accounting-thin {
+  color: #a13c3c;
+  font-weight: 600;
+}
+.accounting-form textarea {
+  width: 100%;
+  min-height: 150px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+}
+.accounting-form .accounting-table-scroll {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.accounting-form {
+  max-width: 660px;
+}
+.accounting-form fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  min-width: 0;
+}
+.accounting-form .form-grid {
+  align-items: start;
+}
+.accounting-form .accounting-callout,
+.accounting-form .accounting-note {
+  margin: 0;
+}
+.accounting-form-total {
+  padding: 17px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f7f4ee;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+.accounting-form-total strong {
+  color: var(--wine);
+  font-size: 21px;
+}
+.accounting-form-total small {
+  width: 100%;
+  color: var(--muted);
+}
 /* Las cinco cuentas de gasto, cada una con su total y sus renglones. */
-.accounting-account { margin-top: 20px; }
-.accounting-account:first-of-type { margin-top: 8px; }
-.accounting-account > header { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 2px solid var(--line); }
-.accounting-account h4 { margin: 0; font-size: 15px; color: var(--ink); }
-.accounting-account header small { display: block; margin-top: 3px; max-width: 620px; color: var(--muted); font-size: 12px; line-height: 1.55; }
-.accounting-account header strong { font-size: 17px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.accounting-account .accounting-table-scroll { margin-top: 12px; }
-.accounting-account .accounting-note { margin-bottom: 0; }
+.accounting-account {
+  margin-top: 20px;
+}
+.accounting-account:first-of-type {
+  margin-top: 8px;
+}
+.accounting-account > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 2px solid var(--line);
+}
+.accounting-account h4 {
+  margin: 0;
+  font-size: 15px;
+  color: var(--ink);
+}
+.accounting-account header small {
+  display: block;
+  margin-top: 3px;
+  max-width: 620px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+.accounting-account header strong {
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.accounting-account .accounting-table-scroll {
+  margin-top: 12px;
+}
+.accounting-account .accounting-note {
+  margin-bottom: 0;
+}
 /* Estado de resultados y cierre diario: una tabla contable, con subtotales
    subrayados y el resultado final a doble raya. */
-.statement-heading h3 { margin: 0; }
-.statement-heading p { margin: 4px 0 14px; color: var(--muted); font-size: 12px; }
-.statement-table { width: 100%; max-width: 760px; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
-.statement-table.statement-daily { max-width: none; }
-.statement-table thead th { padding: 10px 12px; color: var(--muted); background: #faf7f3; font-size: 11px; text-align: left; text-transform: uppercase; letter-spacing: .4px; white-space: nowrap; border-bottom: 1px solid var(--line); }
-.statement-table tbody th, .statement-table tbody td, .statement-table tfoot th, .statement-table tfoot td { padding: 10px 12px; text-align: left; font-weight: 400; white-space: nowrap; }
-.statement-table th.num, .statement-table td.num { text-align: right; }
-.statement-line th, .statement-info th { padding-left: 28px; }
-.statement-daily .statement-line th { padding-left: 12px; }
-.statement-daily tbody tr { border-bottom: 1px solid var(--line); }
-.statement-daily tbody tr[aria-current='true'] { background: #f7f1ea; }
-.statement-group th { padding-top: 18px; color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
-.statement-table .statement-subtotal th, .statement-table .statement-subtotal td { font-weight: 600; border-top: 1px solid var(--ink); }
-.statement-table .statement-total th, .statement-table .statement-total td { font-weight: 700; color: var(--wine); border-top: 1px solid var(--ink); border-bottom: 3px double var(--ink); }
-.statement-info th, .statement-info td { color: var(--muted); }
-.statement-day { padding: 0; border: 0; background: none; color: var(--wine); font: inherit; font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
-@media (max-width: 1000px) { .accounting-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .accounting-two-columns, .accounting-wide-left { grid-template-columns: 1fr; gap: 0; } }
-@media (max-width: 600px) { .accounting-heading { flex-direction: column; padding: 20px; gap: 8px; } .accounting-badges { flex-direction: row; flex-wrap: wrap; align-items: flex-start; } .accounting-heading h2 { font-size: 23px; } .accounting-tabs { padding: 6px; } .accounting-tabs button { padding: 11px 13px; font-size: 12px; } .accounting-metrics { gap: 10px; } .accounting-metric { padding: 16px; gap: 10px; } .accounting-metric > span { font-size: 12px; } .accounting-metric > span svg { display: none; } .accounting-metric strong { font-size: 21px; letter-spacing: -.7px; } .accounting-metric small { font-size: 11px; } .accounting-card { padding: 18px; } .accounting-callout { padding: 14px; } .accounting-form .form-grid { grid-template-columns: 1fr; } }
-@media print { .accounting-tabs, .accounting-card .button { display: none; } .accounting-table-scroll { overflow: visible; } .accounting-metric-highlight { background: #fff; color: var(--ink); } .accounting-metric-highlight > span, .accounting-metric-highlight small { color: var(--muted); } }
-.pricing-dialog { width: min(960px, calc(100vw - 32px)); max-width: none; }
-.pricing-dialog .price-history { margin-top: 24px; }
+.statement-heading h3 {
+  margin: 0;
+}
+.statement-heading p {
+  margin: 4px 0 14px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.statement-table {
+  width: 100%;
+  max-width: 760px;
+  border-collapse: collapse;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.statement-table.statement-daily {
+  max-width: none;
+}
+.statement-table thead th {
+  padding: 10px 12px;
+  color: var(--muted);
+  background: #faf7f3;
+  font-size: 11px;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--line);
+}
+.statement-table tbody th,
+.statement-table tbody td,
+.statement-table tfoot th,
+.statement-table tfoot td {
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 400;
+  white-space: nowrap;
+}
+.statement-table th.num,
+.statement-table td.num {
+  text-align: right;
+}
+.statement-line th,
+.statement-info th {
+  padding-left: 28px;
+}
+.statement-daily .statement-line th {
+  padding-left: 12px;
+}
+.statement-daily tbody tr {
+  border-bottom: 1px solid var(--line);
+}
+.statement-daily tbody tr[aria-current='true'] {
+  background: #f7f1ea;
+}
+.statement-group th {
+  padding-top: 18px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.statement-table .statement-subtotal th,
+.statement-table .statement-subtotal td {
+  font-weight: 600;
+  border-top: 1px solid var(--ink);
+}
+.statement-table .statement-total th,
+.statement-table .statement-total td {
+  font-weight: 700;
+  color: var(--wine);
+  border-top: 1px solid var(--ink);
+  border-bottom: 3px double var(--ink);
+}
+.statement-info th,
+.statement-info td {
+  color: var(--muted);
+}
+.statement-day {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--wine);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+@media (max-width: 1000px) {
+  .accounting-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .accounting-two-columns,
+  .accounting-wide-left {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
+@media (max-width: 600px) {
+  .accounting-heading {
+    flex-direction: column;
+    padding: 20px;
+    gap: 8px;
+  }
+  .accounting-badges {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .accounting-heading h2 {
+    font-size: 23px;
+  }
+  .accounting-tabs {
+    padding: 6px;
+  }
+  .accounting-tabs button {
+    padding: 11px 13px;
+    font-size: 12px;
+  }
+  .accounting-metrics {
+    gap: 10px;
+  }
+  .accounting-metric {
+    padding: 16px;
+    gap: 10px;
+  }
+  .accounting-metric > span {
+    font-size: 12px;
+  }
+  .accounting-metric > span svg {
+    display: none;
+  }
+  .accounting-metric strong {
+    font-size: 21px;
+    letter-spacing: -0.7px;
+  }
+  .accounting-metric small {
+    font-size: 11px;
+  }
+  .accounting-card {
+    padding: 18px;
+  }
+  .accounting-callout {
+    padding: 14px;
+  }
+  .accounting-form .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media print {
+  .accounting-tabs,
+  .accounting-card .button {
+    display: none;
+  }
+  .accounting-table-scroll {
+    overflow: visible;
+  }
+  .accounting-metric-highlight {
+    background: #fff;
+    color: var(--ink);
+  }
+  .accounting-metric-highlight > span,
+  .accounting-metric-highlight small {
+    color: var(--muted);
+  }
+}
+.pricing-dialog {
+  width: min(960px, calc(100vw - 32px));
+  max-width: none;
+}
+.pricing-dialog .price-history {
+  margin-top: 24px;
+}
+.accounting-tabs.accounting-tabs-standalone {
+  border-top: 1px solid var(--line);
+  border-radius: 12px;
+}

@@ -5,8 +5,12 @@ import { MemoryRouter } from 'react-router-dom'
 import { AccessContext } from '@/app/AccessContext'
 import type { PriceChange, PricingList, Product } from '@/lib/domain'
 import { AccountingPage } from '@/features/accounting/AccountingPage'
+import { catalogAdapter } from '@/services/adapters/catalog'
+import { digestFromSource } from '@/features/reports/digest'
+import type { ReportRange } from '@/features/reports/model'
 
-const { productService, settingsService } = vi.hoisted(() => ({
+const { productService, settingsService, reportService } = vi.hoisted(() => ({
+  reportService: { getSource: vi.fn() },
   productService: {
     listProducts: vi.fn(),
     listPricing: vi.fn<(id?: string) => Promise<PricingList>>(),
@@ -20,7 +24,7 @@ const { productService, settingsService } = vi.hoisted(() => ({
   },
 }))
 vi.mock('@/services/useServices', () => ({
-  useServices: () => ({ productService, settingsService }),
+  useServices: () => ({ productService, settingsService, reportService }),
 }))
 
 const ID = '0f3c2b6e-8d1a-4c5e-9b7f-2a1d3c4e5f60'
@@ -178,4 +182,25 @@ it('shows the margin over the average cost and the price history', async () => {
   expect(
     await screen.findByText(/Compra FAC-778 · registrada por Dueña/),
   ).toBeVisible()
+})
+
+it('switches to the financial statements and between income statement and balance sheet', async () => {
+  reportService.getSource.mockImplementation(async (range: ReportRange) =>
+    digestFromSource(await catalogAdapter.getReportSource(range), range),
+  )
+  renderPage()
+  const user = userEvent.setup()
+  await user.click(
+    await screen.findByRole('button', { name: 'Estados financieros' }),
+  )
+  expect(
+    await screen.findByRole('table', { name: 'Estado de resultados' }),
+  ).toHaveTextContent('Utilidad neta')
+  await user.selectOptions(
+    screen.getByLabelText('Estado financiero'),
+    'balance',
+  )
+  const balance = screen.getByRole('table', { name: 'Balance general' })
+  expect(balance).toHaveTextContent('Inventario de mercadería')
+  expect(balance).toHaveTextContent('Total pasivo y patrimonio')
 })
