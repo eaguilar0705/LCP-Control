@@ -3,6 +3,7 @@
 // pantalla ni mostrar mensajes internos.
 //
 //   node tests/audit/urls.mjs
+import { mkdirSync } from 'node:fs'
 import { startAudit, go, brokenScreen, screenText } from './ui-support.mjs'
 
 const audit = await startAudit({ port: Number(process.env.PORT ?? 5187) })
@@ -26,6 +27,8 @@ const PRIVATE = [
   '/inventory?q=' + 'x'.repeat(3000),
   '/customers/../../etc/passwd',
   '/reports?desde=2099-01-01&hasta=1999-01-01',
+  '/accounting?desde=2026-99-99&hasta=ayer',
+  '/accounting?section=%00&cliente=%3Cscript%3Ewindow.__xss%3D1%3C%2Fscript%3E',
   '/documents/example/xyz?productos=-1',
   '/documents/example/invoice?productos=abc',
   '/staff#%3Cscript%3E',
@@ -63,6 +66,15 @@ try {
       })().slice(0, 70)} → «${(heading ?? 'sin título').trim().slice(0, 40)}»`,
       broken ?? events.errors.slice(before).join(' | ') ?? 'sin encabezado',
     )
+    if (broken || events.errors.length !== before || !heading) {
+      mkdirSync('output/audit/shots', { recursive: true })
+      await page
+        .screenshot({
+          path: `output/audit/shots/url-private-${checks}.png`,
+          fullPage: true,
+        })
+        .catch(() => {})
+    }
   }
   check(
     !(await page.evaluate(() => window.__xss)),
@@ -84,6 +96,19 @@ try {
       `sin sesión ${path.slice(0, 70)} → «${text}»`,
       broken ?? events.errors.slice(before).join(' | '),
     )
+    if (
+      broken ||
+      events.errors.length !== before ||
+      new URL(guest.page.url()).hostname !== '127.0.0.1'
+    ) {
+      mkdirSync('output/audit/shots', { recursive: true })
+      await guest.page
+        .screenshot({
+          path: `output/audit/shots/url-public-${checks}.png`,
+          fullPage: true,
+        })
+        .catch(() => {})
+    }
   }
 } catch (error) {
   check(false, 'recorrido', error.stack)

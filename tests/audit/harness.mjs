@@ -50,6 +50,18 @@ const BOOTSTRAP = `create role anon; create role authenticated;
   create function storage.foldername(text) returns text[] language sql immutable as $$ select string_to_array($1,'/') $$;
   create table auth.sessions(id uuid primary key default gen_random_uuid(),user_id uuid references auth.users(id) on delete cascade);`
 
+/** PostgREST conserva DATE como yyyy-mm-dd; PGlite lo entrega como Date UTC. */
+export function postgrestRows(result) {
+  const dates = result.fields.filter((field) => field.dataTypeID === 1082)
+  return result.rows.map((row) => {
+    const normalized = { ...row }
+    for (const { name } of dates)
+      if (normalized[name] instanceof Date)
+        normalized[name] = normalized[name].toISOString().slice(0, 10)
+    return normalized
+  })
+}
+
 export async function createDatabase({ users = Object.values(USERS) } = {}) {
   let db = new PGlite()
   let busy = Promise.resolve()
@@ -328,10 +340,12 @@ async function callFunction(getDb, asUser, asOwner, sub, name, args) {
   return asUser(sub, async () => {
     const db = getDb()
     if (info.set)
-      return (await db.query(`select * from public.${name}(${call})`, values))
-        .rows
-    return (await db.query(`select public.${name}(${call}) as result`, values))
-      .rows[0].result
+      return postgrestRows(
+        await db.query(`select * from public.${name}(${call})`, values),
+      )
+    return postgrestRows(
+      await db.query(`select public.${name}(${call}) as result`, values),
+    )[0].result
   })
 }
 
@@ -459,12 +473,12 @@ export function fakeSupabase(base) {
         const prefer = request.headers()['prefer'] ?? ''
         const { rows, total } = await asUser(subject(request), async () => {
           const db = base.db
-          const rows = (
+          const rows = postgrestRows(
             await db.query(
               `select ${columns} from public.${table} t ${query.where} ${query.order} ${query.page}`,
               query.params,
-            )
-          ).rows
+            ),
+          )
           let total = rows.length
           if (prefer.includes('count=exact'))
             total = (

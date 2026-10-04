@@ -11,6 +11,8 @@ Aplicar en orden las migraciones pendientes del repositorio; las correspondiente
 1. `20261003120000_finance_ledger_without_tax.sql`: caja, banco y forma de pago de pedidos y gastos.
 2. `20261003220645_linked_credit_payments.sql`: abonos vinculados, apertura explícita de cero y controles de saldo.
 3. `20261003220730_cashflow_cash_closing.sql`: flujo agregado y arqueos guardados.
+4. `20261003224314_cashflow_snapshot_product_identity.sql`: comprueba que cada importe de una factura pertenezca al mismo perfume antes de calcular el flujo y permitir un arqueo.
+5. `20261003225145_prevent_deleted_invoice_replay.sql`: conserva la identidad de una factura eliminada y rechaza solicitudes tardías que intentarían volver a crearla.
 
 No repetir una migración ya aplicada. Las RPC de lectura respetan el rol; las tablas no admiten escritura directa desde el navegador. Las funciones que escriben verifican permisos, guardan al responsable y reutilizan el identificador ante un reintento con los mismos datos.
 
@@ -23,7 +25,7 @@ select to_regprocedure('public.credit_accounts(date)'),
        to_regprocedure('public.list_cash_closings(date,date)');
 ```
 
-Las pruebas de `npm run test:db` usan PostgreSQL desechable con todas las migraciones; no escriben en la base real.
+Las pruebas de `npm run test:db` usan PostgreSQL desechable con las migraciones; no escriben en la base real. `npm run test:audit:sales` comprueba de forma específica ventas, ingresos, costos, inventario, dinero y abonos. La [auditoría del 3 de octubre](../reports/auditoria-contabilidad-2026-10-03.md) documenta los resultados y los límites de la validación.
 
 ## Empezar con saldos reales
 

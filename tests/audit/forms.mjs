@@ -98,11 +98,20 @@ async function scenario(page, { area, text, route, run }) {
       .filter(Boolean)
       .join(' | '),
   )
+  if (!ok) {
+    mkdirSync('output/audit/shots', { recursive: true })
+    await page
+      .screenshot({
+        path: `output/audit/shots/form-${`${area}-${text}`.replace(/[^\wáéíóúñ]+/gi, '-')}.png`,
+        fullPage: true,
+      })
+      .catch(() => {})
+  }
 }
 const disabled = async (button) =>
   (await button.isDisabled()) ? 'botón deshabilitado' : null
 
-const [oud, , , vainilla] = seed.products
+const [oud] = seed.products
 try {
   const { page } = await open()
   page.setDefaultTimeout(8000)
@@ -159,9 +168,19 @@ try {
       await page.getByRole('button', { name: 'Guardar perfume' }).click()
     },
   })
-  const vainillaCase = (fill, text) => ({
-    ...productCase(fill, text),
-    route: `/products/${vainilla}/edit`,
+  const newProductCase = (fill, text) => ({
+    area: 'Perfume › crear',
+    text,
+    route: '/products/new',
+    run: async (page) => {
+      await page.getByLabel('Nombre del perfume').fill('Prueba precio inválido')
+      await page.getByLabel('Marca', { exact: true }).fill('Marca prueba')
+      await page.getByLabel('Emprendedor USD').fill('20')
+      await page.getByLabel('VIP USD').fill('18')
+      await page.getByLabel('Premium USD').fill('16')
+      await fill(page)
+      await page.getByRole('button', { name: 'Guardar perfume' }).click()
+    },
   })
   for (const [text, fill, sinCosto] of [
     ['nombre vacío', (p) => p.getByLabel('Nombre del perfume').fill('')],
@@ -185,20 +204,32 @@ try {
       (p) => p.getByLabel('Premium USD').fill('10.555'),
       true,
     ],
-    [
-      'porcentaje de ganancia negativo',
-      (p) =>
-        p.getByLabel('% de ganancia sobre el costo · Emprendedor').fill('-5'),
-    ],
-    [
-      'porcentaje de ganancia de 5000',
-      (p) => p.getByLabel('% de ganancia sobre el costo · VIP').fill('5000'),
-    ],
   ])
     await scenario(
       page,
-      sinCosto ? vainillaCase(fill, text) : productCase(fill, text),
+      sinCosto ? newProductCase(fill, text) : productCase(fill, text),
     )
+
+  for (const [text, label, value] of [
+    ['porcentaje de ganancia negativo', '% de ganancia · Emprendedor', '-5'],
+    ['porcentaje de ganancia de 5000', '% de ganancia · VIP', '5000'],
+  ])
+    await scenario(page, {
+      area: 'Contabilidad › precios',
+      text,
+      route: '/accounting',
+      run: async (page) => {
+        await page.getByRole('button', { name: 'Precios', exact: true }).click()
+        await page
+          .getByRole('button', { name: 'Editar precios de Oud Nocturno' })
+          .click()
+        const dialog = page.getByRole('dialog')
+        await dialog.getByLabel(label, { exact: true }).fill(value)
+        await dialog
+          .getByRole('button', { name: 'Guardar precios', exact: true })
+          .click()
+      },
+    })
 
   // --- Negocio, usuarios y cuenta ------------------------------------------
   for (const [text, value] of [
@@ -325,6 +356,76 @@ try {
     ],
   ])
     await scenario(sales, invoice(fill, text))
+
+  // --- Contabilidad: importes, fecha, tasa y vínculo de los abonos ----------
+  const financeCase = (kind, fill, text) => ({
+    area: 'Contabilidad › movimientos',
+    text,
+    route: '/accounting',
+    run: async (page) => {
+      await page
+        .getByRole('button', { name: 'Caja y bancos', exact: true })
+        .click()
+      await page.getByRole('button', { name: 'Registrar', exact: true }).click()
+      const dialog = page.getByRole('dialog', { name: 'Registrar movimiento' })
+      await dialog.getByLabel('Tipo', { exact: true }).selectOption(kind)
+      await dialog.getByLabel('Importe (NIO)').fill('100')
+      await fill(dialog)
+      const button = dialog.getByRole('button', {
+        name: 'Guardar',
+        exact: true,
+      })
+      const off = await disabled(button)
+      if (off) return off
+      await button.click()
+    },
+  })
+  for (const [kind, text, fill] of [
+    [
+      'opening',
+      'saldo inicial negativo',
+      (d) => d.getByLabel('Importe (NIO)').fill('-1'),
+    ],
+    [
+      'capital',
+      'aporte de cero',
+      (d) => d.getByLabel('Importe (NIO)').fill('0'),
+    ],
+    [
+      'expense',
+      'gasto con descripción de espacios',
+      (d) => d.getByLabel('Descripción').fill('   '),
+    ],
+    [
+      'expense',
+      'gasto negativo',
+      (d) => d.getByLabel('Importe (NIO)').fill('-150'),
+    ],
+    [
+      'transfer',
+      'transferencia en USD con tasa cero',
+      async (d) => {
+        await d.getByLabel('Moneda', { exact: true }).selectOption('USD')
+        await d.getByLabel('Tipo de cambio', { exact: true }).fill('0')
+      },
+    ],
+    [
+      'capital',
+      'fecha futura',
+      (d) => d.getByLabel('Fecha', { exact: true }).fill('2099-01-01'),
+    ],
+    [
+      'collection',
+      'cobro sin factura o saldo inicial seleccionado',
+      async () => {},
+    ],
+    [
+      'supplier_payment',
+      'pago sin pedido o saldo inicial seleccionado',
+      async () => {},
+    ],
+  ])
+    await scenario(page, financeCase(kind, fill, text))
 } catch (error) {
   check(false, 'recorrido', error.stack)
 } finally {

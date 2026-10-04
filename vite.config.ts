@@ -73,6 +73,9 @@ export default defineConfig({
   preview: { host: '127.0.0.1', headers: noIndex },
   test: {
     environment: 'jsdom',
+    // Cada archivo abre jsdom (y algunos PostgreSQL). Limitar procesos evita
+    // agotar memoria y provocar falsos tiempos de espera durante la auditoría.
+    maxWorkers: 2,
     setupFiles: ['./tests/unit/setup.ts'],
     include: ['tests/unit/**/*.test.{ts,tsx}'],
     coverage: { reportsDirectory: 'output/coverage' },

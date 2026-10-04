@@ -159,6 +159,34 @@ try {
     const replacement = await rpc('record_cash_closing', closing({ countedNio: 1210, countedUsd: 0, exchangeRate: null }))
     assert.notEqual(replacement, closeId)
   })
+  await check('a snapshot for another perfume leaves income and the expected cash pending', async () => {
+    const doc = await sale()
+    const validExpected = (await flow()).closing.caja
+    await db.exec('reset role')
+    await db.query('update public.document_item_costs set product_id=$2 where document_id=$1', [doc, other])
+    await identity(admin)
+    const report = await flow()
+    assert.equal(report.closing.caja, null)
+    assert.equal(report.closing.banco, 175)
+    assert.equal(report.missingSales, 1)
+    const cashSales = report.rows.find((row) => row.category === 'sales' && row.account === 'caja')
+    assert.equal(cashSales.inflowNio, 350)
+    assert.equal(cashSales.missingSales, 1)
+    const audit = (await closings())[0]
+    assert.equal(audit.currentExpectedNio, null)
+    assert.equal(audit.currentMissingSales, 1)
+    assert.equal(audit.changed, true)
+    await assert.rejects(rpc('record_cash_closing', closing({ closedOn: '2026-10-02' })), /histórico completo/)
+    // Restaurar el fixture confirma que el saldo vuelve a ser calculable. La
+    // factura de prueba se elimina por la operación normal, sin abonos ligados.
+    await db.exec('reset role')
+    await db.query('update public.document_item_costs set product_id=$2 where document_id=$1', [doc, product])
+    await identity(admin)
+    assert.equal((await flow()).closing.caja, validExpected)
+    assert.equal((await flow()).missingSales, 0)
+    await db.query("select public.delete_invoice($1,'Retirar factura de prueba')", [doc])
+    assert.equal((await flow()).closing.caja, 1210)
+  })
   await check('an incomplete invoice cannot be partially counted as cash or closed', async () => {
     const doc = await sale({ items: [{ productId: product, quantity: 1 }, { productId: other, quantity: 1 }] })
     await db.exec('reset role')

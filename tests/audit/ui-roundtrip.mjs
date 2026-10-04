@@ -12,7 +12,7 @@ import { startAudit, go, settle, brokenScreen } from './ui-support.mjs'
 import { fingerprint } from './harness.mjs'
 
 const audit = await startAudit({ port: Number(process.env.PORT ?? 5186) })
-const { base, events, open, login, USERS } = audit
+const { base, events, open, login, USERS, seed } = audit
 const one = async (sql, params) => (await base.asOwner(sql, params))[0]
 let checks = 0
 let failures = 0
@@ -46,6 +46,44 @@ const NAME = 'PRUEBA-AUDITORIA'
 const before = await fingerprint(base.asOwner)
 const { page } = await open()
 page.setDefaultTimeout(8000)
+
+const monetaryValue = (text) => {
+  if (!/\d/.test(text))
+    throw new Error(`Importe pendiente en pantalla: ${text}`)
+  return Number(text.replace(/[^\d.-]/g, ''))
+}
+async function accountingIncome({ remount = true } = {}) {
+  if (remount) {
+    await go(page, '/account')
+    await go(page, '/accounting')
+  } else {
+    await page.getByRole('button', { name: 'Resumen', exact: true }).click()
+    await settle(page)
+  }
+  const metric = page
+    .locator('.accounting-metric')
+    .filter({ has: page.getByText('Ventas del período', { exact: true }) })
+  await metric.locator('strong').waitFor()
+  const value = monetaryValue(await metric.locator('strong').innerText())
+  const from = await page.getByLabel('Desde', { exact: true }).inputValue()
+  const to = await page.getByLabel('Hasta', { exact: true }).inputValue()
+  const expected = Number(
+    (
+      await one(
+        `select coalesce(round(sum(c.net_revenue_nio),2),0) as revenue
+    from public.documents d join public.document_item_costs c on c.document_id=d.id
+    where d.kind='invoice' and (d.created_at at time zone 'America/Managua')::date between $1::date and $2::date`,
+        [from, to],
+      )
+    ).revenue,
+  )
+  check(
+    Math.abs(value - expected) < 0.005,
+    'el ingreso del Resumen coincide con las ventas contables del período',
+    `${value} frente a ${expected}`,
+  )
+  return value
+}
 
 try {
   await login(page, USERS.owner)
@@ -133,6 +171,7 @@ try {
   )
 
   // 5. Factura de ventas con el cliente y el perfume de prueba.
+  const incomeBeforeCashSale = await accountingIncome()
   const { page: salesPage, context: salesContext } = await open()
   let number = null
   salesPage.setDefaultTimeout(8000)
@@ -197,6 +236,20 @@ try {
     )?.quantity === 4,
     'la factura descontó 1 unidad de tienda',
   )
+  const invoiceRevenue = Number(
+    (
+      await one(
+        'select sum(net_revenue_nio) as revenue from public.document_item_costs where document_id=$1',
+        [invoice?.id],
+      )
+    ).revenue,
+  )
+  const incomeAfterCashSale = await accountingIncome()
+  check(
+    Math.abs(incomeAfterCashSale - incomeBeforeCashSale - invoiceRevenue) <
+      0.005,
+    'al volver a Contabilidad la factura cobrada actualiza el ingreso exactamente una vez',
+  )
   // Sin IVA: la factura no desglosa impuesto, ni recién emitida ni al reabrirla.
   const printed = async () =>
     !/Impuesto/.test(await salesPage.evaluate(() => document.body.innerText))
@@ -241,6 +294,10 @@ try {
       )
     )?.quantity === 5,
     'la unidad volvió a tienda',
+  )
+  check(
+    Math.abs((await accountingIncome()) - incomeBeforeCashSale) < 0.005,
+    'al eliminar la factura el Resumen restaura el ingreso anterior',
   )
 
   // 7. Dejar el perfume en cero y retirarlo.
@@ -364,6 +421,156 @@ try {
     unexpected.length === 0,
     'fuera del perfume archivado y las bitácoras, la base quedó como estaba',
     unexpected.join(', '),
+  )
+
+  // 9. Flujo contable independiente sobre otra copia de la base desechable.
+  // La factura con abono conserva su historia; restore() solo restablece este
+  // banco de pruebas aislado después de verificar el comportamiento del UI.
+  await base.restore()
+  const incomeBeforeCredit = await accountingIncome()
+  const { page: creditSales, context: creditContext } = await open()
+  creditSales.setDefaultTimeout(8000)
+  await login(creditSales, USERS.sales)
+  let creditNumber = null
+  await step(
+    creditSales,
+    'emitir factura a crédito desde Facturación',
+    async () => {
+      await go(creditSales, '/sales')
+      await creditSales
+        .getByLabel('Cliente registrado')
+        .selectOption(seed.customers[0])
+      await creditSales.getByLabel('Buscar en catálogo').fill('Oud')
+      await creditSales
+        .getByRole('button', { name: /^Agregar .*Oud Nocturno/ })
+        .first()
+        .click()
+      await creditSales.getByLabel('Forma de pago').selectOption('pending')
+      await creditSales.getByRole('button', { name: /^Emitir factura/ }).click()
+      await creditSales
+        .getByText(/FAC-\d+/)
+        .first()
+        .waitFor({ timeout: 10000 })
+      creditNumber = (
+        await creditSales
+          .getByText(/FAC-\d+/)
+          .first()
+          .innerText()
+      ).match(/FAC-\d+/)[0]
+    },
+  )
+  const creditInvoice = await one(
+    'select * from public.documents where number=$1',
+    [creditNumber],
+  )
+  check(
+    creditInvoice?.payment_method === 'pending',
+    `la factura ${creditNumber} quedó a crédito en la base`,
+  )
+  const creditRevenue = Number(
+    (
+      await one(
+        'select sum(net_revenue_nio) as revenue from public.document_item_costs where document_id=$1',
+        [creditInvoice?.id],
+      )
+    ).revenue,
+  )
+  const incomeAfterCredit = await accountingIncome()
+  check(
+    Math.abs(incomeAfterCredit - incomeBeforeCredit - creditRevenue) < 0.005,
+    'la factura a crédito se incluye una vez en el ingreso del Resumen',
+  )
+  mkdirSync('output/audit/shots', { recursive: true })
+  await page.screenshot({
+    path: 'output/audit/shots/credit-summary-after-sale.png',
+    fullPage: true,
+  })
+  await step(
+    page,
+    'registrar abono de factura desde Contabilidad',
+    async () => {
+      await page
+        .getByRole('button', { name: 'Cobros y pagos', exact: true })
+        .click()
+      await page
+        .getByRole('button', { name: `Registrar abono a ${creditNumber}` })
+        .click()
+      const dialog = page.getByRole('dialog', { name: 'Registrar abono' })
+      await dialog.getByLabel('Importe (NIO)').fill('100')
+      await dialog.getByRole('button', { name: 'Guardar', exact: true }).click()
+      await page.getByText('Abono registrado.', { exact: true }).waitFor()
+      await settle(page)
+    },
+  )
+  const installment = await one(
+    'select * from public.finance_entries where document_id=$1 and voided_at is null',
+    [creditInvoice?.id],
+  )
+  check(
+    installment?.kind === 'collection' && Number(installment.amount) === 100,
+    'el abono de C$100 se guarda vinculado a su factura',
+  )
+  const creditRow = page
+    .getByRole('table', { name: 'Cuentas por cobrar y pagar al corte' })
+    .getByRole('row')
+    .filter({ hasText: creditNumber })
+  const paidInUi = monetaryValue(
+    await creditRow.locator('td').nth(3).innerText(),
+  )
+  const remainingInUi = monetaryValue(
+    await creditRow.locator('td').nth(4).innerText(),
+  )
+  check(
+    paidInUi === 100 && Math.abs(remainingInUi - creditRevenue + 100) < 0.005,
+    'la tabla se refresca después del abono con pagado y saldo correctos',
+  )
+  await page.screenshot({
+    path: 'output/audit/shots/credit-abono-accounts.png',
+    fullPage: true,
+  })
+  const incomeAfterInstallment = await accountingIncome({ remount: false })
+  check(
+    Math.abs(incomeAfterInstallment - incomeAfterCredit) < 0.005,
+    'el abono no duplica los ingresos ni vuelve a registrar la venta',
+  )
+  await step(page, 'anular abono desde Caja y bancos', async () => {
+    await page
+      .getByRole('button', { name: 'Caja y bancos', exact: true })
+      .click()
+    const row = page
+      .getByRole('table', { name: 'Movimientos del período' })
+      .getByRole('row')
+      .filter({ hasText: creditNumber })
+    await row.getByRole('button', { name: /^Anular/ }).click()
+    const dialog = page.getByRole('dialog')
+    await dialog
+      .getByLabel('Motivo', { exact: true })
+      .fill('Fin de la prueba de abonos')
+    await dialog.getByRole('button', { name: 'Anular', exact: true }).click()
+    await page.getByText('Movimiento anulado.', { exact: true }).waitFor()
+    await page
+      .getByRole('button', { name: 'Cobros y pagos', exact: true })
+      .click()
+    await settle(page)
+  })
+  const restoredRow = page
+    .getByRole('table', { name: 'Cuentas por cobrar y pagar al corte' })
+    .getByRole('row')
+    .filter({ hasText: creditNumber })
+  check(
+    monetaryValue(await restoredRow.locator('td').nth(3).innerText()) === 0 &&
+      monetaryValue(await restoredRow.locator('td').nth(4).innerText()) ===
+        creditRevenue,
+    'anular el abono restaura la deuda en pantalla y conserva su historia',
+  )
+  await creditContext.close()
+  await base.restore()
+  const afterFinancialReset = await fingerprint(base.asOwner)
+  check(
+    Object.keys(before).every(
+      (table) => before[table].hash === afterFinancialReset[table].hash,
+    ),
+    'la copia desechable volvió al estado inicial tras el flujo de crédito',
   )
 } catch (error) {
   check(false, 'recorrido completo', error.stack)

@@ -112,7 +112,6 @@ test('proformas are a separate screen and never share drafts with invoices', asy
   await expect(page.locator('.invoice-heading strong')).toContainText(
     'PROFORMA',
   )
-  await expect(page.locator('.invoice-notice')).toContainText('cotización')
   // El borrador de factura no aparece aquí: cada tipo guarda por separado.
   await expect(page.locator('.saved-drafts button')).toHaveCount(0)
   await expect(page.getByLabel('Válida hasta')).toBeVisible()
@@ -123,6 +122,9 @@ test('proformas are a separate screen and never share drafts with invoices', asy
     .getByRole('button', { name: /^Agregar Aurora Norte Cedro 01/ })
     .click()
   await expect(page.locator('.invoice-total')).toContainText('915.00')
+  // La maqueta de impresión se crea cuando la cotización tiene sus datos.
+  await expect(page.locator('.letter-stamp')).toContainText('PROFORMA')
+  await expect(page.locator('.letter-client')).toContainText('VIGENCIA')
   await expect(
     page.getByRole('button', { name: 'Enviar por WhatsApp' }),
   ).toBeEnabled()

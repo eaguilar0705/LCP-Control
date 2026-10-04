@@ -36,15 +36,18 @@ export default defineConfig({
   ],
   // Mode test loads .env.test: no Supabase project, synthetic catalog only. Its own
   // port keeps Playwright from reusing a dev server that points at real data.
-  webServer: {
-    command:
-      'node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 5174 --strictPort --mode test',
-    url: 'http://127.0.0.1:5174',
-    reuseExistingServer: false,
-    env: {
-      VITE_DATA_MODE: 'demo',
-      VITE_SUPABASE_URL: '',
-      VITE_SUPABASE_PUBLISHABLE_KEY: '',
-    },
-  },
+  webServer:
+    process.env.LCP_E2E_EXTERNAL_SERVER === '1'
+      ? undefined
+      : {
+          command:
+            'node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 5174 --strictPort --mode test',
+          url: 'http://127.0.0.1:5174',
+          reuseExistingServer: false,
+          env: {
+            VITE_DATA_MODE: 'demo',
+            VITE_SUPABASE_URL: '',
+            VITE_SUPABASE_PUBLISHABLE_KEY: '',
+          },
+        },
 })

@@ -1253,17 +1253,21 @@ await rpc(owner.id, 'save_product_pricing', {
     {
       productId: T.product,
       revision: await revisionOf('products', T.product),
-      pricing: { markups: { emprendedor: 25, vip: 20, premium: null } },
+      pricing: {
+        purchasePrice: 1190,
+        purchaseCurrency: 'NIO',
+        markups: { emprendedor: 25, vip: 20, premium: null },
+      },
     },
   ],
 })
 check(
-  (await priceOf(T.product)) === 1400,
-  `precio Emprendedor = 1120 × 1,25 = C$ ${await priceOf(T.product)}`,
+  (await priceOf(T.product)) === 1487.5,
+  `precio Emprendedor = compra 1190 × 1,25 = C$ ${await priceOf(T.product)}`,
 )
 check(
-  (await priceOf(T.product, 'vip')) === 1344,
-  `precio VIP = 1120 × 1,20 = C$ ${await priceOf(T.product, 'vip')}`,
+  (await priceOf(T.product, 'vip')) === 1428,
+  `precio VIP = compra 1190 × 1,20 = C$ ${await priceOf(T.product, 'vip')}`,
 )
 // Movimientos de ventas y bodega.
 await rpc(warehouse.id, 'record_inventory_movement', {
@@ -1333,8 +1337,8 @@ check(
   `la misma factura enviada dos veces es una sola (${invoice.number})`,
 )
 check(
-  Number(invoice.total) === 2800,
-  `total de la factura = 2 × 1400 = C$ ${invoice.total}`,
+  Number(invoice.total) === 2975,
+  `total de la factura = 2 × 1487,50 = C$ ${invoice.total}`,
 )
 check(
   (await stockOf(T.product)) === 0,

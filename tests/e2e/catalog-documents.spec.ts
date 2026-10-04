@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-test('product editor exposes all fields and photo replacement without real writes in demo', async ({
+test('product editor exposes product data, quantities and photo replacement in demo', async ({
   page,
 }, info) => {
   await page.goto('/demo/products/manage')
@@ -9,13 +9,15 @@ test('product editor exposes all fields and photo replacement without real write
   await page.getByRole('link', { name: 'Editar', exact: true }).click()
   await expect(page.getByLabel('Nombre del perfume')).toHaveValue('Cedro 01')
   await expect(
-    page.getByRole('button', { name: /^(Agregar costo|Registrar compra)$/ }),
+    page.getByRole('button', { name: 'Costo de inventario', exact: true }),
   ).toBeDisabled()
   await page.getByLabel('Nombre del perfume').fill('Nombre revisado')
   await page.getByLabel('Categoría', { exact: true }).selectOption('niche')
   await page.getByLabel('Tamaño (vacío si falta confirmar)').fill('100')
   await page.getByLabel('Unidad', { exact: true }).selectOption('ml')
-  await expect(page.getByLabel('VIP USD', { exact: true })).toHaveValue('24')
+  await expect(
+    page.getByRole('heading', { name: 'Cantidades del perfume', exact: true }),
+  ).toBeVisible()
   await expect(
     page.getByRole('button', { name: 'Guardar perfume' }),
   ).toBeDisabled()

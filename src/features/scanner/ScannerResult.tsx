@@ -119,13 +119,17 @@ export function UnknownProduct({ code }: { code: string }) {
       <h2>No encontramos este producto.</h2>
       <code>{code}</code>
 
-      {can(role, 'product.manage') && (
+      {can(role, 'product.manage') ? (
         <Link
           className="button button-secondary"
           to={`${base}/products/new?barcode=${encodeURIComponent(code)}`}
         >
           Preparar alta del producto
         </Link>
+      ) : (
+        <p className="muted">
+          Solicita al administrador que registre el producto o revise su código.
+        </p>
       )}
     </Card>
   )
