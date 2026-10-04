@@ -1,5 +1,6 @@
 import { AlertCircle, Coins } from 'lucide-react'
 import { ProductCostDialog } from './ProductCostDialog'
+import { TransientImage } from '../../components/TransientImage'
 import { ScanButton } from '../scanner/ScanButton'
 import { ProductStockEditor } from './ProductStockEditor'
 import { can } from '../../lib/permissions'
@@ -311,7 +312,7 @@ function ProductForm({
             <h2>Foto del perfume</h2>
             <div className="editor-photo">
               {preview ? (
-                <img src={preview} alt="Vista previa del perfume" />
+                <TransientImage src={preview} alt="Vista previa del perfume" />
               ) : (
                 <p>Sin fotografía</p>
               )}

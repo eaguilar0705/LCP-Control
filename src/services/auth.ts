@@ -1,5 +1,6 @@
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { privateImageCache } from '../lib/privateImageCache'
 import { AppError } from '../lib/errors'
 import { parseRole } from '../lib/permissions'
 import type { UserProfile, UserRole } from '../lib/domain'
@@ -20,9 +21,7 @@ export interface AuthService {
  * que mantener a mano y que puede contradecir a la base. La política
  * `self_profile` permite a cada cuenta leer su propia fila y ninguna otra.
  */
-async function roleFromDatabase(
-  userId: string,
-): Promise<UserRole | null> {
+async function roleFromDatabase(userId: string): Promise<UserRole | null> {
   if (!supabase) return null
   const { data, error } = await supabase
     .from('staff_members')
@@ -107,6 +106,7 @@ export const authService: AuthService = {
         'network',
         'No pudimos restaurar tu sesión. Vuelve a intentarlo.',
       )
+    privateImageCache.setSession(data.session?.user.id ?? null)
     return profileFromSession(data.session)
   },
   async signIn(email, password) {
@@ -117,6 +117,7 @@ export const authService: AuthService = {
     if (error) throw signInError(error)
   },
   async signOut() {
+    privateImageCache.clear()
     const { error } = await client().auth.signOut({ scope: 'local' })
     if (error)
       throw new AppError(
@@ -131,6 +132,7 @@ export const authService: AuthService = {
     let pending: ReturnType<typeof setTimeout> | undefined
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!active) return
+      privateImageCache.setSession(session?.user.id ?? null)
       const eventVersion = ++version
       clearTimeout(pending)
       if (!session) {

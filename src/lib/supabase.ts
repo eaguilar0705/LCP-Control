@@ -39,8 +39,8 @@ export function purgeStoredCredentials(
 }
 
 /**
- * Ninguna respuesta de Supabase (tokens, perfil, datos del negocio) se guarda
- * en la caché HTTP del navegador ni se sirve desde ella.
+ * Las peticiones del SDK y las fotos resueltas por TransientImage no leen ni
+ * escriben la caché HTTP del navegador.
  */
 export const noStoreFetch: typeof fetch = (input, init) =>
   fetch(input, { ...init, cache: 'no-store' })

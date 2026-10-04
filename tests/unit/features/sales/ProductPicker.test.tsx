@@ -1,8 +1,9 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { expect, it, vi } from 'vitest'
+import { afterEach, expect, it, vi } from 'vitest'
 import { ProductPicker } from '@/features/sales/ProductPicker'
 import { catalogAdapter } from '@/services/adapters/catalog'
+afterEach(() => vi.unstubAllGlobals())
 it('filters words without accents and adds the exact variant directly from its card', async () => {
   const items = await catalogAdapter.getInventory()
   const onAdd = vi.fn()
@@ -38,6 +39,17 @@ it('filters words without accents and adds the exact variant directly from its c
   expect(screen.getByText(/23.00/)).toBeInTheDocument()
 })
 it('finds a manufacturer code beyond the first page and preserves the product photo', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => ({ ok: true, blob: async () => new Blob(['photo']) })),
+  )
+  vi.stubGlobal(
+    'URL',
+    class extends URL {
+      static createObjectURL = () => 'blob:picker-photo'
+      static revokeObjectURL = vi.fn()
+    },
+  )
   const items = await catalogAdapter.getInventory()
   items[20].product.manufacturerBarcode = '1234567890123'
   items[20].product.imageUrl = '/test-perfume.webp'
@@ -55,7 +67,9 @@ it('finds a manufacturer code beyond the first page and preserves the product ph
   await user.click(screen.getByRole('button', { name: 'Más perfumes' }))
   await user.type(screen.getByLabelText('Buscar en catálogo'), '1234567890123')
   expect(screen.getAllByRole('article')).toHaveLength(1)
-  expect(screen.getByRole('img')).toHaveAttribute('src', '/test-perfume.webp')
+  await waitFor(() =>
+    expect(screen.getByRole('img')).toHaveAttribute('src', 'blob:picker-photo'),
+  )
   await user.clear(screen.getByLabelText('Buscar en catálogo'))
   await user.type(
     screen.getByLabelText('Buscar en catálogo'),

@@ -59,7 +59,7 @@ La corrección conserva `SECURITY INVOKER`, el `search_path` vacío y la revocac
 
 ## Alcance y pendientes
 
-Los resultados validan los escenarios ejecutados; no prueban la ausencia absoluta de errores. Las migraciones correctivas están preparadas, sin aplicar en la base real. La [guía de contabilidad](../guides/contabilidad.md) enumera su orden de activación. No se conciliaron saldos reales con efectivo físico, estados bancarios, clientes o proveedores. El patrimonio y los valores históricos pendientes del balance conservan sus avisos; no se inventaron cifras para cuadrarlo.
+Los resultados validan los escenarios ejecutados; no prueban la ausencia absoluta de errores. Al terminar esta auditoría, las migraciones correctivas estaban preparadas sin aplicar en la base real. Después, a petición del dueño, se aplicaron el 3 de octubre de 2026; el [informe de despliegue](despliegue-contabilidad-2026-10-03.md) documenta la instalación y las consultas de lectura en Supabase. La [guía de contabilidad](../guides/contabilidad.md) enumera las migraciones y la apertura de cuentas. No se conciliaron saldos reales con efectivo físico, estados bancarios, clientes o proveedores. El patrimonio y los valores históricos pendientes del balance conservan sus avisos; no se inventaron cifras para cuadrarlo.
 
 Las pruebas extensivas `test:audit:buttons` y `test:audit:inputs` no se ejecutaron en esta revisión. Se cubrieron las operaciones completas, formularios críticos, rutas dañadas, contabilidad y pruebas de escritorio/móvil descritas arriba.
 

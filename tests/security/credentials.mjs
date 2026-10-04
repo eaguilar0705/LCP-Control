@@ -1,6 +1,6 @@
-// Comprueba en un navegador real que el programa no deja credenciales en el
-// equipo: ni en localStorage, sessionStorage, IndexedDB, Cache Storage,
-// cookies o service workers, ni escritas en el perfil del navegador en disco.
+// Comprueba los marcadores Auth sintéticos en los almacenes del navegador y
+// archivos legibles menores de50MB de un perfil nuevo. El routing de esta
+// prueba deshabilita caché HTTP; image-cache.mjs la comprueba por separado.
 //
 //   npm run test:credentials
 //
@@ -208,8 +208,9 @@ const launch = () =>
     viewport: { width: 1280, height: 900 },
   })
 
+let context
 try {
-  let context = await launch()
+  context = await launch()
   await fakeSupabase(context)
   let page = context.pages()[0] ?? (await context.newPage())
 
@@ -263,12 +264,13 @@ try {
   await page.waitForURL(/\/login$/, { timeout: 10000 })
   check(
     requests.includes('POST /auth/v1/logout'),
-    '«Cerrar sesión» revoca la sesión en Supabase',
+    '«Cerrar sesión» solicita la revocación a Supabase simulado',
   )
   checkClean(await browserState(page), 'después de cerrar sesión')
   await context.close()
   checkDisk(profile, 'después de cerrar sesión')
 } finally {
+  if (context) await context.close()
   await server.close()
   rmSync(profile, { recursive: true, force: true })
 }
@@ -276,6 +278,6 @@ try {
 console.log(
   failures
     ? `\n${failures} comprobaciones fallaron.`
-    : '\nNinguna credencial queda guardada en el navegador ni en el disco.',
+    : '\n25 comprobaciones Auth sintéticas aprobadas; no se encontraron los marcadores en los almacenes y archivos revisados.',
 )
 process.exit(failures ? 1 : 0)

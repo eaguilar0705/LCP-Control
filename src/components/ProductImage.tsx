@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { ImageOff } from 'lucide-react'
 import type { Product } from '../lib/domain'
+import { TransientImage } from './TransientImage'
 export function ProductImage({
   product,
   large = false,
@@ -8,16 +9,19 @@ export function ProductImage({
   product: Product
   large?: boolean
 }) {
-  const [failed, setFailed] = useState(false)
+  const [failed, setFailed] = useState('')
+  const unavailable = useCallback(
+    () => setFailed(product.imageUrl ?? ''),
+    [product.imageUrl],
+  )
   return (
     <div className={`product-photo ${large ? 'product-photo-large' : ''}`}>
-      {product.imageUrl && !failed ? (
-        <img
+      {product.imageUrl && failed !== product.imageUrl ? (
+        <TransientImage
           src={product.imageUrl}
           alt={`${product.brand} ${product.name}`}
           loading="lazy"
-          referrerPolicy="no-referrer"
-          onError={() => setFailed(true)}
+          onUnavailable={unavailable}
         />
       ) : (
         <div className="photo-missing">

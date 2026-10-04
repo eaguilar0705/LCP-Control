@@ -2,11 +2,11 @@
 
 Desarrollo del 3 de octubre de 2026. La contabilidad conecta el inventario, las facturas, los pedidos, los gastos y los abonos. Sólo Administrador y SuperAdmin pueden consultar o modificar este módulo.
 
-## Activar en la base de datos
+## Instalación en Supabase
 
-El código y las pruebas locales están preparados. Las migraciones nuevas **no se han aplicado en la base real**: la conexión disponible no devuelve proyectos de Supabase accesibles. Guardar el código no ejecuta migraciones.
+Las migraciones de contabilidad están **aplicadas en la base real** de **La Casa del Perfume**, proyecto `xkpujpoocsbkychstrne`, verificado el 3 de octubre de 2026. La base del libro de dinero ya estaba instalada; se aplicaron las otras cuatro migraciones en orden y se comprobaron los reportes con permisos de administración. La venta existente coincide con los ingresos, y los registros del negocio se conservaron. El [informe de despliegue](../reports/despliegue-contabilidad-2026-10-03.md) contiene las versiones remotas y las verificaciones.
 
-Aplicar en orden las migraciones pendientes del repositorio; las correspondientes a este flujo son:
+Las migraciones de este flujo, en orden de instalación, son:
 
 1. `20261003120000_finance_ledger_without_tax.sql`: caja, banco y forma de pago de pedidos y gastos.
 2. `20261003220645_linked_credit_payments.sql`: abonos vinculados, apertura explícita de cero y controles de saldo.

@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase'
+import { privateImageCache as imageCache } from '../../lib/privateImageCache'
 import { AppError } from '../../lib/errors'
 import { businessFromRow } from '../../lib/business'
 import type {
@@ -299,8 +300,8 @@ function emptyPrices(): Record<PriceTier, Record<Currency, number>> {
 }
 // Drive is retained only as a manually opened source link. The app loads images
 // from its own private Storage bucket; URLs are signed once and reused.
-const imageCache = new Map<string, { url: string; expires: number }>()
 async function signImages(rows: ProductRow[]) {
+  const generation = imageCache.generation
   const paths = [
     ...new Set(rows.flatMap((row) => (row.image_path ? [row.image_path] : []))),
   ]
@@ -314,10 +315,14 @@ async function signImages(rows: ProductRow[]) {
   if (error) return // Catalogue stays usable when photo storage is unavailable.
   for (const image of data ?? [])
     if (image.path && image.signedUrl)
-      imageCache.set(image.path, {
-        url: image.signedUrl,
-        expires: Date.now() + 23 * 3600000,
-      })
+      imageCache.set(
+        image.path,
+        {
+          url: image.signedUrl,
+          expires: Date.now() + 23 * 3600000,
+        },
+        generation,
+      )
 }
 function toProduct(row: ProductRow): Product {
   const prices = emptyPrices()

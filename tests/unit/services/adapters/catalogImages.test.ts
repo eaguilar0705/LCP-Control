@@ -25,6 +25,7 @@ vi.mock('@/lib/supabase', () => {
   }
 })
 import { supabaseAdapter } from '@/services/adapters/supabase'
+import { privateImageCache } from '@/lib/privateImageCache'
 const row = {
   id: 'test-product',
   revision: 3,
@@ -49,10 +50,46 @@ const row = {
   ],
 }
 beforeEach(() => {
+  privateImageCache.clear()
   query.mockReset()
   signed.mockReset()
   rpc.mockReset()
   eq.mockReset()
+})
+it('does not publish a signature that completes after the session ends', async () => {
+  query.mockResolvedValue({ data: [row], error: null })
+  let finish!: (value: unknown) => void
+  signed.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve
+      }),
+  )
+  const pending = supabaseAdapter.getInventory()
+  await vi.waitFor(() => expect(signed).toHaveBeenCalledOnce())
+  privateImageCache.clear()
+  finish({
+    data: [
+      {
+        path: row.image_path,
+        signedUrl: 'https://photos.example/old?token=old',
+      },
+    ],
+    error: null,
+  })
+  expect((await pending)[0].product.imageUrl).toBeNull()
+  signed.mockResolvedValue({
+    data: [
+      {
+        path: row.image_path,
+        signedUrl: 'https://photos.example/new?token=new',
+      },
+    ],
+    error: null,
+  })
+  expect((await supabaseAdapter.getInventory())[0].product.imageUrl).toContain(
+    'token=new',
+  )
 })
 it('only includes archived products when explicitly requested and preserves their stock', async () => {
   query.mockResolvedValue({

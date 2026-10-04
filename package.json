@@ -19,7 +19,7 @@
     "test:watch": "vitest",
     "test:scripts": "node --test \"tests/scripts/*.test.mjs\"",
     "test:e2e": "node scripts/dev/test-e2e.mjs",
-    "test:credentials": "node tests/security/credentials.mjs",
+    "test:credentials": "node tests/security/credentials.mjs && node tests/security/image-cache.mjs",
     "test:recovery": "node tests/flows/recovery.mjs",
     "test:db": "node tests/database/catalog.mjs && node tests/database/accounting.mjs && node tests/database/finance.mjs && node tests/database/cashflow.mjs && node tests/database/staff.mjs && node tests/database/contacts.mjs && node tests/database/invoices.mjs && node tests/database/pricing.mjs && node tests/database/purchase-pricing.mjs",
     "test:audit": "node tests/audit/data-roundtrip.mjs && node tests/audit/sales-accounting.mjs && node tests/audit/ui-roundtrip.mjs && node tests/audit/forms.mjs && node tests/audit/urls.mjs",

@@ -1,4 +1,4 @@
-import { expect, it, vi } from 'vitest'
+import { afterEach, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
@@ -6,6 +6,7 @@ import { AccessContext } from '@/app/AccessContext'
 import type { PriceChange, PricingList, Product } from '@/lib/domain'
 import type { ProductInput } from '@/features/products/product'
 import { ProductEditorPage } from '@/features/products/ProductEditorPage'
+afterEach(() => vi.unstubAllGlobals())
 
 const { productService, inventoryService, settingsService, accountingService } =
   vi.hoisted(() => ({
@@ -186,6 +187,35 @@ function renderEditor(product: Product) {
     </AccessContext.Provider>,
   )
 }
+it('shows an existing private photo through a temporary URL without caching the grant', async () => {
+  const fetchPhoto = vi.fn(async () => ({
+    ok: true,
+    blob: async () => new Blob(['photo']),
+  }))
+  vi.stubGlobal('fetch', fetchPhoto)
+  vi.stubGlobal(
+    'URL',
+    class extends URL {
+      static createObjectURL = () => 'blob:editor-photo'
+      static revokeObjectURL = vi.fn()
+    },
+  )
+  const product = {
+    ...pricedPerfume(),
+    imageUrl: 'https://photos.example?token=editor-grant',
+  }
+  renderEditor(product)
+  await waitFor(() =>
+    expect(screen.getByAltText('Vista previa del perfume')).toHaveAttribute(
+      'src',
+      'blob:editor-photo',
+    ),
+  )
+  expect(fetchPhoto).toHaveBeenCalledWith(
+    product.imageUrl,
+    expect.objectContaining({ cache: 'no-store', credentials: 'omit' }),
+  )
+})
 
 it('edits a perfume without price lists or price history and keeps its prices', async () => {
   productService.listPriceChanges.mockClear()
