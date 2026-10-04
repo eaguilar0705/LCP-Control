@@ -3,7 +3,6 @@ dist/
 .env
 .env.*
 !.env.example
-!.env.test
 .tools/
 private-data/
 playwright-report/

@@ -38,7 +38,7 @@ Los enlaces sin permiso, fotos inválidas o productos sin enlace quedan pendient
 
 ## Mi cuenta
 
-Cada persona puede editar su nombre visible y solicitar cambios de correo o contraseña. El nombre se actualiza en `staff_members`; correo y contraseña pasan por Supabase Auth. Los cambios de correo pueden requerir confirmación según la configuración del proyecto. La interfaz no permite modificar el rol ni habilitar personal. No se cambiaron credenciales durante las pruebas.
+Cada persona puede editar su nombre visible y solicitar cambios de correo o contraseña. El nombre se actualiza en `staff_members`; correo y contraseña pasan por Supabase Auth. Los cambios de correo pueden requerir confirmación según la configuración del proyecto. La interfaz no permite modificar el rol ni habilitar personal.
 
 ## Facturas y proformas tamaño carta
 
@@ -58,10 +58,9 @@ Se escriben en `output/pdf/`, ignorado por Git. Los ejemplos son visibles en `/d
 
 ```sh
 npm run check
-npm run test:db
-npm run test:e2e
+npm run typecheck
 ```
 
-Las pruebas de PostgreSQL comprueban permisos, seis precios, saldos sin contar, conflictos de edición, fotos privadas, conservación de documentos, eliminación/desactivación y actualización del perfil. PGlite no sustituye la prueba de aceptación del servicio remoto de Storage y de Supabase Auth tras aplicar la migración.
+Estos comandos comprueban lint, compilación y tipos. Revisar manualmente la edición y los precios del catálogo, la impresión/PDF y la lectura de fotografías. Para comprobar permisos, conflictos, movimientos, retiro/reactivación y cambios de perfil, usar productos y cuentas sintéticos en una base de desarrollo. Después de aplicar migraciones, confirmar también el acceso a Storage privado y Supabase Auth.
 
 Los proveedores ya se sincronizan con Supabase. El conteo inicial, SMTP para las cuentas del personal y el hosting HTTPS siguen pendientes. El conteo requiere cantidades físicas; no se deduce de los Excel de precios.

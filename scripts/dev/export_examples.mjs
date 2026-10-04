@@ -2,7 +2,8 @@ import { createServer } from 'vite'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 const server = await createServer({
   server: { middlewareMode: true },
-  mode: 'test',
+  mode: 'development',
+  envDir: false,
 })
 try {
   const { renderDocumentPdf } = await server.ssrLoadModule(

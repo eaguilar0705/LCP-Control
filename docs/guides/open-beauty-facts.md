@@ -5,7 +5,6 @@ El auditor consulta la API pública de [Open Beauty Facts](https://world.openbea
 ```sh
 node scripts/openbeautyfacts/audit_openbeautyfacts.mjs --catalog private-data/database-import/products.json
 node scripts/openbeautyfacts/audit_openbeautyfacts.mjs --offline
-node --test tests/scripts/openbeautyfacts_matching.test.mjs
 ```
 
 Para ampliar con fichas clasificadas como perfumes (incluso cuando su etiqueta de marca no coincide con la búsqueda inicial):

@@ -119,9 +119,9 @@ También vale confirmar dos cosas de las cuentas actuales: hay **dos Administrad
 
 En la computadora donde está el proyecto:
 
-```
-npm run check                            lint, 192 pruebas y compilación
-node tests/database/puesta-en-marcha.mjs recorre estos pasos en una base de prueba
+```sh
+npm run check
+npm run typecheck
 ```
 
-El segundo hace exactamente lo que dice esta guía —contar, costear, pedir, corregir un conteo— contra una base de datos real y desechable, y enseña qué pasa en cada camino. No toca la base del negocio.
+Estos comandos comprueban lint, compilación y tipos. Para revisar los pasos de esta guía —contar, costear, pedir y corregir un conteo— usar una base de desarrollo con datos sintéticos y confirmar manualmente las existencias, los costos y los movimientos resultantes antes de operar con datos del negocio.

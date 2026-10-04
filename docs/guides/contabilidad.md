@@ -4,7 +4,7 @@ Desarrollo del 3 de octubre de 2026. La contabilidad conecta el inventario, las 
 
 ## Instalación en Supabase
 
-Las migraciones de contabilidad están **aplicadas en la base real** de **La Casa del Perfume**, proyecto `xkpujpoocsbkychstrne`, verificado el 3 de octubre de 2026. La base del libro de dinero ya estaba instalada; se aplicaron las otras cuatro migraciones en orden y se comprobaron los reportes con permisos de administración. La venta existente coincide con los ingresos, y los registros del negocio se conservaron. El [informe de despliegue](../reports/despliegue-contabilidad-2026-10-03.md) contiene las versiones remotas y las verificaciones.
+Las migraciones de contabilidad están **aplicadas en la base real** de **La Casa del Perfume**, proyecto `xkpujpoocsbkychstrne`, verificado el 3 de octubre de 2026. La base del libro de dinero ya estaba instalada; se aplicaron las otras cuatro migraciones en orden y se comprobaron los reportes con permisos de administración. La venta existente coincide con los ingresos, y los registros del negocio se conservaron. El [historial del proyecto](../reports/historial-del-proyecto.md) resume el trabajo realizado en contabilidad y su despliegue.
 
 Las migraciones de este flujo, en orden de instalación, son:
 
@@ -25,7 +25,7 @@ select to_regprocedure('public.credit_accounts(date)'),
        to_regprocedure('public.list_cash_closings(date,date)');
 ```
 
-Las pruebas de `npm run test:db` usan PostgreSQL desechable con las migraciones; no escriben en la base real. `npm run test:audit:sales` comprueba de forma específica ventas, ingresos, costos, inventario, dinero y abonos. La [auditoría del 3 de octubre](../reports/auditoria-contabilidad-2026-10-03.md) documenta los resultados y los límites de la validación.
+Ejecutar `npm run check` y `npm run typecheck` para comprobar lint, compilación y tipos. En una base de desarrollo con datos sintéticos, revisar que ventas, costos, existencias, dinero y abonos coincidan en los reportes y que se respeten los permisos. El [historial del proyecto](../reports/historial-del-proyecto.md) resume las verificaciones anteriores.
 
 ## Empezar con saldos reales
 

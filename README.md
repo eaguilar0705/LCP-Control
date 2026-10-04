@@ -2,6 +2,8 @@
 
 Aplicación de inventario, facturación y proformas con React, TypeScript, Vite y Supabase.
 
+Esta copia conserva la aplicación y sus herramientas de operación; no incluye suites de pruebas automatizadas.
+
 El proyecto activo ya tiene catálogo, precios, fotos privadas y persistencia de clientes, proveedores, documentos y permisos. El estado de la base y los pasos pendientes de activación están en [docs/guides/database.md](docs/guides/database.md); edición e impresión carta, en [docs/guides/catalog-and-printing.md](docs/guides/catalog-and-printing.md). Guardar código en Git no aplica migraciones automáticamente en otros proyectos.
 
 ## Abrir la aplicación
@@ -15,7 +17,7 @@ npm run dev
 
 Abrir **http://127.0.0.1:5173/login**. Para trabajar con datos reales, configurar `.env.local` según `.env.example` y disponer de una cuenta activa en `staff_members`. Las instrucciones de la base están en [docs/guides/database.md](docs/guides/database.md).
 
-**http://127.0.0.1:5173/demo** permite explorar 30 productos inventados, con códigos `DEMO-0001` a `DEMO-0030`. Esta vista existe únicamente en desarrollo y pruebas. Siempre usa datos sintéticos, incluso si `.env.local` configura una base real. Permite preparar borradores; no emite documentos ni modifica existencias.
+**http://127.0.0.1:5173/demo** permite explorar 30 productos inventados, con códigos `DEMO-0001` a `DEMO-0030`. Esta vista existe únicamente en desarrollo. Siempre usa datos sintéticos, incluso si `.env.local` configura una base real. Permite preparar borradores; no emite documentos ni modifica existencias.
 
 Mantener el servidor encendido mientras se utiliza la aplicación. Usar siempre el mismo origen: `localhost` y `127.0.0.1` tienen sesiones y almacenamiento local independientes. Los servidores de desarrollo y preview escuchan solamente en este equipo.
 
@@ -36,7 +38,7 @@ Mantener el servidor encendido mientras se utiliza la aplicación. Usar siempre 
 - **Negocio:** nombre comercial, dirección y teléfono editables, y el tipo de cambio vigente del dólar. La tasa se propone al facturar en dólares y al registrar compras y gastos; cada operación conserva la que se usó, así que cambiarla no altera nada ya emitido.
 - **Proveedores:** contactos, condiciones, notas y estado compartidos en Supabase, con revisión de cambios concurrentes.
 - **Reportes:** ingresos, ticket, unidades y proformas con su variación contra el periodo anterior; cobertura de existencias, capital detenido, concentración de ventas, clientes que no volvieron, frecuencia de compra, ventas por día de la semana y mermas. Se descargan en PDF y en Excel (el libro ya no lista las facturas una por una: eso se exporta en PDF desde el historial). Las cifras las calcula la base de datos con `public.report_digest`, así que un año de ventas llega ya sumado en lugar de descargar cada factura; la migración ya está aplicada en el proyecto de Supabase; en una base sin ella, se calculan en el navegador como antes y la pantalla lo avisa.
-- **Contabilidad:** resumen de utilidad y dinero, pedidos y costo promedio ponderado, gastos, cuentas por cobrar y pagar con abonos vinculados a cada factura o pedido, caja y banco, flujo de efectivo y arqueo físico por denominación con diferencias e historial. El estado de resultados utiliza costos congelados; el balance identifica el patrimonio por conciliar y los valores históricos pendientes. El Excel incluye movimientos, deudas, flujo y arqueos. Sólo Administrador y SuperAdmin. Las migraciones están aplicadas en Supabase y verificadas el 3 de octubre de 2026; ver [la guía de contabilidad](docs/guides/contabilidad.md) para registrar los saldos iniciales reales y el [informe de despliegue](docs/reports/despliegue-contabilidad-2026-10-03.md) para las comprobaciones.
+- **Contabilidad:** resumen de utilidad y dinero, pedidos y costo promedio ponderado, gastos, cuentas por cobrar y pagar con abonos vinculados a cada factura o pedido, caja y banco, flujo de efectivo y arqueo físico por denominación con diferencias e historial. El estado de resultados utiliza costos congelados; el balance identifica el patrimonio por conciliar y los valores históricos pendientes. El Excel incluye movimientos, deudas, flujo y arqueos. Sólo Administrador y SuperAdmin. Las migraciones están aplicadas en Supabase y verificadas el 3 de octubre de 2026; ver [la guía de contabilidad](docs/guides/contabilidad.md) para registrar los saldos iniciales reales y el [historial del proyecto](docs/reports/historial-del-proyecto.md) para el resumen de lo trabajado por módulo.
 
 Los reintentos de emisión y movimientos con los mismos datos conservan el identificador de operación mientras el formulario sigue abierto. Los clics simultáneos comparten una sola solicitud. Si se pierde una respuesta, reintentar desde ese formulario. Cerrar, recargar o empezar otra operación crea una nueva solicitud: ante una emisión dudosa, comprobar el registro en la base antes de repetirla.
 
@@ -44,7 +46,7 @@ Los reintentos de emisión y movimientos con los mismos datos conservan el ident
 
 Los registros reales viven en Supabase; los precios y existencias se validan allí. Las políticas de acceso exigen una cuenta activa del personal. La aplicación obtiene el rol de `staff_members`, no de metadatos editables del navegador.
 
-**Sesión sólo en memoria.** La sesión (tokens de acceso y de renovación) vive únicamente en la memoria de la pestaña: no se escribe en localStorage, sessionStorage, IndexedDB ni cookies. Las peticiones del SDK y las fotos privadas usan `no-store`; catálogo y editor muestran objetos temporales que se revocan al salir de la vista. Las firmas de fotos en memoria se invalidan al cerrar sesión o cambiar de cuenta. Recargar la página, abrir otra pestaña o cerrar el navegador pide la contraseña otra vez. Al arrancar se borran las claves de sesión heredadas conocidas de localStorage y sessionStorage del origen actual. `npm run test:credentials` comprueba escenarios sintéticos en navegador real, incluida la caché HTTP habilitada de fotos. No elimina entradas HTTP históricas de otras versiones ni datos del gestor de contraseñas del navegador.
+**Sesión sólo en memoria.** La sesión (tokens de acceso y de renovación) vive únicamente en la memoria de la pestaña: no se escribe en localStorage, sessionStorage, IndexedDB ni cookies. Las peticiones del SDK y las fotos privadas usan `no-store`; catálogo y editor muestran objetos temporales que se revocan al salir de la vista. Las firmas de fotos en memoria se invalidan al cerrar sesión o cambiar de cuenta. Recargar la página, abrir otra pestaña o cerrar el navegador pide la contraseña otra vez. Al arrancar se borran las claves de sesión heredadas conocidas de localStorage y sessionStorage del origen actual. No elimina entradas HTTP históricas de otras versiones ni datos del gestor de contraseñas del navegador.
 
 Borradores de facturas y proformas se guardan por cuenta en Supabase y se sincronizan entre equipos con detección de conflictos. Clientes y proveedores también viven en la base. Solo la demostración mantiene registros locales; las preferencias y frases se conservan en el navegador. Los datos locales antiguos no se importan automáticamente.
 
@@ -62,7 +64,7 @@ La salida es `private-data/catalog.json`, ignorada por Git. Este script no carga
 LCP-Control/
 ├── index.html              Punto de entrada de Vite
 ├── package.json            Dependencias y comandos npm
-├── *.config.ts / .js       Vite, Playwright, ESLint, TypeScript, Prettier
+├── *.config.ts / .js       Vite, ESLint, TypeScript, Prettier
 ├── public/
 │   └── brand/              Logotipos (imágenes servidas tal cual)
 ├── src/                    Código de la aplicación (sin pruebas)
@@ -80,50 +82,37 @@ LCP-Control/
 │   ├── catalog/            Importación de catálogo e imágenes
 │   ├── openbeautyfacts/    Auditoría de códigos EAN/UPC
 │   └── dev/                Limpieza y PDF de ejemplo
-├── tests/                  Todas las pruebas
-│   ├── unit/               Vitest; replica la estructura de src/ (importa con `@/`)
-│   ├── e2e/                Playwright; `support/` contiene la cámara falsa
-│   ├── database/           Suites contra PostgreSQL desechable
-│   └── scripts/            Pruebas de los scripts (node --test)
 ├── docs/
 │   ├── guides/             Guías de operación y referencia
 │   ├── discovery/          Análisis de origen del negocio y del catálogo
-│   └── reports/            Revisiones fechadas
+│   └── reports/            Historial del trabajo por módulo
 ├── output/                 Generado, ignorado por Git: se borra con npm run clean
 │   ├── dist/               Compilación de producción
 │   ├── cache/              Cachés de TypeScript y Vite
-│   ├── test-results/       Capturas y trazas de Playwright
-│   ├── playwright-report/  Informe HTML de Playwright
-│   ├── coverage/           Cobertura de Vitest
 │   └── pdf/                PDF de ejemplo (npm run clean no los borra)
 └── private-data/           Datos privados del negocio, ignorados por Git
 ```
 
-Las pruebas unitarias importan el código con el alias `@/`, que apunta a `src/` (configurado en `vite.config.ts` y `tsconfig.json`).
+El alias `@/` apunta a `src/` (configurado en `vite.config.ts` y `tsconfig.json`).
 
 ## Comprobación y mantenimiento
 
 ```sh
 npm run check
-npm run test:db
-npm run test:e2e
-npm run test:scripts
-npm run test:credentials
-npm run test:audit
-npm run test:coverage
+npm run typecheck
 ```
 
-`check` ejecuta lint, pruebas unitarias/integración y compilación. `test:db` ejecuta las suites de catálogo y contabilidad en PostgreSQL desechable, incluidas las migraciones de precios en dólares. Playwright utiliza Chrome instalado y prueba escritorio y móvil con un servidor propio en el puerto 5174 y credenciales vacías. El puerto debe estar libre; el ejecutor cierra el servidor al terminar, también en Windows. Las pruebas de interfaz no realizan operaciones contra la base real. `test:credentials` arranca su propio servidor (puerto 5176) contra un Supabase simulado y revisa el almacenamiento del navegador y el perfil escrito en disco.
+`check` ejecuta `npm run lint && npm run build`. `typecheck` comprueba los tipos de la aplicación y de la configuración sin generar archivos JavaScript.
 
-`test:audit` comprueba permisos y operaciones por rol en PostgreSQL desechable, compara las huellas de las tablas y recorre las pantallas. Incluye la auditoría de venta → ingresos, costos, inventario, caja, banco y cuentas por cobrar; abonos, reintentos y eliminación de facturas; formularios con datos errados y direcciones dañadas. La parte de ventas también se ejecuta con `npm run test:audit:sales`. Ver [los resultados del 3 de octubre de 2026](docs/reports/auditoria-contabilidad-2026-10-03.md). `test:audit:buttons` pulsa cada botón de cada pantalla (unos 30 minutos por tamaño de pantalla; `VIEWPORTS=mobile` para el teléfono) y `test:audit:inputs` escribe datos errados campo por campo en todos los formularios (más de una hora). `test:coverage` mide la cobertura de las pruebas unitarias en `output/coverage`.
+Antes de publicar, revisar manualmente las pantallas afectadas, los permisos de cada rol, la impresión/PDF y la cámara de un teléfono. `/demo` permite recorrer los flujos con datos sintéticos; las operaciones que escriben en Supabase requieren una base de desarrollo preparada para esa comprobación.
 
-Para limpiar salidas generadas, detener antes las pruebas y el servidor de preview:
+Para limpiar salidas generadas, detener antes el servidor de desarrollo y el de preview:
 
 ```sh
 npm run clean
 ```
 
-Elimina únicamente `output/dist`, `output/test-results`, `output/playwright-report`, `output/coverage` y `output/cache` (y esas mismas carpetas si quedaron en la raíz por versiones anteriores). Conserva dependencias, fuentes, configuración, migraciones, datos y los PDF de ejemplo de `output/pdf`.
+Elimina `output/dist` y `output/cache`, además de salidas de pruebas heredadas de versiones anteriores (también si quedaron en la raíz). Conserva dependencias, fuentes, configuración, migraciones, datos y los PDF de ejemplo de `output/pdf`.
 
 Para reconstruir y revisar la versión compilada:
 
@@ -134,7 +123,7 @@ npm run preview
 
 Abrir la dirección indicada por preview. La compilación no incluye `/demo`; necesita configuración y una cuenta autorizada. Mantener `output/dist` mientras se use preview o se sirva esa carpeta. Para instalar en otra máquina, conservar `package-lock.json` y ejecutar `npm ci`.
 
-La publicación requiere un hosting HTTPS con fallback SPA a `index.html`. Las pruebas locales no sustituyen la aceptación con cuentas reales, conteos físicos ni cámaras de teléfonos. No se han emitido documentos ni alterado inventario real durante esta revisión.
+La publicación requiere un hosting HTTPS con fallback SPA a `index.html`. Las comprobaciones de lint, tipos y compilación no sustituyen la aceptación con cuentas reales, conteos físicos ni cámaras de teléfonos.
 
 ## Códigos de barras externos
 

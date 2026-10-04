@@ -23,8 +23,11 @@ estas direcciones y, si se utiliza, `VITE_AUTH_REDIRECT_URL`, y volver a compila
 La aplicación publicada ignora una configuración accidental que apunte a localhost.
 
 La entrega del correo depende de la configuración de correo/SMTP y los límites
-del proyecto Supabase. `npm run test:recovery` comprueba la interfaz y el intercambio
-con Supabase simulado: no envía correos ni cambia contraseñas reales.
+del proyecto Supabase. Tras cambiar esta configuración, comprobar el flujo
+manualmente con una cuenta destinada a desarrollo: solicitud, entrega del correo,
+enlace válido, enlace vencido y acceso con la nueva contraseña. `npm run check`
+y `npm run typecheck` comprueban lint, compilación y tipos; no verifican la
+entrega del correo.
 
 Las sesiones continúan sólo en memoria: recargar o cerrar la pestaña requiere
 iniciar sesión de nuevo. No se guarda la contraseña ni el enlace de recuperación.

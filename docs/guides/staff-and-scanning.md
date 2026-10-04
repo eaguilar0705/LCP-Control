@@ -56,7 +56,9 @@ pero se retiró de la navegación principal.
 
 ## Verificación
 
-`npm run check`, `npm run test:db` y las pruebas Playwright de
-`context-scanner`, `scanner-decode`, `unified-inventory` y `reports` cubren el
-flujo de confirmación, permisos, borrado real, conservación contable, códigos
-internos y de fabricante, captura con cámara y navegación en escritorio/móvil.
+Ejecutar `npm run check` (lint y compilación) y `npm run typecheck`.
+Revisar manualmente la lectura de SKU y EAN/UPC, la apertura del escáner en
+inventario y documentos, y la liberación de la cámara al cerrar el diálogo,
+tanto en escritorio como en un teléfono. Comprobar los permisos y la
+eliminación de cuentas sólo con cuentas sintéticas en una base de desarrollo;
+verificar que se conserva su historial y que siempre queda un SuperAdmin activo.

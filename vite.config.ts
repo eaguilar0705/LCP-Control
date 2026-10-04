@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config'
+import { defineConfig } from 'vite'
 import type { Plugin } from 'vite'
 import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
@@ -65,20 +65,10 @@ const noIndex = { 'X-Robots-Tag': 'noindex, nofollow' }
 // Todo lo generado (compilación, informes y cachés) vive bajo output/, ignorado por Git.
 export default defineConfig({
   cacheDir: 'output/cache/vite',
-  // '@/' apunta a src/: las pruebas en tests/unit importan el código sin rutas ../../..
+  // '@/' apunta al código fuente de la aplicación.
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   build: { outDir: 'output/dist', emptyOutDir: true },
   plugins: [react(), tailwindcss(), clientSecretGuard(), localOnlyServers()],
   server: { host: '127.0.0.1', headers: noIndex },
   preview: { host: '127.0.0.1', headers: noIndex },
-  test: {
-    environment: 'jsdom',
-    // Cada archivo abre jsdom (y algunos PostgreSQL). Limitar procesos evita
-    // agotar memoria y provocar falsos tiempos de espera durante la auditoría.
-    maxWorkers: 2,
-    setupFiles: ['./tests/unit/setup.ts'],
-    include: ['tests/unit/**/*.test.{ts,tsx}'],
-    coverage: { reportsDirectory: 'output/coverage' },
-    restoreMocks: true,
-  },
 })
