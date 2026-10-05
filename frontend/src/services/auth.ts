@@ -1,0 +1,314 @@
+import type { Session } from '@supabase/supabase-js'
+import { supabase } from '../lib/supabase'
+import { privateImageCache } from '../lib/privateImageCache'
+import { AppError } from '../lib/errors'
+import { parseRole } from '../lib/permissions'
+import type { UserProfile, UserRole } from '@lcp/contracts/domain'
+import {
+  AUTH_CALLBACK_PATH,
+  authLinkErrorMessage,
+  type AuthLink,
+} from '../features/auth/authLink'
+export interface AuthService {
+  getSession(): Promise<UserProfile | null>
+  signIn(email: string, password: string): Promise<void>
+  signOut(): Promise<void>
+  subscribe(callback: (user: UserProfile | null) => void): () => void
+}
+/**
+ * El rol vive únicamente en `staff_members`, la misma tabla que consultan las
+ * políticas de PostgreSQL. Leerlo del token abriría una segunda fuente que hay
+ * que mantener a mano y que puede contradecir a la base. La política
+ * `self_profile` permite a cada cuenta leer su propia fila y ninguna otra.
+ */
+async function roleFromDatabase(userId: string): Promise<UserRole | null> {
+  if (!supabase) return null
+  const { data, error } = await supabase
+    .from('staff_members')
+    .select('role,active')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (error)
+    throw new AppError(
+      'network',
+      'No pudimos comprobar tu autorización. Inténtalo de nuevo.',
+    )
+  const row = data as { role: string; active: boolean } | null
+  return row?.active ? parseRole(row.role) : null
+}
+export async function profileFromSession(
+  session: Session | null,
+): Promise<UserProfile | null> {
+  return session
+    ? {
+        id: session.user.id,
+        email: session.user.email ?? '',
+        role: await roleFromDatabase(session.user.id),
+      }
+    : null
+}
+function client() {
+  if (!supabase)
+    throw new AppError(
+      'configuration',
+      'El acceso no está disponible. Comunícate con el administrador.',
+    )
+  return supabase
+}
+/**
+ * Un 429 no es un problema de conexión: es el bloqueo temporal por intentos
+ * fallidos (gancho `hook_password_verification_attempt`, que ya trae el aviso
+ * en español con los minutos de espera) o el límite de peticiones de Supabase.
+ * Antes ambos terminaban en «Revisa tu conexión».
+ */
+export function signInError(error: {
+  status?: number
+  code?: string
+  message?: string
+}) {
+  if (error.code === 'email_not_confirmed')
+    return new AppError(
+      'unauthorized',
+      'Tu correo aún no está confirmado. Abre el enlace que te enviamos o solicita uno nuevo desde «Activar mi cuenta».',
+    )
+  if (error.status === 429) {
+    const message = error.message?.trim() ?? ''
+    // El mensaje propio del bloqueo está en español; el del límite general de
+    // Supabase viene en inglés y se sustituye.
+    const own =
+      error.code !== 'over_request_rate_limit' &&
+      message.length > 0 &&
+      message.length <= 200 &&
+      /intentos|bloquead/i.test(message)
+    return new AppError(
+      'rate_limited',
+      own
+        ? message
+        : 'Demasiados intentos seguidos. Espera unos minutos antes de volver a intentarlo.',
+    )
+  }
+  if (error.status === 400)
+    return new AppError(
+      'unauthorized',
+      'Correo o contraseña incorrectos, o cuenta no habilitada.',
+    )
+  return new AppError(
+    'network',
+    'No pudimos iniciar sesión. Revisa tu conexión e inténtalo de nuevo.',
+  )
+}
+export const authService: AuthService = {
+  async getSession() {
+    if (!supabase) return null
+    const { data, error } = await supabase.auth.getSession()
+    if (error)
+      throw new AppError(
+        'network',
+        'No pudimos restaurar tu sesión. Vuelve a intentarlo.',
+      )
+    privateImageCache.setSession(data.session?.user.id ?? null)
+    return profileFromSession(data.session)
+  },
+  async signIn(email, password) {
+    const { error } = await client().auth.signInWithPassword({
+      email,
+      password,
+    })
+    if (error) throw signInError(error)
+  },
+  async signOut() {
+    privateImageCache.clear()
+    const { error } = await client().auth.signOut({ scope: 'local' })
+    if (error)
+      throw new AppError(
+        'network',
+        'No pudimos cerrar la sesión. Inténtalo de nuevo.',
+      )
+  },
+  subscribe(callback) {
+    if (!supabase) return () => {}
+    let active = true
+    let version = 0
+    let pending: ReturnType<typeof setTimeout> | undefined
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!active) return
+      privateImageCache.setSession(session?.user.id ?? null)
+      const eventVersion = ++version
+      clearTimeout(pending)
+      if (!session) {
+        callback(null)
+        return
+      }
+      const publish = (user: UserProfile | null) => {
+        if (active && eventVersion === version) callback(user)
+      }
+      // La consulta se difiere: supabase-js desaconseja llamar al cliente
+      // dentro del propio callback de autenticación.
+      pending = setTimeout(() => {
+        profileFromSession(session)
+          .then(publish)
+          // Falla cerrado: sin rol comprobado no se concede acceso.
+          .catch(() =>
+            publish(
+              session
+                ? {
+                    id: session.user.id,
+                    email: session.user.email ?? '',
+                    role: null,
+                  }
+                : null,
+            ),
+          )
+      }, 0)
+    })
+    return () => {
+      active = false
+      version++
+      clearTimeout(pending)
+      data.subscription.unsubscribe()
+    }
+  },
+}
+
+/**
+ * Dirección a la que Supabase devuelve a la persona después de abrir el enlace
+ * del correo. Sin `emailRedirectTo`, Supabase usa la «Site URL» del proyecto.
+ * El dominio publicado evita enviar a otra persona al equipo de desarrollo.
+ * Debe figurar en Authentication → URL
+ * Configuration → Redirect URLs; si no, Supabase vuelve a la Site URL.
+ * `VITE_AUTH_REDIRECT_URL` fija el dominio publicado cuando el origen actual no
+ * es el definitivo.
+ */
+export function authRedirectUrl(origin = globalThis.location?.origin ?? '') {
+  const configured = import.meta.env.VITE_AUTH_REDIRECT_URL?.trim()
+  const parsed = configured ? URL.parse(configured) : null
+  const localOrigin = isLoopback(URL.parse(origin)?.hostname ?? '')
+  if (
+    parsed &&
+    (parsed.protocol === 'https:' ||
+      (parsed.protocol === 'http:' &&
+        localOrigin &&
+        isLoopback(parsed.hostname))) &&
+    (localOrigin || !isLoopback(parsed.hostname))
+  )
+    return parsed.href
+  return `${origin}${AUTH_CALLBACK_PATH}`
+}
+function isLoopback(hostname: string) {
+  return (
+    hostname === 'localhost' ||
+    hostname === '[::1]' ||
+    /^127(?:\.\d{1,3}){3}$/.test(hostname)
+  )
+}
+
+export type SignUpResult = 'confirmation_sent' | 'already_registered'
+
+function signUpError(error: { code?: string; status?: number }) {
+  return new AppError(
+    'validation',
+    error.code === 'email_address_not_authorized'
+      ? 'Falta habilitar el envío de correos de acceso para esta dirección. Comunícalo al administrador.'
+      : error.code === 'over_email_send_rate_limit' || error.status === 429
+        ? 'Se alcanzó el límite temporal de correos. Espera unos minutos antes de intentarlo otra vez.'
+        : error.code === 'weak_password'
+          ? 'La contraseña es demasiado débil. Usa al menos 12 caracteres combinando letras y números.'
+          : error.code === 'user_already_exists'
+            ? 'Este correo ya tiene acceso. Inicia sesión.'
+            : 'No se pudo activar la cuenta. Verifica que el administrador haya autorizado tu correo; si ya te registraste, inicia sesión.',
+  )
+}
+
+/**
+ * Crea el acceso de una persona autorizada en `private.pending_staff`. Con la
+ * confirmación de correo activa, Supabase no devuelve error si el correo ya
+ * estaba confirmado: responde con un usuario sin identidades para no revelar
+ * qué cuentas existen. Esa respuesta se distingue para no decir «revisa tu
+ * correo» cuando ningún correo va a llegar.
+ */
+export async function signUpStaff(
+  email: string,
+  password: string,
+): Promise<SignUpResult> {
+  const { data, error } = await client().auth.signUp({
+    email: email.trim().toLowerCase(),
+    password,
+    options: { emailRedirectTo: authRedirectUrl() },
+  })
+  if (error) throw signUpError(error)
+  if (data.session) return 'confirmation_sent'
+  return data.user && data.user.identities?.length === 0
+    ? 'already_registered'
+    : 'confirmation_sent'
+}
+
+/** Reenvía el correo de confirmación, con la misma dirección de regreso. */
+export async function resendConfirmation(email: string) {
+  const { error } = await client().auth.resend({
+    type: 'signup',
+    email: email.trim().toLowerCase(),
+    options: { emailRedirectTo: authRedirectUrl() },
+  })
+  if (error) throw signUpError(error)
+}
+
+/** Supabase sends the recovery email; the same callback handles its one-use link. */
+export async function requestPasswordReset(email: string) {
+  const redirect = new URL(authRedirectUrl())
+  redirect.searchParams.set('type', 'recovery')
+  const { error } = await client().auth.resetPasswordForEmail(
+    email.trim().toLowerCase(),
+    {
+      redirectTo: redirect.href,
+    },
+  )
+  if (error && error.code !== 'user_not_found') {
+    if (error.status === 429 || error.code === 'over_email_send_rate_limit')
+      throw new AppError(
+        'rate_limited',
+        'Se alcanzó el límite temporal de correos. Espera unos minutos antes de intentarlo otra vez.',
+      )
+    throw new AppError(
+      'network',
+      'No se pudo enviar el enlace. Inténtalo de nuevo; si continúa, comunícalo al administrador.',
+    )
+  }
+}
+
+export async function replacePassword(password: string) {
+  if (password.length < 12 || password.length > 72)
+    throw new AppError('validation', 'Usa de 12 a 72 caracteres.')
+  const { error } = await client().auth.updateUser({ password })
+  if (error)
+    throw new AppError(
+      'validation',
+      error.code === 'same_password'
+        ? 'Elige una contraseña diferente de la anterior.'
+        : 'No se pudo guardar la contraseña. Revisa los requisitos o solicita un enlace nuevo.',
+    )
+}
+
+/**
+ * Canjea el enlace del correo por una sesión. El cliente se crea con
+ * `detectSessionInUrl: false` para que ninguna pantalla consuma credenciales de
+ * la dirección por accidente: sólo `/auth/callback` lo hace, y de forma
+ * explícita para los tres formatos que Supabase puede enviar.
+ */
+export async function confirmAuthLink(link: AuthLink) {
+  // Un aviso sin sesión (primer enlace de un cambio de correo) no se canjea.
+  if (link.kind === 'notice') return
+  if (link.kind === 'error')
+    throw new AppError('unauthorized', authLinkErrorMessage(link.code))
+  const auth = client().auth
+  const { error } =
+    link.kind === 'tokens'
+      ? await auth.setSession({
+          access_token: link.accessToken,
+          refresh_token: link.refreshToken,
+        })
+      : link.kind === 'token_hash'
+        ? await auth.verifyOtp({ token_hash: link.tokenHash, type: link.type })
+        : await auth.exchangeCodeForSession(link.code)
+  if (error)
+    throw new AppError('unauthorized', authLinkErrorMessage(error.code ?? null))
+}

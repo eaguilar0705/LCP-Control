@@ -34,4 +34,66 @@ export default tseslint.config(
     files: ['*.js', 'scripts/**/*.mjs'],
     languageOptions: { globals: globals.node },
   },
+  {
+    files: ['frontend/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/backend/**', '@lcp/backend', '@lcp/backend/*'],
+              message:
+                'El frontend sólo consume contratos y la API de Supabase.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['shared/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '**/frontend/**',
+                '**/backend/**',
+                '@lcp/frontend',
+                '@lcp/frontend/*',
+                '@lcp/backend',
+                '@lcp/backend/*',
+                'react',
+                'react/*',
+                'react-dom',
+                'react-dom/*',
+                '@supabase/supabase-js',
+              ],
+              message:
+                'Los contratos compartidos no dependen de la interfaz ni del backend.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['backend/**/*.{js,mjs,ts}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/frontend/**', '@lcp/frontend', '@lcp/frontend/*'],
+              message: 'El backend no importa código del navegador.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 )

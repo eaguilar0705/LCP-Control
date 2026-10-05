@@ -15,4 +15,4 @@ __pycache__/
 output/
 tmp/
 Claude outputs/
-supabase/.temp/
+backend/supabase/.temp/
