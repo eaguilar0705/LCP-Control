@@ -28,7 +28,8 @@ import { PricingFields } from '../pricing/PricingFields'
 import { PriceMargin } from '../pricing/PriceMargin'
 import { PriceHistory } from '../pricing/PriceHistory'
 import { PeriodSections } from './PeriodSections'
-import { periodSections, type PeriodSection } from './sections'
+import { DailyActivityPanel } from './DailyActivityPanel'
+import { periodSections } from './sections'
 import '../../styles/accounting.css'
 
 interface PricedProduct {
@@ -72,8 +73,10 @@ export function AccountingPage() {
       </nav>
       {tab === 'prices' ? (
         <PricesTab />
+      ) : tab === 'daily' ? (
+        <DailyActivityPanel />
       ) : (
-        <PeriodSections section={tab as PeriodSection} onNavigate={setTab} />
+        <PeriodSections section={tab} onNavigate={setTab} />
       )}
     </>
   )

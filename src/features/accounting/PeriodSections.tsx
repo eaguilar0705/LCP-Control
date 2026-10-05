@@ -19,12 +19,11 @@ import {
 } from '../reports/model'
 import { FinancialStatements } from './FinancialStatements'
 import { FinanceMovements } from './FinanceMovements'
-import { CostsTab, DailyCloseTab, ExpensesTab, RatiosTab } from './AnalysisTabs'
+import { CostsTab, ExpensesTab, RatiosTab } from './AnalysisTabs'
 import type { PeriodSection } from './sections'
 import { AccountingOverview } from './AccountingOverview'
 import { CreditAccounts } from './CreditAccounts'
 import { CashflowPanel } from './CashflowPanel'
-import { CashCountPanel } from './CashCountPanel'
 
 /**
  * Un solo período para todas las secciones: lo que se ve en gastos, caja,
@@ -34,7 +33,7 @@ export function PeriodSections({
   section,
   onNavigate,
 }: {
-  section: PeriodSection
+  section: Exclude<PeriodSection, 'daily'>
   onNavigate: (section: PeriodSection) => void
 }) {
   const { reportService, financeService, salesService } = useServices()
@@ -191,16 +190,6 @@ export function PeriodSections({
           )}
           {section === 'costs' && (
             <CostsTab report={data.report} range={data.report.range} />
-          )}
-          {section === 'daily' && (
-            <>
-              <CashCountPanel
-                key={`${data.report.range.from}:${data.report.range.to}`}
-                range={data.report.range}
-                onChanged={refresh}
-              />
-              <DailyCloseTab report={data.report} range={data.report.range} />
-            </>
           )}
           {section === 'statements' && (
             <FinancialStatements

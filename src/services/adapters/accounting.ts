@@ -107,6 +107,7 @@ function toShipment(row: AccountingRow): ShipmentRecord {
     reference: row.reference as string,
     note: row.note as string,
     currency: row.currency as ShipmentInput['currency'],
+    account: row.account as ShipmentInput['account'],
     exchangeRate: numeric(row.exchange_rate),
     shippingAmount: numeric(row.shipping_amount),
     goodsAmount: numeric(row.goods_amount),
@@ -394,7 +395,7 @@ export function createAccountingAdapter(
           client()
             .from('purchase_shipments')
             .select(
-              'id,request_id,incurred_on,supplier,agency,reference,note,currency,exchange_rate,shipping_amount,goods_amount,units,shipping_per_unit,created_at,purchase_shipment_lines(id,product_id,location,quantity,unit_price,goods_amount,shipping_share,landed_unit_cost_nio)',
+              'id,request_id,incurred_on,supplier,agency,reference,note,currency,exchange_rate,shipping_amount,goods_amount,units,shipping_per_unit,account,created_at,purchase_shipment_lines(id,product_id,location,quantity,unit_price,goods_amount,shipping_share,landed_unit_cost_nio)',
               { count: 'exact' },
             )
             .gte('incurred_on', window.from)

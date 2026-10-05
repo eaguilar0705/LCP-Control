@@ -1,6 +1,7 @@
 import type {
   Category,
   Currency,
+  DocumentRecord,
   Gender,
   InventoryItem,
   PriceTier,
@@ -11,7 +12,10 @@ import type {
 import type { DataProvider } from '../contracts'
 import { DEMO_EXCHANGE_RATE, localWrites } from './local'
 import { applyPricing } from '../../lib/pricing'
+import { HISTORY_PAGE_SIZE } from '../../features/sales/period'
 import {
+  addDays,
+  localDay,
   previousRange,
   type ReportRange,
   type ReportSource,
@@ -191,6 +195,43 @@ export const catalogAdapter: DataProvider = {
     return { count: 0, totals: { NIO: 0, USD: 0 } }
   },
   ...localWrites,
+  async listDocuments(kind, { range, offset = 0, limit = HISTORY_PAGE_SIZE }) {
+    const { syntheticSales } = await import('./catalogSales')
+    const issuer = await localWrites.getBusiness()
+    const documents = syntheticSales()
+      .documents.filter((document) => {
+        const day = localDay(document.createdAt)
+        return document.kind === kind && day >= range.from && day <= range.to
+      })
+      .sort(
+        (a, b) =>
+          b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id),
+      )
+    return {
+      total: documents.length,
+      documents: documents.slice(offset, offset + limit).map(
+        (document) =>
+          ({
+            ...document,
+            issuer,
+            previewKind: 'example',
+            customerPhone: null,
+            notes: 'Documento de ejemplo con datos ficticios de demostración.',
+            exchangeRate: document.currency === 'USD' ? DEMO_EXCHANGE_RATE : 1,
+            catalogRate: DEMO_EXCHANGE_RATE,
+            validUntil:
+              document.kind === 'proforma'
+                ? addDays(localDay(document.createdAt), 15)
+                : null,
+            items: document.items.map((item, index) => ({
+              ...item,
+              id: `${document.id}:item:${index}`,
+              unitPrice: item.lineTotal / item.quantity,
+            })),
+          }) satisfies DocumentRecord,
+      ),
+    }
+  },
   async getFinance(range: ReportRange) {
     const { syntheticFinance } = await import('./catalogSales')
     return syntheticFinance(range)

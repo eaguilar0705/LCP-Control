@@ -2,21 +2,22 @@
 
 Actualizado el **4 de octubre de 2026**, zona **America/Managua**.
 
-Este documento consolida las revisiones del 14, 15, 22, 23 y 26 de septiembre y las auditorías, regresión y despliegue del 3 de octubre de 2026. Resume el trabajo realizado por módulo y conserva los resultados relevantes sin repetir los informes anteriores. Las guías operativas aportan los cambios posteriores de acceso y precios.
+Este documento consolida las revisiones del 14, 15, 22, 23 y 26 de septiembre, las auditorías, regresión y despliegue del 3 de octubre de 2026 y los cambios del 4 de octubre. Resume el trabajo realizado por módulo y conserva los resultados relevantes sin repetir los informes anteriores. Las guías operativas aportan los cambios posteriores de acceso y precios.
 
 Los resultados de pruebas y consultas que aparecen aquí son **evidencia histórica**, realizada en las fechas indicadas. Consolidar esta documentación y retirar archivos de pruebas no constituye una nueva ejecución funcional ni una consulta actual de la base del negocio.
 
 ## Evolución del programa
 
-| Fecha | Trabajo documentado |
-| --- | --- |
-| 14–15 de septiembre | Correcciones de borradores y precios, resumen diario en horario de Managua, conservación de costos históricos, carga diferida de pantallas y mejoras de tablas en teléfono. |
-| 22–23 de septiembre | Corrección de activación y enlaces de correo, edición y eliminación de contactos, totales por ubicación, impresión compacta, validaciones de formularios, permisos de navegación y accesibilidad. |
-| 26 de septiembre | Sesiones sólo en memoria, limpieza de tokens antiguos, mejora del consumo de memoria de reportes, compatibilidad con una política CSP estricta y cierre autorizado de sesiones antiguas. |
-| 27–28 de septiembre | Evolución de los precios calculados desde el costo promedio y verificación de las redirecciones de acceso al dominio publicado, según las guías conservadas. |
-| 2 de octubre | Los precios calculados pasan a depender del precio de compra y del porcentaje de cada lista. El costo promedio conserva su función contable. |
-| 3 de octubre | Ampliación de contabilidad, abonos vinculados, flujo de dinero y arqueos; correcciones de integridad, de descarga y caché de fotos privadas; regresión funcional y aplicación de migraciones contables en Supabase. |
-| 4 de octubre | Limpieza solicitada por el dueño: retirada de las suites y herramientas exclusivamente de pruebas y consolidación de los informes en este archivo. Se conserva el código funcional, las migraciones y la documentación operativa. |
+| Fecha               | Trabajo documentado                                                                                                                                                                                                                       |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 14–15 de septiembre | Correcciones de borradores y precios, resumen diario en horario de Managua, conservación de costos históricos, carga diferida de pantallas y mejoras de tablas en teléfono.                                                               |
+| 22–23 de septiembre | Corrección de activación y enlaces de correo, edición y eliminación de contactos, totales por ubicación, impresión compacta, validaciones de formularios, permisos de navegación y accesibilidad.                                         |
+| 26 de septiembre    | Sesiones sólo en memoria, limpieza de tokens antiguos, mejora del consumo de memoria de reportes, compatibilidad con una política CSP estricta y cierre autorizado de sesiones antiguas.                                                  |
+| 27–28 de septiembre | Evolución de los precios calculados desde el costo promedio y verificación de las redirecciones de acceso al dominio publicado, según las guías conservadas.                                                                              |
+| 2 de octubre        | Los precios calculados pasan a depender del precio de compra y del porcentaje de cada lista. El costo promedio conserva su función contable.                                                                                              |
+| 3 de octubre        | Ampliación de contabilidad, abonos vinculados, flujo de dinero y arqueos; correcciones de integridad, de descarga y caché de fotos privadas; regresión funcional y aplicación de migraciones contables en Supabase.                       |
+| 4 de octubre        | Limpieza solicitada por el dueño: retirada de las suites y herramientas exclusivamente de pruebas y consolidación de los informes en este archivo. Se conserva el código funcional, las migraciones y la documentación operativa.         |
+| 4 de octubre        | Cierre diario sustituye el conteo de billetes por la consulta de ventas, facturas y movimientos financieros del día seleccionado, con saldos esperados de caja y banco. Se conservan los arqueos anteriores y las migraciones existentes. |
 
 ## Ventas: facturas, proformas y borradores
 
@@ -66,25 +67,33 @@ El resumen diario utiliza límites explícitos del día de Managua, recorre las 
 
 Reportes y Administración pasaron a carga diferida. En la medición del 15 de septiembre el JavaScript inicial comprimido pasó de 222 a 114 kB; ese dato pertenece a aquella versión, no a la compilación actual. La revisión del 26 de septiembre comprobó que el reporte anual dejó de cerrar la pestaña en su escenario de muestra. Exportaciones e indicadores mantienen las advertencias sobre información incompleta.
 
-## Contabilidad, créditos, dinero y arqueos
+## Contabilidad, créditos, dinero y cierre diario
 
 El módulo conecta ventas, compras, inventario, gastos y deudas. Una venta a crédito reconoce ingresos y cuenta por cobrar al emitir; un abono reduce la deuda y mueve caja o banco sin crear otro ingreso. Los pagos identifican su pedido y las deudas iniciales permanecen separadas. Se validan fecha, saldo disponible, identidad de la operación, permisos e idempotencia. Las anulaciones conservan motivo e historial.
 
-El flujo separa caja y banco, cobros, pagos, transferencias y aperturas. Los arqueos guardan el conteo por denominación, la expectativa y la diferencia; no corrigen dinero automáticamente. Una operación retroactiva hace que el arqueo requiera revisión. Se corrigió la unión contable para exigir que el costo congelado pertenezca al mismo producto de la factura: una inconsistencia deja el saldo pendiente e impide guardar un cierre incorrecto.
+El flujo separa caja y banco, cobros, pagos, transferencias y aperturas. La versión del 3 de octubre incorporó arqueos que guardaban el conteo por denominación, la expectativa y la diferencia, sin corregir dinero automáticamente. Una operación retroactiva hacía que el arqueo requiriera revisión. Se corrigió la unión contable para exigir que el costo congelado perteneciera al mismo producto de la factura: una inconsistencia dejaba el saldo pendiente e impedía guardar un cierre incorrecto.
 
 El estado de resultados conserva ventas, costos y tasas históricas. El balance sigue siendo provisional cuando faltan patrimonio, resultados acumulados o valor histórico del inventario; no se inventan cifras para cuadrarlo. Excel incluye movimientos, deudas, flujo y arqueos, además de estados y advertencias.
+
+### Cierre diario actualizado el 4 de octubre
+
+Por solicitud del dueño, Cierre diario pasa a mostrar las ventas y los movimientos del día en lugar de contar billetes. La fecha inicial es hoy en America/Managua y permite consultar otro día. Incluye totales de ventas por moneda y forma de pago, facturas paginadas, detalle de gastos, abonos, aportes, retiros, transferencias, préstamos y compras, y entradas, salidas y saldos esperados de caja y banco.
+
+Las ventas a crédito se presentan separadas del dinero cobrado. Los abonos no duplican las ventas y las transferencias entre caja y banco no se tratan como ingresos externos. **Actualizar** vuelve a consultar los registros del día; la pantalla no escribe operaciones, no guarda ni anula arqueos y no bloquea períodos. Los arqueos previos permanecen en la base y en la exportación contable. El cambio reutiliza servicios y permisos existentes, sin nuevas migraciones ni roles.
+
+Para este cambio, `npm run check` aprobó lint, TypeScript y la compilación de producción. Con datos ficticios se comprobó en el navegador la selección de fecha, días sin actividad, ventas en ambas monedas, el detalle de productos, los gastos y la actualización. Las comprobaciones temporales verificaron la paginación sin duplicados, fechas inválidas, importes históricos, exclusión de anulados del flujo y generación del Excel con movimientos y gastos. El navegador integrado no entregó el evento de descarga a la automatización; el archivo Excel se comprobó por separado. No se reinstalaron suites de pruebas ni se escribieron operaciones en producción. Las validaciones históricas siguientes corresponden a las versiones y fechas indicadas.
 
 ### Instalación documentada en Supabase el 3 de octubre
 
 La migración base del libro financiero ya figuraba instalada. Se aplicaron cuatro ampliaciones y correcciones; Supabase asignó versiones UTC que comienzan el 4 de octubre aunque en Managua aún era el día 3:
 
-| Migración local | Versión remota documentada |
-| --- | --- |
-| `20261003120000_finance_ledger_without_tax.sql` | `20261003214821` |
-| `20261003220645_linked_credit_payments.sql` | `20261004032617` |
-| `20261003220730_cashflow_cash_closing.sql` | `20261004032627` |
-| `20261003224314_cashflow_snapshot_product_identity.sql` | `20261004032636` |
-| `20261003225145_prevent_deleted_invoice_replay.sql` | `20261004032647` |
+| Migración local                                         | Versión remota documentada |
+| ------------------------------------------------------- | -------------------------- |
+| `20261003120000_finance_ledger_without_tax.sql`         | `20261003214821`           |
+| `20261003220645_linked_credit_payments.sql`             | `20261004032617`           |
+| `20261003220730_cashflow_cash_closing.sql`              | `20261004032627`           |
+| `20261003224314_cashflow_snapshot_product_identity.sql` | `20261004032636`           |
+| `20261003225145_prevent_deleted_invoice_replay.sql`     | `20261004032647`           |
 
 El registro terminó con 30 migraciones. Se verificaron ocho RPC contables, RLS y permisos; las envolturas públicas comprobadas eran `SECURITY INVOKER`, con `search_path` vacío y sin ejecución para `anon`. Una transacción de sólo lectura con identidad administrativa confirmó que la factura existente coincidía con ingresos y cuentas contables. Se compararon cantidades y huellas de doce tablas, que conservaron los registros previos. No se crearon ventas, gastos, abonos ni arqueos ficticios en producción. Ese despliegue actualizó la base; no publicó el frontend.
 

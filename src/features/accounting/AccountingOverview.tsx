@@ -127,7 +127,7 @@ export function AccountingOverview({
             Revisar cobros y pagos
           </Button>
           <Button variant="secondary" onClick={() => onNavigate('daily')}>
-            Contar efectivo
+            Revisar cierre diario
           </Button>
           <Button variant="secondary" onClick={() => onNavigate('cashflow')}>
             Revisar flujo de efectivo
@@ -153,9 +153,9 @@ export function AccountingOverview({
             factura o pedido. No vuelve a sumar ventas ni a descontar gastos.
           </li>
           <li>
-            <strong>Revisar el día.</strong> Registra gastos desde caja o banco
-            y compara el efectivo contado con el esperado. Aportes, retiros y
-            préstamos se muestran aparte de la utilidad.
+            <strong>Revisar el día.</strong> Consulta las ventas, los gastos y
+            los movimientos de caja y banco de la fecha elegida. Aportes,
+            retiros y préstamos se muestran aparte de la utilidad.
           </li>
         </ol>
         <p className="accounting-note">

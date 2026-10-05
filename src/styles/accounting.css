@@ -159,33 +159,25 @@
 .accounting-workflow li {
   margin: 12px 0;
 }
-.cash-count-fields {
-  border: 0;
-  padding: 0;
-  min-width: 0;
-}
-.cash-count-denominations {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+.daily-activity-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
   gap: 12px;
-  min-width: 0;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 16px;
 }
-.cash-count-denominations legend {
+.daily-activity-summaries {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 640px), 1fr));
+  gap: 18px;
+}
+.daily-activity-products summary {
+  cursor: pointer;
   color: var(--wine);
-  font-weight: 600;
-  padding: 0 6px;
 }
-.cash-count-denominations .field span {
-  font-size: 12px;
-}
-@media (max-width: 560px) {
-  .cash-count-denominations {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+.daily-activity-products ul {
+  margin: 8px 0;
+  padding-left: 20px;
+  line-height: 1.6;
 }
 .accounting-breakdown {
   margin: 16px 0;

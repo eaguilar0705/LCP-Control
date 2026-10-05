@@ -17,12 +17,6 @@ import {
   roundMoney,
 } from '../reports/accounting'
 import { localDay, type ReportRange } from '../reports/model'
-import {
-  closeOf,
-  dailyClose,
-  dailyTotals,
-  type DailyClose,
-} from '../reports/statement'
 import type { ReportData } from '../reports/digest'
 import {
   moneyAccounts,
@@ -628,105 +622,6 @@ export function CostsTab({
             </tr>
           ))}
         </LedgerTable>
-      </Card>
-    </>
-  )
-}
-
-/** El día elegido y, debajo, cada día del período con movimiento. */
-export function DailyCloseTab({
-  report,
-  range,
-}: {
-  report: ReportData
-  range: ReportRange
-}) {
-  const rows = useMemo(() => dailyClose(report, range), [report, range])
-  const today = localDay(new Date())
-  const [day, setDay] = useState(
-    today >= range.from && today <= range.to ? today : range.to,
-  )
-  const shown = day >= range.from && day <= range.to ? day : range.to
-  const close = closeOf(rows, shown)
-  const totals = dailyTotals(rows)
-  const cells = (row: Omit<DailyClose, 'day'>) => (
-    <>
-      <td className="num">{row.invoices}</td>
-      <td className="num">{money(row.sales.NIO)}</td>
-      <td className="num">{formatCurrency(row.sales.USD, 'USD')}</td>
-      <td className="num">{money(row.purchasesNio)}</td>
-      <td className="num">{money(row.expensesNio)}</td>
-    </>
-  )
-  return (
-    <>
-      <Card className="accounting-card">
-        <div className="section-heading">
-          <h3>Cierre del día</h3>
-          <Input
-            label="Día"
-            type="date"
-            min={range.from}
-            max={range.to}
-            value={shown}
-            onChange={(event) => {
-              if (event.target.value) setDay(event.target.value)
-            }}
-          />
-        </div>
-        <dl className="accounting-breakdown">
-          <Line label="Facturas" amount={String(close.invoices)} />
-          <Line label="Ventas en córdobas" amount={money(close.sales.NIO)} />
-          <Line
-            label="Ventas en dólares"
-            amount={formatCurrency(close.sales.USD, 'USD')}
-          />
-          <Line label="Compras" amount={money(close.purchasesNio)} />
-          <Line label="Gastos" amount={money(close.expensesNio)} />
-        </dl>
-      </Card>
-      <Card className="accounting-card">
-        <h3>Por día</h3>
-        {rows.length ? (
-          <LedgerTable
-            label="Cierre por día"
-            headings={[
-              'Día',
-              'Facturas',
-              'Ventas C$',
-              'Ventas US$',
-              'Compras',
-              'Gastos',
-            ]}
-            numeric={[1, 2, 3, 4, 5]}
-            footer={
-              <tr className="statement-total">
-                <th scope="row">Total</th>
-                {cells(totals)}
-              </tr>
-            }
-          >
-            {rows.map((row) => (
-              <tr
-                key={row.day}
-                aria-current={row.day === shown ? 'true' : undefined}
-              >
-                <th scope="row">
-                  <button
-                    type="button"
-                    className="statement-day"
-                    onClick={() => setDay(row.day)}
-                  >
-                    {formatDate(row.day)}
-                  </button>
-                </th>
-                {cells(row)}
-              </tr>
-            ))}
-          </LedgerTable>
-        ) : (
-          <EmptyState title="Sin movimiento en este período" />
-        )}
       </Card>
     </>
   )

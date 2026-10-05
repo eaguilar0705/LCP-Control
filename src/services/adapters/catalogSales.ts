@@ -263,6 +263,7 @@ export function syntheticSales(today = localDay(new Date())): SyntheticSales {
         reference: `PED-${day.replace(/-/g, '')}`,
         note: 'Pedido de muestra',
         currency: 'NIO',
+        account: shipments.length % 3 === 0 ? 'credito' : 'banco',
         exchangeRate: 1,
         shippingAmount,
         goodsAmount: round(

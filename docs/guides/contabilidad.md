@@ -1,6 +1,6 @@
 # Contabilidad de La Casa del Perfume
 
-Desarrollo del 3 de octubre de 2026. La contabilidad conecta el inventario, las facturas, los pedidos, los gastos y los abonos. Sólo Administrador y SuperAdmin pueden consultar o modificar este módulo.
+Desarrollo del 3 de octubre de 2026, con Cierre diario actualizado el 4 de octubre. La contabilidad conecta el inventario, las facturas, los pedidos, los gastos y los abonos. Sólo Administrador y SuperAdmin pueden consultar o modificar este módulo.
 
 ## Instalación en Supabase
 
@@ -63,19 +63,21 @@ Los saldos están expresados en NIO usando la tasa de cada operación. Si una de
 
 La compra de perfumes aumenta el inventario y su costo se reconoce al vender. No se registra nuevamente como gasto de mercadería: eso contaría el costo dos veces.
 
-## Contar la caja
+## Revisar el cierre diario
 
-En **Cierre diario**, elegir el día e ingresar la cantidad de cada denominación en NIO y USD. Las otras monedas se pueden escribir como un total. Si se cuentan dólares, confirmar la tasa de conversión del arqueo.
+En **Contabilidad → Cierre diario**, elegir la fecha que se desea revisar. Al abrir la vista se propone **hoy según America/Managua**. La consulta muestra las ventas y los movimientos financieros registrados para ese día, sin ingresar cantidades de billetes.
 
-El sistema compara el total físico con la caja esperada al final del día. Una diferencia requiere una observación y **no modifica automáticamente los saldos**. Al guardar, se conserva el saldo esperado de ese momento. Si después se añade o anula una operación de esa fecha, el arqueo original permanece y aparece **Revisar** con la expectativa recalculada. Para sustituir un arqueo, anularlo con motivo y guardar el nuevo conteo; sólo puede haber uno vigente por día.
+El resumen de ventas distingue monedas y formas de pago. La lista de facturas se consulta por páginas. El detalle financiero reúne gastos, abonos de clientes y a proveedores, aportes, retiros, transferencias, préstamos y compras. Caja y banco muestran sus entradas, salidas y saldos esperados; cuando faltan aperturas o datos, se conservan las advertencias y valores pendientes.
 
-Es un arqueo auditable, no un bloqueo del período: aún se pueden registrar operaciones retroactivas, que exigen revisar el conteo. El efectivo consolidado usa tasas históricas para sus movimientos y la tasa explícita para el conteo físico; una diferencia de cambio requiere conciliación.
+Una venta con pago **Pendiente** forma parte de las ventas del día, pero no del dinero cobrado. Los abonos pueden corresponder a facturas de días anteriores y no se vuelven a contar como ventas. Una transferencia entre caja y banco mueve ambas cuentas y no constituye una entrada externa de dinero. Los saldos y movimientos contables utilizan la tasa conservada en cada operación.
+
+Usar **Actualizar** después de registrar, anular o corregir operaciones desde sus pantallas correspondientes. Cierre diario es una consulta: no escribe registros, no crea un cierre físico ni bloquea la fecha. Ya no ofrece guardar o anular arqueos. Los conteos anteriores permanecen en la base y en la exportación contable; este cambio no requiere migraciones ni permisos nuevos.
 
 ## Estados y exportación
 
 El estado de resultados utiliza costos e importes congelados de las ventas. El **balance general es provisional**: no se inventa el patrimonio inicial ni la utilidad acumulada para hacerlo cuadrar. El inventario consultado es el actual; cuando se selecciona otra fecha, su valor histórico y los totales dependientes quedan pendientes. Las razones financieras que necesitan ese valor tampoco se calculan con existencias actuales.
 
-El libro Excel añade movimientos de dinero, cuentas por cobrar y pagar, flujo y arqueos a los estados, gastos y costos. Conserva los valores pendientes y las advertencias de información incompleta. En `/demo/accounting` todos los datos son inventados y los botones de registro están deshabilitados.
+El libro Excel añade movimientos de dinero, cuentas por cobrar y pagar, flujo y arqueos históricos a los estados, gastos y costos. Conserva los valores pendientes y las advertencias de información incompleta. En `/demo/accounting` todos los datos son inventados y los botones de registro están deshabilitados.
 
 No se calculan comprobantes fiscales ni obligaciones tributarias. Tampoco hay vencimientos configurados, cuentas bancarias contables individuales ni asientos manuales de activos fijos. Esos datos necesitan reglas del negocio antes de añadirse.
 
