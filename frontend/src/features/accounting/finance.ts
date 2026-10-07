@@ -218,6 +218,95 @@ export function financePosition(source: FinanceSource): FinancePosition {
   }
 }
 
+/**
+ * Debe y Haber acumulados de las cuentas financieras desde su apertura.
+ * Conserva ambos lados de transferencias y abonos: compensarlos en un saldo
+ * perdería el movimiento real que necesita la balanza de comprobación.
+ * Compras, ventas y gastos tienen su contrapartida de inventario o resultado
+ * en el libro contable; aquí se contabiliza su lado financiero.
+ */
+export function financeTurnovers(
+  source: FinanceSource,
+): FinanceLedger['turnovers'] {
+  const { startOn, at } = source
+  if (!source.available || !startOn) return undefined
+  const totals: NonNullable<FinanceLedger['turnovers']> = {
+    caja: { debitNio: 0, creditNio: 0 },
+    banco: { debitNio: 0, creditNio: 0 },
+    cobrar: { debitNio: 0, creditNio: 0 },
+    prestamos: { debitNio: 0, creditNio: 0 },
+    proveedores: { debitNio: 0, creditNio: 0 },
+    capital: { debitNio: 0, creditNio: 0 },
+  }
+  const debit = (account: keyof typeof totals, amount: number) => {
+    totals[account].debitNio += amount
+  }
+  const credit = (account: keyof typeof totals, amount: number) => {
+    totals[account].creditNio += amount
+  }
+  debit('caja', source.sales.caja)
+  debit('banco', source.sales.banco)
+  debit('cobrar', source.sales.cobrar)
+  for (const row of source.entries) {
+    if (row.voidedAt || row.occurredOn < startOn || row.occurredOn > at)
+      continue
+    const amount = toNio(row)
+    const money = isMoneyAccount(row.account) ? row.account : null
+    switch (row.kind) {
+      case 'opening':
+        if (row.account === 'prestamos' || row.account === 'proveedores') {
+          credit(row.account, amount)
+          debit('capital', amount)
+        } else {
+          debit(row.account, amount)
+          credit('capital', amount)
+        }
+        break
+      case 'capital':
+        if (money) debit(money, amount)
+        credit('capital', amount)
+        break
+      case 'withdrawal':
+        if (money) credit(money, amount)
+        debit('capital', amount)
+        break
+      case 'transfer':
+        if (money && row.toAccount) {
+          credit(money, amount)
+          debit(row.toAccount, amount)
+        }
+        break
+      case 'loan':
+        if (money) debit(money, amount)
+        credit('prestamos', amount)
+        break
+      case 'supplier_payment':
+        if (money) credit(money, amount)
+        debit('proveedores', amount)
+        break
+      case 'collection':
+        if (money) debit(money, amount)
+        credit('cobrar', amount)
+        break
+    }
+  }
+  for (const row of source.shipments)
+    credit(
+      row.account === 'credito' ? 'proveedores' : row.account,
+      row.amountNio,
+    )
+  for (const row of source.expenses) {
+    if (row.voided) continue
+    credit(row.account, row.amountNio)
+    if (row.financing) debit('prestamos', row.amountNio)
+  }
+  for (const account of Object.values(totals)) {
+    account.debitNio = roundMoney(account.debitNio)
+    account.creditNio = roundMoney(account.creditNio)
+  }
+  return totals
+}
+
 const inRange = (day: string, range: ReportRange) =>
   day >= range.from && day <= range.to
 /**
@@ -241,7 +330,7 @@ export function financeLedger(
   const startOn = financeStart(rows.entries, range.to)
   const sinceStart = (day: string) =>
     !!startOn && day >= startOn && day <= range.to
-  const position = financePosition({
+  const source: FinanceSource = {
     available: true,
     startOn,
     at: range.to,
@@ -256,7 +345,8 @@ export function financeLedger(
       })),
     shipments: rows.shipments.filter((row) => sinceStart(row.incurredOn)),
     sales: startOn ? rows.sales : emptySales,
-  })
+  }
+  const position = financePosition(source)
   const byDate = <T extends { createdAt: string }>(
     a: T,
     b: T,
@@ -265,6 +355,7 @@ export function financeLedger(
   return {
     available: true,
     position,
+    turnovers: financeTurnovers(source),
     entries: rows.entries
       .filter((row) => inRange(row.occurredOn, range))
       .sort((a, b) => byDate(a, b, (row) => row.occurredOn)),

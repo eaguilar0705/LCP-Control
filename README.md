@@ -2,6 +2,8 @@
 
 Código fuente de la aplicación de inventario, facturación, proformas y contabilidad, con React, TypeScript, Vite y Supabase.
 
+Contabilidad presenta cuatro vistas: catálogo de cuentas, balanza de comprobación, estado de resultado y estado de situación financiera. La descarga de Excel contiene esas mismas cuatro hojas, vinculadas a las operaciones de la perfumería. Los importes sin información suficiente permanecen pendientes. Los movimientos y gastos se registran desde la balanza; los precios se editan en cada perfume.
+
 ## Instalar y ejecutar
 
 Requiere Node.js 22.12 o superior y npm. Ejecutar desde la raíz:
@@ -35,6 +37,7 @@ Los manifiestos `package.json`, el lockfile y las configuraciones de TypeScript,
 ```sh
 npm run check
 npm run typecheck
+npm run test:accounting
 npm run preview
 ```
 

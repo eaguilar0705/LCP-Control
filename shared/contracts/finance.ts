@@ -95,6 +95,15 @@ export interface FinancePosition {
 export interface FinanceLedger {
   available: boolean
   position: FinancePosition
+  /**
+   * Movimientos brutos desde el primer saldo inicial hasta el corte. Se
+   * comparan dos cortes para obtener el Debe y Haber reales de un período.
+   * Sin saldo inicial no hay una base contable y el campo queda sin definir.
+   */
+  turnovers?: Record<
+    FinanceAccount | 'capital',
+    { debitNio: number; creditNio: number }
+  >
   entries: FinanceEntryRecord[]
   expenses: PaidExpense[]
 }

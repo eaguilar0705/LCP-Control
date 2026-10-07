@@ -569,6 +569,53 @@
   border-top: 1px solid var(--line);
   border-radius: 12px;
 }
+.accounting-template-table {
+  max-width: none;
+}
+.accounting-template-table tbody th,
+.accounting-template-table tbody td {
+  white-space: normal;
+}
+.accounting-template-table .num {
+  white-space: nowrap;
+}
+.accounting-template-table .accounting-code {
+  white-space: nowrap;
+  width: 80px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.accounting-trial {
+  min-width: 920px;
+}
+.accounting-catalog {
+  max-width: 900px;
+}
+.accounting-balance-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+}
+.accounting-balance-columns .statement-table {
+  min-width: 420px;
+}
+.accounting-register-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.period-export .button {
+  white-space: nowrap;
+}
+.accounting-records-dialog {
+  width: min(1100px, calc(100vw - 32px));
+  max-width: none;
+}
+@media (max-width: 1100px) {
+  .accounting-balance-columns {
+    grid-template-columns: 1fr;
+  }
+}
 .finance-balances {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));

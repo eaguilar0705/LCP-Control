@@ -1,254 +1,130 @@
-import { buildWorkbook, type Sheet } from '../../lib/xlsx'
-import { accountingSummary } from '../reports/accounting'
-import { accountingSheets } from '../reports/accountingExport'
+import { buildWorkbook, type CellValue, type Sheet } from '../../lib/xlsx'
 import { download } from '../reports/export'
-import type { ReportData } from '../reports/digest'
-import type { ReportRange } from '../reports/model'
-import { incomeStatement, type StatementRow } from '../reports/statement'
-import { balanceSheet } from './balanceSheet'
-import {
-  financeAccounts,
-  financeKinds,
-  toNio,
-  type CreditLedger,
-  type FinanceLedger,
-  type FinancePosition,
-} from './finance'
-import { financialRatios } from './ratios'
-import {
-  cashflowCategories,
-  type CashflowReport,
-  type CashClosingRecord,
-} from './cashflow'
+import { accountingViews, type AccountingModel } from './accountingModel'
 
-const statementSheet = (
-  name: string,
-  notes: string[],
-  rows: StatementRow[],
-): Sheet => ({
-  name,
-  notes,
-  columns: [
-    { header: 'Concepto', width: 46 },
-    { header: 'Importe NIO', format: 'money', width: 22 },
-  ],
-  rows: rows.map((row) => [
-    row.kind === 'heading' ? row.label.toUpperCase() : row.label,
-    row.kind === 'heading'
-      ? null
-      : row.amount === null
-        ? null
-        : row.negative
-          ? -row.amount
-          : row.amount,
-  ]),
-})
+const numeric = (value: number | null): CellValue =>
+  value === null ? 'Pendiente' : value
+const signed = (value: number | null, negative = false): CellValue =>
+  value === null ? 'Pendiente' : negative ? -value : value
 
-/** El libro de Contabilidad: estados, razones y el detalle contable del período. */
-export function accountingWorkbook(
-  report: ReportData,
-  position: FinancePosition,
-  range: ReportRange,
-  businessName: string,
-  extra: {
-    ledger?: FinanceLedger
-    credits?: CreditLedger
-    cashflow?: CashflowReport
-    closings?: CashClosingRecord[]
-  } = {},
-) {
-  const summary = accountingSummary(report, range)
+/** Las mismas cuatro vistas de pantalla, sin anexos ni cifras de ejemplo. */
+export function accountingWorkbookSheets(model: AccountingModel): Sheet[] {
   const notes = [
-    businessName,
-    `Del ${range.from} al ${range.to}. Importes en NIO.`,
+    model.businessName,
+    `Del ${model.range.from} al ${model.range.to}. Importes en NIO.`,
   ]
-  const ratios = financialRatios(summary, position, range)
-  const sheets: Sheet[] = [
-    statementSheet(
-      'Estado de resultados',
-      [
-        ...notes,
-        ...(!summary.complete
-          ? [
-              'Información incompleta: los importes conocidos son parciales y la utilidad queda pendiente.',
-            ]
-          : []),
-      ],
-      incomeStatement(summary),
-    ),
-    statementSheet(
-      'Balance general',
-      [
-        businessName,
-        `Al ${range.to}. Importes en NIO.`,
-        'Balance provisional: patrimonio inicial y resultados acumulados por conciliar. El inventario sólo se valora cuando el corte es hoy.',
-      ],
-      balanceSheet(summary, position, range.to),
-    ),
+  return [
     {
-      name: 'Razones financieras',
-      notes,
+      name: accountingViews.catalog,
+      notes: [model.businessName, accountingViews.catalog],
       columns: [
-        { header: 'Grupo', width: 18 },
-        { header: 'Razón', width: 32 },
-        { header: 'Valor', format: 'number', width: 16 },
-        { header: 'Unidad', width: 12 },
-        { header: 'Fórmula', width: 50 },
+        { header: 'Código', width: 15 },
+        { header: 'Descripción', width: 68 },
       ],
-      rows: ratios.flatMap((group) =>
-        group.ratios.map((ratio) => [
-          group.label,
-          ratio.label,
-          ratio.value === null
-            ? null
-            : Math.round(
-                (ratio.format === 'percent' ? ratio.value * 100 : ratio.value) *
-                  100,
-              ) / 100,
-          { percent: '%', times: 'veces', days: 'días', money: 'NIO' }[
-            ratio.format
-          ],
-          ratio.formula,
+      rows: model.catalog.map((row) => [row.code, row.description]),
+    },
+    {
+      name: accountingViews.trial,
+      notes: [
+        ...notes,
+        ...model.warningsByView.trial,
+        'Los totales de saldos muestran la diferencia entre deudores y acreedores.',
+      ],
+      columns: [
+        { header: 'Cuenta', width: 12 },
+        { header: 'Descripción', width: 65 },
+        ...['Saldo inicial', 'Debe', 'Haber', 'Saldo final'].map((header) => ({
+          header,
+          width: 22,
+          format: 'money' as const,
+        })),
+      ],
+      rows: [
+        ...model.trial.map((row) => [
+          row.code,
+          row.description,
+          numeric(row.openingNio),
+          numeric(row.debitNio),
+          numeric(row.creditNio),
+          numeric(row.closingNio),
         ]),
+        [
+          '',
+          'Totales',
+          numeric(model.trialTotals.openingNio),
+          numeric(model.trialTotals.debitNio),
+          numeric(model.trialTotals.creditNio),
+          numeric(model.trialTotals.closingNio),
+        ],
+      ],
+    },
+    {
+      name: accountingViews.income,
+      notes: [
+        ...notes,
+        `Acumulado desde ${model.accumulatedFrom}.`,
+        ...model.warningsByView.income,
+      ],
+      columns: [
+        { header: 'Cuenta', width: 12 },
+        { header: 'Descripción', width: 50 },
+        { header: 'Movimiento del período', width: 27, format: 'money' },
+        { header: 'Acumulado a fecha', width: 27, format: 'money' },
+      ],
+      rows: model.income.map((row) => [
+        row.code,
+        row.description,
+        row.kind === 'heading' ? null : signed(row.periodNio, row.negative),
+        row.kind === 'heading'
+          ? null
+          : signed(row.accumulatedNio, row.negative),
+      ]),
+    },
+    {
+      name: accountingViews.balance,
+      notes: [
+        model.businessName,
+        `Al ${model.range.to}. Importes en NIO.`,
+        `Resultado acumulado desde ${model.accumulatedFrom}.`,
+        ...model.warningsByView.balance,
+      ],
+      columns: [
+        { header: 'Código', width: 12 },
+        { header: 'Activo', width: 55 },
+        { header: 'Saldo NIO', width: 23, format: 'money' },
+        { header: '', width: 4 },
+        { header: 'Código', width: 12 },
+        { header: 'Pasivo y capital', width: 65 },
+        { header: 'Saldo NIO', width: 23, format: 'money' },
+      ],
+      rows: Array.from(
+        {
+          length: Math.max(
+            model.balance.left.length,
+            model.balance.right.length,
+          ),
+        },
+        (_, index) => {
+          const left = model.balance.left[index]
+          const right = model.balance.right[index]
+          return [
+            left?.code ?? '',
+            left?.description ?? '',
+            !left || left.kind === 'heading' ? null : numeric(left.amount),
+            null,
+            right?.code ?? '',
+            right?.description ?? '',
+            !right || right.kind === 'heading' ? null : numeric(right.amount),
+          ]
+        },
       ),
     },
-    ...accountingSheets(report, range, businessName),
   ]
-  if (extra.ledger)
-    sheets.push({
-      name: 'Movimientos de dinero',
-      notes,
-      columns: [
-        { header: 'Fecha' },
-        { header: 'Movimiento', width: 25 },
-        { header: 'Cuenta', width: 25 },
-        { header: 'Destino' },
-        { header: 'Persona o negocio', width: 30 },
-        { header: 'Descripción', width: 42 },
-        { header: 'Referencia', width: 25 },
-        { header: 'Importe original', format: 'money' },
-        { header: 'Moneda' },
-        { header: 'Tipo de cambio', format: 'number' },
-        { header: 'Importe NIO', format: 'money' },
-        { header: 'Factura vinculada', width: 40 },
-        { header: 'Pedido vinculado', width: 40 },
-        { header: 'Estado' },
-        { header: 'Motivo de anulación', width: 35 },
-      ],
-      rows: extra.ledger.entries.map((row) => [
-        row.occurredOn,
-        financeKinds[row.kind],
-        financeAccounts[row.account],
-        row.toAccount ? financeAccounts[row.toAccount] : '',
-        row.counterparty,
-        row.description,
-        row.reference,
-        row.amount,
-        row.currency,
-        row.exchangeRate,
-        toNio(row),
-        row.documentId ?? '',
-        row.shipmentId ?? '',
-        row.voidedAt ? 'Anulado' : 'Vigente',
-        row.voidReason,
-      ]),
-    })
-  if (extra.credits)
-    sheets.push({
-      name: 'Cobros y pagos',
-      notes: [
-        ...notes,
-        `Saldos al ${extra.credits.at}.`,
-        ...(!extra.credits.available ? ['Módulo pendiente de activar.'] : []),
-        ...(extra.credits.legacyPayments
-          ? ['Existen abonos anteriores sin vínculo; revisa su asignación.']
-          : []),
-      ],
-      columns: [
-        { header: 'Cuenta', width: 24 },
-        { header: 'Cliente o proveedor', width: 35 },
-        { header: 'Referencia', width: 25 },
-        { header: 'Fecha' },
-        { header: 'Importe original NIO', format: 'money' },
-        { header: 'Abonado NIO', format: 'money' },
-        { header: 'Saldo NIO', format: 'money' },
-      ],
-      rows: extra.credits.rows.map((row) => [
-        row.kind === 'receivable' ? 'Por cobrar' : 'Por pagar',
-        row.counterparty,
-        row.reference,
-        row.occurredOn,
-        row.originalNio,
-        row.paidNio,
-        row.balanceNio,
-      ]),
-    })
-  if (extra.cashflow)
-    sheets.push({
-      name: 'Flujo de efectivo',
-      notes: [
-        ...notes,
-        'Cobros y pagos externos. Aperturas y transferencias internas se muestran por separado.',
-        ...(!extra.cashflow.available ? ['Módulo pendiente de activar.'] : []),
-        ...(extra.cashflow.missingSales
-          ? ['Faltan importes de ventas: información parcial.']
-          : []),
-      ],
-      columns: [
-        { header: 'Fecha' },
-        { header: 'Cuenta' },
-        { header: 'Concepto', width: 35 },
-        { header: 'Operaciones', format: 'integer' },
-        { header: 'Entradas NIO', format: 'money' },
-        { header: 'Salidas NIO', format: 'money' },
-      ],
-      rows: extra.cashflow.rows.map((row) => [
-        row.day,
-        financeAccounts[row.account],
-        cashflowCategories[row.category],
-        row.operations,
-        row.inflowNio,
-        row.outflowNio,
-      ]),
-    })
-  if (extra.closings)
-    sheets.push({
-      name: 'Arqueos de caja',
-      notes: [
-        ...notes,
-        'El saldo esperado guardado conserva la foto del momento del arqueo.',
-      ],
-      columns: [
-        { header: 'Día' },
-        { header: 'Contado NIO', format: 'money' },
-        { header: 'Contado USD', format: 'money' },
-        { header: 'Tasa USD', format: 'number' },
-        { header: 'Total contado NIO', format: 'money' },
-        { header: 'Esperado guardado NIO', format: 'money' },
-        { header: 'Diferencia NIO', format: 'money' },
-        { header: 'Esperado actual NIO', format: 'money' },
-        { header: 'Cambios posteriores' },
-        { header: 'Observación', width: 45 },
-        { header: 'Estado' },
-        { header: 'Motivo de anulación', width: 35 },
-      ],
-      rows: extra.closings.map((row) => [
-        row.closedOn,
-        row.countedNio,
-        row.countedUsd,
-        row.exchangeRate,
-        row.countedTotalNio,
-        row.expectedNio,
-        row.differenceNio,
-        row.currentExpectedNio,
-        row.changed ? 'Revisar' : '',
-        row.note,
-        row.voidedAt ? 'Anulado' : 'Vigente',
-        row.voidReason,
-      ]),
-    })
+}
+
+export function accountingWorkbook(model: AccountingModel) {
   download(
-    buildWorkbook(sheets),
-    `contabilidad-${range.from}-a-${range.to}.xlsx`,
+    buildWorkbook(accountingWorkbookSheets(model)),
+    `contabilidad-${model.range.from}-a-${model.range.to}.xlsx`,
   )
 }

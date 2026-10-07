@@ -71,23 +71,27 @@ function ProductNotFound() {
   )
 }
 function ProductLoader() {
+  const { role, demo } = useAccess()
   const { id } = useParams()
   const [costMessage, setCostMessage] = useState('')
   const { productService, settingsService } = useServices()
-  // Los precios de un perfume existente se editan en Contabilidad; aquí sólo
-  // un perfume nuevo necesita porcentajes y tasa para salir con precio.
+  const managePricing = demo || can(role, 'pricing.manage')
   const load = useCallback(async () => {
     const products = await productService.listProducts()
     // Un perfume que no está en el catálogo (una dirección escrita a mano o
     // de un perfume borrado) no se sigue consultando: la base respondería con
     // un error técnico en lugar de «no encontrado».
-    if (id) return { products, pricing: null, rate: null }
+    if (
+      (id && !products.some((product) => product.id === id)) ||
+      !managePricing
+    )
+      return { products, pricing: null, rate: null }
     const [pricing, rate] = await Promise.all([
-      productService.listPricing(NEW_PRODUCT),
+      productService.listPricing(id ?? NEW_PRODUCT),
       settingsService.getExchangeRate(),
     ])
     return { products, pricing, rate: rate?.usdToNio ?? null }
-  }, [id, productService, settingsService])
+  }, [id, managePricing, productService, settingsService])
   const { data, loading, error, retry } = useQuery(load)
   if (loading) return <LoadingState />
   if (error) return <ErrorState message={error} retry={retry} />
@@ -104,7 +108,13 @@ function ProductLoader() {
         key={`${id ?? 'new'}:${product?.revision}`}
         product={product}
         brands={[...new Set(data?.products.map((p) => p.brand))]}
-        pricing={data?.pricing?.available ? pricingInput() : null}
+        pricing={
+          data?.pricing?.available
+            ? pricingInput(
+                data.pricing.rows.find((row) => row.productId === id),
+              )
+            : null
+        }
         rate={data?.rate ?? null}
         onCostRecorded={(message) => {
           setCostMessage(message)
@@ -123,10 +133,7 @@ function ProductForm({
 }: {
   product?: Product
   brands: string[]
-  /**
-   * Sólo en un perfume nuevo; `null` al editar (sus precios viven en
-   * Contabilidad) o mientras la base no guarde porcentajes.
-   */
+  /** `null` mientras la base no guarde porcentajes o no se tenga permiso. */
   pricing: PricingInput | null
   /**
    * El precio en córdobas se calcula con esta tasa. Sin ella no se puede fijar
@@ -457,7 +464,7 @@ function ProductForm({
               </Select>
             </div>
           </Card>
-          {!product && (
+          {(demo || can(role, 'pricing.manage')) && (
             <Card className="form-card product-prices">
               <h2>Listas de precios</h2>
               {rate === null && (

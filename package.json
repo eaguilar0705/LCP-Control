@@ -17,6 +17,7 @@
     "check": "npm run lint && npm run build",
     "build": "npm run typecheck --workspace @lcp/contracts && npm run build --workspace @lcp/frontend",
     "typecheck": "npm run typecheck --workspaces --if-present",
+    "test:accounting": "node --test scripts/tests/accounting.test.mjs scripts/tests/finance.test.mjs",
     "lint": "eslint .",
     "format": "prettier --write frontend shared scripts *.json *.js *.md",
     "preview": "npm run preview --workspace @lcp/frontend --"
