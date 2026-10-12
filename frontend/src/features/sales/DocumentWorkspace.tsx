@@ -52,6 +52,7 @@ import {
 } from './document'
 import { whatsappNumber, whatsappUrl } from './whatsapp'
 import { shareDocumentPdf } from './pdf'
+import { getBusinessDay } from '../accounting/businessDay'
 
 const paymentOptions = {
   pending: 'Pendiente de pago',
@@ -347,6 +348,15 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
     setFailure('')
     setMessage('')
     try {
+      if (kind === 'invoice') {
+        const day = await getBusinessDay()
+        if (day.status !== 'open') {
+          setFailure(
+            'La tienda está cerrada. Un administrador debe abrir la jornada desde Inicio.',
+          )
+          return
+        }
+      }
       const record = await operation.execute({
         kind,
         customerId: customerId ?? undefined,

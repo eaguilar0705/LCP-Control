@@ -1,0 +1,88 @@
+import { jsPDF } from 'jspdf'
+import { labels, type PaymentMethod } from '../../lib/domain'
+import { formatCurrency } from '../../lib/format'
+import { privateServices } from '../../services'
+import type { BusinessDay } from './businessDay'
+
+export async function downloadDailyReport(day: BusinessDay) {
+  if (!day.report) return
+  const business = await privateServices.salesService.getBusiness()
+  const pdf = new jsPDF({ unit: 'mm', format: 'letter' })
+  const r = day.report
+  let y = 22
+  const line = (label: string, value = '', bold = false) => {
+    if (y > 250) {
+      pdf.addPage()
+      y = 22
+    }
+    pdf.setFont('helvetica', bold ? 'bold' : 'normal')
+    pdf.setFontSize(11)
+    pdf.text(label, 18, y)
+    if (value) pdf.text(value, 198, y, { align: 'right' })
+    y += 8
+  }
+  pdf.setTextColor(88, 25, 30)
+  line(business?.name ?? 'La Casa del Perfume', '', true)
+  line('Reporte diario', day.day, true)
+  pdf.setTextColor(45, 40, 37)
+  line(
+    day.status === 'closed'
+      ? 'Jornada cerrada'
+      : 'Jornada abierta · corte provisional',
+  )
+  y += 4
+  line('Facturas', String(r.invoices))
+  line('Unidades vendidas', String(r.units))
+  y += 4
+  line('Ventas por forma de pago', '', true)
+  for (const p of r.payments)
+    line(
+      labels.payment[p.method as PaymentMethod] ?? 'Crédito',
+      formatCurrency(p.amount, p.currency),
+    )
+  y += 4
+  line('Caja', '', true)
+  for (const currency of ['NIO', 'USD'] as const) {
+    const nio = currency === 'NIO'
+    line(
+      `Apertura ${currency}`,
+      formatCurrency((nio ? day.openingNio : day.openingUsd) ?? 0, currency),
+    )
+    line(
+      `Esperado ${currency}`,
+      formatCurrency(nio ? r.expectedNio : r.expectedUsd, currency),
+    )
+    if (day.status === 'closed') {
+      line(
+        `Contado ${currency}`,
+        formatCurrency((nio ? r.countedNio : r.countedUsd) ?? 0, currency),
+      )
+      line(
+        `Diferencia ${currency}`,
+        formatCurrency(
+          (nio ? r.differenceNio : r.differenceUsd) ?? 0,
+          currency,
+        ),
+        true,
+      )
+    }
+  }
+  if (r.note) {
+    y += 4
+    for (const text of pdf.splitTextToSize(r.note, 175) as string[]) line(text)
+  }
+  if (r.products.length) {
+    y += 6
+    line('Productos vendidos', 'Unidades', true)
+    for (const product of r.products) {
+      const nameLines = pdf.splitTextToSize(
+        product.description,
+        145,
+      ) as string[]
+      nameLines.forEach((name, index) =>
+        line(name, index === 0 ? String(product.units) : ''),
+      )
+    }
+  }
+  pdf.save(`reporte-diario-${day.day}.pdf`)
+}

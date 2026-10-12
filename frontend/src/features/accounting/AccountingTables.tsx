@@ -85,11 +85,13 @@ export function AccountingTables({
   model,
   ledger,
   onChanged,
+  readOnly = false,
 }: {
   view: 'trial' | 'income' | 'balance'
   model: AccountingModel
   ledger: FinanceLedger
   onChanged: () => void
+  readOnly?: boolean
 }) {
   const [recording, setRecording] = useState(false)
   const [reviewing, setReviewing] = useState(false)
@@ -117,7 +119,7 @@ export function AccountingTables({
               · C$
             </p>
           </div>
-          {view === 'trial' && (
+          {view === 'trial' && !readOnly && (
             <div className="accounting-register-actions">
               <Button variant="secondary" onClick={() => setReviewing(true)}>
                 Registros

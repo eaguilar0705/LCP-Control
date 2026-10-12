@@ -1,0 +1,152 @@
+.business-day-panel {
+  margin: 1.25rem 0;
+  padding: clamp(1rem, 3vw, 1.75rem);
+  border-top: 3px solid #792d38;
+}
+.day-heading,
+.day-title,
+.day-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+.day-heading {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.day-title h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1.2rem;
+}
+.day-title > svg {
+  color: #792d38;
+  flex-shrink: 0;
+}
+.day-title span {
+  color: #756b65;
+  font-size: 0.85rem;
+}
+.day-actions {
+  flex-wrap: wrap;
+}
+.day-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+.day-metrics > div {
+  background: #faf6f3;
+  border: 1px solid #eee4df;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  min-width: 0;
+}
+.day-metrics span {
+  display: block;
+  color: #76655d;
+  font-size: 0.8rem;
+  margin-bottom: 0.5rem;
+}
+.day-metrics strong {
+  font-size: clamp(1rem, 2vw, 1.4rem);
+  overflow-wrap: anywhere;
+}
+.day-payment-list > div {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid #eee4df;
+}
+.day-closing {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #faf6f3;
+  border-radius: 0.75rem;
+  overflow-wrap: anywhere;
+}
+.day-form {
+  display: grid;
+  gap: 1rem;
+}
+.day-form p {
+  margin: 0;
+}
+.day-inputs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+@media (max-width: 650px) {
+  .day-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .day-actions {
+    width: 100%;
+  }
+  .day-actions .button {
+    flex: 1 1 auto;
+  }
+}
+@media (max-width: 380px) {
+  .day-inputs {
+    grid-template-columns: 1fr;
+  }
+}
+
+.journal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-bottom: 1.5rem;
+}
+.journal-dialog {
+  width: min(1000px, calc(100vw - 2rem));
+}
+.journal-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.journal-line {
+  display: grid;
+  grid-template-columns: minmax(180px, 3fr) minmax(90px, 1fr) minmax(
+      90px,
+      1fr
+    ) auto;
+  gap: 0.65rem;
+  align-items: end;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #eee4df;
+}
+.journal-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 1rem;
+  background: #faf6f3;
+  border-radius: 0.75rem;
+}
+.journal-totals strong {
+  display: block;
+  margin-top: 0.35rem;
+  color: #792d38;
+}
+@media (max-width: 600px) {
+  .journal-fields {
+    grid-template-columns: 1fr;
+  }
+  .journal-line {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  }
+  .journal-line > :first-child {
+    grid-column: 1 / -1;
+  }
+  .journal-actions .button {
+    flex: 1 1 100%;
+  }
+}

@@ -15,6 +15,7 @@ import { useAccess } from '../../app/AccessContext'
 import { Reflection } from './Reflection'
 import { HomeCharts } from './HomeCharts'
 import { can } from '../../lib/permissions'
+import { BusinessDayPanel } from '../accounting/BusinessDayPanel'
 const actions = [
   ['/products', 'Catálogo', Package],
   ['/sales', 'Facturación', ReceiptText],
@@ -54,6 +55,7 @@ export function DashboardPage() {
         <Brand wordmark />
         <Reflection />
       </section>
+      <BusinessDayPanel />
       <div className="stats-grid">
         {[
           ['Referencias', data.length, 'Catálogo mayorista'],
