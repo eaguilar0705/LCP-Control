@@ -72,6 +72,35 @@ test('missing opening or historical cost never presents an invented balanced sta
     assert.ok(m.warnings.length)
   }
 })
+
+test('a monthly period starting before the opening still shows the recorded balances and results', () => {
+  const f = {
+    ...fixture(),
+    startOn: '2026-10-13',
+    from: '2026-10-01',
+    to: '2026-10-13',
+  }
+  const m = journalModel(f, 'Tienda')
+  assert.deepEqual(m.warnings, ['El libro contable comienza el 2026-10-13.'])
+  assert.ok(m.trial.every((r) => r.debitNio !== null && r.creditNio !== null))
+  assert.equal(m.trialTotals.debitNio, m.trialTotals.creditNio)
+  assert.equal(m.income.at(-1).periodNio, 1155)
+  assert.equal(m.balance.left.at(-1).amount, 6255)
+  assert.equal(m.balance.right.at(-1).amount, 6255)
+})
+
+test('a period ending before the opening does not invent known balances', () => {
+  const m = journalModel(
+    { ...fixture(), startOn: '2026-10-13', to: '2026-10-12' },
+    'Tienda',
+  )
+  assert.deepEqual(m.warnings, [
+    'El período termina antes de la apertura del 2026-10-13.',
+  ])
+  assert.equal(m.trialTotals.debitNio, null)
+  assert.equal(m.income.at(-1).periodNio, null)
+  assert.equal(m.balance.right.at(-1).amount, null)
+})
 test('contra assets and losses reduce the appropriate balance instead of plugging equity', () => {
   const f = fixture()
   f.accounts.push(

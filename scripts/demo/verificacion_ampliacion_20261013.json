@@ -1,0 +1,18 @@
+{
+  "newOperations": 132,
+  "additionalInvoices": 60,
+  "additionalPurchases": 20,
+  "additionalInventoryExits": 20,
+  "additionalProformas": 10,
+  "additionalExpenses": 10,
+  "additionalCollections": 10,
+  "additionalCapitalEntries": 2,
+  "totalInvoices": 72,
+  "totalPurchases": 24,
+  "totalProformas": 12,
+  "totalInventoryMovements": 259,
+  "stockUnits": 470,
+  "soldUnits": 208,
+  "originalDataUnchanged": true,
+  "cleanupVerifiedWithRollback": true
+}

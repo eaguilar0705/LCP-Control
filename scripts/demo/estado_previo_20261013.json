@@ -1,0 +1,145 @@
+{
+  "project": "xkpujpoocsbkychstrne",
+  "batch": "DEMO-LCP-20261013",
+  "fingerprints": [
+    {
+      "table_name": "private.catalog_changes",
+      "rows": 5,
+      "fingerprint": "d5ec172c07f167ee338ed4a3351ab328"
+    },
+    {
+      "table_name": "private.inventory_count_gains",
+      "rows": 0,
+      "fingerprint": "d751713988987e9331980363e24189ce"
+    },
+    {
+      "table_name": "public.brands",
+      "rows": 38,
+      "fingerprint": "aa04bd56e95b493a0ab64ec624fc5264"
+    },
+    {
+      "table_name": "public.business_days",
+      "rows": 1,
+      "fingerprint": "5a54aca72fe19fd4b6a2c9b9f0c097a0"
+    },
+    {
+      "table_name": "public.business_settings",
+      "rows": 1,
+      "fingerprint": "70becee092c09dc14488009038b114e8"
+    },
+    {
+      "table_name": "public.customers",
+      "rows": 2,
+      "fingerprint": "25994737022814aed640b664853b2751"
+    },
+    {
+      "table_name": "public.document_item_costs",
+      "rows": 2,
+      "fingerprint": "96c3c0f95442e2e4c183c1f0eca7d0c5"
+    },
+    {
+      "table_name": "public.document_items",
+      "rows": 2,
+      "fingerprint": "65346520399ea344f4b787966f028cb4"
+    },
+    {
+      "table_name": "public.documents",
+      "rows": 2,
+      "fingerprint": "46397514fde5a1fe456b34880e564638"
+    },
+    {
+      "table_name": "public.exchange_rates",
+      "rows": 1,
+      "fingerprint": "850b003658702d13d660eb20865c9cf6"
+    },
+    {
+      "table_name": "public.expense_records",
+      "rows": 1,
+      "fingerprint": "cc8c0d01116efe208e9ed0d5b184abc3"
+    },
+    {
+      "table_name": "public.finance_entries",
+      "rows": 0,
+      "fingerprint": "d751713988987e9331980363e24189ce"
+    },
+    {
+      "table_name": "public.inventory_balances",
+      "rows": 520,
+      "fingerprint": "13406bd39416088459d9b392f12167de"
+    },
+    {
+      "table_name": "public.inventory_movement_costs",
+      "rows": 3,
+      "fingerprint": "3c807c820bb6fa62710231fbe236771e"
+    },
+    {
+      "table_name": "public.inventory_movements",
+      "rows": 11,
+      "fingerprint": "ba9c2388dcf8af43510740701b66f223"
+    },
+    {
+      "table_name": "public.journal_entries",
+      "rows": 0,
+      "fingerprint": "d751713988987e9331980363e24189ce"
+    },
+    {
+      "table_name": "public.journal_lines",
+      "rows": 0,
+      "fingerprint": "d751713988987e9331980363e24189ce"
+    },
+    {
+      "table_name": "public.ledger_accounts",
+      "rows": 52,
+      "fingerprint": "352aa9afe0d7ebbe737b22ac0b14fedb"
+    },
+    {
+      "table_name": "public.opening_cost_records",
+      "rows": 0,
+      "fingerprint": "d751713988987e9331980363e24189ce"
+    },
+    {
+      "table_name": "public.product_costs",
+      "rows": 260,
+      "fingerprint": "4515069413d7b87e166272dd3532f50d"
+    },
+    {
+      "table_name": "public.product_prices",
+      "rows": 1560,
+      "fingerprint": "1bea80ab035c402fe96bcc767cc225a5"
+    },
+    {
+      "table_name": "public.product_pricing",
+      "rows": 3,
+      "fingerprint": "ea3eabdcca14c2528f3e093e5f158889"
+    },
+    {
+      "table_name": "public.products",
+      "rows": 260,
+      "fingerprint": "58b593e117facd494abc6044ed1cb591"
+    },
+    {
+      "table_name": "public.purchase_shipment_lines",
+      "rows": 0,
+      "fingerprint": "d751713988987e9331980363e24189ce"
+    },
+    {
+      "table_name": "public.purchase_shipments",
+      "rows": 0,
+      "fingerprint": "d751713988987e9331980363e24189ce"
+    },
+    {
+      "table_name": "public.staff_members",
+      "rows": 3,
+      "fingerprint": "745082e2cc148dd9f6cb3ae2875fe842"
+    },
+    {
+      "table_name": "public.suppliers",
+      "rows": 0,
+      "fingerprint": "d751713988987e9331980363e24189ce"
+    }
+  ],
+  "counters": {
+    "invoice": 2,
+    "proforma": 0
+  }
+}

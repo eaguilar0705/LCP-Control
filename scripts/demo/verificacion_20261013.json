@@ -1,0 +1,2000 @@
+{
+  "day": {
+    "day": "2026-10-13",
+    "today": "2026-10-13",
+    "report": {
+      "units": 208,
+      "invoices": 72,
+      "payments": [
+        {
+          "units": 22,
+          "amount": 41993.01,
+          "method": "bac_nio",
+          "currency": "NIO",
+          "invoices": 11
+        },
+        {
+          "units": 46,
+          "amount": 85153.56,
+          "method": "card_pos",
+          "currency": "NIO",
+          "invoices": 12
+        },
+        {
+          "units": 6,
+          "amount": 7795.8,
+          "method": "cash",
+          "currency": "NIO",
+          "invoices": 3
+        },
+        {
+          "units": 32,
+          "amount": 1895.85,
+          "method": "cash",
+          "currency": "USD",
+          "invoices": 11
+        },
+        {
+          "units": 42,
+          "amount": 82339.02,
+          "method": "ficohsa_nio",
+          "currency": "NIO",
+          "invoices": 11
+        },
+        {
+          "units": 33,
+          "amount": 74581.65,
+          "method": "lafise_nio",
+          "currency": "NIO",
+          "invoices": 11
+        },
+        {
+          "units": 5,
+          "amount": 8919.42,
+          "method": "pending",
+          "currency": "NIO",
+          "invoices": 2
+        },
+        {
+          "units": 22,
+          "amount": 1019.4,
+          "method": "pending",
+          "currency": "USD",
+          "invoices": 11
+        }
+      ],
+      "products": [
+        {
+          "units": 25,
+          "product_id": "8f361b19-29a1-8225-8924-269c09f673ef",
+          "description": "Afnan · 9 PM [DEMO] · 100 ml"
+        },
+        {
+          "units": 27,
+          "product_id": "50bf1274-fcf5-b260-aafb-a9cba749790a",
+          "description": "Armaf · Club de Nuit Intense [DEMO] · 100 ml"
+        },
+        {
+          "units": 26,
+          "product_id": "23bf06ea-37ad-0076-72c6-080249536619",
+          "description": "Dior · Sauvage [DEMO] · 100 ml"
+        },
+        {
+          "units": 25,
+          "product_id": "9ce3f6ec-2af4-cad9-f818-9756619cd7f8",
+          "description": "Jean Paul Gaultier · Le Male [DEMO] · 100 ml"
+        },
+        {
+          "units": 26,
+          "product_id": "588e0398-e1cc-07b3-8d9d-2f53f480d317",
+          "description": "Lataffa · Khamrah [DEMO] · 100 ml"
+        },
+        {
+          "units": 24,
+          "product_id": "d668573f-3224-d309-51ac-31310891368a",
+          "description": "Lataffa · Yara [DEMO] · 100 ml"
+        },
+        {
+          "units": 27,
+          "product_id": "5a17a6aa-2a73-b3c0-af1e-abd20f0fc283",
+          "description": "Rasasi · Hawas Black [DEMO] · 100 ml"
+        },
+        {
+          "units": 28,
+          "product_id": "0d8e70fe-765c-c423-f4a4-d484e01ee844",
+          "description": "Versace · Eros [DEMO] · 100 ml"
+        }
+      ],
+      "expectedNio": 68622.05,
+      "expectedUsd": 2706.16,
+      "cashMovementNio": 38622.05,
+      "cashMovementUsd": 1506.16
+    },
+    "status": "open",
+    "openDay": "2026-10-13",
+    "closedAt": null,
+    "openedAt": "2026-10-13T20:49:33.439918+00:00",
+    "openingNio": 30000,
+    "openingUsd": 1200
+  },
+  "batch": "DEMO-LCP-20261013",
+  "stock": [
+    {
+      "sku": "DEMO-20261013-01",
+      "name": "Hawas Black [DEMO]",
+      "store": 57,
+      "costNio": 699.536786,
+      "warehouse": 4
+    },
+    {
+      "sku": "DEMO-20261013-02",
+      "name": "Yara [DEMO]",
+      "store": 50,
+      "costNio": 845.936785,
+      "warehouse": 14
+    },
+    {
+      "sku": "DEMO-20261013-03",
+      "name": "Khamrah [DEMO]",
+      "store": 38,
+      "costNio": 991.696346,
+      "warehouse": 20
+    },
+    {
+      "sku": "DEMO-20261013-04",
+      "name": "Club de Nuit Intense [DEMO]",
+      "store": 29,
+      "costNio": 918.195243,
+      "warehouse": 30
+    },
+    {
+      "sku": "DEMO-20261013-05",
+      "name": "9 PM [DEMO]",
+      "store": 21,
+      "costNio": 1322.018963,
+      "warehouse": 36
+    },
+    {
+      "sku": "DEMO-20261013-06",
+      "name": "Eros [DEMO]",
+      "store": 28,
+      "costNio": 1875.53748,
+      "warehouse": 26
+    },
+    {
+      "sku": "DEMO-20261013-07",
+      "name": "Sauvage [DEMO]",
+      "store": 40,
+      "costNio": 2424.351918,
+      "warehouse": 16
+    },
+    {
+      "sku": "DEMO-20261013-08",
+      "name": "Le Male [DEMO]",
+      "store": 51,
+      "costNio": 1505.271321,
+      "warehouse": 10
+    }
+  ],
+  "credit": {
+    "at": "2026-10-13",
+    "rows": [
+      {
+        "id": "03a378c7-03ab-4091-93cb-6985f6720d1b",
+        "kind": "payable",
+        "paidNio": 0,
+        "reference": "DEMO-LCP-20261013-COMPRA-5",
+        "balanceNio": 25437,
+        "documentId": null,
+        "occurredOn": "2026-10-13",
+        "shipmentId": "03a378c7-03ab-4091-93cb-6985f6720d1b",
+        "originalNio": 25437,
+        "counterparty": "Distribuidora Perfumes [DEMO]"
+      },
+      {
+        "id": "2680939e-9ffa-4962-b1fc-921e77b7082d",
+        "kind": "receivable",
+        "paidNio": 2333.25,
+        "reference": "FAC-000007",
+        "balanceNio": 2333.25,
+        "documentId": "2680939e-9ffa-4962-b1fc-921e77b7082d",
+        "occurredOn": "2026-10-13",
+        "shipmentId": null,
+        "originalNio": 4666.5,
+        "counterparty": "Ana Martínez [DEMO]"
+      },
+      {
+        "id": "31758661-cca6-4241-81ac-5c0d726cd5bc",
+        "kind": "payable",
+        "paidNio": 0,
+        "reference": "DEMO-LCP-20261013-COMPRA-6",
+        "balanceNio": 41724,
+        "documentId": null,
+        "occurredOn": "2026-10-13",
+        "shipmentId": "31758661-cca6-4241-81ac-5c0d726cd5bc",
+        "originalNio": 41724,
+        "counterparty": "Importadora Aroma [DEMO]"
+      },
+      {
+        "id": "3358ef78-81f2-4da7-a7e4-59cfb168772f",
+        "kind": "payable",
+        "paidNio": 0,
+        "reference": "DEMO-LCP-20261013-COMPRA-21",
+        "balanceNio": 25986,
+        "documentId": null,
+        "occurredOn": "2026-10-13",
+        "shipmentId": "3358ef78-81f2-4da7-a7e4-59cfb168772f",
+        "originalNio": 25986,
+        "counterparty": "Distribuidora Perfumes [DEMO]"
+      },
+      {
+        "id": "3670d12d-b562-46a6-8b57-f2d9d5b54470",
+        "kind": "payable",
+        "paidNio": 0,
+        "reference": "DEMO-LCP-20261013-COMPRA-17",
+        "balanceNio": 56181,
+        "documentId": null,
+        "occurredOn": "2026-10-13",
+        "shipmentId": "3670d12d-b562-46a6-8b57-f2d9d5b54470",
+        "originalNio": 56181,
+        "counterparty": "Distribuidora Perfumes [DEMO]"
+      },
+      {
+        "id": "3e1ef5f2-e701-423d-a73e-8e7eb3a69542",
+        "kind": "receivable",
+        "paidNio": 1007.6,
+        "reference": "FAC-000038",
+        "balanceNio": 2015.56,
+        "documentId": "3e1ef5f2-e701-423d-a73e-8e7eb3a69542",
+        "occurredOn": "2026-10-13",
+        "shipmentId": null,
+        "originalNio": 3023.16,
+        "counterparty": "María López [DEMO]"
+      },
+      {
+        "id": "42356779-9040-471a-8703-90a1eece27a6",
+        "kind": "payable",
+        "paidNio": 0,
+        "reference": "DEMO-LCP-20261013-COMPRA-15",
+        "balanceNio": 46848,
+        "documentId": null,
+        "occurredOn": "2026-10-13",
+        "shipmentId": "42356779-9040-471a-8703-90a1eece27a6",
+        "originalNio": 46848,
+        "counterparty": "Distribuidora Perfumes [DEMO]"
+      },
+      {
+        "id": "45f5bf4f-a35f-443e-b663-95b7c9656ebc",
+        "kind": "receivable",
+        "paidNio": 1964.32,
+        "reference": "FAC-000056",
+        "balanceNio": 3928.28,
+        "documentId": "45f5bf4f-a35f-443e-b663-95b7c9656ebc",
+        "occurredOn": "2026-10-13",
+        "shipmentId": null,
+        "originalNio": 5892.6,
+        "counterparty": "Distribuidora Esencias [DEMO]"
+      },
+      {
+        "id": "47df0690-b087-4415-8325-b4f18d509585",
+        "kind": "payable",
+        "paidNio": 5000,
+        "reference": "DEMO-LCP-20261013-COMPRA-3",
+        "balanceNio": 51232,
+        "documentId": null,
+        "occurredOn": "2026-10-13",
+        "shipmentId": "47df0690-b087-4415-8325-b4f18d509585",
+        "originalNio": 56232,
+        "counterparty": "Distribuidora Perfumes [DEMO]"
+      },
+      {
+        "id": "48ee1303-a95c-41f9-b1d5-ee2538f73095",
+        "kind": "receivable",
+        "paidNio": 990.76,
+        "reference": "FAC-000026",
+        "balanceNio": 1981.16,
+        "documentId": "48ee1303-a95c-41f9-b1d5-ee2538f73095",
+        "occurredOn": "2026-10-13",
+        "shipmentId": null,
+        "originalNio": 2971.92,
+        "counterparty": "Distribuidora Esencias [DEMO]"
+      },
+      {
+        "id": "49d9cc5c-324c-4831-8939-caa3b73b79f3",
+        "kind": "receivable",
+        "paidNio": 819.84,
+        "reference": "FAC-000044",
+        "balanceNio": 1639.68,
+        "documentId": "49d9cc5c-324c-4831-8939-caa3b73b79f3",
+        "occurredOn": "2026-10-13",
+        "shipmentId": null,
+        "originalNio": 2459.52,
+        "counterparty": "Carlos Pérez [DEMO]"
+      },
+      {
+        "id": "4b8bc8cf-1fc8-449f-b30d-f73dd1943cee",
+        "kind": "payable",
+        "paidNio": 0,
+        "reference": "DEMO-LCP-20261013-COMPRA-22",
+        "balanceNio": 40626,
+        "documentId": null,
+        "occurredOn": "2026-10-13",
+        "shipmentId": "4b8bc8cf-1fc8-449f-b30d-f73dd1943cee",
+        "originalNio": 40626,
+        "counterparty": "Importadora Aroma [DEMO]"
+      },
+      {
+        "id": "4e224f16-a56f-4073-af9d-fafb7140e06b",
+        "kind": "receivable",
+        "paidNio": 1964.32,
+        "reference": "FAC-000032",
+        "balanceNio": 3928.28,
+        "documentId": "4e224f16-a56f-4073-af9d-fafb7140e06b",
+        "occurredOn": "2026-10-13",
+        "shipmentId": null,
+        "originalNio": 5892.6,
+        "counterparty": "Ana Martínez [DEMO]"
+      },
+      {
+        "id": "5ce35526-1ccd-4f9a-8d9a-717fdad4d300",
+        "kind": "receivable",
+        "paidNio": 990.76,
+        "reference": "FAC-000050",
+        "balanceNio": 1981.16,
+        "documentId": "5ce35526-1ccd-4f9a-8d9a-717fdad4d300",
+        "occurredOn": "2026-10-13",
+        "shipmentId": null,
+        "originalNio": 2971.92,
+        "counterparty": "Boutique Aroma [DEMO]"
+      },
+      {
+        "id": "5e7ea6e5-fc7d-44a8-ae51-526e9a5b07d6",
+        "kind": "receivable",
+        "paidNio": 819.84,
+        "reference": "FAC-000020",
+        "balanceNio": 1639.68,
+        "documentId": "5e7ea6e5-fc7d-44a8-ae51-526e9a5b07d6",
+        "occurredOn": "2026-10-13",
+        "shipmentId": null,
+        "originalNio": 2459.52,
+        "counterparty": "Boutique Aroma [DEMO]"
+      },
+      {
+        "id": "6647c198-fbc7-4b10-976f-b6f8ccecdc70",
+        "kind": "payable",
+        "paidNio": 0,
+        "reference": "DEMO-LCP-20261013-COMPRA-9",
+        "balanceNio": 56730,
+        "documentId": null,
+        "occurredOn": "2026-10-13",
+        "shipmentId": "6647c198-fbc7-4b10-976f-b6f8ccecdc70",
+        "originalNio": 56730,
+        "counterparty": "Distribuidora Perfumes [DEMO]"
+      },
+      {
+        "id": "7c9a97cc-55dc-4444-9d77-aeabd31f2a0d",
+        "kind": "payable",
+        "paidNio": 0,
+        "reference": "DEMO-LCP-20261013-COMPRA-4",
+        "balanceNio": 11712,
+        "documentId": null,
+        "occurredOn": "2026-10-13",
+        "shipmentId": "7c9a97cc-55dc-4444-9d77-aeabd31f2a0d",
+        "originalNio": 11712,
+        "counterparty": "Distribuidora Perfumes [DEMO]"
+      },
+      {
+        "id": "83eeeede-6d02-4d25-8902-c05781578510",
+        "kind": "payable",
+        "paidNio": 0,
+        "reference": "DEMO-LCP-20261013-COMPRA-23",
+        "balanceNio": 46299,
+        "documentId": null,
+        "occurredOn": "2026-10-13",
+        "shipmentId": "83eeeede-6d02-4d25-8902-c05781578510",
+        "originalNio": 46299,
+        "counterparty": "Distribuidora Perfumes [DEMO]"
+      },
+      {
+        "id": "86b99591-0f58-4805-b4ab-ed55b3e19a0d",
+        "kind": "receivable",
+        "paidNio": 1592.1,
+        "reference": "FAC-000010",
+        "balanceNio": 1592.1,
+        "documentId": "86b99591-0f58-4805-b4ab-ed55b3e19a0d",
+        "occurredOn": "2026-10-13",
+        "shipmentId": null,
+        "originalNio": 3184.2,
+        "counterparty": "Boutique Aroma [DEMO]"
+      },
+      {
+        "id": "8b75b088-d5a1-4640-a442-af616fbce99f",
+        "kind": "payable",
+        "paidNio": 0,
+        "reference": "DEMO-LCP-20261013-COMPRA-19",
+        "balanceNio": 31842,
+        "documentId": null,
+        "occurredOn": "2026-10-13",
+        "shipmentId": "8b75b088-d5a1-4640-a442-af616fbce99f",
+        "originalNio": 31842,
+        "counterparty": "Distribuidora Perfumes [DEMO]"
+      },
+      {
+        "id": "9b0935e8-c423-4422-be7a-451de40de18f",
+        "kind": "receivable",
+        "paidNio": 1007.6,
+        "reference": "FAC-000062",
+        "balanceNio": 2015.56,
+        "documentId": "9b0935e8-c423-4422-be7a-451de40de18f",
+        "occurredOn": "2026-10-13",
+        "shipmentId": null,
+        "originalNio": 3023.16,
+        "counterparty": "Ana Martínez [DEMO]"
+      },
+      {
+        "id": "9c0909ab-2d00-46c6-beeb-396198a2f180",
+        "kind": "receivable",
+        "paidNio": 990.76,
+        "reference": "FAC-000074",
+        "balanceNio": 1981.16,
+        "documentId": "9c0909ab-2d00-46c6-beeb-396198a2f180",
+        "occurredOn": "2026-10-13",
+        "shipmentId": null,
+        "originalNio": 2971.92,
+        "counterparty": "Carlos Pérez [DEMO]"
+      },
+      {
+        "id": "c1581ac2-fe04-41cb-90f4-fad2366f2f84",
+        "kind": "payable",
+        "paidNio": 0,
+        "reference": "DEMO-LCP-20261013-COMPRA-10",
+        "balanceNio": 30012,
+        "documentId": null,
+        "occurredOn": "2026-10-13",
+        "shipmentId": "c1581ac2-fe04-41cb-90f4-fad2366f2f84",
+        "originalNio": 30012,
+        "counterparty": "Importadora Aroma [DEMO]"
+      },
+      {
+        "id": "cacb4bcb-e2a7-4fb6-935c-fae689eef934",
+        "kind": "payable",
+        "paidNio": 0,
+        "reference": "DEMO-LCP-20261013-COMPRA-16",
+        "balanceNio": 27084,
+        "documentId": null,
+        "occurredOn": "2026-10-13",
+        "shipmentId": "cacb4bcb-e2a7-4fb6-935c-fae689eef934",
+        "originalNio": 27084,
+        "counterparty": "Importadora Aroma [DEMO]"
+      },
+      {
+        "id": "e1a60c56-939a-473f-b6af-d7c481f1fb05",
+        "kind": "receivable",
+        "paidNio": 0,
+        "reference": "FAC-000014",
+        "balanceNio": 4252.92,
+        "documentId": "e1a60c56-939a-473f-b6af-d7c481f1fb05",
+        "occurredOn": "2026-10-13",
+        "shipmentId": null,
+        "originalNio": 4252.92,
+        "counterparty": "Carlos Pérez [DEMO]"
+      },
+      {
+        "id": "e2b48f01-4c64-470c-bcae-904fff3004e9",
+        "kind": "payable",
+        "paidNio": 0,
+        "reference": "DEMO-LCP-20261013-COMPRA-13",
+        "balanceNio": 24888,
+        "documentId": null,
+        "occurredOn": "2026-10-13",
+        "shipmentId": "e2b48f01-4c64-470c-bcae-904fff3004e9",
+        "originalNio": 24888,
+        "counterparty": "Distribuidora Perfumes [DEMO]"
+      },
+      {
+        "id": "e59e8922-7ba5-463f-99e4-44081c4f730f",
+        "kind": "payable",
+        "paidNio": 0,
+        "reference": "DEMO-LCP-20261013-COMPRA-8",
+        "balanceNio": 27633,
+        "documentId": null,
+        "occurredOn": "2026-10-13",
+        "shipmentId": "e59e8922-7ba5-463f-99e4-44081c4f730f",
+        "originalNio": 27633,
+        "counterparty": "Importadora Aroma [DEMO]"
+      },
+      {
+        "id": "ea33f9b1-8a29-4bb1-bb4e-d49d1b6e9419",
+        "kind": "payable",
+        "paidNio": 0,
+        "reference": "DEMO-LCP-20261013-COMPRA-20",
+        "balanceNio": 58011,
+        "documentId": null,
+        "occurredOn": "2026-10-13",
+        "shipmentId": "ea33f9b1-8a29-4bb1-bb4e-d49d1b6e9419",
+        "originalNio": 58011,
+        "counterparty": "Importadora Aroma [DEMO]"
+      },
+      {
+        "id": "edd53c28-932f-4ad4-b617-e3f629aecfbc",
+        "kind": "receivable",
+        "paidNio": 819.84,
+        "reference": "FAC-000068",
+        "balanceNio": 1639.68,
+        "documentId": "edd53c28-932f-4ad4-b617-e3f629aecfbc",
+        "occurredOn": "2026-10-13",
+        "shipmentId": null,
+        "originalNio": 2459.52,
+        "counterparty": "María López [DEMO]"
+      },
+      {
+        "id": "f7457b64-f33f-46ce-a87f-e955a321f9cc",
+        "kind": "payable",
+        "paidNio": 0,
+        "reference": "DEMO-LCP-20261013-COMPRA-7",
+        "balanceNio": 45750,
+        "documentId": null,
+        "occurredOn": "2026-10-13",
+        "shipmentId": "f7457b64-f33f-46ce-a87f-e955a321f9cc",
+        "originalNio": 45750,
+        "counterparty": "Distribuidora Perfumes [DEMO]"
+      },
+      {
+        "id": "fb1b3a90-8bee-4be2-9dd0-71e50401568b",
+        "kind": "payable",
+        "paidNio": 0,
+        "reference": "DEMO-LCP-20261013-COMPRA-12",
+        "balanceNio": 58560,
+        "documentId": null,
+        "occurredOn": "2026-10-13",
+        "shipmentId": "fb1b3a90-8bee-4be2-9dd0-71e50401568b",
+        "originalNio": 58560,
+        "counterparty": "Importadora Aroma [DEMO]"
+      }
+    ],
+    "startOn": "2026-10-13",
+    "available": true,
+    "legacyPayments": 0,
+    "unallocatedNio": {
+      "payables": 0,
+      "receivables": 0
+    }
+  },
+  "ledger": {
+    "to": "2026-10-13",
+    "from": "2026-10-13",
+    "entries": [
+      {
+        "id": "7ec32c5e-c32c-4d1b-a511-96237d4e3535",
+        "kind": "opening",
+        "number": 1,
+        "currency": "NIO",
+        "reference": "DEMO-LCP-20261013",
+        "voided_at": null,
+        "description": "DEMO-LCP-20261013: saldos iniciales de presentación",
+        "occurred_on": "2026-10-13",
+        "void_reason": null,
+        "exchange_rate": 1
+      }
+    ],
+    "startOn": "2026-10-13",
+    "accounts": [
+      {
+        "code": "1000",
+        "name": "Activo",
+        "debit": 0,
+        "bucket": "asset",
+        "credit": 0,
+        "nature": "debit",
+        "parent": null,
+        "closing": 0,
+        "opening": 0,
+        "postable": false
+      },
+      {
+        "code": "1100",
+        "name": "Activo circulante",
+        "debit": 0,
+        "bucket": "asset",
+        "credit": 0,
+        "nature": "debit",
+        "parent": "1000",
+        "closing": 0,
+        "opening": 0,
+        "postable": false
+      },
+      {
+        "code": "1110",
+        "name": "Caja",
+        "debit": 0,
+        "bucket": "asset",
+        "credit": 0,
+        "nature": "debit",
+        "parent": "1100",
+        "closing": 0,
+        "opening": 0,
+        "postable": false
+      },
+      {
+        "code": "1110-001",
+        "name": "Caja córdobas",
+        "debit": 140129.05,
+        "bucket": "asset",
+        "credit": 71507,
+        "nature": "debit",
+        "parent": "1110",
+        "closing": 68622.05,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "1110-002",
+        "name": "Caja dólares",
+        "debit": 126275.85,
+        "bucket": "asset",
+        "credit": 27230.4,
+        "nature": "debit",
+        "parent": "1110",
+        "closing": 99045.45,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "1120",
+        "name": "Bancos",
+        "debit": 0,
+        "bucket": "asset",
+        "credit": 0,
+        "nature": "debit",
+        "parent": "1100",
+        "closing": 0,
+        "opening": 0,
+        "postable": false
+      },
+      {
+        "code": "1120-000",
+        "name": "Banco por identificar",
+        "debit": 273200,
+        "bucket": "asset",
+        "credit": 111448,
+        "nature": "debit",
+        "parent": "1120",
+        "closing": 161752,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "1120-001",
+        "name": "BAC C$",
+        "debit": 141993.01,
+        "bucket": "asset",
+        "credit": 5000,
+        "nature": "debit",
+        "parent": "1120",
+        "closing": 136993.01,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "1120-002",
+        "name": "BAC US$",
+        "debit": 0,
+        "bucket": "asset",
+        "credit": 0,
+        "nature": "debit",
+        "parent": "1120",
+        "closing": 0,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "1120-003",
+        "name": "LAFISE C$",
+        "debit": 74581.65,
+        "bucket": "asset",
+        "credit": 0,
+        "nature": "debit",
+        "parent": "1120",
+        "closing": 74581.65,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "1120-004",
+        "name": "LAFISE US$",
+        "debit": 0,
+        "bucket": "asset",
+        "credit": 0,
+        "nature": "debit",
+        "parent": "1120",
+        "closing": 0,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "1120-005",
+        "name": "Ficohsa C$",
+        "debit": 82339.02,
+        "bucket": "asset",
+        "credit": 0,
+        "nature": "debit",
+        "parent": "1120",
+        "closing": 82339.02,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "1120-006",
+        "name": "Ficohsa US$",
+        "debit": 0,
+        "bucket": "asset",
+        "credit": 0,
+        "nature": "debit",
+        "parent": "1120",
+        "closing": 0,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "1130",
+        "name": "Inventario de perfumes",
+        "debit": 915371.25,
+        "bucket": "asset",
+        "credit": 302648.42,
+        "nature": "debit",
+        "parent": "1100",
+        "closing": 612722.83,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "1140",
+        "name": "Cuentas por cobrar a clientes",
+        "debit": 46229.46,
+        "bucket": "asset",
+        "credit": 15300.99,
+        "nature": "debit",
+        "parent": "1100",
+        "closing": 30928.47,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "1142",
+        "name": "Tarjetas pendientes de acreditar",
+        "debit": 85153.56,
+        "bucket": "asset",
+        "credit": 0,
+        "nature": "debit",
+        "parent": "1100",
+        "closing": 85153.56,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "1200",
+        "name": "Activo fijo",
+        "debit": 0,
+        "bucket": "asset",
+        "credit": 0,
+        "nature": "debit",
+        "parent": "1000",
+        "closing": 0,
+        "opening": 0,
+        "postable": false
+      },
+      {
+        "code": "1210",
+        "name": "Mobiliario y equipo",
+        "debit": 0,
+        "bucket": "asset",
+        "credit": 0,
+        "nature": "debit",
+        "parent": "1200",
+        "closing": 0,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "1290",
+        "name": "Depreciación acumulada",
+        "debit": 0,
+        "bucket": "asset",
+        "credit": 0,
+        "nature": "credit",
+        "parent": "1200",
+        "closing": 0,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "1300",
+        "name": "Otros activos",
+        "debit": 0,
+        "bucket": "asset",
+        "credit": 0,
+        "nature": "debit",
+        "parent": "1000",
+        "closing": 0,
+        "opening": 0,
+        "postable": false
+      },
+      {
+        "code": "1340",
+        "name": "Retenciones de IR acreditables",
+        "debit": 0,
+        "bucket": "asset",
+        "credit": 0,
+        "nature": "debit",
+        "parent": "1300",
+        "closing": 0,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "2000",
+        "name": "Pasivo",
+        "debit": 0,
+        "bucket": "liability",
+        "credit": 0,
+        "nature": "credit",
+        "parent": null,
+        "closing": 0,
+        "opening": 0,
+        "postable": false
+      },
+      {
+        "code": "2100",
+        "name": "Pasivo circulante",
+        "debit": 0,
+        "bucket": "liability",
+        "credit": 0,
+        "nature": "credit",
+        "parent": "2000",
+        "closing": 0,
+        "opening": 0,
+        "postable": false
+      },
+      {
+        "code": "2111",
+        "name": "Proveedores",
+        "debit": 5000,
+        "bucket": "liability",
+        "credit": 711555,
+        "nature": "credit",
+        "parent": "2100",
+        "closing": -706555,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "2112",
+        "name": "Acreedores diversos",
+        "debit": 0,
+        "bucket": "liability",
+        "credit": 0,
+        "nature": "credit",
+        "parent": "2100",
+        "closing": 0,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "2113",
+        "name": "Préstamos por pagar",
+        "debit": 0,
+        "bucket": "liability",
+        "credit": 0,
+        "nature": "credit",
+        "parent": "2100",
+        "closing": 0,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "2116",
+        "name": "Impuestos por pagar",
+        "debit": 0,
+        "bucket": "liability",
+        "credit": 0,
+        "nature": "credit",
+        "parent": "2100",
+        "closing": 0,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "3000",
+        "name": "Capital",
+        "debit": 0,
+        "bucket": "equity",
+        "credit": 0,
+        "nature": "credit",
+        "parent": null,
+        "closing": 0,
+        "opening": 0,
+        "postable": false
+      },
+      {
+        "code": "3110",
+        "name": "Capital aportado",
+        "debit": 0,
+        "bucket": "equity",
+        "credit": 0,
+        "nature": "credit",
+        "parent": "3000",
+        "closing": 0,
+        "opening": 0,
+        "postable": false
+      },
+      {
+        "code": "3110-001",
+        "name": "Capital — Miguel",
+        "debit": 0,
+        "bucket": "equity",
+        "credit": 547120,
+        "nature": "credit",
+        "parent": "3110",
+        "closing": -547120,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "3190",
+        "name": "Resultados acumulados",
+        "debit": 0,
+        "bucket": "equity",
+        "credit": 0,
+        "nature": "credit",
+        "parent": "3000",
+        "closing": 0,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "4000",
+        "name": "Ingresos",
+        "debit": 0,
+        "bucket": "revenue",
+        "credit": 0,
+        "nature": "credit",
+        "parent": null,
+        "closing": 0,
+        "opening": 0,
+        "postable": false
+      },
+      {
+        "code": "4110",
+        "name": "Ventas",
+        "debit": 0,
+        "bucket": "revenue",
+        "credit": 407480.61,
+        "nature": "credit",
+        "parent": "4000",
+        "closing": -407480.61,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "4190",
+        "name": "Otros ingresos",
+        "debit": 0,
+        "bucket": "revenue",
+        "credit": 905.85,
+        "nature": "credit",
+        "parent": "4000",
+        "closing": -905.85,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "5000",
+        "name": "Costos y gastos",
+        "debit": 0,
+        "bucket": "expense",
+        "credit": 0,
+        "nature": "debit",
+        "parent": null,
+        "closing": 0,
+        "opening": 0,
+        "postable": false
+      },
+      {
+        "code": "5120",
+        "name": "Costo de venta",
+        "debit": 275548.27,
+        "bucket": "cost",
+        "credit": 0,
+        "nature": "debit",
+        "parent": "5000",
+        "closing": 275548.27,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "5130",
+        "name": "Gastos de administración y ventas",
+        "debit": 0,
+        "bucket": "expense",
+        "credit": 0,
+        "nature": "debit",
+        "parent": "5000",
+        "closing": 0,
+        "opening": 0,
+        "postable": false
+      },
+      {
+        "code": "5130-001",
+        "name": "Sueldos",
+        "debit": 0,
+        "bucket": "expense",
+        "credit": 0,
+        "nature": "debit",
+        "parent": "5130",
+        "closing": 0,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "5130-002",
+        "name": "Alquiler",
+        "debit": 3500,
+        "bucket": "expense",
+        "credit": 0,
+        "nature": "debit",
+        "parent": "5130",
+        "closing": 3500,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "5130-003",
+        "name": "Agua y energía",
+        "debit": 0,
+        "bucket": "expense",
+        "credit": 0,
+        "nature": "debit",
+        "parent": "5130",
+        "closing": 0,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "5130-004",
+        "name": "Alcaldía: impuesto sobre ventas",
+        "debit": 0,
+        "bucket": "expense",
+        "credit": 0,
+        "nature": "debit",
+        "parent": "5130",
+        "closing": 0,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "5130-005",
+        "name": "Alcaldía: matrícula",
+        "debit": 0,
+        "bucket": "expense",
+        "credit": 0,
+        "nature": "debit",
+        "parent": "5130",
+        "closing": 0,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "5130-006",
+        "name": "Papelería y materiales",
+        "debit": 1400,
+        "bucket": "expense",
+        "credit": 0,
+        "nature": "debit",
+        "parent": "5130",
+        "closing": 1400,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "5130-007",
+        "name": "Transporte y combustible",
+        "debit": 0,
+        "bucket": "expense",
+        "credit": 0,
+        "nature": "debit",
+        "parent": "5130",
+        "closing": 0,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "5130-008",
+        "name": "Publicidad",
+        "debit": 1475,
+        "bucket": "expense",
+        "credit": 0,
+        "nature": "debit",
+        "parent": "5130",
+        "closing": 1475,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "5130-009",
+        "name": "Comunicaciones y limpieza",
+        "debit": 900,
+        "bucket": "expense",
+        "credit": 0,
+        "nature": "debit",
+        "parent": "5130",
+        "closing": 900,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "5130-010",
+        "name": "Otros gastos",
+        "debit": 0,
+        "bucket": "expense",
+        "credit": 0,
+        "nature": "debit",
+        "parent": "5130",
+        "closing": 0,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "5140",
+        "name": "Gastos financieros",
+        "debit": 0,
+        "bucket": "expense",
+        "credit": 0,
+        "nature": "debit",
+        "parent": "5000",
+        "closing": 0,
+        "opening": 0,
+        "postable": false
+      },
+      {
+        "code": "5140-001",
+        "name": "Comisión de tarjetas",
+        "debit": 0,
+        "bucket": "expense",
+        "credit": 0,
+        "nature": "debit",
+        "parent": "5140",
+        "closing": 0,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "5140-002",
+        "name": "Intereses",
+        "debit": 0,
+        "bucket": "expense",
+        "credit": 0,
+        "nature": "debit",
+        "parent": "5140",
+        "closing": 0,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "5150",
+        "name": "Pérdidas de inventario",
+        "debit": 27100.15,
+        "bucket": "expense",
+        "credit": 0,
+        "nature": "debit",
+        "parent": "5000",
+        "closing": 27100.15,
+        "opening": 0,
+        "postable": true
+      },
+      {
+        "code": "6000",
+        "name": "Impuesto sobre la renta",
+        "debit": 0,
+        "bucket": "tax",
+        "credit": 0,
+        "nature": "debit",
+        "parent": null,
+        "closing": 0,
+        "opening": 0,
+        "postable": true
+      }
+    ],
+    "missingCosts": 0,
+    "missingSales": 0
+  },
+  "products": 8,
+  "customers": 5,
+  "documents": [
+    {
+      "kind": "invoice",
+      "total": 2415.6,
+      "number": "FAC-000003",
+      "payment": "cash",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 2635.2,
+      "number": "FAC-000004",
+      "payment": "cash",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 3894.24,
+      "number": "FAC-000005",
+      "payment": "card_pos",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 3563.01,
+      "number": "FAC-000006",
+      "payment": "bac_nio",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 4666.5,
+      "number": "FAC-000007",
+      "payment": "pending",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 8454.6,
+      "number": "FAC-000008",
+      "payment": "lafise_nio",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 173.25,
+      "number": "FAC-000009",
+      "payment": "cash",
+      "currency": "USD"
+    },
+    {
+      "kind": "invoice",
+      "total": 87,
+      "number": "FAC-000010",
+      "payment": "pending",
+      "currency": "USD"
+    },
+    {
+      "kind": "invoice",
+      "total": 2971.92,
+      "number": "FAC-000011",
+      "payment": "card_pos",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 2898.72,
+      "number": "FAC-000012",
+      "payment": "ficohsa_nio",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 2745,
+      "number": "FAC-000013",
+      "payment": "cash",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 4252.92,
+      "number": "FAC-000014",
+      "payment": "pending",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 198,
+      "number": "FAC-000015",
+      "payment": "cash",
+      "currency": "USD"
+    },
+    {
+      "kind": "invoice",
+      "total": 11803.5,
+      "number": "FAC-000016",
+      "payment": "card_pos",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 5380.2,
+      "number": "FAC-000017",
+      "payment": "bac_nio",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 5918.22,
+      "number": "FAC-000018",
+      "payment": "lafise_nio",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 4172.4,
+      "number": "FAC-000019",
+      "payment": "ficohsa_nio",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 67.2,
+      "number": "FAC-000020",
+      "payment": "pending",
+      "currency": "USD"
+    },
+    {
+      "kind": "invoice",
+      "total": 125.4,
+      "number": "FAC-000021",
+      "payment": "cash",
+      "currency": "USD"
+    },
+    {
+      "kind": "invoice",
+      "total": 5874.3,
+      "number": "FAC-000022",
+      "payment": "card_pos",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 4355.4,
+      "number": "FAC-000023",
+      "payment": "bac_nio",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 9964.35,
+      "number": "FAC-000024",
+      "payment": "lafise_nio",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 12901.5,
+      "number": "FAC-000025",
+      "payment": "ficohsa_nio",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 81.2,
+      "number": "FAC-000026",
+      "payment": "pending",
+      "currency": "USD"
+    },
+    {
+      "kind": "invoice",
+      "total": 95.7,
+      "number": "FAC-000027",
+      "payment": "cash",
+      "currency": "USD"
+    },
+    {
+      "kind": "invoice",
+      "total": 5050.8,
+      "number": "FAC-000028",
+      "payment": "card_pos",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 2562,
+      "number": "FAC-000029",
+      "payment": "bac_nio",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 5012.37,
+      "number": "FAC-000030",
+      "payment": "lafise_nio",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 8509.5,
+      "number": "FAC-000031",
+      "payment": "ficohsa_nio",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 161,
+      "number": "FAC-000032",
+      "payment": "pending",
+      "currency": "USD"
+    },
+    {
+      "kind": "invoice",
+      "total": 280.5,
+      "number": "FAC-000033",
+      "payment": "cash",
+      "currency": "USD"
+    },
+    {
+      "kind": "invoice",
+      "total": 7576.2,
+      "number": "FAC-000034",
+      "payment": "card_pos",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 2049.6,
+      "number": "FAC-000035",
+      "payment": "bac_nio",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 4227.3,
+      "number": "FAC-000036",
+      "payment": "lafise_nio",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 5599.8,
+      "number": "FAC-000037",
+      "payment": "ficohsa_nio",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 82.6,
+      "number": "FAC-000038",
+      "payment": "pending",
+      "currency": "USD"
+    },
+    {
+      "kind": "invoice",
+      "total": 198,
+      "number": "FAC-000039",
+      "payment": "cash",
+      "currency": "USD"
+    },
+    {
+      "kind": "invoice",
+      "total": 11803.5,
+      "number": "FAC-000040",
+      "payment": "card_pos",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 5380.2,
+      "number": "FAC-000041",
+      "payment": "bac_nio",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 5918.22,
+      "number": "FAC-000042",
+      "payment": "lafise_nio",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 4172.4,
+      "number": "FAC-000043",
+      "payment": "ficohsa_nio",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 67.2,
+      "number": "FAC-000044",
+      "payment": "pending",
+      "currency": "USD"
+    },
+    {
+      "kind": "invoice",
+      "total": 125.4,
+      "number": "FAC-000045",
+      "payment": "cash",
+      "currency": "USD"
+    },
+    {
+      "kind": "invoice",
+      "total": 5874.3,
+      "number": "FAC-000046",
+      "payment": "card_pos",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 4355.4,
+      "number": "FAC-000047",
+      "payment": "bac_nio",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 9964.35,
+      "number": "FAC-000048",
+      "payment": "lafise_nio",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 12901.5,
+      "number": "FAC-000049",
+      "payment": "ficohsa_nio",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 81.2,
+      "number": "FAC-000050",
+      "payment": "pending",
+      "currency": "USD"
+    },
+    {
+      "kind": "invoice",
+      "total": 95.7,
+      "number": "FAC-000051",
+      "payment": "cash",
+      "currency": "USD"
+    },
+    {
+      "kind": "invoice",
+      "total": 5050.8,
+      "number": "FAC-000052",
+      "payment": "card_pos",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 2562,
+      "number": "FAC-000053",
+      "payment": "bac_nio",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 5012.37,
+      "number": "FAC-000054",
+      "payment": "lafise_nio",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 8509.5,
+      "number": "FAC-000055",
+      "payment": "ficohsa_nio",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 161,
+      "number": "FAC-000056",
+      "payment": "pending",
+      "currency": "USD"
+    },
+    {
+      "kind": "invoice",
+      "total": 280.5,
+      "number": "FAC-000057",
+      "payment": "cash",
+      "currency": "USD"
+    },
+    {
+      "kind": "invoice",
+      "total": 7576.2,
+      "number": "FAC-000058",
+      "payment": "card_pos",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 2049.6,
+      "number": "FAC-000059",
+      "payment": "bac_nio",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 4227.3,
+      "number": "FAC-000060",
+      "payment": "lafise_nio",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 5599.8,
+      "number": "FAC-000061",
+      "payment": "ficohsa_nio",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 82.6,
+      "number": "FAC-000062",
+      "payment": "pending",
+      "currency": "USD"
+    },
+    {
+      "kind": "invoice",
+      "total": 198,
+      "number": "FAC-000063",
+      "payment": "cash",
+      "currency": "USD"
+    },
+    {
+      "kind": "invoice",
+      "total": 11803.5,
+      "number": "FAC-000064",
+      "payment": "card_pos",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 5380.2,
+      "number": "FAC-000065",
+      "payment": "bac_nio",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 5918.22,
+      "number": "FAC-000066",
+      "payment": "lafise_nio",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 4172.4,
+      "number": "FAC-000067",
+      "payment": "ficohsa_nio",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 67.2,
+      "number": "FAC-000068",
+      "payment": "pending",
+      "currency": "USD"
+    },
+    {
+      "kind": "invoice",
+      "total": 125.4,
+      "number": "FAC-000069",
+      "payment": "cash",
+      "currency": "USD"
+    },
+    {
+      "kind": "invoice",
+      "total": 5874.3,
+      "number": "FAC-000070",
+      "payment": "card_pos",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 4355.4,
+      "number": "FAC-000071",
+      "payment": "bac_nio",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 9964.35,
+      "number": "FAC-000072",
+      "payment": "lafise_nio",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 12901.5,
+      "number": "FAC-000073",
+      "payment": "ficohsa_nio",
+      "currency": "NIO"
+    },
+    {
+      "kind": "invoice",
+      "total": 81.2,
+      "number": "FAC-000074",
+      "payment": "pending",
+      "currency": "USD"
+    },
+    {
+      "kind": "proforma",
+      "total": 204.6,
+      "number": "PRO-000001",
+      "payment": null,
+      "currency": "USD"
+    },
+    {
+      "kind": "proforma",
+      "total": 273.9,
+      "number": "PRO-000002",
+      "payment": null,
+      "currency": "USD"
+    },
+    {
+      "kind": "proforma",
+      "total": 246.4,
+      "number": "PRO-000003",
+      "payment": null,
+      "currency": "USD"
+    },
+    {
+      "kind": "proforma",
+      "total": 331.65,
+      "number": "PRO-000004",
+      "payment": null,
+      "currency": "USD"
+    },
+    {
+      "kind": "proforma",
+      "total": 435,
+      "number": "PRO-000005",
+      "payment": null,
+      "currency": "USD"
+    },
+    {
+      "kind": "proforma",
+      "total": 553,
+      "number": "PRO-000006",
+      "payment": null,
+      "currency": "USD"
+    },
+    {
+      "kind": "proforma",
+      "total": 627,
+      "number": "PRO-000007",
+      "payment": null,
+      "currency": "USD"
+    },
+    {
+      "kind": "proforma",
+      "total": 321,
+      "number": "PRO-000008",
+      "payment": null,
+      "currency": "USD"
+    },
+    {
+      "kind": "proforma",
+      "total": 193.2,
+      "number": "PRO-000009",
+      "payment": null,
+      "currency": "USD"
+    },
+    {
+      "kind": "proforma",
+      "total": 273.9,
+      "number": "PRO-000010",
+      "payment": null,
+      "currency": "USD"
+    },
+    {
+      "kind": "proforma",
+      "total": 264,
+      "number": "PRO-000011",
+      "payment": null,
+      "currency": "USD"
+    },
+    {
+      "kind": "proforma",
+      "total": 281.4,
+      "number": "PRO-000012",
+      "payment": null,
+      "currency": "USD"
+    }
+  ],
+  "movements": [
+    {
+      "type": "ADJUSTMENT",
+      "records": 18,
+      "quantity": 6
+    },
+    {
+      "type": "DAMAGED",
+      "records": 11,
+      "quantity": 11
+    },
+    {
+      "type": "ENTRY",
+      "records": 75,
+      "quantity": 700
+    },
+    {
+      "type": "EXIT",
+      "records": 11,
+      "quantity": 11
+    },
+    {
+      "type": "SALE",
+      "records": 144,
+      "quantity": 208
+    }
+  ],
+  "purchases": [
+    {
+      "total": 744,
+      "units": 32,
+      "account": "caja",
+      "currency": "USD",
+      "reference": "DEMO-LCP-20261013-COMPRA-1"
+    },
+    {
+      "total": 1170,
+      "units": 24,
+      "account": "banco",
+      "currency": "USD",
+      "reference": "DEMO-LCP-20261013-COMPRA-2"
+    },
+    {
+      "total": 56232,
+      "units": 32,
+      "account": "credito",
+      "currency": "NIO",
+      "reference": "DEMO-LCP-20261013-COMPRA-3"
+    },
+    {
+      "total": 320,
+      "units": 12,
+      "account": "credito",
+      "currency": "USD",
+      "reference": "DEMO-LCP-20261013-COMPRA-4"
+    },
+    {
+      "total": 25437,
+      "units": 30,
+      "account": "credito",
+      "currency": "NIO",
+      "reference": "DEMO-LCP-20261013-COMPRA-5"
+    },
+    {
+      "total": 41724,
+      "units": 30,
+      "account": "credito",
+      "currency": "NIO",
+      "reference": "DEMO-LCP-20261013-COMPRA-6"
+    },
+    {
+      "total": 1250,
+      "units": 30,
+      "account": "credito",
+      "currency": "USD",
+      "reference": "DEMO-LCP-20261013-COMPRA-7"
+    },
+    {
+      "total": 27633,
+      "units": 30,
+      "account": "credito",
+      "currency": "NIO",
+      "reference": "DEMO-LCP-20261013-COMPRA-8"
+    },
+    {
+      "total": 56730,
+      "units": 30,
+      "account": "credito",
+      "currency": "NIO",
+      "reference": "DEMO-LCP-20261013-COMPRA-9"
+    },
+    {
+      "total": 820,
+      "units": 30,
+      "account": "credito",
+      "currency": "USD",
+      "reference": "DEMO-LCP-20261013-COMPRA-10"
+    },
+    {
+      "total": 32391,
+      "units": 30,
+      "account": "banco",
+      "currency": "NIO",
+      "reference": "DEMO-LCP-20261013-COMPRA-11"
+    },
+    {
+      "total": 58560,
+      "units": 30,
+      "account": "credito",
+      "currency": "NIO",
+      "reference": "DEMO-LCP-20261013-COMPRA-12"
+    },
+    {
+      "total": 680,
+      "units": 30,
+      "account": "credito",
+      "currency": "USD",
+      "reference": "DEMO-LCP-20261013-COMPRA-13"
+    },
+    {
+      "total": 41175,
+      "units": 30,
+      "account": "caja",
+      "currency": "NIO",
+      "reference": "DEMO-LCP-20261013-COMPRA-14"
+    },
+    {
+      "total": 46848,
+      "units": 30,
+      "account": "credito",
+      "currency": "NIO",
+      "reference": "DEMO-LCP-20261013-COMPRA-15"
+    },
+    {
+      "total": 740,
+      "units": 30,
+      "account": "credito",
+      "currency": "USD",
+      "reference": "DEMO-LCP-20261013-COMPRA-16"
+    },
+    {
+      "total": 56181,
+      "units": 30,
+      "account": "credito",
+      "currency": "NIO",
+      "reference": "DEMO-LCP-20261013-COMPRA-17"
+    },
+    {
+      "total": 31110,
+      "units": 30,
+      "account": "banco",
+      "currency": "NIO",
+      "reference": "DEMO-LCP-20261013-COMPRA-18"
+    },
+    {
+      "total": 870,
+      "units": 30,
+      "account": "credito",
+      "currency": "USD",
+      "reference": "DEMO-LCP-20261013-COMPRA-19"
+    },
+    {
+      "total": 58011,
+      "units": 30,
+      "account": "credito",
+      "currency": "NIO",
+      "reference": "DEMO-LCP-20261013-COMPRA-20"
+    },
+    {
+      "total": 25986,
+      "units": 30,
+      "account": "credito",
+      "currency": "NIO",
+      "reference": "DEMO-LCP-20261013-COMPRA-21"
+    },
+    {
+      "total": 1110,
+      "units": 30,
+      "account": "credito",
+      "currency": "USD",
+      "reference": "DEMO-LCP-20261013-COMPRA-22"
+    },
+    {
+      "total": 46299,
+      "units": 30,
+      "account": "credito",
+      "currency": "NIO",
+      "reference": "DEMO-LCP-20261013-COMPRA-23"
+    },
+    {
+      "total": 28182,
+      "units": 30,
+      "account": "caja",
+      "currency": "NIO",
+      "reference": "DEMO-LCP-20261013-COMPRA-24"
+    }
+  ],
+  "suppliers": 2
+}

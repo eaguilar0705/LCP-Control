@@ -82,7 +82,7 @@ try {
         return send({ role: 'superadmin', active: true })
       if (url.pathname.endsWith('/rpc/ledger_report'))
         return send({
-          startOn: today.slice(0, 7) + '-01',
+          startOn: today,
           from: body.p_from,
           to: body.p_to,
           missingCosts: 0,
@@ -166,7 +166,9 @@ try {
         return send({ usd_to_nio: 36.6, updated_at: new Date().toISOString() })
       return send([])
     })
-    await page.goto('http://127.0.0.1:5173/login')
+    await page.goto(
+      `${process.env.LCP_TEST_BASE_URL ?? 'http://127.0.0.1:5173'}/login`,
+    )
     await page
       .getByLabel('Correo electrónico', { exact: true })
       .fill('visual@example.test')
@@ -234,7 +236,9 @@ try {
       .waitFor()
     assert.ok(
       await page.evaluate(
-        () => globalThis.document.documentElement.scrollWidth <= globalThis.innerWidth + 1,
+        () =>
+          globalThis.document.documentElement.scrollWidth <=
+          globalThis.innerWidth + 1,
       ),
       `page overflow ${width}`,
     )
@@ -242,6 +246,25 @@ try {
       path: `output/accounting-review/accounting-${width}.png`,
       fullPage: true,
     })
+    for (const title of [
+      'Balanza de comprobación',
+      'Estado de resultado',
+      'Estado de situación financiera',
+    ]) {
+      await page.getByRole('button', { name: title, exact: true }).click()
+      await page.getByRole('heading', { name: title, exact: true }).waitFor()
+      assert.equal(
+        await page
+          .locator('.statement-table')
+          .getByText('Pendiente', { exact: true })
+          .count(),
+        0,
+        `${title} preserves known balances when the month starts before the opening`,
+      )
+    }
+    await page
+      .getByRole('button', { name: 'Comprobantes', exact: true })
+      .click()
     await page
       .getByRole('button', { name: 'Liquidación de tarjetas', exact: true })
       .click()

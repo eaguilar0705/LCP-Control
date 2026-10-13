@@ -42,6 +42,10 @@ export function journalModel(
   const warnings: string[] = []
   if (!data.startOn)
     warnings.push('Falta registrar el comprobante de saldos iniciales.')
+  else if (data.to < data.startOn)
+    warnings.push(
+      `El período termina antes de la apertura del ${data.startOn}.`,
+    )
   else if (data.from < data.startOn)
     warnings.push(`El libro contable comienza el ${data.startOn}.`)
   if (data.missingCosts)
@@ -50,7 +54,13 @@ export function journalModel(
     warnings.push(
       `${data.missingSales} facturas sin detalle contable completo.`,
     )
-  const complete = warnings.length === 0
+  // Consultar desde antes de la apertura sólo limita el alcance del libro.
+  // Ese aviso no invalida los saldos y movimientos registrados desde su inicio.
+  const complete =
+    data.startOn !== null &&
+    data.startOn <= data.to &&
+    data.missingCosts === 0 &&
+    data.missingSales === 0
   const accounts = data.accounts.filter((a) => a.postable)
   const sum = (bucket: LedgerAccount['bucket'], period: boolean) =>
     round(
