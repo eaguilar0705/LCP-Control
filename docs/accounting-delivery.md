@@ -45,7 +45,7 @@ Las transferencias y minutas no se consideran ingresos ni gastos. Los comprobant
 2. `npm run check` (lint, contratos, tipos y compilación).
 3. `npm run test:accounting` (modelos financieros, Excel y nuevo libro).
 4. `npm run test:database` (migraciones en PostgreSQL desechable/PGlite, permisos, RLS, reintentos, diario, comprobantes, costos, compras y ventas sin IVA). No contacta producción. Omite dos migraciones de endurecimiento de funciones internas exclusivas de la plataforma Supabase.
-5. `npm run dev -- --port 5173`, luego `npm run test:browser` (Chrome instalado; API simulada, sin escrituras a Supabase; 1440/390/320 px, apertura/cierre, PDF y liquidación de tarjeta). Capturas en `output/accounting-review/`.
+5. `npm run dev -- --port 5173`, luego `npm run test:browser` (Chrome instalado; formularios contra PostgreSQL desechable, Auth simulado, sin escrituras a Supabase; 1440/390/320 px). Capturas en `output/system-review/`. La revisión ampliada y sus resultados están en [revisión integral del 13 de octubre](revision-integral-2026-10-13.md).
 
 Las pruebas no certifican obligaciones tributarias de la empresa. La configuración de cuentas, saldos y tasas corresponde a sus datos y criterio contable. Referencia técnica para el costo de inventarios: [IAS 2, IFRS Foundation](https://www.ifrs.org/issued-standards/list-of-standards/ias-2-inventories/).
 

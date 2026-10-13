@@ -95,4 +95,10 @@ test('card settlement rates are inputs; withholding is separate from the fee', (
   })
   assert.throws(() => cardSettlement(1000, 90, 20))
   assert.throws(() => cardSettlement(0, 4.5, 1.5))
+  assert.deepEqual(cardSettlement(1000, 90, 20, 'net_commission'), {
+    commission: 900,
+    withholding: 20,
+    net: 80,
+  })
+  assert.throws(() => cardSettlement(1000, 0, 101, 'net_commission'))
 })

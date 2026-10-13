@@ -17,10 +17,15 @@ import { readLedger } from './journalService'
 import { journalModel } from './journalModel'
 import { JournalWorkspace, AccountEditor } from './JournalWorkspace'
 import { emptyLedger } from './finance'
+import { CreditWorkspace } from './CreditWorkspace'
 import '../../styles/accounting.css'
 import '../../styles/business-day.css'
 
-const views = { ...accountingViews, journal: 'Comprobantes' }
+const views = {
+  journal: 'Comprobantes',
+  credits: 'Cobros y pagos',
+  ...accountingViews,
+}
 export function AccountingPage() {
   const { salesService } = useServices()
   const [view, setView] = useState<keyof typeof views>('journal')
@@ -121,6 +126,14 @@ export function AccountingPage() {
         <LoadingState />
       ) : view === 'journal' ? (
         <JournalWorkspace data={data.ledger} onChanged={refresh} />
+      ) : view === 'credits' ? (
+        <CreditWorkspace
+          range={range}
+          bankAccounts={data.ledger.accounts.filter(
+            (a) => a.code.startsWith('1120-') && a.postable,
+          )}
+          onChanged={refresh}
+        />
       ) : view === 'catalog' ? (
         <>
           <AccountEditor data={data.ledger} onSaved={refresh} />

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { errorMessage } from './errors'
 export function useQuery<T>(load: () => Promise<T>) {
   const [state, setState] = useState<{
@@ -21,16 +21,18 @@ export function useQuery<T>(load: () => Promise<T>) {
       active = false
     }
   }, [load, attempt])
+  const retry = useCallback(() => {
+    setState({ data: null, error: null, loading: true })
+    setAttempt((value) => value + 1)
+  }, [])
+  const refresh = useCallback(() => setAttempt((value) => value + 1), [])
   return {
     ...state,
-    retry: () => {
-      setState({ data: null, error: null, loading: true })
-      setAttempt((value) => value + 1)
-    },
+    retry,
     /**
      * Vuelve a leer sin quitar lo que ya se ve: después de guardar, la lista
      * no parpadea y el foco sigue en la fila que se editó.
      */
-    refresh: () => setAttempt((value) => value + 1),
+    refresh,
   }
 }

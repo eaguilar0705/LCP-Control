@@ -213,7 +213,8 @@ export function cardSettlement(
     gross <= 0 ||
     commissionRate < 0 ||
     withholdingRate < 0 ||
-    commissionRate + withholdingRate > 100
+    commissionRate > 100 ||
+    withholdingRate > 100
   )
     throw new Error('Importe o tasas inválidos.')
   const commission = round((gross * commissionRate) / 100),

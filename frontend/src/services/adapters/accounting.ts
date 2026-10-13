@@ -155,6 +155,7 @@ function toFinanceEntry(row: AccountingRow): FinanceEntryRecord {
     reference: row.reference as string,
     documentId: (row.document_id ?? null) as string | null,
     shipmentId: (row.shipment_id ?? null) as string | null,
+    bankLedgerAccount: (row.bank_ledger_account ?? null) as string | null,
     createdAt: row.created_at as string,
     voidedAt: row.voided_at as string | null,
     voidReason: row.void_reason as string | null,
@@ -254,7 +255,7 @@ export function createAccountingAdapter(
           client()
             .from('finance_entries')
             .select(
-              'id,request_id,occurred_on,kind,account,to_account,amount,currency,exchange_rate,counterparty,description,reference,document_id,shipment_id,created_at,voided_at,void_reason',
+              'id,request_id,occurred_on,kind,account,to_account,bank_ledger_account,amount,currency,exchange_rate,counterparty,description,reference,document_id,shipment_id,created_at,voided_at,void_reason',
               { count: 'exact' },
             )
             .lte('occurred_on', range.to)

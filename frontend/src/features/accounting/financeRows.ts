@@ -34,7 +34,10 @@ const entrySign = (kind: FinanceKind): Row['sign'] =>
       ? 0
       : 1
 
-export function rowsOf(ledger: FinanceLedger): Row[] {
+export function rowsOf(
+  ledger: FinanceLedger,
+  bankNames: Record<string, string> = {},
+): Row[] {
   const entries = ledger.entries.map((entry): Row => ({
     id: entry.id,
     source: 'entry',
@@ -46,7 +49,8 @@ export function rowsOf(ledger: FinanceLedger): Row[] {
       .join(' · '),
     account: entry.toAccount
       ? `${financeAccounts[entry.account]} → ${moneyAccounts[entry.toAccount]}`
-      : financeAccounts[entry.account],
+      : (entry.bankLedgerAccount && bankNames[entry.bankLedgerAccount]) ||
+        financeAccounts[entry.account],
     amountNio: toNio(entry),
     sign: entrySign(entry.kind),
     voidReason: entry.voidedAt ? (entry.voidReason ?? '') : null,

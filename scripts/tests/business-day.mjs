@@ -148,7 +148,8 @@ try {
     lines: [
       { account: '1110-001', debit: 100, credit: 0 },
       { account: '1130', debit: 5000, credit: 0 },
-      { account: '3110-001', debit: 0, credit: 5100 },
+      { account: '1142', debit: 1000, credit: 0 },
+      { account: '3110-001', debit: 0, credit: 6100 },
     ],
   })
   const openingId = await rpc('record_journal_entry', opening)
@@ -225,7 +226,7 @@ try {
   const account = (code) => report.accounts.find((a) => a.code === code)
   assert.equal(account('1110-001').closing, 330)
   assert.equal(account('4110').credit, 230)
-  assert.equal(account('3110-001').closing, -5100)
+  assert.equal(account('3110-001').closing, -6100)
   assert.equal(account('5130-002').debit, 0)
   assert.equal(
     report.accounts.reduce((sum, a) => sum + a.debit - a.credit, 0),

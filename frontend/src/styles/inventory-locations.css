@@ -67,6 +67,12 @@
 }
 
 /* Bloque por producto: tarjetas, móvil y ficha */
+@media (max-width: 380px) {
+  .catalog-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .stock-by-location {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

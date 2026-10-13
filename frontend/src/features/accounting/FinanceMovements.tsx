@@ -270,12 +270,14 @@ const counterpartyLabel: Partial<Record<RecordKind, string>> = {
 export function RecordDialog({
   initialKind = 'expense',
   initialCredit,
+  bankAccounts,
   onClose,
   onRecorded,
 }: {
   initialKind?: RecordKind
   /** Documento seleccionado desde cuentas por cobrar o pagar. */
   initialCredit?: CreditAccount
+  bankAccounts?: { code: string; name: string }[]
   onClose: () => void
   onRecorded: (message: string) => void
 }) {
@@ -300,6 +302,7 @@ export function RecordDialog({
       : initialKind,
   )
   const [account, setAccount] = useState<FinanceAccount>('caja')
+  const [bankAccount, setBankAccount] = useState('')
   const [toAccount, setToAccount] = useState<MoneyAccount>('banco')
   const [expenseAccount, setExpenseAccount] = useState<ExpenseAccount>('ventas')
   const [category, setCategory] = useState<ExpenseCategory>('renta')
@@ -380,6 +383,14 @@ export function RecordDialog({
       setFailure('Describe el gasto.')
       return
     }
+    if (
+      shownAccount === 'banco' &&
+      bankAccounts &&
+      !bankAccounts.some((a) => a.code === bankAccount)
+    ) {
+      setFailure('Selecciona la cuenta bancaria.')
+      return
+    }
     if (creditKind) {
       if (!creditData?.available || !selectedCredit) {
         setFailure(
@@ -435,6 +446,8 @@ export function RecordDialog({
           reference: reference.trim(),
           documentId: selectedCredit?.documentId ?? null,
           shipmentId: selectedCredit?.shipmentId ?? null,
+          bankLedgerAccount:
+            shownAccount === 'banco' ? bankAccount || null : null,
         })
         onRecorded(`Registrado: ${financeKinds[kind].toLowerCase()}.`)
       }
@@ -570,6 +583,21 @@ export function RecordDialog({
                       {moneyAccounts[id]}
                     </option>
                   ))}
+              </Select>
+            )}
+            {shownAccount === 'banco' && bankAccounts && (
+              <Select
+                label="Cuenta bancaria"
+                value={bankAccount}
+                required
+                onChange={(e) => setBankAccount(e.target.value)}
+              >
+                <option value="">Seleccionar banco</option>
+                {bankAccounts.map((a) => (
+                  <option key={a.code} value={a.code}>
+                    {a.name}
+                  </option>
+                ))}
               </Select>
             )}
             {counterpartyLabel[kind] && (

@@ -35,6 +35,7 @@ export interface FinanceEntryInput {
   documentId?: string | null
   /** Pedido a crédito que se paga; sólo en `supplier_payment`. */
   shipmentId?: string | null
+  bankLedgerAccount?: string | null
 }
 
 export interface FinanceEntryRecord extends FinanceEntryInput {

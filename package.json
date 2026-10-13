@@ -21,8 +21,8 @@
     "lint": "eslint .",
     "format": "prettier --write frontend shared scripts *.json *.js *.md",
     "preview": "npm run preview --workspace @lcp/frontend --",
-    "test:database": "node scripts/tests/business-day.mjs",
-    "test:browser": "node scripts/tests/browser-accounting.mjs"
+    "test:database": "node scripts/tests/business-day.mjs && node scripts/tests/workday-flow.mjs && node scripts/tests/catalog-access.mjs",
+    "test:browser": "node scripts/tests/browser-system.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",
