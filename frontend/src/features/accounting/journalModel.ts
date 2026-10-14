@@ -35,6 +35,9 @@ export interface LedgerReport {
   entries: JournalRecord[]
 }
 const round = (x: number) => Math.round((x + Number.EPSILON) * 100) / 100
+// Contrapartidas de costos desconocidos en private.operational_postings:
+// ventas, pérdidas de inventario y sobrantes del conteo físico.
+const inventoryCostAccounts = new Set(['1130', '5120', '5150', '4190'])
 export function journalModel(
   data: LedgerReport,
   businessName: string,
@@ -56,11 +59,13 @@ export function journalModel(
     )
   // Consultar desde antes de la apertura sólo limita el alcance del libro.
   // Ese aviso no invalida los saldos y movimientos registrados desde su inicio.
-  const complete =
-    data.startOn !== null &&
-    data.startOn <= data.to &&
-    data.missingCosts === 0 &&
-    data.missingSales === 0
+  const available =
+    data.startOn !== null && data.startOn <= data.to && data.missingSales === 0
+  const complete = available && data.missingCosts === 0
+  if (available && data.missingCosts)
+    warnings.push(
+      'Se muestran los importes conocidos. Inventario, costo de venta, otros ingresos y pérdidas de inventario quedan pendientes, junto con los totales y utilidades que dependen de esos costos.',
+    )
   const accounts = data.accounts.filter((a) => a.postable)
   const sum = (bucket: LedgerAccount['bucket'], period: boolean) =>
     round(
@@ -75,7 +80,14 @@ export function journalModel(
         0,
       ),
     )
-  const known = (value: number) => (complete ? round(value) : null)
+  const known = (value: number, needsCost = false) =>
+    (needsCost ? complete : available) ? round(value) : null
+  // El servidor suma los importes disponibles y omite los NULL. No presentar
+  // esas sumas parciales como definitivas en las cuentas que reciben costos.
+  // El contador global no distingue cuenta ni fecha del costo faltante: se
+  // mantienen pendientes sus cuatro columnas hasta contar con ese detalle.
+  const accountAmount = (a: LedgerAccount, value: number) =>
+    known(value, inventoryCostAccounts.has(a.code))
   const income: IncomeRow[] = []
   for (const [bucket, title] of [
     ['revenue', 'Ingresos'],
@@ -96,26 +108,33 @@ export function journalModel(
         description: a.name,
         kind: 'line',
         negative: bucket !== 'revenue',
-        periodNio: known(
+        periodNio: accountAmount(
+          a,
           (a.debit - a.credit) * (bucket === 'revenue' ? -1 : 1),
         ),
-        accumulatedNio: known(a.closing * (bucket === 'revenue' ? -1 : 1)),
+        accumulatedNio: accountAmount(
+          a,
+          a.closing * (bucket === 'revenue' ? -1 : 1),
+        ),
       })
     if (bucket === 'cost')
       income.push({
         code: '',
         description: 'Utilidad bruta',
         kind: 'subtotal',
-        periodNio: known(-sum('revenue', true) - sum('cost', true)),
-        accumulatedNio: known(-sum('revenue', false) - sum('cost', false)),
+        periodNio: known(-sum('revenue', true) - sum('cost', true), true),
+        accumulatedNio: known(
+          -sum('revenue', false) - sum('cost', false),
+          true,
+        ),
       })
   }
   income.push({
     code: '',
     description: 'Utilidad (pérdida) neta',
     kind: 'total',
-    periodNio: known(result(true)),
-    accumulatedNio: known(result(false)),
+    periodNio: known(result(true), true),
+    accumulatedNio: known(result(false), true),
   })
   const balanceRows = (
     bucket: 'asset' | 'liability' | 'equity',
@@ -126,7 +145,7 @@ export function journalModel(
         code: a.code,
         description: a.name,
         kind: 'line',
-        amount: known(a.closing * (bucket === 'asset' ? 1 : -1)),
+        amount: accountAmount(a, a.closing * (bucket === 'asset' ? 1 : -1)),
       }))
   const assets = sum('asset', false),
     liabilities = -sum('liability', false),
@@ -149,16 +168,34 @@ export function journalModel(
     trial: accounts.map((a) => ({
       code: a.code,
       description: a.name,
-      openingNio: known(a.opening * (a.nature === 'credit' ? -1 : 1)),
-      debitNio: known(a.debit),
-      creditNio: known(a.credit),
-      closingNio: known(a.closing * (a.nature === 'credit' ? -1 : 1)),
+      openingNio: accountAmount(
+        a,
+        a.opening * (a.nature === 'credit' ? -1 : 1),
+      ),
+      debitNio: accountAmount(a, a.debit),
+      creditNio: accountAmount(a, a.credit),
+      closingNio: accountAmount(
+        a,
+        a.closing * (a.nature === 'credit' ? -1 : 1),
+      ),
     })),
     trialTotals: {
-      openingNio: known(accounts.reduce((s, a) => s + a.opening, 0)),
-      debitNio: known(accounts.reduce((s, a) => s + a.debit, 0)),
-      creditNio: known(accounts.reduce((s, a) => s + a.credit, 0)),
-      closingNio: known(accounts.reduce((s, a) => s + a.closing, 0)),
+      openingNio: known(
+        accounts.reduce((s, a) => s + a.opening, 0),
+        true,
+      ),
+      debitNio: known(
+        accounts.reduce((s, a) => s + a.debit, 0),
+        true,
+      ),
+      creditNio: known(
+        accounts.reduce((s, a) => s + a.credit, 0),
+        true,
+      ),
+      closingNio: known(
+        accounts.reduce((s, a) => s + a.closing, 0),
+        true,
+      ),
     },
     income,
     balance: {
@@ -169,7 +206,7 @@ export function journalModel(
           code: '',
           description: 'Total activo',
           kind: 'total',
-          amount: known(assets),
+          amount: known(assets, true),
         },
       ],
       right: [
@@ -187,19 +224,19 @@ export function journalModel(
           code: '',
           description: 'Resultado acumulado',
           kind: 'line',
-          amount: known(result(false)),
+          amount: known(result(false), true),
         },
         {
           code: '',
           description: 'Total capital',
           kind: 'subtotal',
-          amount: known(capital),
+          amount: known(capital, true),
         },
         {
           code: '',
           description: 'Total pasivo y capital',
           kind: 'total',
-          amount: known(liabilities + capital),
+          amount: known(liabilities + capital, true),
         },
       ],
     },

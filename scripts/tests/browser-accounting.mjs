@@ -14,6 +14,9 @@ const accounts = [
   ['1340', 'Retenciones de IR acreditables', true, 'asset'],
   ['3110-001', 'Capital — Miguel', true, 'equity'],
   ['4110', 'Ventas', true, 'revenue'],
+  ['4190', 'Otros ingresos', true, 'revenue'],
+  ['5120', 'Costo de venta', true, 'cost'],
+  ['5150', 'Pérdidas de inventario', true, 'expense'],
   ['5130-002', 'Alquiler', true, 'expense'],
   ['5140-001', 'Comisión de tarjetas', true, 'expense'],
   ['1142', 'Tarjetas pendientes de acreditar', true, 'asset'],
@@ -40,6 +43,7 @@ try {
     const errors = []
     let saved = null
     let dayStatus = 'not_opened'
+    let missingCosts = 0
     page.on('pageerror', (e) => errors.push(e.message))
     await page.route('**/*.supabase.co/**', async (route) => {
       const url = new URL(route.request().url())
@@ -85,9 +89,21 @@ try {
           startOn: today,
           from: body.p_from,
           to: body.p_to,
-          missingCosts: 0,
+          missingCosts,
           missingSales: 0,
-          accounts,
+          accounts: accounts.map((a) => {
+            if (missingCosts && a.code === '1110-001')
+              return {
+                ...a,
+                opening: 100,
+                debit: 1000,
+                credit: 200,
+                closing: 900,
+              }
+            if (missingCosts && a.code === '4110')
+              return { ...a, credit: 2000, closing: -2000 }
+            return a
+          }),
           entries: [],
         })
       if (url.pathname.endsWith('/rpc/record_journal_entry')) {
@@ -262,6 +278,63 @@ try {
         `${title} preserves known balances when the month starts before the opening`,
       )
     }
+
+    // Reproduce the reported case: two unknown historical costs, while cash
+    // and sales have recorded amounts. All three statements must stay useful.
+    missingCosts = 2
+    const missingFrom = today.endsWith('-01')
+      ? `${Number(today.slice(0, 4)) - 1}-12-31`
+      : today
+    await page.getByLabel('Desde', { exact: true }).fill(missingFrom)
+    await page
+      .getByText('2 movimientos sin costo histórico.', { exact: true })
+      .waitFor()
+    const accountRow = (code) =>
+      page.locator('.statement-table tbody tr').filter({
+        has: page.getByText(code, { exact: true }),
+      })
+    for (const title of [
+      'Balanza de comprobación',
+      'Estado de resultado',
+      'Estado de situación financiera',
+    ]) {
+      await page.getByRole('button', { name: title, exact: true }).click()
+      await page.getByRole('heading', { name: title, exact: true }).waitFor()
+      const knownCode = title === 'Estado de resultado' ? '4110' : '1110-001'
+      const pendingCode = title === 'Estado de resultado' ? '5120' : '1130'
+      assert.equal(
+        await accountRow(knownCode)
+          .getByText('Pendiente', { exact: true })
+          .count(),
+        0,
+      )
+      assert.match(
+        await accountRow(knownCode).innerText(),
+        title === 'Estado de resultado' ? /2,000\.00/ : /900\.00/,
+      )
+      assert.ok(
+        await accountRow(pendingCode)
+          .getByText('Pendiente', { exact: true })
+          .count(),
+      )
+      assert.ok(
+        await page
+          .locator('.statement-total')
+          .getByText('Pendiente', { exact: true })
+          .count(),
+      )
+      await page.screenshot({
+        path: `output/accounting-review/missing-costs-${knownCode === '4110' ? 'income' : title === 'Balanza de comprobación' ? 'trial' : 'balance'}-${width}.png`,
+        fullPage: true,
+      })
+    }
+    missingCosts = 0
+    await page
+      .getByLabel('Desde', { exact: true })
+      .fill(today.slice(0, 7) + '-01')
+    await page
+      .getByText('2 movimientos sin costo histórico.', { exact: true })
+      .waitFor({ state: 'hidden' })
     await page
       .getByRole('button', { name: 'Comprobantes', exact: true })
       .click()
@@ -298,7 +371,7 @@ try {
     assert.equal(saved.lines.find((l) => l.account === '1340').debit, 15)
     assert.deepEqual(errors, [])
     console.log(
-      `PASS browser ${width}px: login, day panel, journal navigation, card calculation, save and no horizontal overflow`,
+      `PASS browser ${width}px: login, day panel, known balances with two missing costs, journal navigation, card calculation, save and no horizontal overflow`,
     )
     await context.close()
   }

@@ -15,6 +15,9 @@ after(() => server.close())
 const { journalModel, cardSettlement } = await server.ssrLoadModule(
   '/src/features/accounting/journalModel.ts',
 )
+const { accountingWorkbookSheets } = await server.ssrLoadModule(
+  '/src/features/accounting/accountingWorkbook.ts',
+)
 const account = (code, bucket, nature, opening, debit, credit) => ({
   code,
   name: code,
@@ -70,6 +73,118 @@ test('missing opening or historical cost never presents an invented balanced sta
     assert.equal(m.balance.right.at(-1).amount, null)
     assert.equal(m.income.at(-1).periodNio, null)
     assert.ok(m.warnings.length)
+  }
+})
+
+test('two missing costs preserve known balances, sales and expenses without inventing inventory or profit', () => {
+  const f = {
+    ...fixture(),
+    startOn: '2026-10-13',
+    from: '2026-10-01',
+    to: '2026-10-13',
+  }
+  f.accounts.push(
+    account('4190', 'revenue', 'credit', 0, 0, 25),
+    account('5150', 'expense', 'debit', 0, 25, 0),
+    account('2111', 'liability', 'credit', -100, 0, 0),
+    account('1140', 'asset', 'debit', 100, 0, 0),
+    account('1120-003', 'asset', 'debit', 0, 0, 0),
+  )
+  const complete = journalModel(f, 'Tienda')
+  const m = journalModel({ ...f, missingCosts: 2 }, 'Tienda')
+  const affected = new Set(['1130', '5120', '4190', '5150'])
+  for (const row of m.trial) {
+    if (affected.has(row.code)) {
+      for (const column of [
+        'openingNio',
+        'debitNio',
+        'creditNio',
+        'closingNio',
+      ])
+        assert.equal(row[column], null, `${row.code}: ${column}`)
+    } else {
+      assert.deepEqual(
+        row,
+        complete.trial.find((r) => r.code === row.code),
+      )
+    }
+  }
+  for (const row of m.income.filter((r) => r.kind === 'line')) {
+    if (affected.has(row.code)) {
+      assert.equal(row.periodNio, null)
+      assert.equal(row.accumulatedNio, null)
+    } else {
+      assert.deepEqual(
+        row,
+        complete.income.find((r) => r.code === row.code),
+      )
+    }
+  }
+  for (const side of ['left', 'right']) {
+    for (const row of m.balance[side].filter(
+      (r) => r.code && r.kind === 'line',
+    )) {
+      if (affected.has(row.code)) assert.equal(row.amount, null)
+      else
+        assert.deepEqual(
+          row,
+          complete.balance[side].find((r) => r.code === row.code),
+        )
+    }
+  }
+  assert.equal(m.income.find((r) => r.code === '4110').periodNio, 2000)
+  assert.equal(
+    m.balance.right.find((r) => r.description === 'Total pasivo').amount,
+    100,
+  )
+  assert.equal(m.trial.find((r) => r.code === '1120-003').closingNio, 0)
+  assert.ok(Object.values(m.trialTotals).every((v) => v === null))
+  assert.equal(m.balance.left.at(-1).amount, null)
+  assert.equal(m.balance.right.at(-1).amount, null)
+  assert.equal(
+    m.income.find((r) => r.description === 'Utilidad bruta').periodNio,
+    null,
+  )
+  assert.equal(m.income.at(-1).periodNio, null)
+  assert.equal(m.income.at(-1).accumulatedNio, null)
+  assert.ok(m.warnings.includes('2 movimientos sin costo histórico.'))
+  assert.ok(
+    m.warnings.some((w) => w.includes('Se muestran los importes conocidos.')),
+  )
+
+  const sheets = accountingWorkbookSheets(m)
+  assert.equal(sheets[1].rows.find((r) => r[0] === '1110-001')[5], 900)
+  assert.equal(sheets[1].rows.find((r) => r[0] === '1130')[5], 'Pendiente')
+  assert.equal(sheets[1].rows.at(-1)[5], 'Pendiente')
+  assert.equal(sheets[2].rows.find((r) => r[0] === '4110')[2], 2000)
+  assert.equal(sheets[2].rows.find((r) => r[0] === '5120')[2], 'Pendiente')
+  assert.equal(sheets[2].rows.at(-1)[2], 'Pendiente')
+  assert.equal(sheets[3].rows.find((r) => r[0] === '1110-001')[2], 900)
+  assert.equal(sheets[3].rows.find((r) => r[0] === '1130')[2], 'Pendiente')
+})
+
+test('missing opening, future opening or incomplete sales still block all amounts even with missing costs', () => {
+  for (const change of [
+    { startOn: null },
+    { startOn: '2026-10-12' },
+    { missingSales: 1 },
+  ]) {
+    const m = journalModel(
+      { ...fixture(), missingCosts: 2, ...change },
+      'Tienda',
+    )
+    assert.ok(
+      m.trial.every((r) =>
+        [r.openingNio, r.debitNio, r.creditNio, r.closingNio].every(
+          (v) => v === null,
+        ),
+      ),
+    )
+    assert.ok(
+      m.income.every((r) => r.periodNio === null && r.accumulatedNio === null),
+    )
+    assert.ok(m.balance.left.every((r) => r.amount === null))
+    assert.ok(m.balance.right.every((r) => r.amount === null))
   }
 })
 
