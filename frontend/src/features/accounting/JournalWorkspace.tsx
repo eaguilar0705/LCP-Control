@@ -4,7 +4,13 @@ import { Button, Card, Dialog, Input, Select } from '../../components/ui'
 import { errorMessage } from '../../lib/errors'
 import { formatCurrency, formatDate } from '../../lib/format'
 import { localDay } from '../reports/model'
-import { cardSettlement, type LedgerReport } from './journalModel'
+import {
+  cardSettlement,
+  accountAcceptsCurrency,
+  journalTotals,
+  type JournalLine,
+  type LedgerReport,
+} from './journalModel'
 import { journalRpc } from './journalService'
 import { JournalDetail } from './JournalDetail'
 
@@ -18,7 +24,7 @@ const journalKinds = {
   adjustment: 'Comprobante de ajuste',
 } as const
 type Kind = keyof typeof journalKinds
-type Line = { account: string; debit: number; credit: number }
+type Line = JournalLine
 export function JournalWorkspace({
   data,
   onChanged,
@@ -201,7 +207,13 @@ function JournalDialog({
   } | null>(null)
   const simple =
     kind === 'transfer' || kind === 'deposit' || kind === 'card_settlement'
-  const accounts = data.accounts.filter((a) => a.postable)
+  const accounts = data.accounts.filter(
+    (a) =>
+      a.postable &&
+      (kind !== 'opening' ||
+        ['asset', 'liability', 'equity'].includes(a.bucket)) &&
+      (kind === 'opening' || accountAcceptsCurrency(a.code, currency)),
+  )
   const bankAccounts = accounts.filter((a) => a.code.startsWith('1120-'))
   let settlement: ReturnType<typeof cardSettlement> | null = null
   try {
@@ -244,15 +256,17 @@ function JournalDialog({
           },
         ]
     : lines
-  const debit =
-      Math.round(activeLines.reduce((s, l) => s + l.debit, 0) * 100) / 100,
-    credit =
-      Math.round(activeLines.reduce((s, l) => s + l.credit, 0) * 100) / 100
+  const exchangeRate = currency === 'NIO' ? 1 : Number(rate)
+  const {
+    debit,
+    credit,
+    debitNio,
+    creditNio,
+    valid: balanced,
+  } = journalTotals(activeLines, exchangeRate)
   const valid =
-    activeLines.length >= 2 &&
-    activeLines.every((l) => l.account && l.debit > 0 !== l.credit > 0) &&
-    debit > 0 &&
-    debit === credit &&
+    balanced &&
+    activeLines.every((l) => accounts.some((a) => a.code === l.account)) &&
     (!simple || activeLines[0].account !== activeLines.at(-1)?.account)
   function update(index: number, key: keyof Line, value: string) {
     setLines((old) =>
@@ -274,7 +288,7 @@ function JournalDialog({
       description,
       reference,
       currency,
-      exchangeRate: currency === 'NIO' ? 1 : Number(rate),
+      exchangeRate,
       lines: activeLines,
       ...(kind === 'card_settlement'
         ? {
@@ -329,7 +343,26 @@ function JournalDialog({
           <Select
             label="Moneda"
             value={currency}
-            onChange={(e) => setCurrency(e.target.value as 'NIO' | 'USD')}
+            onChange={(e) => {
+              const next = e.target.value as 'NIO' | 'USD'
+              setCurrency(next)
+              if (kind !== 'opening') {
+                setLines((old) =>
+                  old.map((line) => ({
+                    ...line,
+                    account: accountAcceptsCurrency(line.account, next)
+                      ? line.account
+                      : '',
+                  })),
+                )
+                setOrigin((old) =>
+                  accountAcceptsCurrency(old, next) ? old : '',
+                )
+                setDestination((old) =>
+                  accountAcceptsCurrency(old, next) ? old : '',
+                )
+              }
+            }}
           >
             <option value="NIO">Córdobas</option>
             <option value="USD">Dólares</option>
@@ -356,7 +389,9 @@ function JournalDialog({
         />
         {kind === 'opening' && (
           <p>
-            Saldos al inicio de la fecha seleccionada.
+            Saldos al inicio de la fecha seleccionada. Registra únicamente
+            activo, pasivo y capital; los ingresos y gastos comienzan con las
+            operaciones.
           </p>
         )}
         {simple ? (
@@ -541,6 +576,20 @@ function JournalDialog({
             </strong>
           </span>
         </div>
+        {currency === 'USD' &&
+          Number.isFinite(exchangeRate) &&
+          exchangeRate > 0 && (
+            <p
+              className={
+                debitNio !== creditNio ? 'inline-error' : 'accounting-note'
+              }
+              role="status"
+            >
+              Debe C$: {formatCurrency(debitNio, 'NIO')} · Haber C$:{' '}
+              {formatCurrency(creditNio, 'NIO')}. Cada renglón se convierte por
+              separado; ambos totales deben coincidir también en córdobas.
+            </p>
+          )}
         {error && (
           <p role="alert" className="inline-error">
             {error}

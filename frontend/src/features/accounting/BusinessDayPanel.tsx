@@ -34,7 +34,8 @@ function DayPanel({ admin }: { admin: boolean }) {
       window.clearInterval(timer)
     }
   }, [refresh])
-  const report = data?.report
+  const current = !!data && (!date || data.day === date)
+  const report = current ? data.report : null
   const label =
     data?.status === 'open'
       ? 'Tienda abierta'
@@ -57,8 +58,8 @@ function DayPanel({ admin }: { admin: boolean }) {
         <div className="day-title">
           {data?.status === 'open' ? <DoorOpen /> : <DoorClosed />}
           <div>
-            <h2>{loading ? 'Jornada de tienda' : label}</h2>
-            {data && <span>{formatDate(data.day)}</span>}
+            <h2>{loading || !current ? 'Jornada de tienda' : label}</h2>
+            {current && <span>{formatDate(data.day)}</span>}
           </div>
         </div>
         <div className="day-actions">
@@ -70,13 +71,14 @@ function DayPanel({ admin }: { admin: boolean }) {
             <RefreshCw size={17} />
           </Button>
           {admin &&
+            current &&
             data &&
             data.status === 'not_opened' &&
             data.day === data.today &&
             !data.openDay && (
               <Button onClick={() => setAction('open')}>Abrir tienda</Button>
             )}
-          {admin && data?.status === 'open' && (
+          {admin && current && data?.status === 'open' && (
             <Button variant="secondary" onClick={() => setAction('close')}>
               Cerrar tienda
             </Button>
@@ -94,7 +96,7 @@ function DayPanel({ admin }: { admin: boolean }) {
           {error || failure}
         </p>
       )}
-      {admin && data?.openDay && data.openDay !== data.day && (
+      {admin && current && data?.openDay && data.openDay !== data.day && (
         <Button variant="secondary" onClick={() => setDate(data.openDay!)}>
           Cerrar jornada pendiente del {formatDate(data.openDay)}
         </Button>
@@ -105,6 +107,7 @@ function DayPanel({ admin }: { admin: boolean }) {
           type="date"
           value={date || data?.day || ''}
           max={data?.today}
+          disabled={action !== null}
           onChange={(e) => setDate(e.target.value)}
         />
       )}
@@ -143,15 +146,20 @@ function DayPanel({ admin }: { admin: boolean }) {
             <div className="day-closing">
               <strong>
                 Diferencia de caja:{' '}
-                {formatCurrency(report.differenceNio ?? 0, 'NIO')} ·{' '}
-                {formatCurrency(report.differenceUsd ?? 0, 'USD')}
+                {report.differenceNio == null
+                  ? 'Pendiente'
+                  : formatCurrency(report.differenceNio, 'NIO')}{' '}
+                ·{' '}
+                {report.differenceUsd == null
+                  ? 'Pendiente'
+                  : formatCurrency(report.differenceUsd, 'USD')}
               </strong>
               {report.note && <p>{report.note}</p>}
             </div>
           )}
         </>
       )}
-      {action && data && (
+      {action && current && data && (
         <DayDialog
           action={action}
           day={data}

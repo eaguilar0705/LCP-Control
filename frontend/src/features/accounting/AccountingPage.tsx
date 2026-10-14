@@ -10,7 +10,7 @@ import {
 import { useServices } from '../../services/useServices'
 import { useQuery } from '../../lib/useQuery'
 import { errorMessage } from '../../lib/errors'
-import { localDay } from '../reports/model'
+import { adjustRange, localDay } from '../reports/model'
 import { accountingViews } from './accountingModel'
 import { AccountingTables, AccountCatalog } from './AccountingTables'
 import { readLedger } from './journalService'
@@ -90,7 +90,13 @@ export function AccountingPage() {
             value={range.from}
             max={range.to}
             onChange={(e) => {
-              if (e.target.value) setRange({ ...range, from: e.target.value })
+              if (e.target.value) {
+                const day =
+                  e.target.value > localDay(new Date())
+                    ? localDay(new Date())
+                    : e.target.value
+                setRange((current) => adjustRange(current, 'from', day))
+              }
             }}
           />
           <Input
@@ -100,7 +106,13 @@ export function AccountingPage() {
             min={range.from}
             max={localDay(new Date())}
             onChange={(e) => {
-              if (e.target.value) setRange({ ...range, to: e.target.value })
+              if (e.target.value) {
+                const day =
+                  e.target.value > localDay(new Date())
+                    ? localDay(new Date())
+                    : e.target.value
+                setRange((current) => adjustRange(current, 'to', day))
+              }
             }}
           />
           <div className="period-export">

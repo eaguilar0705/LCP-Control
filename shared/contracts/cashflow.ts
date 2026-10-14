@@ -12,6 +12,7 @@ export type CashflowCategory =
   | 'loan'
   | 'transfer'
   | 'opening'
+  | 'journal'
 
 export interface CashflowRow {
   day: string

@@ -9,12 +9,18 @@ import {
 } from './accountingModel'
 import type { FinanceLedger } from './finance'
 import { RecordDialog, VoidDialog } from './FinanceMovements'
-import { rowsOf, useWritable, type Row } from './financeRows'
+import { rowsOf, type Row } from './financeRows'
+import { useWritable } from './financeAccess'
 
 const amount = (value: number | null, negative = false) => {
   if (value === null) return 'Pendiente'
+  if (negative) {
+    const effect = -value
+    const formatted = formatCurrency(Math.abs(effect), 'NIO')
+    return effect < 0 ? `(${formatted})` : formatted
+  }
   const formatted = formatCurrency(value, 'NIO')
-  return negative && value !== 0 ? `(${formatted})` : formatted
+  return formatted
 }
 
 function ScrollTable({
@@ -100,6 +106,25 @@ export function AccountingTables({
   const writable = useWritable(ledger)
   const records = rowsOf(ledger)
   const title = accountingViews[view]
+  const hasPending =
+    view === 'trial'
+      ? model.trial.some((row) =>
+          [
+            row.openingNio,
+            row.debitNio,
+            row.creditNio,
+            row.closingNio,
+          ].includes(null),
+        ) || Object.values(model.trialTotals).includes(null)
+      : view === 'income'
+        ? model.income.some(
+            (row) =>
+              row.kind !== 'heading' &&
+              (row.periodNio === null || row.accumulatedNio === null),
+          )
+        : [...model.balance.left, ...model.balance.right].some(
+            (row) => row.kind !== 'heading' && row.amount === null,
+          )
   return (
     <>
       {message && (
@@ -143,6 +168,12 @@ export function AccountingTables({
               <p key={warning}>{warning}</p>
             ))}
           </div>
+        )}
+        {hasPending && (
+          <p className="accounting-note">
+            Pendiente indica información insuficiente; no equivale a cero.
+            Revisa los avisos de este estado.
+          </p>
         )}
         {view === 'trial' && (
           <ScrollTable title={title}>
@@ -190,8 +221,11 @@ export function AccountingTables({
               </tfoot>
             </table>
             <p className="accounting-note">
-              Saldos según la naturaleza de cada cuenta. Los totales de saldos
-              muestran la diferencia entre deudores y acreedores.
+              El saldo inicial corresponde al día anterior al inicio del
+              período. Debe y Haber incluyen los movimientos del período. Saldo
+              final: deudoras = inicial + Debe − Haber; acreedoras = inicial −
+              Debe + Haber. Los totales de saldos muestran la diferencia entre
+              deudores y acreedores.
             </p>
           </ScrollTable>
         )}

@@ -5,7 +5,8 @@ import { useQuery } from '../../lib/useQuery'
 import { formatCurrency, formatDate } from '../../lib/format'
 import { RecordDialog, VoidDialog } from './FinanceMovements'
 import { rowsOf, type Row } from './financeRows'
-import type { CreditAccount } from './finance'
+import { useWritable } from './financeAccess'
+import { emptyLedger, type CreditAccount } from './finance'
 import type { ReportRange } from '../reports/model'
 
 export function CreditWorkspace({
@@ -26,6 +27,7 @@ export function CreditWorkspace({
     return { credits, ledger, range }
   }, [financeService, range])
   const { data, error, loading, retry, refresh } = useQuery(load)
+  const writable = useWritable(data?.ledger ?? emptyLedger)
   const [selected, setSelected] = useState<CreditAccount | null>(null)
   const [voiding, setVoiding] = useState<Row | null>(null)
   const [message, setMessage] = useState('')
@@ -53,6 +55,34 @@ export function CreditWorkspace({
   )
   return (
     <>
+      {!data.credits.available && (
+        <p role="status" className="accounting-callout">
+          El detalle de cuentas por cobrar y pagar está pendiente de activar en
+          la base de datos. La ausencia de registros no confirma saldo cero.
+        </p>
+      )}
+      {data.credits.available && (
+        <p className="accounting-note">
+          Saldos pendientes al {formatDate(data.credits.at)}. Este auxiliar
+          relaciona facturas, pedidos y abonos; los ajustes manuales del mayor
+          deben conciliarse con sus documentos antes de cobrar o pagar.
+        </p>
+      )}
+      {data.credits.legacyPayments > 0 && (
+        <p role="status" className="accounting-callout">
+          Hay {data.credits.legacyPayments} abono(s) antiguos sin documento
+          vinculado. Revisa su conciliación antes de registrar nuevos abonos.
+        </p>
+      )}
+      {(data.credits.unallocatedNio.receivables > 0 ||
+        data.credits.unallocatedNio.payables > 0) && (
+        <p role="status" className="accounting-callout">
+          Saldos iniciales sin detalle de documentos: por cobrar{' '}
+          {formatCurrency(data.credits.unallocatedNio.receivables, 'NIO')}; por
+          pagar {formatCurrency(data.credits.unallocatedNio.payables, 'NIO')}.
+          Se abonan desde la fila de saldo inicial.
+        </p>
+      )}
       {message && (
         <p role="status" className="workspace-feedback">
           {message}
@@ -111,7 +141,11 @@ export function CreditWorkspace({
                       <td className="credit-action">
                         <Button
                           variant="secondary"
-                          disabled={r.balanceNio === null || r.balanceNio <= 0}
+                          disabled={
+                            !writable ||
+                            r.balanceNio === null ||
+                            r.balanceNio <= 0
+                          }
                           onClick={() => setSelected(r)}
                         >
                           {kind === 'receivable' ? 'Cobrar' : 'Pagar'}
@@ -122,9 +156,10 @@ export function CreditWorkspace({
               </tbody>
             </table>
           </div>
-          {!data.credits.rows.some((r) => r.kind === kind) && (
-            <p>Sin cuentas registradas.</p>
-          )}
+          {data.credits.available &&
+            !data.credits.rows.some((r) => r.kind === kind) && (
+              <p>Sin cuentas registradas.</p>
+            )}
         </Card>
       ))}
       <Card className="accounting-card">
@@ -165,7 +200,11 @@ export function CreditWorkspace({
                     {r.voidReason !== null ? (
                       'Anulado'
                     ) : (
-                      <Button variant="ghost" onClick={() => setVoiding(r)}>
+                      <Button
+                        variant="ghost"
+                        disabled={!writable}
+                        onClick={() => setVoiding(r)}
+                      >
                         Anular abono
                       </Button>
                     )}

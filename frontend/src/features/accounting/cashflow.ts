@@ -27,6 +27,7 @@ export const cashflowCategories = {
   loan: 'Préstamos recibidos',
   transfer: 'Transferencias internas',
   opening: 'Saldo inicial',
+  journal: 'Comprobantes contables',
 } as const satisfies Record<CashflowCategory, string>
 export const emptyCashflow: CashflowReport = {
   available: false,
@@ -58,7 +59,8 @@ export function countedTotalNio(
       exchangeRate <= 0)
   )
     return null
-  return roundMoney(countedNio + countedUsd * (exchangeRate ?? 1))
+  const total = countedNio + (countedUsd === 0 ? 0 : countedUsd * exchangeRate!)
+  return Number.isFinite(total) ? roundMoney(total) : null
 }
 
 export function cashClosingDifference(

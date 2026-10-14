@@ -2,7 +2,7 @@
 
 Código fuente de la aplicación de inventario, facturación, proformas y contabilidad, con React, TypeScript, Vite y Supabase.
 
-Contabilidad presenta cuatro vistas: catálogo de cuentas, balanza de comprobación, estado de resultado y estado de situación financiera. La descarga de Excel contiene esas mismas cuatro hojas, vinculadas a las operaciones de la perfumería. Los importes sin información suficiente permanecen pendientes. Los movimientos y gastos se registran desde la balanza; los precios se editan en cada perfume.
+Contabilidad presenta comprobantes, cobros y pagos, catálogo de cuentas, balanza de comprobación, estado de resultado y estado de situación financiera. El libro integra operaciones automáticas y comprobantes manuales de partida doble. La descarga de Excel contiene las cuatro hojas de estados y catálogo. «Pendiente» indica que falta información para confirmar el importe; no equivale a cero. Los saldos iniciales y ajustes se registran desde Comprobantes; los cobros y pagos se vinculan a su deuda. Los precios se editan en cada perfume.
 
 ## Instalar y ejecutar
 
@@ -38,10 +38,13 @@ Los manifiestos `package.json`, el lockfile y las configuraciones de TypeScript,
 npm run check
 npm run typecheck
 npm run test:accounting
+npm run test:database
 npm run preview
 ```
 
 `check` valida lint y compila la aplicación en `output/dist/`. Publicar esa carpeta en un hosting HTTPS con fallback de rutas a `index.html`. `preview` permite revisar la compilación localmente y mantiene el servidor limitado a este equipo.
+
+Con el servidor local activo, `npm run test:browser:accounting` verifica el módulo en Chrome a 1440, 390 y 320 px; `npm run test:browser` recorre también inventario, ventas y reportes. Las pruebas interceptan Supabase y usan datos aislados. `LCP_TEST_BASE_URL` permite elegir un servidor local distinto del puerto 5173. La auditoría y sus correcciones se documentan en [el informe contable](docs/auditoria-contabilidad-2026-10-13.md).
 
 La entrega no incluye dependencias instaladas, compilaciones, cachés, informes ni respaldos. `npm ci` instala las dependencias y `npm run build` genera la compilación. Para limpiar las salidas después de detener dev/preview:
 

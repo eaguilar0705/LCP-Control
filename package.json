@@ -17,12 +17,13 @@
     "check": "npm run lint && npm run build",
     "build": "npm run typecheck --workspace @lcp/contracts && npm run build --workspace @lcp/frontend",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test:accounting": "node --test scripts/tests/accounting.test.mjs scripts/tests/finance.test.mjs scripts/tests/journal.test.mjs",
+    "test:accounting": "node --test scripts/tests/*.test.mjs",
     "lint": "eslint .",
     "format": "prettier --write frontend shared scripts *.json *.js *.md",
     "preview": "npm run preview --workspace @lcp/frontend --",
-    "test:database": "node scripts/tests/business-day.mjs && node scripts/tests/workday-flow.mjs && node scripts/tests/catalog-access.mjs",
-    "test:browser": "node scripts/tests/browser-system.mjs"
+    "test:database": "node scripts/tests/business-day.mjs && node scripts/tests/workday-flow.mjs && node scripts/tests/catalog-access.mjs && node scripts/tests/database-accounting-audit.mjs",
+    "test:browser": "node scripts/tests/browser-system.mjs",
+    "test:browser:accounting": "node scripts/tests/browser-accounting.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",

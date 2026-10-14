@@ -33,7 +33,7 @@ import {
   roundMoney,
   type ExpenseRecord,
 } from '../reports/accounting'
-import type { ReportRange } from '../reports/model'
+import { paymentLabels, type ReportRange } from '../reports/model'
 
 /**
  * Caja, bancos y deudas. Las ventas, los pedidos y los gastos ya registrados
@@ -371,7 +371,13 @@ export function salesByPayment(
 ): SalesByPayment {
   const total = { ...emptySales }
   for (const row of invoices) {
-    if (row.amountNio === null) total.missing++
+    if (
+      row.amountNio === null ||
+      !Number.isFinite(row.amountNio) ||
+      row.paymentMethod === null ||
+      !Object.hasOwn(paymentLabels, row.paymentMethod)
+    )
+      total.missing++
     else if (row.paymentMethod === 'cash') total.caja += row.amountNio
     else if (row.paymentMethod === 'pending') total.cobrar += row.amountNio
     else total.banco += row.amountNio

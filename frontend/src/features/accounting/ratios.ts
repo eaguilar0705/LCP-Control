@@ -55,12 +55,19 @@ export function financialRatios(
       ? null
       : cash + receivables + inventory
   const liabilities =
-    opened('prestamos') && opened('proveedores')
+    summary.salesTaxNio === 0 &&
+    summary.missingRevenueLines === 0 &&
+    opened('prestamos') &&
+    opened('proveedores')
       ? position.loansNio + position.payablesNio
       : null
-  const equity =
-    current === null || liabilities === null ? null : current - liabilities
-  const revenue = summary.revenueNio > 0 ? summary.revenueNio : null
+  // Este balance todavía no concilia patrimonio inicial ni resultados previos.
+  // Una diferencia entre activo y pasivo no sustituye ese saldo registrado.
+  const equity = null
+  const revenue =
+    !summary.missingRevenueLines && summary.revenueNio > 0
+      ? summary.revenueNio
+      : null
   const turnover = inventoryTurnover(summary, range)
   const perDay = (amount: number | null) =>
     amount === null ? null : amount / days

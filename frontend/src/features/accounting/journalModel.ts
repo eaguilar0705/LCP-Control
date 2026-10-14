@@ -38,6 +38,63 @@ const round = (x: number) => Math.round((x + Number.EPSILON) * 100) / 100
 // Contrapartidas de costos desconocidos en private.operational_postings:
 // ventas, pérdidas de inventario y sobrantes del conteo físico.
 const inventoryCostAccounts = new Set(['1130', '5120', '5150', '4190'])
+export interface JournalLine {
+  account: string
+  debit: number
+  credit: number
+}
+
+/** Moneda de las cajas y bancos estándar; las cuentas nuevas no la declaran. */
+export function accountAcceptsCurrency(code: string, currency: 'NIO' | 'USD') {
+  const currencies: Record<string, 'NIO' | 'USD'> = {
+    '1110-001': 'NIO',
+    '1110-002': 'USD',
+    '1120-001': 'NIO',
+    '1120-002': 'USD',
+    '1120-003': 'NIO',
+    '1120-004': 'USD',
+    '1120-005': 'NIO',
+    '1120-006': 'USD',
+  }
+  return !currencies[code] || currencies[code] === currency
+}
+
+/** Cada renglón se convierte y redondea por separado, como en el libro mayor. */
+export function journalTotals(lines: JournalLine[], exchangeRate = 1) {
+  const debit = round(lines.reduce((sum, line) => sum + line.debit, 0))
+  const credit = round(lines.reduce((sum, line) => sum + line.credit, 0))
+  const debitNio = round(
+    lines.reduce((sum, line) => sum + round(line.debit * exchangeRate), 0),
+  )
+  const creditNio = round(
+    lines.reduce((sum, line) => sum + round(line.credit * exchangeRate), 0),
+  )
+  const valid =
+    lines.length >= 2 &&
+    lines.length <= 100 &&
+    Number.isFinite(exchangeRate) &&
+    exchangeRate > 0 &&
+    lines.every(
+      (line) =>
+        !!line.account &&
+        Number.isFinite(line.debit) &&
+        Number.isFinite(line.credit) &&
+        line.debit >= 0 &&
+        line.credit >= 0 &&
+        line.debit <= 100000000 &&
+        line.credit <= 100000000 &&
+        line.debit === round(line.debit) &&
+        line.credit === round(line.credit) &&
+        ((line.debit > 0 && line.credit === 0) ||
+          (line.credit > 0 && line.debit === 0)),
+    ) &&
+    debit > 0 &&
+    debit === credit &&
+    debitNio > 0 &&
+    debitNio === creditNio
+  return { debit, credit, debitNio, creditNio, valid }
+}
+
 export function journalModel(
   data: LedgerReport,
   businessName: string,
@@ -79,6 +136,20 @@ export function journalModel(
         (s, b) => s + sum(b, period),
         0,
       ),
+    )
+  // Otros ingresos (4190) no pertenecen al margen comercial de las ventas.
+  const grossProfit = (period: boolean) =>
+    round(
+      -accounts
+        .filter(
+          (a) =>
+            a.bucket === 'revenue' &&
+            (a.code === '4110' || a.code.startsWith('4110-')),
+        )
+        .reduce(
+          (total, a) => total + (period ? a.debit - a.credit : a.closing),
+          0,
+        ) - sum('cost', period),
     )
   const known = (value: number, needsCost = false) =>
     (needsCost ? complete : available) ? round(value) : null
@@ -122,11 +193,8 @@ export function journalModel(
         code: '',
         description: 'Utilidad bruta',
         kind: 'subtotal',
-        periodNio: known(-sum('revenue', true) - sum('cost', true), true),
-        accumulatedNio: known(
-          -sum('revenue', false) - sum('cost', false),
-          true,
-        ),
+        periodNio: known(grossProfit(true), true),
+        accumulatedNio: known(grossProfit(false), true),
       })
   }
   income.push({
@@ -261,7 +329,9 @@ export function cardSettlement(
     commissionRate < 0 ||
     withholdingRate < 0 ||
     commissionRate > 100 ||
-    withholdingRate > 100
+    withholdingRate > 100 ||
+    round(gross) <= 0 ||
+    (withholdingBase !== 'gross' && withholdingBase !== 'net_commission')
   )
     throw new Error('Importe o tasas inválidos.')
   const commission = round((gross * commissionRate) / 100),

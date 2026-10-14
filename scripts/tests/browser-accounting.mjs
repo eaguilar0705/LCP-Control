@@ -44,6 +44,8 @@ try {
     let saved = null
     let dayStatus = 'not_opened'
     let missingCosts = 0
+    let missingSales = 0
+    let ledgerStartOn = today
     page.on('pageerror', (e) => errors.push(e.message))
     await page.route('**/*.supabase.co/**', async (route) => {
       const url = new URL(route.request().url())
@@ -86,11 +88,11 @@ try {
         return send({ role: 'superadmin', active: true })
       if (url.pathname.endsWith('/rpc/ledger_report'))
         return send({
-          startOn: today,
+          startOn: ledgerStartOn,
           from: body.p_from,
           to: body.p_to,
           missingCosts,
-          missingSales: 0,
+          missingSales,
           accounts: accounts.map((a) => {
             if (missingCosts && a.code === '1110-001')
               return {
@@ -279,12 +281,59 @@ try {
       )
     }
 
+    // Keyboard entry can bypass HTML min/max constraints. Keep the range
+    // valid and prevent a server error or a misleading empty period.
+    const previousDate = new Date(`${today}T12:00:00Z`)
+    previousDate.setUTCDate(previousDate.getUTCDate() - 1)
+    const previousDay = previousDate.toISOString().slice(0, 10)
+    await page.getByLabel('Desde', { exact: true }).fill(today)
+    const beforeOpening = page.waitForResponse((response) => {
+      const request = response.request()
+      return (
+        response.url().endsWith('/rpc/ledger_report') &&
+        request.postDataJSON()?.p_to === previousDay
+      )
+    })
+    await page.getByLabel('Hasta', { exact: true }).fill(previousDay)
+    await beforeOpening
+    assert.equal(
+      await page.getByLabel('Desde', { exact: true }).inputValue(),
+      previousDay,
+    )
+    assert.equal(
+      await page.getByLabel('Hasta', { exact: true }).inputValue(),
+      previousDay,
+    )
+    await page
+      .getByText(`El período termina antes de la apertura del ${today}.`, {
+        exact: true,
+      })
+      .waitFor()
+    const clampedRange = page.waitForResponse((response) => {
+      const request = response.request()
+      return (
+        response.url().endsWith('/rpc/ledger_report') &&
+        request.postDataJSON()?.p_from === today &&
+        request.postDataJSON()?.p_to === today
+      )
+    })
+    await page.getByLabel('Desde', { exact: true }).fill('2099-01-01')
+    await clampedRange
+    assert.equal(
+      await page.getByLabel('Desde', { exact: true }).inputValue(),
+      today,
+    )
+    assert.equal(
+      await page.getByLabel('Hasta', { exact: true }).inputValue(),
+      today,
+    )
+
     // Reproduce the reported case: two unknown historical costs, while cash
     // and sales have recorded amounts. All three statements must stay useful.
     missingCosts = 2
     const missingFrom = today.endsWith('-01')
       ? `${Number(today.slice(0, 4)) - 1}-12-31`
-      : today
+      : today.slice(0, 7) + '-01'
     await page.getByLabel('Desde', { exact: true }).fill(missingFrom)
     await page
       .getByText('2 movimientos sin costo histórico.', { exact: true })
@@ -329,12 +378,47 @@ try {
       })
     }
     missingCosts = 0
-    await page
-      .getByLabel('Desde', { exact: true })
-      .fill(today.slice(0, 7) + '-01')
+    await page.getByLabel('Desde', { exact: true }).fill(today)
     await page
       .getByText('2 movimientos sin costo histórico.', { exact: true })
       .waitFor({ state: 'hidden' })
+    // Missing opening and incomplete invoice detail must stay pending in all
+    // statements; a missing cost alone only blocks accounts that depend on it.
+    for (const scenario of ['opening', 'sales']) {
+      ledgerStartOn = scenario === 'opening' ? null : today
+      missingSales = scenario === 'sales' ? 1 : 0
+      await page.getByLabel('Desde', { exact: true }).fill(missingFrom)
+      await page
+        .getByText(
+          scenario === 'opening'
+            ? 'Falta registrar el comprobante de saldos iniciales.'
+            : '1 facturas sin detalle contable completo.',
+          { exact: true },
+        )
+        .waitFor()
+      for (const title of [
+        'Balanza de comprobación',
+        'Estado de resultado',
+        'Estado de situación financiera',
+      ]) {
+        await page.getByRole('button', { name: title, exact: true }).click()
+        const code = title === 'Estado de resultado' ? '4110' : '1110-001'
+        const cells = await accountRow(code).locator('td.num').allTextContents()
+        assert.ok(cells.length > 0)
+        assert.ok(
+          cells.every((cell) => cell === 'Pendiente'),
+          `${scenario}: ${title}`,
+        )
+      }
+      ledgerStartOn = today
+      missingSales = 0
+      await page.getByLabel('Desde', { exact: true }).fill(today)
+      await page
+        .locator('.statement-table')
+        .getByText('Pendiente', { exact: true })
+        .first()
+        .waitFor({ state: 'hidden' })
+    }
     await page
       .getByRole('button', { name: 'Comprobantes', exact: true })
       .click()

@@ -34,13 +34,20 @@ export function dailyMetrics(report: ReportData, flow: CashflowReport) {
     ],
     [
       'Entradas de dinero',
-      dailyMoney(flow.available ? totals.inflowNio : null),
+      dailyMoney(
+        flow.available && flow.missingSales === 0 ? totals.inflowNio : null,
+      ),
     ],
     [
       'Salidas de dinero',
       dailyMoney(flow.available ? totals.outflowNio : null),
     ],
-    ['Flujo neto del día', dailyMoney(flow.available ? totals.netNio : null)],
+    [
+      'Flujo neto del día',
+      dailyMoney(
+        flow.available && flow.missingSales === 0 ? totals.netNio : null,
+      ),
+    ],
   ]
 }
 
@@ -53,7 +60,7 @@ export function dailyAccountRows(flow: CashflowReport) {
         moneyAccounts[account],
         dailyMoney(flow.opening[account]),
         dailyMoney(
-          flow.available
+          flow.available && !rows.some((row) => row.missingSales > 0)
             ? rows.reduce((sum, row) => sum + row.inflowNio, 0)
             : null,
         ),
@@ -102,7 +109,7 @@ export function dailyNotices(
     )
   if (flow.missingSales > 0)
     notices.push(
-      `Hay ${flow.missingSales} facturas sin importe contable confirmado. Las entradas y salidas muestran los importes conocidos; los saldos afectados quedan pendientes.`,
+      `Hay ${flow.missingSales} facturas sin importe contable confirmado. Las entradas, el flujo neto y los saldos afectados quedan pendientes; las salidas conocidas se muestran.`,
     )
   return notices
 }

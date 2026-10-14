@@ -39,7 +39,9 @@ import {
   type FinanceLedger,
   type MoneyAccount,
 } from './finance'
-import { rowsOf, useWritable, type Row } from './financeRows'
+import { rowsOf, type Row } from './financeRows'
+import { useWritable } from './financeAccess'
+import { accountAcceptsCurrency } from './journalModel'
 
 const money = (amount: number) => formatCurrency(amount, 'NIO')
 const roundRate = (value: number) => Math.round(value * 1e6) / 1e6
@@ -323,6 +325,9 @@ export function RecordDialog({
       ? 1
       : Number(rateText || (savedRate ? String(savedRate.usdToNio) : ''))
   const amount = Number(amountText)
+  const matchingBanks = bankAccounts?.filter((a) =>
+    accountAcceptsCurrency(a.code, currency),
+  )
   const accounts: FinanceAccount[] =
     kind === 'opening'
       ? (Object.keys(financeAccounts) as FinanceAccount[])
@@ -386,7 +391,7 @@ export function RecordDialog({
     if (
       shownAccount === 'banco' &&
       bankAccounts &&
-      !bankAccounts.some((a) => a.code === bankAccount)
+      !matchingBanks?.some((a) => a.code === bankAccount)
     ) {
       setFailure('Selecciona la cuenta bancaria.')
       return
@@ -593,7 +598,7 @@ export function RecordDialog({
                 onChange={(e) => setBankAccount(e.target.value)}
               >
                 <option value="">Seleccionar banco</option>
-                {bankAccounts.map((a) => (
+                {matchingBanks?.map((a) => (
                   <option key={a.code} value={a.code}>
                     {a.name}
                   </option>

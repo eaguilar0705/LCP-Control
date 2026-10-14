@@ -42,8 +42,10 @@ export function balanceSheet(
     opened('caja') && opened('banco') && opened('cobrar') && inventory !== null
       ? roundMoney(inventory + cash + position.receivablesNio)
       : null
+  const unconfirmedSalesTax =
+    summary.salesTaxNio !== 0 || summary.missingRevenueLines > 0
   const liabilities =
-    opened('prestamos') && opened('proveedores')
+    !unconfirmedSalesTax && opened('prestamos') && opened('proveedores')
       ? roundMoney(position.loansNio + position.payablesNio)
       : null
   const capital = completeOpening ? position.capitalNio : null
@@ -96,6 +98,16 @@ export function balanceSheet(
       amount: known(position.payablesNio, 'proveedores'),
       kind: started ? 'line' : 'info',
     },
+    ...(unconfirmedSalesTax
+      ? [
+          {
+            key: 'salesTax',
+            label: 'Impuesto sobre ventas por conciliar',
+            amount: null,
+            kind: 'line' as const,
+          },
+        ]
+      : []),
     {
       key: 'liabilitiesTotal',
       label: 'Total pasivos',

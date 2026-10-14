@@ -4,6 +4,7 @@ import { mkdir } from 'node:fs/promises'
 import { browserDatabase } from './browser-database.mjs'
 
 const output = 'output/system-review'
+const baseUrl = process.env.LCP_TEST_BASE_URL ?? 'http://127.0.0.1:5173'
 await mkdir(output, { recursive: true })
 const browser = await chromium.launch({ channel: 'chrome', headless: true })
 try {
@@ -66,7 +67,7 @@ try {
       )
     }
     try {
-      await page.goto('http://127.0.0.1:5173/login')
+      await page.goto(`${baseUrl}/login`)
       await page
         .getByLabel('Correo electrónico', { exact: true })
         .fill('auditoria@example.test')
@@ -486,7 +487,7 @@ try {
         .filter({ hasText: 'recibirás un enlace' })
         .waitFor()
       await healthy('password recovery request')
-      await page.goto('http://127.0.0.1:5173/reset-password')
+      await page.goto(`${baseUrl}/reset-password`)
       await page
         .getByRole('link', { name: 'Solicitar otro enlace', exact: true })
         .waitFor()

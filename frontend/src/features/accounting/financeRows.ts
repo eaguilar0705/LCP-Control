@@ -1,5 +1,3 @@
-import { useAccess } from '../../app/AccessContext'
-import { can } from '../../lib/permissions'
 import { expenseLabel } from '../reports/accounting'
 import {
   financeAccounts,
@@ -73,10 +71,4 @@ export function rowsOf(
     (a, b) =>
       b.day.localeCompare(a.day) || b.createdAt.localeCompare(a.createdAt),
   )
-}
-
-/** Sólo Administración escribe, y nunca en la vista local ni sin la actualización. */
-export function useWritable(ledger: FinanceLedger) {
-  const { demo, role } = useAccess()
-  return !demo && can(role, 'finance.read') && ledger.available
 }

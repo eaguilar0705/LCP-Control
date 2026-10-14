@@ -310,7 +310,10 @@ test('unknown active expenses make affected expense balances and net result pend
   const args = fixtures()
   args.report.accounting.expenses.push(expense('legacy_category', 7))
   args.cumulativeReport.accounting.expenses.push(expense('legacy_category', 7))
-  args.openingReport.accounting.expenses.push(expense('legacy_category', 7))
+  args.openingReport.accounting.expenses.push({
+    ...expense('legacy_category', 7),
+    incurredOn: args.openingReport.range.to,
+  })
   const model = buildAccountingModel(args)
   for (const code of ['5130', '5140', '6000']) {
     assert.equal(income(model, code).periodNio, null)

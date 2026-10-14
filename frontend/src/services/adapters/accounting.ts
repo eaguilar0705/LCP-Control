@@ -70,10 +70,19 @@ export function accountingSchemaMissing(error: DatabaseError) {
 }
 
 function numeric(value: unknown): number {
-  if (value === null || value === undefined || value === '')
+  if (
+    value === null ||
+    value === undefined ||
+    (typeof value === 'string' && !value.trim())
+  )
     throw new AppError(
       'unexpected',
       'La contabilidad contiene un importe incompleto.',
+    )
+  if (typeof value !== 'number' && typeof value !== 'string')
+    throw new AppError(
+      'unexpected',
+      'La contabilidad contiene un importe inválido.',
     )
   const parsed = Number(value)
   if (!Number.isFinite(parsed))
@@ -321,12 +330,28 @@ export function createAccountingAdapter(
         const sales = salesResult.value
         requireComplete(expenses)
         requireComplete(shipments)
-        const totals: SalesByPayment = {
-          caja: numeric(sales?.caja ?? 0),
-          banco: numeric(sales?.banco ?? 0),
-          cobrar: numeric(sales?.cobrar ?? 0),
-          missing: numeric(sales?.missing ?? 0),
-        }
+        // Una respuesta ausente o parcial no prueba que las ventas sean cero.
+        if (
+          startOn &&
+          (!sales || typeof sales !== 'object' || Array.isArray(sales))
+        )
+          throw new AppError(
+            'unexpected',
+            'No se recibió el resumen completo de ventas contables.',
+          )
+        const totals: SalesByPayment = startOn
+          ? {
+              caja: numeric(sales?.caja),
+              banco: numeric(sales?.banco),
+              cobrar: numeric(sales?.cobrar),
+              missing: numeric(sales?.missing),
+            }
+          : { caja: 0, banco: 0, cobrar: 0, missing: 0 }
+        if (totals.missing < 0 || !Number.isInteger(totals.missing))
+          throw new AppError(
+            'unexpected',
+            'El resumen de ventas contiene un conteo incompleto o inválido.',
+          )
         return financeLedger(
           {
             entries,

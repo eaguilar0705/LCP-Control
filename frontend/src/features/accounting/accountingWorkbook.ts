@@ -12,6 +12,7 @@ export function accountingWorkbookSheets(model: AccountingModel): Sheet[] {
   const notes = [
     model.businessName,
     `Del ${model.range.from} al ${model.range.to}. Importes en NIO.`,
+    'Pendiente indica información insuficiente; no equivale a cero. Revisa los avisos de este estado.',
   ]
   return [
     {
@@ -28,6 +29,8 @@ export function accountingWorkbookSheets(model: AccountingModel): Sheet[] {
       notes: [
         ...notes,
         ...model.warningsByView.trial,
+        'El saldo inicial corresponde al día anterior al inicio del período. Debe y Haber incluyen los movimientos del período.',
+        'Saldo final: deudoras = inicial + Debe − Haber; acreedoras = inicial − Debe + Haber.',
         'Los totales de saldos muestran la diferencia entre deudores y acreedores.',
       ],
       columns: [
@@ -86,6 +89,7 @@ export function accountingWorkbookSheets(model: AccountingModel): Sheet[] {
         model.businessName,
         `Al ${model.range.to}. Importes en NIO.`,
         `Resultado acumulado desde ${model.accumulatedFrom}.`,
+        'Pendiente indica información insuficiente; no equivale a cero. Revisa los avisos de este estado.',
         ...model.warningsByView.balance,
       ],
       columns: [

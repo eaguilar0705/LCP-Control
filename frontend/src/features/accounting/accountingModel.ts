@@ -248,10 +248,20 @@ function reliable(report: ReportData) {
   )
 }
 function unknownExpenses(report: ReportData) {
-  return report.accounting.expenses.some(
-    (expense) =>
-      !expense.voidedAt && !Object.hasOwn(expenseCategories, expense.category),
-  )
+  return report.accounting.expenses.some((expense) => {
+    if (expense.voidedAt || Object.hasOwn(expenseCategories, expense.category))
+      return false
+    const day = expense.incurredOn
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(day ?? '')
+      ? new Date(`${day}T12:00:00Z`)
+      : null
+    const dated =
+      date &&
+      Number.isFinite(date.getTime()) &&
+      date.toISOString().startsWith(day)
+    // Sin fecha válida no podemos asegurar que el gasto quede fuera del corte.
+    return !dated || (day >= report.range.from && day <= report.range.to)
+  })
 }
 function netResult(report: ReportData, summary: Summary): number | null {
   return reliable(report) && !unknownExpenses(report)
