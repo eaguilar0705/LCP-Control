@@ -4,33 +4,47 @@ import { useQuery } from '../../lib/useQuery'
 import { errorMessage } from '../../lib/errors'
 import { formatCurrency, formatDate } from '../../lib/format'
 import { journalRpc } from './journalService'
-import type { JournalRecord } from './journalModel'
+import {
+  journalNumber,
+  type AutomaticJournalRecord,
+  type JournalDetailLine,
+  type JournalRecord,
+} from './journalModel'
 import { useServices } from '../../services/useServices'
 interface Detail extends JournalRecord {
-  lines: {
-    account: string
-    name: string
-    debit: number
-    credit: number
-    debit_nio: number
-    credit_nio: number
-  }[]
+  lines: JournalDetailLine[]
 }
 export function JournalDetail({
   id,
+  entry,
   onClose,
 }: {
   id: string
+  entry?: AutomaticJournalRecord
   onClose: () => void
 }) {
   const load = useCallback(
-    () => journalRpc<Detail>('get_journal_entry', { p_id: id }),
-    [id],
+    () =>
+      entry
+        ? Promise.resolve(entry)
+        : journalRpc<Detail>('get_journal_entry', { p_id: id }),
+    [id, entry],
   )
   const { data, error, loading, retry } = useQuery(load)
   const { salesService } = useServices()
   const [failure, setFailure] = useState(''),
     [busy, setBusy] = useState(false)
+  const amount = (value: number | null, currency: 'NIO' | 'USD') =>
+    value === null ? 'Pendiente' : formatCurrency(value, currency)
+  const total = (key: 'debit' | 'credit') =>
+    !data || data.lines.some((line) => line[key] === null)
+      ? null
+      : data.lines.reduce((sum, line) => sum + (line[key] ?? 0), 0)
+  const warning = entry?.missingSales
+    ? `Detalle contable pendiente en ${entry.missingSales} factura(s). Los importes del día están pendientes.`
+    : entry?.missingCosts
+      ? `Costo pendiente en ${entry.missingCosts} factura(s).`
+      : ''
   async function download() {
     if (!data) return
     setBusy(true)
@@ -48,7 +62,7 @@ export function JournalDetail({
       pdf.text(business?.name ?? 'La Casa del Perfume', 18, y)
       y += 12
       pdf.setFontSize(12)
-      pdf.text(`Comprobante CP-${String(data.number).padStart(6, '0')}`, 18, y)
+      pdf.text(`Comprobante ${journalNumber(data)}`, 18, y)
       y += 9
       pdf.setTextColor(45, 40, 37)
       pdf.setFont('helvetica', 'normal')
@@ -58,6 +72,7 @@ export function JournalDetail({
         `Referencia: ${data.reference || '—'}`,
         `Moneda: ${data.currency} · Tipo de cambio: ${data.exchange_rate}`,
         data.description,
+        ...(warning ? [warning] : []),
         ...(data.voided_at ? [`ANULADO: ${data.void_reason}`] : []),
       ]) {
         for (const row of pdf.splitTextToSize(text, 178) as string[]) {
@@ -81,10 +96,10 @@ export function JournalDetail({
           y = 22
         }
         pdf.text(names, 18, y)
-        pdf.text(formatCurrency(row.debit, data.currency), 154, y, {
+        pdf.text(amount(row.debit, data.currency), 154, y, {
           align: 'right',
         })
-        pdf.text(formatCurrency(row.credit, data.currency), 198, y, {
+        pdf.text(amount(row.credit, data.currency), 198, y, {
           align: 'right',
         })
         y += height
@@ -95,25 +110,13 @@ export function JournalDetail({
       }
       pdf.setFont('helvetica', 'bold')
       pdf.text('Totales', 18, y)
-      pdf.text(
-        formatCurrency(
-          data.lines.reduce((s, l) => s + l.debit, 0),
-          data.currency,
-        ),
-        154,
-        y,
-        { align: 'right' },
-      )
-      pdf.text(
-        formatCurrency(
-          data.lines.reduce((s, l) => s + l.credit, 0),
-          data.currency,
-        ),
-        198,
-        y,
-        { align: 'right' },
-      )
-      pdf.save(`comprobante-CP-${String(data.number).padStart(6, '0')}.pdf`)
+      pdf.text(amount(total('debit'), data.currency), 154, y, {
+        align: 'right',
+      })
+      pdf.text(amount(total('credit'), data.currency), 198, y, {
+        align: 'right',
+      })
+      pdf.save(`comprobante-${journalNumber(data)}.pdf`)
     } catch (e) {
       setFailure(errorMessage(e))
     } finally {
@@ -123,11 +126,7 @@ export function JournalDetail({
   return (
     <Dialog
       open
-      title={
-        data
-          ? `Comprobante CP-${String(data.number).padStart(6, '0')}`
-          : 'Comprobante'
-      }
+      title={data ? `Comprobante ${journalNumber(data)}` : 'Comprobante'}
       onClose={onClose}
       className="journal-dialog"
     >
@@ -141,9 +140,10 @@ export function JournalDetail({
             {formatDate(data.occurred_on)} · {data.description}
           </p>
           <p>{data.reference}</p>
+          {warning && <p role="status">{warning}</p>}
           {data.voided_at && <p>ANULADO · {data.void_reason}</p>}
           <div className="accounting-table-scroll">
-            <table className="accounting-table">
+            <table className="accounting-table journal-detail-table">
               <thead>
                 <tr>
                   <th>Cuenta</th>
@@ -157,8 +157,12 @@ export function JournalDetail({
                     <th scope="row">
                       {l.account} · {l.name}
                     </th>
-                    <td>{formatCurrency(l.debit, data.currency)}</td>
-                    <td>{formatCurrency(l.credit, data.currency)}</td>
+                    <td data-label={`Debe ${data.currency}`}>
+                      {amount(l.debit, data.currency)}
+                    </td>
+                    <td data-label={`Haber ${data.currency}`}>
+                      {amount(l.credit, data.currency)}
+                    </td>
                   </tr>
                 ))}
               </tbody>

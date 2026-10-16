@@ -106,6 +106,15 @@
 .journal-dialog {
   width: min(1000px, calc(100vw - 2rem));
 }
+.journal-dialog > .section-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+.journal-dialog > .section-heading h2 {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .journal-fields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -113,10 +122,9 @@
 }
 .journal-line {
   display: grid;
-  grid-template-columns: minmax(180px, 3fr) minmax(90px, 1fr) minmax(
-      90px,
-      1fr
-    ) auto;
+  grid-template-columns:
+    minmax(180px, 3fr) minmax(90px, 1fr) minmax(90px, 1fr)
+    auto;
   gap: 0.65rem;
   align-items: end;
   padding: 0.75rem 0;
@@ -137,6 +145,40 @@
   color: #792d38;
 }
 @media (max-width: 600px) {
+  .journal-detail-table {
+    min-width: 0;
+    width: 100%;
+  }
+  .journal-detail-table thead {
+    display: none;
+  }
+  .journal-detail-table tbody,
+  .journal-detail-table tr {
+    display: block;
+  }
+  .journal-detail-table tr {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .journal-detail-table tbody th {
+    display: block;
+    padding: 0.5rem;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    border: 0;
+  }
+  .journal-detail-table tbody td {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border: 0;
+    white-space: normal;
+  }
+  .journal-detail-table td::before {
+    content: attr(data-label);
+    color: var(--muted);
+  }
   .journal-fields {
     grid-template-columns: 1fr;
   }

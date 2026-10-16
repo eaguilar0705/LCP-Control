@@ -39,12 +39,15 @@ npm run check
 npm run typecheck
 npm run test:accounting
 npm run test:database
+npm run test:store
 npm run preview
 ```
 
 `check` valida lint y compila la aplicación en `output/dist/`. Publicar esa carpeta en un hosting HTTPS con fallback de rutas a `index.html`. `preview` permite revisar la compilación localmente y mantiene el servidor limitado a este equipo.
 
 Con el servidor local activo, `npm run test:browser:accounting` verifica el módulo en Chrome a 1440, 390 y 320 px; `npm run test:browser` recorre también inventario, ventas y reportes. Las pruebas interceptan Supabase y usan datos aislados. `LCP_TEST_BASE_URL` permite elegir un servidor local distinto del puerto 5173. La auditoría y sus correcciones se documentan en [el informe contable](docs/auditoria-contabilidad-2026-10-13.md).
+
+`test:store` simula 30 jornadas con 1,200 facturas y concilia inventario, caja, bancos y contabilidad en una base desechable. La [revisión de entrega del 16 de octubre](docs/revision-entrega-2026-10-16.md) documenta las comprobaciones, los comprobantes automáticos y la carga de costos.
 
 La entrega no incluye dependencias instaladas, compilaciones, cachés, informes ni respaldos. `npm ci` instala las dependencias y `npm run build` genera la compilación. Para limpiar las salidas después de detener dev/preview:
 

@@ -8,6 +8,8 @@ import {
   cardSettlement,
   accountAcceptsCurrency,
   journalTotals,
+  journalNumber,
+  isAutomaticJournal,
   type JournalLine,
   type LedgerReport,
 } from './journalModel'
@@ -23,6 +25,7 @@ const journalKinds = {
   card_settlement: 'Liquidación de tarjetas',
   adjustment: 'Comprobante de ajuste',
 } as const
+const automaticKinds = { sales: 'Ventas', sales_cost: 'Costo de ventas' }
 type Kind = keyof typeof journalKinds
 type Line = JournalLine
 export function JournalWorkspace({
@@ -38,6 +41,12 @@ export function JournalWorkspace({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [detailId, setDetailId] = useState<string | null>(null)
+  const entries = [...data.entries, ...(data.automaticEntries ?? [])].sort(
+    (a, b) =>
+      b.occurred_on.localeCompare(a.occurred_on) ||
+      b.number - a.number ||
+      a.id.localeCompare(b.id),
+  )
   async function cancel(e: FormEvent) {
     e.preventDefault()
     if (!voidId || busy) return
@@ -60,7 +69,11 @@ export function JournalWorkspace({
       </div>
       <div className="journal-actions">
         {(Object.keys(journalKinds) as Kind[])
-          .filter((k) => (data.startOn ? k !== 'opening' : k === 'opening'))
+          .filter(
+            (k) =>
+              k !== 'deposit' &&
+              (data.startOn ? k !== 'opening' : k === 'opening'),
+          )
           .map((kind) => (
             <Button
               key={kind}
@@ -84,21 +97,31 @@ export function JournalWorkspace({
             </tr>
           </thead>
           <tbody>
-            {data.entries.slice(0, 500).map((e) => (
+            {entries.slice(0, 500).map((e) => (
               <tr key={e.id}>
                 <td>
                   <Button variant="ghost" onClick={() => setDetailId(e.id)}>
-                    CP-{String(e.number).padStart(6, '0')}
+                    {journalNumber(e)}
                   </Button>
                 </td>
                 <td>{formatDate(e.occurred_on)}</td>
                 <th scope="row">
-                  {journalKinds[e.kind as Kind] ?? e.kind}
+                  {journalKinds[e.kind as Kind] ??
+                    automaticKinds[e.kind as keyof typeof automaticKinds] ??
+                    e.kind}
                   <small>{e.description}</small>
                 </th>
                 <td>{e.reference || '—'}</td>
                 <td>
-                  {e.voided_at ? (
+                  {isAutomaticJournal(e) ? (
+                    e.missingSales > 0 ? (
+                      'Detalle pendiente'
+                    ) : e.missingCosts > 0 ? (
+                      'Costo pendiente'
+                    ) : (
+                      'Automático'
+                    )
+                  ) : e.voided_at ? (
                     'Anulado'
                   ) : e.kind === 'opening' ? (
                     'Registrado'
@@ -120,8 +143,8 @@ export function JournalWorkspace({
           </tbody>
         </table>
       </div>
-      {data.entries.length === 0 && <p>Sin comprobantes en este período.</p>}
-      {data.entries.length > 500 && (
+      {entries.length === 0 && <p>Sin comprobantes en este período.</p>}
+      {entries.length > 500 && (
         <p role="status">
           Se muestran 500 comprobantes. Reduce el período para consultar los
           restantes.
@@ -139,7 +162,11 @@ export function JournalWorkspace({
         />
       )}
       {detailId && (
-        <JournalDetail id={detailId} onClose={() => setDetailId(null)} />
+        <JournalDetail
+          id={detailId}
+          entry={data.automaticEntries?.find((e) => e.id === detailId)}
+          onClose={() => setDetailId(null)}
+        />
       )}
       {voidId && (
         <Dialog

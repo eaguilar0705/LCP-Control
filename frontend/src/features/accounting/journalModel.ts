@@ -25,6 +25,30 @@ export interface JournalRecord {
   voided_at: string | null
   void_reason: string | null
 }
+export interface JournalDetailLine {
+  account: string
+  name: string
+  debit: number | null
+  credit: number | null
+  debit_nio: number | null
+  credit_nio: number | null
+}
+export interface AutomaticJournalRecord extends JournalRecord {
+  automatic: true
+  missingCosts: number
+  missingSales: number
+  lines: JournalDetailLine[]
+}
+export function isAutomaticJournal(
+  entry: JournalRecord,
+): entry is AutomaticJournalRecord {
+  return 'automatic' in entry && entry.automatic === true
+}
+export function journalNumber(entry: JournalRecord) {
+  return isAutomaticJournal(entry)
+    ? `${entry.kind === 'sales_cost' ? 'CV' : 'VE'}-${entry.occurred_on.replaceAll('-', '')}`
+    : `CP-${String(entry.number).padStart(6, '0')}`
+}
 export interface LedgerReport {
   startOn: string | null
   from: string
@@ -33,6 +57,7 @@ export interface LedgerReport {
   missingSales: number
   accounts: LedgerAccount[]
   entries: JournalRecord[]
+  automaticEntries?: AutomaticJournalRecord[]
 }
 const round = (x: number) => Math.round((x + Number.EPSILON) * 100) / 100
 // Contrapartidas de costos desconocidos en private.operational_postings:

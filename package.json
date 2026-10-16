@@ -21,8 +21,9 @@
     "lint": "eslint .",
     "format": "prettier --write frontend shared scripts *.json *.js *.md",
     "preview": "npm run preview --workspace @lcp/frontend --",
-    "test:database": "node scripts/tests/business-day.mjs && node scripts/tests/workday-flow.mjs && node scripts/tests/catalog-access.mjs && node scripts/tests/database-accounting-audit.mjs",
-    "test:browser": "node scripts/tests/browser-system.mjs",
+    "test:database": "node scripts/tests/business-day.mjs && node scripts/tests/workday-flow.mjs && node scripts/tests/catalog-access.mjs && node scripts/tests/database-accounting-audit.mjs && node scripts/tests/automatic-sales-journal.mjs && node scripts/tests/cost-import.mjs",
+    "test:store": "node scripts/tests/extended-store-flow.mjs",
+    "test:browser": "node scripts/tests/browser-system.mjs && node scripts/tests/browser-sales-journal.mjs",
     "test:browser:accounting": "node scripts/tests/browser-accounting.mjs"
   },
   "devDependencies": {

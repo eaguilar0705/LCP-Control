@@ -86,6 +86,7 @@ try {
       }
       if (url.pathname.includes('staff_members'))
         return send({ role: 'superadmin', active: true })
+      if (url.pathname.endsWith('/rpc/sales_journal_entries')) return send([])
       if (url.pathname.endsWith('/rpc/ledger_report'))
         return send({
           startOn: ledgerStartOn,
