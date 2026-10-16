@@ -46,9 +46,15 @@ const actions: {
 export function ProductStockEditor({
   product,
   disabled = false,
+  hasAverageCost = false,
+  purchaseDisabled = false,
+  onPurchase,
 }: {
   product: Product
   disabled?: boolean
+  hasAverageCost?: boolean
+  purchaseDisabled?: boolean
+  onPurchase?: (location: InventoryLocation) => void
 }) {
   const { demo, role } = useAccess()
   const { inventoryService } = useServices()
@@ -73,6 +79,8 @@ export function ProductStockEditor({
   const before = item?.quantities[location] ?? null
   const initial = before === null
   const movementType = initial ? 'ADJUSTMENT' : type
+  const requiresPurchase =
+    movementType === 'ENTRY' && hasAverageCost && !!onPurchase
   const action = actions.find((a) => a.type === movementType)!
   const available = actions.filter((a) => can(role, a.permission) || demo)
   const amount = Number(quantity)
@@ -95,6 +103,10 @@ export function ProductStockEditor({
   async function submit(e: FormEvent) {
     e.preventDefault()
     if (locked || demo || !can(role, action.permission)) return
+    if (requiresPurchase) {
+      if (!purchaseDisabled) onPurchase?.(location)
+      return
+    }
     if (!valid || !note.trim() || note.trim().length > 2000) {
       setError(
         'Revisa la cantidad y escribe el motivo. Las existencias no pueden quedar negativas.',
@@ -194,59 +206,65 @@ export function ProductStockEditor({
                   </Select>
                 </div>
 
-                <div className="stock-adjustment-row">
-                  <div className="quantity-stepper">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      aria-label="Reducir cantidad en una unidad"
-                      disabled={
-                        !Number.isInteger(amount) ||
-                        amount <= (movementType === 'ADJUSTMENT' ? 0 : 1)
-                      }
-                      onClick={() => setQuantity(String(amount - 1))}
-                    >
-                      <Minus size={18} />
-                    </Button>
+                {!requiresPurchase && (
+                  <>
+                    <div className="stock-adjustment-row">
+                      <div className="quantity-stepper">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          aria-label="Reducir cantidad en una unidad"
+                          disabled={
+                            !Number.isInteger(amount) ||
+                            amount <= (movementType === 'ADJUSTMENT' ? 0 : 1)
+                          }
+                          onClick={() => setQuantity(String(amount - 1))}
+                        >
+                          <Minus size={18} />
+                        </Button>
+                        <Input
+                          label={
+                            movementType === 'ADJUSTMENT'
+                              ? 'Conteo total del perfume'
+                              : 'Unidades a mover'
+                          }
+                          type="number"
+                          required
+                          min={movementType === 'ADJUSTMENT' ? 0 : 1}
+                          max={1000000}
+                          step={1}
+                          value={quantity}
+                          onChange={(e) => setQuantity(e.target.value)}
+                        />
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          aria-label="Aumentar cantidad en una unidad"
+                          disabled={
+                            !Number.isInteger(amount) || amount >= 1000000
+                          }
+                          onClick={() => setQuantity(String(amount + 1))}
+                        >
+                          <Plus size={18} />
+                        </Button>
+                      </div>
+                      <div className="stock-preview">
+                        <span>{before ?? 'Sin conteo'}</span>
+                        <ArrowRight size={18} />
+                        <strong>{valid ? after : 'Revisar cantidad'}</strong>
+                        <small>{labels.location[location]} · al guardar</small>
+                      </div>
+                    </div>
                     <Input
-                      label={
-                        movementType === 'ADJUSTMENT'
-                          ? 'Conteo total del perfume'
-                          : 'Unidades a mover'
-                      }
-                      type="number"
+                      label="Motivo del cambio de cantidad"
                       required
-                      min={movementType === 'ADJUSTMENT' ? 0 : 1}
-                      max={1000000}
-                      step={1}
-                      value={quantity}
-                      onChange={(e) => setQuantity(e.target.value)}
+                      maxLength={2000}
+                      placeholder="Compra recibida, corrección de conteo…"
+                      value={note}
+                      onChange={(e) => setNote(e.target.value)}
                     />
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      aria-label="Aumentar cantidad en una unidad"
-                      disabled={!Number.isInteger(amount) || amount >= 1000000}
-                      onClick={() => setQuantity(String(amount + 1))}
-                    >
-                      <Plus size={18} />
-                    </Button>
-                  </div>
-                  <div className="stock-preview">
-                    <span>{before ?? 'Sin conteo'}</span>
-                    <ArrowRight size={18} />
-                    <strong>{valid ? after : 'Revisar cantidad'}</strong>
-                    <small>{labels.location[location]} · al guardar</small>
-                  </div>
-                </div>
-                <Input
-                  label="Motivo del cambio de cantidad"
-                  required
-                  maxLength={2000}
-                  placeholder="Compra recibida, corrección de conteo…"
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                />
+                  </>
+                )}
               </fieldset>
               {error && (
                 <p role="alert" className="inline-error">
@@ -254,12 +272,27 @@ export function ProductStockEditor({
                 </p>
               )}
               <div className="form-actions">
-                <Button
-                  type="submit"
-                  disabled={locked || demo || !can(role, action.permission)}
-                >
-                  {busy ? 'Guardando cantidades…' : 'Guardar cantidades'}
-                </Button>
+                {requiresPurchase ? (
+                  <Button
+                    type="button"
+                    disabled={locked || demo || purchaseDisabled}
+                    title={
+                      purchaseDisabled
+                        ? 'Guarda los datos del perfume antes de registrar una compra.'
+                        : undefined
+                    }
+                    onClick={() => onPurchase?.(location)}
+                  >
+                    Registrar compra
+                  </Button>
+                ) : (
+                  <Button
+                    type="submit"
+                    disabled={locked || demo || !can(role, action.permission)}
+                  >
+                    {busy ? 'Guardando cantidades…' : 'Guardar cantidades'}
+                  </Button>
+                )}
               </div>
             </form>
           )}

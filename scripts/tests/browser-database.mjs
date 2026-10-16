@@ -93,10 +93,14 @@ export async function browserDatabase(page) {
     const req = route.request(),
       url = new URL(req.url())
     const body = req.postDataJSON() ?? {}
-    const send = (data, status = 200) =>
+    const send = (data, status = 200, headers = {}) =>
       route.fulfill({
         status,
         contentType: 'application/json',
+        headers: {
+          'access-control-expose-headers': 'content-range',
+          ...headers,
+        },
         body: JSON.stringify(data),
       })
     try {
@@ -176,20 +180,37 @@ export async function browserDatabase(page) {
         values.push(val)
         conditions.push(`t.${key}${operators[op]}$${values.length}`)
       }
-      let query = `select t.*${extra} from public.${table} t${conditions.length ? ' where ' + conditions.join(' and ') : ''}`
+      const filtered = `from public.${table} t${conditions.length ? ' where ' + conditions.join(' and ') : ''}`
+      let query = `select t.*${extra} ${filtered}`
       const order = url.searchParams.get('order')
-      if (order && /^[a-z_]+\.(asc|desc)$/.test(order))
-        query += ' order by t.' + order.replace('.', ' ')
+      if (order) {
+        const parts = order.split(',')
+        if (parts.some((part) => !/^[a-z_]+\.(asc|desc)$/.test(part)))
+          throw new Error('Unhandled order: ' + order)
+        query +=
+          ' order by ' +
+          parts.map((part) => 't.' + part.replace('.', ' ')).join(',')
+      }
       const limit = Number(url.searchParams.get('limit') ?? 2000),
         offset = Number(url.searchParams.get('offset') ?? 0)
       query += ` limit ${Math.min(limit, 5000)} offset ${offset}`
       const rows = (
         await db.query(`select to_jsonb(r) result from (${query}) r`, values)
       ).rows.map((r) => r.result)
+      const headers = {}
+      if (req.headers().prefer?.includes('count=exact')) {
+        const count = (
+          await db.query(`select count(*)::int n ${filtered}`, values)
+        ).rows[0].n
+        headers['content-range'] =
+          `${rows.length ? `${offset}-${offset + rows.length - 1}` : '*'}/${count}`
+      }
       return send(
         req.headers().accept?.includes('vnd.pgrst.object')
           ? (rows[0] ?? null)
           : rows,
+        200,
+        headers,
       )
     } catch (e) {
       failures.push(`${url.pathname}: ${e.message}`)

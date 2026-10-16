@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
 import { mkdir, writeFile } from 'node:fs/promises'
+import { fileURLToPath } from 'node:url'
+import { createServer } from 'vite'
 import {
   database,
   identity,
@@ -16,17 +18,32 @@ import {
 // clock is replaced, so successive workdays exercise the actual date guards.
 const db = await database()
 const started = performance.now()
-const days = 30
+const days = Number(process.env.LCP_SIMULATION_DAYS ?? 30)
+assert.ok(
+  Number.isInteger(days) && days >= 1 && days <= 365,
+  'LCP_SIMULATION_DAYS debe ser un entero entre 1 y 365',
+)
+const startDate = '2026-09-01'
+const simulatedDate = (index) =>
+  new Date(Date.UTC(2026, 8, 1 + index)).toISOString().slice(0, 10)
+const shipmentQuantity = days > 30 ? 12 : 6
 const products = []
 const accounts = new Map()
 const receivables = []
 const payables = []
 const dailyReports = []
 const automaticReports = []
+const immutableDocuments = []
+const revisionReports = []
+const monthlyModels = new Map()
+let reportServer
+let catalogEdits = 0
+let reopenings = 0
+let staleWritesRejected = 0
 let checks = 0
 let operations = 0
 let minute = 0
-let date = '2026-09-01'
+let date = startDate
 let cashNio = 500000
 let cashUsd = 500
 let invoices = 0
@@ -280,6 +297,10 @@ try {
   await db.exec(
     "insert into public.business_settings(name) values('Prueba prolongada aislada'); insert into public.brands(name) values('Marca de prueba')",
   )
+  await db.query(
+    'insert into public.exchange_rates(id,usd_to_nio) values(true,$1) on conflict(id) do update set usd_to_nio=excluded.usd_to_nio',
+    [rate],
+  )
   for (let index = 0; index < 20; index++) {
     await db.query(
       "insert into public.customers(id,name,price_tier) values($1,$2,'emprendedor')",
@@ -294,10 +315,11 @@ try {
       warehouse: 10,
       average: 100 + index,
       prices: { NIO: 500 + index * 10, USD: money(20 + index / 5) },
+      name: `Perfume ${index + 1}`,
     }
     await db.query(
       'insert into public.products(id,sku,name,brand_id) values($1,$2,$3,(select id from public.brands limit 1))',
-      [product.id, product.sku, `Perfume ${index + 1}`],
+      [product.id, product.sku, product.name],
     )
     await db.query(
       "insert into public.inventory_balances(product_id,location,quantity) values($1,'store',40),($1,'warehouse',10)",
@@ -312,6 +334,25 @@ try {
       [product.id, product.prices.NIO, product.prices.USD],
     )
     products.push(product)
+  }
+  const dormantProduct = {
+    id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+    revision: 0,
+    name: 'Perfume de temporada',
+    brand: 'Marca de prueba',
+    category: 'designer',
+    gender: 'unisex',
+    size: 100,
+    unit: 'ml',
+    manufacturerBarcode: '',
+    minimumStock: 0,
+    active: true,
+    imagePath: null,
+    prices: {
+      emprendedor: { USD: 25 },
+      vip: { USD: 24 },
+      premium: { USD: 23 },
+    },
   }
   await identity(db, admin)
   const inventoryOpening = products.reduce(
@@ -332,13 +373,24 @@ try {
   ]
   await call('record_journal_entry', voucher('opening', openingLines))
   for (const line of openingLines) add(line.account, line.debit - line.credit)
+  await call('save_catalog_product', dormantProduct)
+  dormantProduct.revision = 1
+  catalogEdits++
   for (let dayIndex = 0; dayIndex < days; dayIndex++) {
-    date = `2026-09-${String(dayIndex + 1).padStart(2, '0')}`
+    date = simulatedDate(dayIndex)
+    const month = date.slice(0, 7)
+    if (!monthlyModels.has(month))
+      monthlyModels.set(month, {
+        from: date,
+        opening: dayIndex === 0 ? new Map() : new Map(accounts),
+      })
+    const purchasesBefore = purchases
     minute = 0
     await tick()
     await identity(db, admin)
     const openInput = {
       requestId: crypto.randomUUID(),
+      expectedDay: date,
       openingNio: cashNio,
       openingUsd: cashUsd,
     }
@@ -364,7 +416,7 @@ try {
         return {
           productId: product.id,
           location: line % 3 === 0 ? 'warehouse' : 'store',
-          quantity: 6,
+          quantity: shipmentQuantity,
           unitPrice:
             currency === 'USD'
               ? money(5 + line / 5 + dayIndex / 10)
@@ -407,12 +459,84 @@ try {
       for (const line of lines) {
         const product = itemProduct(line)
         const units = product.store + product.warehouse
-        const landed = six((line.unitPrice + 1) * exchangeRate)
+        const shippingPerUnit = six(
+          shippingAmount /
+            lines.reduce((sum, entry) => sum + entry.quantity, 0),
+        )
+        const landed = six((line.unitPrice + shippingPerUnit) * exchangeRate)
         product.average = six(
           (product.average * units + landed * line.quantity) /
             (units + line.quantity),
         )
         product[line.location] += line.quantity
+      }
+      purchases++
+    }
+    // Revisar existencias y reponer los productos con mayor salida es parte de
+    // la operación diaria. No se inventan unidades ni se cambian saldos por SQL:
+    // una compra real alimenta tanto inventario como cuentas por pagar.
+    const demand = new Map()
+    for (let saleIndex = 0; saleIndex < 40; saleIndex++) {
+      const planned = invoice(
+        dayIndex,
+        saleIndex,
+        dayIndex === 14 && saleIndex === 10 ? 100 : undefined,
+      )
+      for (const item of planned.items)
+        demand.set(
+          item.productId,
+          (demand.get(item.productId) ?? 0) + item.quantity,
+        )
+    }
+    const reorder = products.filter(
+      (product) => product.store < (demand.get(product.id) ?? 0),
+    )
+    if (reorder.length) {
+      const short = reorder[0]
+      const invalid = {
+        ...invoice(dayIndex, 0),
+        items: [{ productId: short.id, quantity: short.store + 1 }],
+      }
+      await rejects(
+        () => call('create_document', invalid),
+        /insuficientes/,
+        'no vender más existencias de las disponibles antes de reponer',
+      )
+      const restock = {
+        requestId: crypto.randomUUID(),
+        incurredOn: date,
+        supplier: 'Reposición de perfumes de mayor demanda',
+        reference: `REPOSICION-${date}`,
+        agency: '',
+        note: '',
+        currency: 'NIO',
+        exchangeRate: 1,
+        shippingAmount: 0,
+        account: 'credito',
+        lines: reorder.map((product) => ({
+          productId: product.id,
+          location: 'store',
+          quantity: (demand.get(product.id) ?? 0) - product.store + 12,
+          unitPrice: money(product.average + 5 + (dayIndex % 7)),
+        })),
+      }
+      const id = await call('record_shipment', restock)
+      const goods = money(
+        restock.lines.reduce(
+          (sum, line) => sum + line.quantity * line.unitPrice,
+          0,
+        ),
+      )
+      post('1130', '2111', goods)
+      payables.push({ shipmentId: id, documentId: null, balance: goods })
+      for (const line of restock.lines) {
+        const product = itemProduct(line)
+        const units = product.store + product.warehouse
+        product.average = six(
+          (product.average * units + line.unitPrice * line.quantity) /
+            (units + line.quantity),
+        )
+        product.store += line.quantity
       }
       purchases++
     }
@@ -426,6 +550,31 @@ try {
       )
       const result = await call('create_document', payload)
       const expected = modelSale(payload)
+      if (cents(result.total) !== cents(expected.total)) {
+        console.error(
+          JSON.stringify(
+            {
+              dayIndex,
+              saleIndex,
+              currency: payload.currency,
+              expected: expected.total,
+              actual: result.total,
+              products: payload.items.map((item) => ({
+                ...item,
+                expected: itemProduct(item).prices,
+              })),
+              actualLines: (
+                await db.query(
+                  'select i.description,i.product_id,i.unit_price from public.document_items i where i.document_id=$1',
+                  [result.id],
+                )
+              ).rows,
+            },
+            null,
+            2,
+          ),
+        )
+      }
       equal(
         cents(result.total),
         cents(expected.total),
@@ -470,6 +619,78 @@ try {
       }
     }
     await identity(db, admin)
+    immutableDocuments.push({
+      id: dayInvoices[1].id,
+      rows: (
+        await db.query(
+          'select i.description,i.quantity,i.unit_price,c.unit_cost_nio,c.net_revenue_nio from public.document_items i join public.document_item_costs c on c.document_item_id=i.id where i.document_id=$1 order by i.product_id',
+          [dayInvoices[1].id],
+        )
+      ).rows,
+    })
+    // A real catalog edit changes future sales only. Previously issued invoices
+    // must keep both the description/price and their weighted-cost snapshot.
+    const changed = itemProduct(dayInvoices[1].payload.items[0])
+    const beforeEdit = await get(
+      'select revision from public.products where id=$1',
+      [changed.id],
+    )
+    const editedUsd = money(changed.prices.USD + 0.15 + (dayIndex % 3) / 10)
+    const edit = {
+      ...dormantProduct,
+      id: changed.id,
+      revision: beforeEdit.revision,
+      name: `${changed.name.split(' · ')[0]} · edición ${dayIndex + 1}`,
+      manufacturerBarcode: String(7500000000000 + dayIndex),
+      prices: {
+        emprendedor: { USD: editedUsd },
+        vip: { USD: money(editedUsd - 1) },
+        premium: { USD: money(editedUsd - 2) },
+      },
+    }
+    await call('save_catalog_product', edit)
+    catalogEdits++
+    changed.name = edit.name
+    changed.prices = { USD: editedUsd, NIO: money(editedUsd * rate) }
+    await rejects(
+      () =>
+        call('save_catalog_product', {
+          ...edit,
+          name: 'Edición obsoleta que no debe guardarse',
+        }),
+      /Otro usuario/,
+      'edición simultánea obsoleta rechazada',
+    )
+    staleWritesRejected++
+    await rejects(
+      () =>
+        call('save_catalog_product', {
+          ...edit,
+          revision: beforeEdit.revision + 1,
+          active: false,
+        }),
+      /existencias/,
+      'no desactivar un perfume con existencias',
+    )
+    if (dayIndex % 5 === 0) {
+      dormantProduct.active = false
+      await call('save_catalog_product', dormantProduct)
+      dormantProduct.revision++
+      catalogEdits++
+      const inactiveSale = {
+        ...invoice(dayIndex, 1),
+        items: [{ productId: dormantProduct.id, quantity: 1 }],
+      }
+      await rejects(
+        () => call('create_document', inactiveSale),
+        /inactivo|disponible/,
+        'no vender un producto desactivado',
+      )
+      dormantProduct.active = true
+      await call('save_catalog_product', dormantProduct)
+      dormantProduct.revision++
+      catalogEdits++
+    }
     // Cancel a cash sale before any subsequent purchase changes its cost.
     const refund = dayInvoices[0]
     await db.query('select public.delete_invoice($1,$2)', [
@@ -662,6 +883,8 @@ try {
     }
     await identity(db, admin)
     const beforeClose = await reconcile(dayIndex)
+    monthlyModels.get(month).to = date
+    monthlyModels.get(month).closing = new Map(accounts)
     equal(beforeClose.report.invoices, 39, '39 ventas netas por jornada')
     const close = {
       requestId: crypto.randomUUID(),
@@ -669,6 +892,8 @@ try {
       countedNio: cashNio,
       countedUsd: cashUsd,
       note: '',
+      expectedRevision: beforeClose.revision,
+      expectedStateToken: beforeClose.stateToken,
     }
     const closed = await call('close_business_day', close)
     equal(closed.status, 'closed', 'cierre guardado')
@@ -679,8 +904,76 @@ try {
     )
     equal(closed.report.differenceNio, 0, 'caja NIO sin diferencia')
     equal(closed.report.differenceUsd, 0, 'caja USD sin diferencia')
+    if (dayIndex % 7 === 0) {
+      const closeSnapshot = JSON.parse(JSON.stringify(closed.report))
+      const reopen = {
+        requestId: crypto.randomUUID(),
+        day: date,
+        expectedRevision: closed.revision,
+        reason: 'Cierre accidental: falta comprobar el informe de la jornada',
+      }
+      equal(
+        (await call('reopen_business_day', reopen)).status,
+        'open',
+        'reapertura autorizada conserva la jornada',
+      )
+      reopenings++
+      const reopened = await reconcile(dayIndex)
+      equal(
+        (await call('close_business_day', close)).status,
+        'open',
+        'reintento de cierre antiguo no vuelve a cerrar',
+      )
+      const recounted = {
+        ...close,
+        requestId: crypto.randomUUID(),
+        expectedRevision: reopened.revision,
+        expectedStateToken: reopened.stateToken,
+        note: 'Arqueo confirmado después de la reapertura',
+      }
+      equal(
+        (await call('close_business_day', recounted)).status,
+        'closed',
+        'nuevo cierre después de reapertura',
+      )
+      equal(
+        (await call('reopen_business_day', reopen)).status,
+        'closed',
+        'reintento de reapertura antiguo no vuelve a abrir',
+      )
+      const history = (
+        await get('select public.get_business_day_history($1) r', [date])
+      ).r
+      equal(
+        history.length,
+        3,
+        'historial completo de cierre, reapertura y nuevo cierre',
+      )
+      const firstClose = history.find(
+        (entry) =>
+          entry.event === 'close' && entry.revision === closed.revision,
+      )
+      for (const key of Object.keys(closeSnapshot)) {
+        assert.deepEqual(
+          firstClose.report[key],
+          closeSnapshot[key],
+          `primer cierre inmutable: ${key}`,
+        )
+        checks++
+      }
+      revisionReports.push({ date, events: history.length })
+    }
     await rejects(
-      () => call('create_document', invoice(dayIndex, 41)),
+      () =>
+        call('create_document', {
+          ...invoice(dayIndex, 41),
+          items: [
+            {
+              productId: products.find((product) => product.store > 0).id,
+              quantity: 1,
+            },
+          ],
+        }),
       /cerrada/,
       'no vender después de cierre',
     )
@@ -707,7 +1000,7 @@ try {
       expectedUsd: closed.report.expectedUsd,
     })
     console.log(
-      `PASS jornada ${dayIndex + 1}/${days}: 40 facturas, 4 proformas, 3 compras, 1 devolución; inventario, auxiliares, caja y mayor conciliados`,
+      `PASS jornada ${dayIndex + 1}/${days}: 40 facturas, 4 proformas, ${purchases - purchasesBefore} compras, 1 devolución; inventario, auxiliares, caja y mayor conciliados`,
     )
   }
   for (const uid of [operator, warehouse, viewer, outsider]) {
@@ -736,6 +1029,20 @@ try {
     )
   }
   await identity(db, admin)
+  for (const snapshot of immutableDocuments) {
+    const currentRows = (
+      await db.query(
+        'select i.description,i.quantity,i.unit_price,c.unit_cost_nio,c.net_revenue_nio from public.document_items i join public.document_item_costs c on c.document_item_id=i.id where i.document_id=$1 order by i.product_id',
+        [snapshot.id],
+      )
+    ).rows
+    assert.deepEqual(
+      currentRows,
+      snapshot.rows,
+      'facturas históricas conservan descripción, precio, costo y venta neta tras todas las compras y ediciones',
+    )
+    checks++
+  }
   const first = (
     await get('select public.get_business_day($1) r', ['2026-09-01'])
   ).r
@@ -747,6 +1054,98 @@ try {
   const finalLedger = (
     await get('select public.ledger_report($1,$2) r', ['2026-09-01', date])
   ).r
+  reportServer = await createServer({
+    configFile: false,
+    root: fileURLToPath(new URL('../../frontend', import.meta.url)),
+    cacheDir: fileURLToPath(
+      new URL('../../output/cache/extended-tests', import.meta.url),
+    ),
+    server: { middlewareMode: true, hmr: false, ws: false },
+    ssr: { noExternal: ['@lcp/contracts'] },
+  })
+  const { journalModel } = await reportServer.ssrLoadModule(
+    '/src/features/accounting/journalModel.ts',
+  )
+  for (const period of [
+    ...monthlyModels.values(),
+    { from: startDate, to: date, opening: new Map(), closing: accounts },
+  ]) {
+    const ledger = (
+      await get('select public.ledger_report($1,$2) r', [
+        period.from,
+        period.to,
+      ])
+    ).r
+    for (const account of ledger.accounts) {
+      equal(
+        cents(account.opening),
+        period.opening.get(account.code) ?? 0,
+        `saldo inicial independiente ${period.from} ${account.code}`,
+      )
+      equal(
+        cents(account.closing),
+        period.closing.get(account.code) ?? 0,
+        `saldo final independiente ${period.to} ${account.code}`,
+      )
+      equal(
+        cents(account.debit - account.credit),
+        (period.closing.get(account.code) ?? 0) -
+          (period.opening.get(account.code) ?? 0),
+        `movimiento mensual independiente ${account.code}`,
+      )
+    }
+    const model = journalModel(ledger, 'Prueba prolongada aislada')
+    assert.deepEqual(
+      model.warnings,
+      [],
+      'los estados financieros reales no generan avisos de pendientes con toda la información cargada',
+    )
+    checks++
+    for (const row of model.trial)
+      for (const key of ['openingNio', 'debitNio', 'creditNio', 'closingNio']) {
+        equal(
+          typeof row[key],
+          'number',
+          `balanza sin pendiente: ${row.code} ${key}`,
+        )
+      }
+    equal(
+      cents(model.trialTotals.debitNio),
+      cents(model.trialTotals.creditNio),
+      'balanza de comprobación cuadra en la pantalla',
+    )
+    equal(
+      cents(model.trialTotals.closingNio),
+      0,
+      'saldo neto de balanza igual a cero',
+    )
+    equal(
+      cents(model.balance.left.at(-1).amount),
+      cents(model.balance.right.at(-1).amount),
+      'activo igual a pasivo más capital en el modelo de la pantalla',
+    )
+    equal(
+      typeof model.income.at(-1).periodNio,
+      'number',
+      'utilidad del período sin pendiente',
+    )
+    equal(
+      typeof model.income.at(-1).accumulatedNio,
+      'number',
+      'utilidad acumulada sin pendiente',
+    )
+    const expectedProfit = [...period.closing]
+      .filter(([code]) => /^[45]/.test(code))
+      .reduce(
+        (sum, [code, value]) => sum - value + (period.opening.get(code) ?? 0),
+        0,
+      )
+    equal(
+      cents(model.income.at(-1).periodNio),
+      expectedProfit,
+      'utilidad independiente coincide con la pantalla',
+    )
+  }
   const finalAccount = (code) =>
     finalLedger.accounts.find((account) => account.code === code).closing
   const automatic = (
@@ -807,6 +1206,12 @@ try {
     createdInvoices: invoices + refunds,
     activeInvoices: invoices,
     refunds,
+    catalogEdits,
+    staleWritesRejected,
+    reopenings,
+    preservedInvoiceSnapshots: immutableDocuments.length,
+    completeAccountingPeriods: monthlyModels.size + 1,
+    preservedCloseHistories: revisionReports,
     invoiceLines,
     proformas,
     purchases,
@@ -831,9 +1236,11 @@ try {
     },
     dailyReports,
   }
-  await mkdir('output/extended-store-review', { recursive: true })
+  const artifactDirectory =
+    process.env.LCP_SIMULATION_OUTPUT ?? 'output/extended-store-review'
+  await mkdir(artifactDirectory, { recursive: true })
   await writeFile(
-    'output/extended-store-review/summary.json',
+    `${artifactDirectory}/summary.json`,
     JSON.stringify(result, null, 2),
   )
   console.log(
@@ -843,5 +1250,6 @@ try {
   console.error(`FAIL prueba prolongada día ${date}: ${error.stack}`)
   process.exitCode = 1
 } finally {
+  await reportServer?.close()
   await db.close()
 }

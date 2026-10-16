@@ -69,6 +69,7 @@ const paymentOptions = {
 }
 // Tope de PostgreSQL para el nombre del cliente al emitir (create_document).
 const MAX_CUSTOMER_NAME = 160
+const MAX_DOCUMENT_ITEMS = 100
 const DAY_ONLY = /^\d{4}-\d{2}-\d{2}$/
 
 export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
@@ -171,6 +172,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
   )
   const [issued, setIssued] = useState<DocumentRecord | null>(null)
   const [message, setMessage] = useState('')
+  const [priceReviewRequired, setPriceReviewRequired] = useState(false)
   const [failure, setFailure] = useState(
     restored
       ? 'Hay una emisión pendiente de confirmar. Reintenta la misma operación para recuperar el documento sin duplicarlo.'
@@ -405,6 +407,12 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
       )
       return
     }
+    if (lines.length >= MAX_DOCUMENT_ITEMS) {
+      setMessage(
+        `Cada documento admite hasta ${MAX_DOCUMENT_ITEMS} productos. Emite otro documento para los demás.`,
+      )
+      return
+    }
     setIssued(null)
     setLines([
       ...lines,
@@ -497,13 +505,56 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
     }
   }
 
+  async function updatePrices() {
+    if (busy || issued || pendingIssue) return
+    setBusy(true)
+    setFailure('')
+    try {
+      const inventory = await inventoryService.getInventory()
+      let unavailable = false
+      const updated = lines.map((line) => {
+        const product = inventory.find(
+          (item) => item.product.id === line.productId,
+        )?.product
+        if (!product?.active || !product.prices) {
+          unavailable = true
+          return line
+        }
+        return {
+          ...line,
+          name: `${product.brand} ${product.name}`,
+          barcode: product.barcode,
+          size:
+            product.size === null
+              ? 'Tamaño por confirmar'
+              : `${product.size} ${product.unit}`,
+          prices: structuredClone(product.prices),
+        }
+      })
+      if (!mounted.current) return
+      setLines(updated)
+      setPriceReviewRequired(unavailable)
+      setMessage(
+        unavailable
+          ? 'Hay productos que ya no están disponibles. Retíralos y vuelve a actualizar los precios.'
+          : 'Precios actualizados. Revisa el total antes de emitir.',
+      )
+      retry()
+    } catch (error) {
+      if (mounted.current) setFailure(errorMessage(error))
+    } finally {
+      if (mounted.current) setBusy(false)
+    }
+  }
+
   async function issue() {
     // Las existencias también se comprueban aquí, no sólo al pintar el aviso:
     // emitir con un renglón sin producto termina en un error de la base y el
     // vendedor pierde el documento que ya tenía armado.
     if (
       (!pendingIssue &&
-        (!lines.length ||
+        (priceReviewRequired ||
+          !lines.length ||
           !valid ||
           shortages > 0 ||
           dataIssues ||
@@ -531,9 +582,11 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
       paymentMethod: kind === 'invoice' ? payment : null,
       validUntil: kind === 'proforma' ? validUntil : null,
       notes,
+      expectedTotal: total ?? undefined,
       items: lines.map((line) => ({
         productId: line.productId,
         quantity: line.quantity,
+        expectedUnitPrice: line.prices[tier][currency],
       })),
     }
     rememberDocument(scope, {
@@ -566,6 +619,13 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
       else documentAttemptStatus(scope, kind, operation, 'uncertain')
       if (!mounted.current) return
       setPendingIssue(definitive ? null : payload)
+      if (
+        definitive &&
+        errorMessage(issueError).includes('Los precios cambiaron')
+      ) {
+        setPriceReviewRequired(true)
+        retry()
+      }
       setFailure(
         definitive
           ? errorMessage(issueError)
@@ -620,6 +680,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
   }
 
   function load(item: DocumentDraft) {
+    setPriceReviewRequired(false)
     operation.reset()
     setCurrent(item)
     setDraftRequestSeed(item.id)
@@ -687,6 +748,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
   }
 
   function clear() {
+    setPriceReviewRequired(false)
     operation.reset()
     setCurrent(null)
     setIssued(null)
@@ -764,6 +826,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
   const issuable =
     !!pendingIssue ||
     (ready &&
+      !priceReviewRequired &&
       shortages === 0 &&
       !dataIssues &&
       (kind !== 'invoice' || validExchange) &&
@@ -1310,6 +1373,17 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
             <p role="alert" className="inline-error no-print">
               {failure || error}
             </p>
+          )}
+          {priceReviewRequired && !issued && (
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={busy || !!pendingIssue}
+              onClick={() => void updatePrices()}
+            >
+              <RefreshCw size={17} />
+              Actualizar precios
+            </Button>
           )}
         </Card>
       </div>

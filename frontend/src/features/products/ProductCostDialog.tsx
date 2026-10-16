@@ -5,13 +5,16 @@ import { can } from '../../lib/permissions'
 import { useQuery } from '../../lib/useQuery'
 import { useServices } from '../../services/useServices'
 import { OpeningCostDialog, PurchaseDialog } from '../pricing/CostPanel'
+import type { InventoryLocation } from '../../lib/domain'
 
 export function ProductCostDialog({
   productId,
+  initialLocation,
   onClose,
   onRecorded,
 }: {
   productId: string
+  initialLocation?: InventoryLocation
   onClose: () => void
   onRecorded: (message: string) => void
 }) {
@@ -20,6 +23,7 @@ export function ProductCostDialog({
   return (
     <CostLoader
       productId={productId}
+      initialLocation={initialLocation}
       onClose={onClose}
       onRecorded={onRecorded}
     />
@@ -28,10 +32,12 @@ export function ProductCostDialog({
 
 function CostLoader({
   productId,
+  initialLocation,
   onClose,
   onRecorded,
 }: {
   productId: string
+  initialLocation?: InventoryLocation
   onClose: () => void
   onRecorded: (message: string) => void
 }) {
@@ -110,6 +116,7 @@ function CostLoader({
       pricing={data.pricing.rows}
       catalogRate={data.rate}
       initialProduct={productId}
+      initialLocation={initialLocation}
       onClose={onClose}
       onRecorded={onRecorded}
     />

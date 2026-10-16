@@ -24,6 +24,7 @@ import {
   type PricingInput,
   type Product,
   type PriceTier,
+  type InventoryLocation,
 } from '../../lib/domain'
 import {
   applyPricing,
@@ -116,6 +117,11 @@ function ProductLoader() {
             : null
         }
         rate={data?.rate ?? null}
+        hasAverageCost={
+          data?.pricing?.rows.some(
+            (row) => row.productId === id && row.averageCost !== null,
+          ) ?? false
+        }
         onCostRecorded={(message) => {
           setCostMessage(message)
           retry()
@@ -129,6 +135,7 @@ function ProductForm({
   brands,
   pricing,
   rate,
+  hasAverageCost,
   onCostRecorded,
 }: {
   product?: Product
@@ -140,6 +147,7 @@ function ProductForm({
    * un precio, así que el formulario lo dice y no deja guardar a ciegas.
    */
   rate: number | null
+  hasAverageCost: boolean
   onCostRecorded: (message: string) => void
 }) {
   const { base, demo, role } = useAccess()
@@ -154,6 +162,8 @@ function ProductForm({
   }))
   const [initialValue] = useState(() => JSON.stringify(value))
   const [costOpen, setCostOpen] = useState(false)
+  const [costLocation, setCostLocation] =
+    useState<InventoryLocation>('warehouse')
   // Lo que se ve y lo que se guarda: las listas con porcentaje ya calculadas.
   const shownPrices = applyPricing(value.prices, value.pricing, rate)
   /**
@@ -296,7 +306,10 @@ function ProductForm({
               type="button"
               variant="secondary"
               disabled={busy || demo || unsaved || !product.active}
-              onClick={() => setCostOpen(true)}
+              onClick={() => {
+                setCostLocation('warehouse')
+                setCostOpen(true)
+              }}
             >
               <Coins size={18} />
               Costo de inventario
@@ -602,6 +615,7 @@ function ProductForm({
       {costOpen && product && (
         <ProductCostDialog
           productId={product.id}
+          initialLocation={costLocation}
           onClose={() => setCostOpen(false)}
           onRecorded={(message) => {
             setCostOpen(false)
@@ -611,7 +625,16 @@ function ProductForm({
       )}
       {product ? (
         <section id="cantidades-perfume" tabIndex={-1}>
-          <ProductStockEditor product={product} disabled={busy} />
+          <ProductStockEditor
+            product={product}
+            disabled={busy}
+            hasAverageCost={hasAverageCost}
+            purchaseDisabled={unsaved}
+            onPurchase={(location) => {
+              setCostLocation(location)
+              setCostOpen(true)
+            }}
+          />
         </section>
       ) : (
         <p className="page-feedback">

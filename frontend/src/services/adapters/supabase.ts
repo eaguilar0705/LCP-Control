@@ -264,7 +264,7 @@ export function toAppError(
       'rate_limited',
       readable ?? 'Demasiadas operaciones seguidas. Espera un momento.',
     )
-  if (error?.code === 'P0001')
+  if (error?.code === 'P0001' || error?.code === 'P1001')
     return new AppError(
       'validation',
       readable ?? 'Revisa los datos de la operación.',
@@ -748,6 +748,9 @@ export const supabaseAdapter: DataProvider = {
         // responde «Revisa la vigencia» en lugar de un error de conversión.
         validUntil: input.validUntil || null,
         notes: input.notes,
+        ...(input.expectedTotal === undefined
+          ? {}
+          : { expectedTotal: input.expectedTotal }),
         items: input.items,
       },
     })

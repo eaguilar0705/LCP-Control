@@ -53,6 +53,25 @@ const empty: ContactRecord = {
   priceTier: 'emprendedor',
 }
 type Kind = 'customers' | 'suppliers'
+function matchesSavedContact(
+  saved: ContactRecord,
+  submitted: ContactRecord,
+  supplier: boolean,
+) {
+  const keys: (keyof ContactRecord)[] = [
+    'name',
+    'phone',
+    'email',
+    'taxId',
+    'address',
+    'notes',
+    'active',
+    ...(supplier
+      ? (['contact', 'brands', 'terms'] as const)
+      : (['priceTier'] as const)),
+  ]
+  return keys.every((key) => (saved[key] ?? '') === (submitted[key] ?? ''))
+}
 export function ContactsPage({ kind }: { kind: Kind }) {
   const { demo, role } = useAccess()
   const supplier = kind === 'suppliers'
@@ -63,6 +82,7 @@ export function ContactsPage({ kind }: { kind: Kind }) {
   )
   const { data, loading, error, retry } = useQuery(load)
   const [form, setForm] = useState<ContactRecord | null>(null)
+  const [newContactId, setNewContactId] = useState('')
   const [formError, setFormError] = useState('')
   const [removing, setRemoving] = useState<ContactRecord | null>(null)
   const [removeError, setRemoveError] = useState('')
@@ -79,6 +99,9 @@ export function ContactsPage({ kind }: { kind: Kind }) {
     !demo && can(role, supplier ? 'supplier.delete' : 'customer.delete')
   function openForm(record: ContactRecord) {
     setForm({ ...empty, ...record })
+    // El identificador pertenece al formulario, también cuando se pierde la
+    // respuesta del guardado. Reintentarlo no debe crear otro contacto.
+    setNewContactId(record.id || crypto.randomUUID())
     setFormError('')
     setMessage('')
   }
@@ -101,13 +124,37 @@ export function ContactsPage({ kind }: { kind: Kind }) {
       const phone = supplier ? form.phone : whatsappNumber(form.phone)
       if (!supplier && form.phone && !phone)
         throw new AppError('validation', 'Revisa el teléfono del cliente.')
-      await saveContact(kind, {
+      const submitted: ContactRecord = {
         ...form,
         name: form.name.trim(),
         email: form.email.trim(),
-        id: form.id || crypto.randomUUID(),
+        id: form.id || newContactId,
         phone: phone ?? '',
-      })
+      }
+      try {
+        await saveContact(kind, submitted)
+      } catch (error) {
+        if (
+          error instanceof AppError &&
+          (error.kind === 'unauthorized' ||
+            error.kind === 'rate_limited' ||
+            error.kind === 'configuration')
+        )
+          throw error
+        // Una respuesta perdida puede dejar la revisión antigua en pantalla.
+        // Se acepta sólo si los datos guardados coinciden exactamente con el
+        // formulario. Un cambio de otra persona sigue mostrando el conflicto.
+        let confirmed = false
+        try {
+          const saved = (await listContacts(kind, submitted.id)).find(
+            (record) => record.id === submitted.id,
+          )
+          confirmed = !!saved && matchesSavedContact(saved, submitted, supplier)
+        } catch {
+          // Sin conexión se conserva el formulario para otro intento.
+        }
+        if (!confirmed) throw error
+      }
       setForm(null)
       retry()
       setMessage(

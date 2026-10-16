@@ -204,9 +204,11 @@ export interface DocumentRecord {
 export interface NewDocumentItem {
   productId: string
   quantity: number
+  expectedUnitPrice?: number
 }
 
 export interface NewDocument {
+  expectedTotal?: number
   exchangeRate?: number
   taxRate?: number
   customerTaxId?: string

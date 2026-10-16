@@ -12,7 +12,7 @@ export function formatCurrency(value: number, currency: Currency) {
     })
     currencyFormats.set(currency, format)
   }
-  return format.format(value)
+  return format.format(value === 0 ? 0 : value)
 }
 const longManaguaDate = new Intl.DateTimeFormat('es-NI', {
   day: 'numeric',

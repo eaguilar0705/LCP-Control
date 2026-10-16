@@ -52,6 +52,7 @@ export function PurchaseDialog({
   pricing,
   catalogRate,
   initialProduct,
+  initialLocation = 'warehouse',
   onClose,
   onRecorded,
 }: {
@@ -59,6 +60,7 @@ export function PurchaseDialog({
   pricing: ProductPricing[]
   catalogRate: number | null
   initialProduct: string
+  initialLocation?: InventoryLocation
   onClose: () => void
   onRecorded: (message: string) => void
 }) {
@@ -79,7 +81,7 @@ export function PurchaseDialog({
   const [shipping, setShipping] = useState('0')
   const [note, setNote] = useState('')
   const [lines, setLines] = useState<PurchaseLineDraft[]>([
-    blankLine(initialProduct),
+    { ...blankLine(initialProduct), location: initialLocation },
   ])
   const [checked, setChecked] = useState(false)
   const [busy, setBusy] = useState(false)

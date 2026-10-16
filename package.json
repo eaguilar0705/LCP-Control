@@ -21,11 +21,12 @@
     "lint": "eslint .",
     "format": "prettier --write frontend shared scripts *.json *.js *.md",
     "preview": "npm run preview --workspace @lcp/frontend --",
-    "test:database": "node scripts/tests/business-day.mjs && node scripts/tests/day-contingencies.mjs && node scripts/tests/workday-flow.mjs && node scripts/tests/catalog-access.mjs && node scripts/tests/database-accounting-audit.mjs && node scripts/tests/automatic-sales-journal.mjs && node scripts/tests/cost-import.mjs",
+    "test:database": "node scripts/tests/business-day.mjs && node scripts/tests/day-contingencies.mjs && node scripts/tests/workday-flow.mjs && node scripts/tests/catalog-access.mjs && node scripts/tests/database-accounting-audit.mjs && node scripts/tests/automatic-sales-journal.mjs && node scripts/tests/cost-import.mjs && node scripts/tests/delivery-data-audit.mjs && node scripts/tests/historical-cost-reconciliation.mjs",
     "test:store": "node scripts/tests/extended-store-flow.mjs",
     "test:browser": "node scripts/tests/browser-system.mjs && node scripts/tests/browser-sales-journal.mjs",
     "test:browser:accounting": "node scripts/tests/browser-accounting.mjs",
-    "test:contingencies": "node scripts/tests/browser-day-contingencies.mjs && node scripts/tests/browser-sale-contingencies.mjs && node scripts/tests/browser-payment-dates.mjs"
+    "test:contingencies": "node scripts/tests/browser-day-contingencies.mjs && node scripts/tests/browser-sale-contingencies.mjs && node scripts/tests/browser-payment-dates.mjs",
+    "test:delivery": "node scripts/tests/browser-delivery-audit.mjs && node scripts/tests/browser-history-volume.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",

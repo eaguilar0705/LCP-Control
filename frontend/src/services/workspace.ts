@@ -26,12 +26,11 @@ export async function rpc<T>(
 }
 export async function listContacts(
   kind: 'customers' | 'suppliers',
+  id?: string,
 ): Promise<ContactRecord[]> {
-  const { data, error } = await client()
-    .from(kind)
-    .select('*')
-    .order('name')
-    .limit(2000)
+  const query = client().from(kind).select('*').order('name').limit(2000)
+  if (id) query.eq('id', id)
+  const { data, error } = await query
   if (error) throw toAppError(error)
   return (data ?? []).map((row) => ({
     ...row,
