@@ -1,13 +1,41 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { DoorClosed, DoorOpen, FileDown, RefreshCw } from 'lucide-react'
+import {
+  DoorClosed,
+  DoorOpen,
+  FileDown,
+  RefreshCw,
+  RotateCcw,
+} from 'lucide-react'
 import { useAccess } from '../../app/AccessContext'
 import { Button, Card, Dialog, Input } from '../../components/ui'
 import { useQuery } from '../../lib/useQuery'
 import { errorMessage } from '../../lib/errors'
 import { formatCurrency, formatDate } from '../../lib/format'
 import { labels, type PaymentMethod } from '../../lib/domain'
-import { dayRpc, type BusinessDay } from './businessDay'
+import {
+  dayRpc,
+  getBusinessDayHistory,
+  type BusinessDay,
+  type BusinessDayEvent,
+} from './businessDay'
 import '../../styles/business-day.css'
+
+type DayAction = 'open' | 'close' | 'reopen'
+const actionTitle: Record<DayAction, string> = {
+  open: 'Abrir tienda',
+  close: 'Cerrar tienda',
+  reopen: 'Reabrir jornada',
+}
+const cashFormat = new Intl.NumberFormat('es-NI', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+})
+const timestamp = (value: string) =>
+  new Intl.DateTimeFormat('es-NI', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+    timeZone: 'America/Managua',
+  }).format(new Date(value))
 
 export function BusinessDayPanel() {
   const { demo, role } = useAccess()
@@ -22,15 +50,36 @@ function DayPanel({ admin }: { admin: boolean }) {
     [date],
   )
   const { data, error, loading, refresh } = useQuery(load)
-  const [action, setAction] = useState<'open' | 'close' | null>(null)
+  const [action, setAction] = useState<{
+    kind: DayAction
+    day: BusinessDay
+  } | null>(null)
   const [failure, setFailure] = useState('')
-  // Refresh across midnight and after returning from a sale in another tab.
+  const day = data?.day
+  const revision = data?.revision
+  const loadHistory = useCallback(
+    () =>
+      admin && day && revision !== undefined
+        ? getBusinessDayHistory(day).then((events) => ({ day, events }))
+        : Promise.resolve(null),
+    [admin, day, revision],
+  )
+  const history = useQuery(loadHistory)
+  const historyCurrent = history.data?.day === day
+  const historyEvents = historyCurrent ? (history.data?.events ?? []) : []
   useEffect(() => {
     const update = () => refresh()
+    const visible = () => {
+      if (document.visibilityState === 'visible') update()
+    }
     window.addEventListener('focus', update)
+    window.addEventListener('online', update)
+    document.addEventListener('visibilitychange', visible)
     const timer = window.setInterval(update, 60000)
     return () => {
       window.removeEventListener('focus', update)
+      window.removeEventListener('online', update)
+      document.removeEventListener('visibilitychange', visible)
       window.clearInterval(timer)
     }
   }, [refresh])
@@ -42,12 +91,29 @@ function DayPanel({ admin }: { admin: boolean }) {
       : data?.status === 'closed'
         ? 'Jornada cerrada'
         : 'Tienda sin abrir'
-  async function download() {
-    if (!data?.report) return
+  const begin = (kind: DayAction) => {
+    if (data) setAction({ kind, day: structuredClone(data) })
+  }
+  async function download(snapshot?: BusinessDayEvent) {
+    if (!data?.report && !snapshot?.report) return
     setFailure('')
     try {
       const { downloadDailyReport } = await import('./dailyReportPdf')
-      await downloadDailyReport(data)
+      await downloadDailyReport(
+        snapshot?.report && data
+          ? {
+              ...data,
+              day: snapshot.day,
+              status: 'closed',
+              revision: snapshot.revision,
+              openedAt: snapshot.report.openedAt ?? data.openedAt,
+              closedAt: snapshot.report.closedAt ?? snapshot.createdAt,
+              openingNio: snapshot.report.openingNio ?? data.openingNio,
+              openingUsd: snapshot.report.openingUsd ?? data.openingUsd,
+              report: snapshot.report,
+            }
+          : data!,
+      )
     } catch (e) {
       setFailure(errorMessage(e))
     }
@@ -72,17 +138,26 @@ function DayPanel({ admin }: { admin: boolean }) {
           </Button>
           {admin &&
             current &&
-            data &&
-            data.status === 'not_opened' &&
+            data?.status === 'not_opened' &&
             data.day === data.today &&
             !data.openDay && (
-              <Button onClick={() => setAction('open')}>Abrir tienda</Button>
+              <Button onClick={() => begin('open')}>Abrir tienda</Button>
             )}
           {admin && current && data?.status === 'open' && (
-            <Button variant="secondary" onClick={() => setAction('close')}>
+            <Button variant="secondary" onClick={() => begin('close')}>
               Cerrar tienda
             </Button>
           )}
+          {admin &&
+            current &&
+            data?.status === 'closed' &&
+            data.day === data.today &&
+            !data.openDay && (
+              <Button variant="secondary" onClick={() => begin('reopen')}>
+                <RotateCcw size={17} />
+                Reabrir jornada
+              </Button>
+            )}
           {admin && report && (
             <Button variant="secondary" onClick={() => void download()}>
               <FileDown size={17} />
@@ -96,20 +171,40 @@ function DayPanel({ admin }: { admin: boolean }) {
           {error || failure}
         </p>
       )}
-      {admin && current && data?.openDay && data.openDay !== data.day && (
-        <Button variant="secondary" onClick={() => setDate(data.openDay!)}>
-          Cerrar jornada pendiente del {formatDate(data.openDay)}
-        </Button>
+      {current && data?.openDay && data.openDay !== data.today && (
+        <div className="day-notice" role="status">
+          <strong>Jornada pendiente del {formatDate(data.openDay)}</strong>
+          <span>
+            Hoy: {formatDate(data.today)}. Cierra la jornada pendiente antes de
+            abrir la de hoy.
+          </span>
+          {admin && data.openDay !== data.day && (
+            <Button variant="secondary" onClick={() => setDate(data.openDay!)}>
+              Cerrar jornada pendiente del {formatDate(data.openDay)}
+            </Button>
+          )}
+        </div>
       )}
       {admin && (
-        <Input
-          label="Consultar jornada"
-          type="date"
-          value={date || data?.day || ''}
-          max={data?.today}
-          disabled={action !== null}
-          onChange={(e) => setDate(e.target.value)}
-        />
+        <div className="day-date-filter">
+          <Input
+            label="Consultar jornada"
+            type="date"
+            value={date || data?.day || ''}
+            max={data?.today}
+            disabled={action !== null}
+            onChange={(e) => setDate(e.target.value)}
+          />
+          {date && date !== data?.today && (
+            <Button
+              variant="ghost"
+              disabled={action !== null}
+              onClick={() => setDate('')}
+            >
+              Volver a hoy
+            </Button>
+          )}
+        </div>
       )}
       {admin && report && (
         <>
@@ -159,14 +254,75 @@ function DayPanel({ admin }: { admin: boolean }) {
           )}
         </>
       )}
-      {action && current && data && (
+      {admin && current && (
+        <details className="day-history">
+          <summary>
+            Historial de cierres y reaperturas
+            {historyEvents.length ? ` (${historyEvents.length})` : ''}
+          </summary>
+          {history.error && (
+            <p role="alert" className="inline-error">
+              {history.error}
+              <Button variant="ghost" onClick={history.retry}>
+                Reintentar
+              </Button>
+            </p>
+          )}
+          {!history.error && !historyCurrent && (
+            <p role="status">Cargando historial…</p>
+          )}
+          {!history.error && historyCurrent && !historyEvents.length && (
+            <p>Sin cierres registrados.</p>
+          )}
+          {historyEvents.map((event) => (
+            <article key={event.id} className="day-history-event">
+              <div>
+                <strong>
+                  {event.event === 'close' ? 'Cierre' : 'Reapertura'} · revisión{' '}
+                  {event.revision}
+                </strong>
+                <span>
+                  {timestamp(event.createdAt)} · {event.actorName}
+                </span>
+                {event.reason && <p>{event.reason}</p>}
+              </div>
+              {event.report && (
+                <div className="day-history-totals">
+                  <span>
+                    Contado:{' '}
+                    {formatCurrency(event.report.countedNio ?? 0, 'NIO')} ·{' '}
+                    {formatCurrency(event.report.countedUsd ?? 0, 'USD')}
+                  </span>
+                  <span>
+                    Diferencia:{' '}
+                    {formatCurrency(event.report.differenceNio ?? 0, 'NIO')} ·{' '}
+                    {formatCurrency(event.report.differenceUsd ?? 0, 'USD')}
+                  </span>
+                  <Button
+                    variant="secondary"
+                    onClick={() => void download(event)}
+                  >
+                    <FileDown size={16} />
+                    PDF del cierre · revisión {event.revision}
+                  </Button>
+                </div>
+              )}
+            </article>
+          ))}
+        </details>
+      )}
+      {action && (
         <DayDialog
-          action={action}
-          day={data}
+          action={action.kind}
+          day={action.day}
+          latest={current ? data : null}
+          onRefresh={refresh}
           onClose={() => setAction(null)}
           onSaved={() => {
             setAction(null)
+            setDate('')
             refresh()
+            history.refresh()
           }}
         />
       )}
@@ -177,38 +333,102 @@ function DayPanel({ admin }: { admin: boolean }) {
 function DayDialog({
   action,
   day,
+  latest,
+  onRefresh,
   onClose,
   onSaved,
 }: {
-  action: 'open' | 'close'
+  action: DayAction
   day: BusinessDay
+  latest: BusinessDay | null
+  onRefresh: () => void
   onClose: () => void
   onSaved: () => void
 }) {
+  const [preview, setPreview] = useState(day)
   const [nio, setNio] = useState('')
   const [usd, setUsd] = useState('')
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
+  const [checking, setChecking] = useState(false)
   const [error, setError] = useState('')
   const [attempt, setAttempt] = useState<{
     key: string
     requestId: string
   } | null>(null)
-  async function submit(e: FormEvent) {
-    e.preventDefault()
-    if (busy) return
-    const payload =
-      action === 'open'
-        ? { openingNio: Number(nio), openingUsd: Number(usd) }
+  const historical = preview.day !== (latest?.today ?? preview.today)
+  const hasAmounts = nio !== '' && usd !== ''
+  const differenceNio =
+    Math.round((Number(nio) - (preview.report?.expectedNio ?? 0)) * 100) / 100
+  const differenceUsd =
+    Math.round((Number(usd) - (preview.report?.expectedUsd ?? 0)) * 100) / 100
+  const discrepancy = hasAmounts && (differenceNio !== 0 || differenceUsd !== 0)
+  const reasonRequired =
+    action === 'reopen' || (action === 'close' && (historical || discrepancy))
+  const minReason = action === 'reopen' || historical ? 10 : 1
+  const changed =
+    !!latest &&
+    (action === 'open'
+      ? latest.today !== preview.day || latest.status !== 'not_opened'
+      : latest.day !== preview.day ||
+        latest.stateToken !== preview.stateToken ||
+        latest.revision !== preview.revision)
+  const payload =
+    action === 'open'
+      ? {
+          expectedDay: preview.day,
+          openingNio: Number(nio),
+          openingUsd: Number(usd),
+        }
+      : action === 'reopen'
+        ? {
+            day: preview.day,
+            reason: note.trim(),
+            expectedRevision: preview.revision,
+          }
         : {
-            day: day.day,
+            day: preview.day,
             countedNio: Number(nio),
             countedUsd: Number(usd),
-            note,
+            note: note.trim(),
+            expectedRevision: preview.revision,
+            expectedStateToken: preview.stateToken,
           }
-    const key = JSON.stringify(payload)
-    const requestId =
-      attempt?.key === key ? attempt.requestId : crypto.randomUUID()
+  const key = JSON.stringify(payload)
+  // El mismo identificador permite recuperar un resultado que el servidor ya
+  // guardó, incluso si otra pestaña cambió después el estado de la jornada.
+  const retrying = attempt?.key === key
+  async function updatePreview() {
+    setChecking(true)
+    setError('')
+    try {
+      const fresh = await dayRpc('get_business_day', {
+        p_day: action === 'open' ? null : preview.day,
+      })
+      setPreview(fresh)
+      setAttempt(null)
+      onRefresh()
+    } catch (e) {
+      setError(errorMessage(e))
+    } finally {
+      setChecking(false)
+    }
+  }
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    if (busy || checking || (changed && !retrying)) return
+    if (reasonRequired && note.trim().length < minReason) {
+      setError(`Escribe un motivo de al menos ${minReason} caracteres.`)
+      return
+    }
+    if (
+      action !== 'reopen' &&
+      (!hasAmounts ||
+        !Number.isFinite(Number(nio)) ||
+        !Number.isFinite(Number(usd)))
+    )
+      return
+    const requestId = retrying ? attempt.requestId : crypto.randomUUID()
     setAttempt({ key, requestId })
     setBusy(true)
     setError('')
@@ -219,62 +439,148 @@ function DayDialog({
       onSaved()
     } catch (e) {
       setError(errorMessage(e))
+      onRefresh()
     } finally {
       setBusy(false)
     }
   }
+  const canConfirm =
+    action === 'open'
+      ? preview.status === 'not_opened' && !preview.openDay
+      : action === 'reopen'
+        ? preview.status === 'closed' && !historical && !preview.openDay
+        : preview.status === 'open'
   return (
     <Dialog
       open
-      title={action === 'open' ? 'Abrir tienda' : 'Cerrar tienda'}
+      className="day-dialog"
+      title={actionTitle[action]}
       onClose={() => {
-        if (!busy) onClose()
+        if (!busy && !checking) onClose()
       }}
     >
       <form onSubmit={submit} className="day-form">
-        <p>
-          {action === 'open'
-            ? 'Efectivo inicial en caja'
-            : 'Efectivo contado al cierre'}{' '}
-          · {formatDate(day.day)}
+        <p className="day-dialog-date">
+          <strong>{formatDate(preview.day)}</strong>
         </p>
-        <div className="day-inputs">
-          <Input
-            label="Córdobas C$"
-            type="number"
-            min="0"
-            max="100000000"
-            step="0.01"
-            required
-            value={nio}
-            onChange={(e) => setNio(e.target.value)}
-            disabled={busy}
-          />
-          <Input
-            label="Dólares US$"
-            type="number"
-            min="0"
-            max="100000000"
-            step="0.01"
-            required
-            value={usd}
-            onChange={(e) => setUsd(e.target.value)}
-            disabled={busy}
-          />
-        </div>
-        {action === 'close' && (
+        {action !== 'reopen' ? (
           <>
             <p>
-              El cierre guarda el reporte y finaliza las ventas de esta jornada.
+              {action === 'open'
+                ? 'Efectivo inicial en caja'
+                : 'Efectivo contado al cierre'}
             </p>
-            <Input
-              label="Observación / motivo de diferencia"
-              value={note}
-              maxLength={1000}
-              onChange={(e) => setNote(e.target.value)}
-              disabled={busy}
-            />
+            <div className="day-inputs">
+              <Input
+                label="Córdobas C$"
+                type="number"
+                min="0"
+                max="100000000"
+                step="0.01"
+                required
+                value={nio}
+                onChange={(e) => setNio(e.target.value)}
+                disabled={busy || checking}
+              />
+              <Input
+                label="Dólares US$"
+                type="number"
+                min="0"
+                max="100000000"
+                step="0.01"
+                required
+                value={usd}
+                onChange={(e) => setUsd(e.target.value)}
+                disabled={busy || checking}
+              />
+            </div>
           </>
+        ) : (
+          <p>Se conservan la apertura, las ventas y el cierre anterior.</p>
+        )}
+        {action === 'close' && preview.report && (
+          <>
+            <div className="day-count-preview" aria-label="Resumen del cierre">
+              <div>
+                <span>Moneda</span>
+                <strong>C$</strong>
+                <strong>US$</strong>
+              </div>
+              <div>
+                <span>Esperado</span>
+                <strong>{cashFormat.format(preview.report.expectedNio)}</strong>
+                <strong>{cashFormat.format(preview.report.expectedUsd)}</strong>
+              </div>
+              <div>
+                <span>Contado</span>
+                <strong>
+                  {nio === '' ? 'Pendiente' : cashFormat.format(Number(nio))}
+                </strong>
+                <strong>
+                  {usd === '' ? 'Pendiente' : cashFormat.format(Number(usd))}
+                </strong>
+              </div>
+              <div className={discrepancy ? 'day-count-difference' : ''}>
+                <span>Diferencia</span>
+                <strong>
+                  {nio === '' ? 'Pendiente' : cashFormat.format(differenceNio)}
+                </strong>
+                <strong>
+                  {usd === '' ? 'Pendiente' : cashFormat.format(differenceUsd)}
+                </strong>
+              </div>
+            </div>
+            <p>
+              El cierre guarda el reporte y detiene las ventas de esta jornada.
+            </p>
+            {historical && (
+              <p className="day-notice">
+                Cierre de una jornada anterior. Indica por qué quedó pendiente.
+              </p>
+            )}
+          </>
+        )}
+        {action !== 'open' && (
+          <Input
+            label={
+              action === 'reopen'
+                ? 'Motivo de reapertura'
+                : 'Observación / motivo de diferencia'
+            }
+            value={note}
+            required={reasonRequired}
+            minLength={reasonRequired ? minReason : undefined}
+            maxLength={1000}
+            onChange={(e) => setNote(e.target.value)}
+            disabled={busy || checking}
+          />
+        )}
+        {changed && (
+          <div role="alert" className="day-notice">
+            <strong>
+              {action === 'open'
+                ? 'La fecha o el estado de la tienda cambió.'
+                : 'La jornada cambió desde que abriste este formulario.'}
+            </strong>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={busy || checking}
+              onClick={() => void updatePreview()}
+            >
+              {checking
+                ? 'Actualizando…'
+                : action === 'close'
+                  ? 'Actualizar importes del cierre'
+                  : 'Actualizar jornada'}
+            </Button>
+          </div>
+        )}
+        {!canConfirm && !retrying && !changed && (
+          <p role="alert" className="inline-error">
+            Esta operación ya no está disponible. Cierra el formulario y revisa
+            la jornada.
+          </p>
         )}
         {error && (
           <p role="alert" className="inline-error">
@@ -285,17 +591,23 @@ function DayDialog({
           <Button
             type="button"
             variant="secondary"
-            disabled={busy}
+            disabled={busy || checking}
             onClick={onClose}
           >
             Cancelar
           </Button>
-          <Button disabled={busy}>
+          <Button
+            disabled={
+              busy || checking || (!retrying && (changed || !canConfirm))
+            }
+          >
             {busy
               ? 'Guardando…'
               : action === 'open'
                 ? 'Confirmar apertura'
-                : 'Confirmar cierre'}
+                : action === 'reopen'
+                  ? 'Confirmar reapertura'
+                  : 'Confirmar cierre'}
           </Button>
         </div>
       </form>

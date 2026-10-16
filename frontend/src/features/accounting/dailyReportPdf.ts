@@ -24,6 +24,18 @@ export async function downloadDailyReport(day: BusinessDay) {
   pdf.setTextColor(88, 25, 30)
   line(business?.name ?? 'La Casa del Perfume', '', true)
   line('Reporte diario', day.day, true)
+  if (day.status === 'closed') {
+    line('Cierre', `Revisión ${day.revision ?? 1}`)
+    if (day.closedAt)
+      line(
+        'Registrado',
+        new Intl.DateTimeFormat('es-NI', {
+          dateStyle: 'short',
+          timeStyle: 'short',
+          timeZone: 'America/Managua',
+        }).format(new Date(day.closedAt)),
+      )
+  }
   pdf.setTextColor(45, 40, 37)
   line(
     day.status === 'closed'
@@ -84,5 +96,7 @@ export async function downloadDailyReport(day: BusinessDay) {
       )
     }
   }
-  pdf.save(`reporte-diario-${day.day}.pdf`)
+  pdf.save(
+    `reporte-diario-${day.day}${day.status === 'closed' ? `-cierre-${day.revision ?? 1}` : ''}.pdf`,
+  )
 }

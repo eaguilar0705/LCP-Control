@@ -42,6 +42,7 @@ import {
 import { rowsOf, type Row } from './financeRows'
 import { useWritable } from './financeAccess'
 import { accountAcceptsCurrency } from './journalModel'
+import { PaymentDateConfirmation } from './PaymentDateConfirmation'
 
 const money = (amount: number) => formatCurrency(amount, 'NIO')
 const roundRate = (value: number) => Math.round(value * 1e6) / 1e6
@@ -295,7 +296,7 @@ export function RecordDialog({
       accountingService.recordExpense,
     ),
   )
-  const today = localDay(new Date())
+  const [today, setToday] = useState(() => localDay(new Date()))
   const [kind, setKind] = useState<RecordKind>(
     initialCredit
       ? initialCredit.kind === 'receivable'
@@ -358,13 +359,26 @@ export function RecordDialog({
   const selectedCredit = creditData?.rows.find(
     (row) => row.id === creditId && row.kind === creditKind,
   )
+  const [confirmedPaymentDate, setConfirmedPaymentDate] = useState('')
+  const dateKey = `${kind}:${shownAccount}:${occurredOn}`
+  const pastPayment = kind !== 'opening' && !!occurredOn && occurredOn < today
 
   async function submit(event: FormEvent) {
     event.preventDefault()
     if (busy) return
     setFailure('')
-    if (!occurredOn || occurredOn > today) {
+    const submitToday = localDay(new Date())
+    setToday(submitToday)
+    if (!occurredOn || occurredOn > submitToday) {
       setFailure('Elige una fecha que no sea futura.')
+      return
+    }
+    if (
+      kind !== 'opening' &&
+      occurredOn < submitToday &&
+      confirmedPaymentDate !== dateKey
+    ) {
+      setFailure('Confirma la fecha real del movimiento de dinero.')
       return
     }
     if (
@@ -693,6 +707,20 @@ export function RecordDialog({
                 </p>
               )}
             </>
+          )}
+          {pastPayment && (
+            <PaymentDateConfirmation
+              date={occurredOn}
+              confirmed={confirmedPaymentDate === dateKey}
+              onConfirm={(value) =>
+                setConfirmedPaymentDate(value ? dateKey : '')
+              }
+              onToday={() => {
+                const nextToday = localDay(new Date())
+                setToday(nextToday)
+                setOccurredOn(nextToday)
+              }}
+            />
           )}
           <Input
             label="Descripción"

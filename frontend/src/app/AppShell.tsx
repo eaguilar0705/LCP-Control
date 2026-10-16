@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -21,6 +21,11 @@ import { Button } from '../components/ui'
 import { Brand } from '../components/Brand'
 import { errorMessage } from '../lib/errors'
 import { can, roleLabels, type Capability } from '../lib/permissions'
+import {
+  pendingDocuments,
+  pendingDocumentsRevision,
+  subscribePendingDocuments,
+} from '../features/sales/pendingDocuments'
 const links = [
   ['', 'Inicio', LayoutDashboard],
   ['/inventory', 'Inventario', Package],
@@ -54,6 +59,9 @@ const DESKTOP_QUERY = '(min-width: 761px)'
 export function AppShell({ demo = false }: { demo?: boolean }) {
   const { user, service } = useAuth()
   const base = demo ? '/demo' : ''
+  const storageScope = demo ? 'demo' : `user:${user?.id ?? 'anonymous'}`
+  useSyncExternalStore(subscribePendingDocuments, pendingDocumentsRevision)
+  const outstanding = demo ? [] : pendingDocuments(storageScope)
   const [online, setOnline] = useState(navigator.onLine)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -105,7 +113,22 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
       window.removeEventListener('offline', update)
     }
   }, [])
+  useEffect(() => {
+    if (!outstanding.length) return
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [outstanding.length])
   async function logout() {
+    if (!demo && pendingDocuments(storageScope).length) {
+      setError(
+        'Confirma primero las emisiones pendientes antes de cerrar sesión.',
+      )
+      return
+    }
     setBusy(true)
     setError('')
     try {
@@ -127,7 +150,7 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
         demo,
         base,
         role,
-        storageScope: demo ? 'demo' : `user:${user?.id ?? 'anonymous'}`,
+        storageScope,
       }}
     >
       <a className="skip-link" href="#main">
@@ -202,7 +225,11 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
                 <LogOut size={16} /> Volver al acceso
               </Link>
             ) : (
-              <Button variant="ghost" onClick={logout} disabled={busy}>
+              <Button
+                variant="ghost"
+                onClick={logout}
+                disabled={busy || outstanding.length > 0}
+              >
                 <LogOut size={16} />
                 {busy ? 'Cerrando…' : 'Cerrar sesión'}
               </Button>
@@ -256,8 +283,28 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
           )}
           {!online && (
             <div role="alert" className="offline-banner">
-              Sin conexión. Las fotos externas pueden no estar disponibles.
+              Sin conexión. Para guardar ventas y abrir o cerrar tienda
+              necesitas internet. Al volver, reintenta la operación original
+              para evitar duplicados.
             </div>
+          )}
+          {outstanding.length > 0 && (
+            <aside
+              className="sales-pending-banner no-print"
+              aria-label="Emisiones por confirmar"
+              role="status"
+            >
+              <strong>Hay una emisión pendiente de confirmar.</strong>
+              {outstanding.map((attempt) => (
+                <Link
+                  key={attempt.kind}
+                  to={`${base}/${attempt.kind === 'invoice' ? 'sales' : 'proformas'}`}
+                >
+                  Recuperar{' '}
+                  {attempt.kind === 'invoice' ? 'factura' : 'proforma'}
+                </Link>
+              ))}
+            </aside>
           )}
           <main id="main" className="main-content">
             <Outlet key={`${demo ? 'demo' : user?.id}:${role}`} />

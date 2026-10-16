@@ -14,11 +14,9 @@ import {
   type ProductPricing,
 } from '../../lib/domain'
 import type { OpeningCostInput, ShipmentInput } from '../reports/accounting'
-import {
-  shipmentPayments,
-  type ShipmentPayment,
-} from '../accounting/finance'
+import { shipmentPayments, type ShipmentPayment } from '../accounting/finance'
 import { localDay } from '../reports/model'
+import { PaymentDateConfirmation } from '../accounting/PaymentDateConfirmation'
 import {
   hasDecimals,
   previewPurchase,
@@ -86,6 +84,7 @@ export function PurchaseDialog({
   const [checked, setChecked] = useState(false)
   const [busy, setBusy] = useState(false)
   const [failure, setFailure] = useState('')
+  const [confirmedPaymentDate, setConfirmedPaymentDate] = useState('')
   const preview = previewPurchase({
     lines,
     shippingText: shipping,
@@ -96,7 +95,10 @@ export function PurchaseDialog({
     catalogRate,
   })
   const products = inventory.map((item) => item.product)
-  const today = localDay(new Date())
+  const [today, setToday] = useState(() => localDay(new Date()))
+  const dateKey = `${payment}:${incurredOn}`
+  const pastPayment =
+    payment !== 'credito' && !!incurredOn && incurredOn < today
   const dateProblem =
     !incurredOn || incurredOn > today
       ? 'Elige una fecha que no sea futura.'
@@ -112,7 +114,17 @@ export function PurchaseDialog({
     event.preventDefault()
     if (busy) return
     setChecked(true)
-    if (!preview.ready || dateProblem) return
+    const submitToday = localDay(new Date())
+    setToday(submitToday)
+    if (!preview.ready || !incurredOn || incurredOn > submitToday) return
+    if (
+      payment !== 'credito' &&
+      incurredOn < submitToday &&
+      confirmedPaymentDate !== dateKey
+    ) {
+      setFailure('Confirma la fecha real del pago de esta compra.')
+      return
+    }
     const rate = validRate(currency, rateText)!
     setBusy(true)
     setFailure('')
@@ -253,6 +265,20 @@ export function PurchaseDialog({
           >
             <Plus size={16} /> Agregar perfume
           </Button>
+          {pastPayment && (
+            <PaymentDateConfirmation
+              date={incurredOn}
+              confirmed={confirmedPaymentDate === dateKey}
+              onConfirm={(value) =>
+                setConfirmedPaymentDate(value ? dateKey : '')
+              }
+              onToday={() => {
+                const nextToday = localDay(new Date())
+                setToday(nextToday)
+                setIncurredOn(nextToday)
+              }}
+            />
+          )}
           <Input
             label="Nota"
             maxLength={2000}

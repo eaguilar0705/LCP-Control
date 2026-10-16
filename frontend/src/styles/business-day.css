@@ -72,8 +72,104 @@
   display: grid;
   gap: 1rem;
 }
-.day-form p {
+.day-dialog .day-form p {
   margin: 0;
+}
+.day-notice {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.9rem;
+  margin: 0.8rem 0;
+  border: 1px solid #e7d5a9;
+  border-radius: 0.65rem;
+  background: #fffaf0;
+  color: #66491b;
+  overflow-wrap: anywhere;
+}
+.day-notice .button {
+  justify-self: start;
+}
+.day-date-filter {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.day-date-filter .field {
+  flex: 1 1 12rem;
+}
+.day-history {
+  border-top: 1px solid #eee4df;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+}
+.day-history summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #792d38;
+}
+.day-history-event {
+  display: grid;
+  gap: 0.7rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid #eee4df;
+}
+.day-history-event span {
+  display: block;
+  margin-top: 0.4rem;
+  color: #756b65;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+.day-history-event p {
+  margin: 0.5rem 0 0;
+  overflow-wrap: anywhere;
+}
+.day-history-totals .button {
+  margin-top: 0.75rem;
+}
+.day-count-preview {
+  border: 1px solid #eee4df;
+  border-radius: 0.65rem;
+  overflow: hidden;
+}
+.day-count-preview > div {
+  display: grid;
+  grid-template-columns: minmax(4.2rem, 1fr) repeat(2, minmax(0, 1.4fr));
+  gap: 0.45rem;
+  padding: 0.7rem;
+  border-bottom: 1px solid #eee4df;
+  font-size: 0.85rem;
+}
+.day-count-preview > div:last-child {
+  border-bottom: 0;
+}
+.day-count-preview strong {
+  min-width: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.day-count-preview > div:first-child {
+  background: #faf6f3;
+}
+.day-count-difference {
+  background: #fff4ed;
+  color: #792d38;
+}
+@media (max-width: 500px) {
+  .day-count-preview > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .day-count-preview span {
+    grid-column: 1 / -1;
+  }
+  .day-count-preview > div:first-child span {
+    display: none;
+  }
+  .day-count-preview strong {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
 }
 .day-inputs {
   display: grid;

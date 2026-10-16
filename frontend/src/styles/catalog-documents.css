@@ -130,6 +130,53 @@
 .document-print-root {
   display: none;
 }
+.sales-day-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  border: 1px solid #e7d7c3;
+  border-radius: 12px;
+  background: #fcf7ee;
+  color: var(--wine);
+}
+.sales-day-status.is-open {
+  background: #f3f7f0;
+  border-color: #dbe4d2;
+  color: #38543b;
+}
+.sales-day-status > div {
+  display: grid;
+  flex: 1 1 160px;
+  gap: 2px;
+  min-width: 0;
+}
+.sales-day-status strong,
+.sales-day-status a {
+  font-size: 13px;
+}
+.sales-day-status span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.sales-day-status .button {
+  padding: 8px;
+  min-height: 36px;
+}
+.sales-pending-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 12px 20px;
+  color: var(--wine);
+  background: #fcf3e8;
+  border-bottom: 1px solid #e7d7c3;
+  font-size: 13px;
+}
 .example-paper {
   overflow-x: auto;
   padding: 18px;

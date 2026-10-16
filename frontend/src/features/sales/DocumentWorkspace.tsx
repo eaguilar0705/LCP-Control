@@ -1,14 +1,17 @@
 import { ProductPicker } from './ProductPicker'
-import { useCallback, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { listContacts } from '../../services/workspace'
 import { DocumentPrint } from './DocumentPrint'
 import {
   CircleCheckBig,
+  DoorClosed,
+  DoorOpen,
   FileDown,
   MessageCircle,
   Plus,
   Printer,
+  RefreshCw,
   Save,
   Trash2,
 } from 'lucide-react'
@@ -28,7 +31,7 @@ import { createIdempotentOperation } from '../../lib/idempotentOperation'
 import { useAccess } from '../../app/AccessContext'
 import { useQuery } from '../../lib/useQuery'
 import { useWorkspaceDrafts } from '../../lib/workspaceDrafts'
-import { errorMessage } from '../../lib/errors'
+import { AppError, errorMessage } from '../../lib/errors'
 import { formatCurrency, formatDate } from '../../lib/format'
 import { documentCopy, labels } from '../../lib/domain'
 import type {
@@ -53,6 +56,12 @@ import {
 import { whatsappNumber, whatsappUrl } from './whatsapp'
 import { shareDocumentPdf } from './pdf'
 import { getBusinessDay } from '../accounting/businessDay'
+import {
+  documentAttemptStatus,
+  forgetDocument,
+  pendingDocument,
+  rememberDocument,
+} from './pendingDocuments'
 
 const paymentOptions = {
   pending: 'Pendiente de pago',
@@ -63,14 +72,29 @@ const MAX_CUSTOMER_NAME = 160
 const DAY_ONLY = /^\d{4}-\d{2}-\d{2}$/
 
 export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
+  const navigate = useNavigate()
+  const { demo, base, storageScope } = useAccess()
+  const scope = storageScope ?? (demo ? 'demo' : 'anonymous')
+  const [restored] = useState(() => pendingDocument(scope, kind))
+  const [draftRequestSeed, setDraftRequestSeed] = useState<string | undefined>(
+    restored?.requestIdSeed,
+  )
   const { inventoryService, salesService } = useServices()
-  const [operation] = useState(() =>
-    createIdempotentOperation<Omit<NewDocument, 'requestId'>, DocumentRecord>(
-      salesService.createDocument,
-    ),
+  const [operation] = useState(
+    () =>
+      restored?.operation ??
+      createIdempotentOperation<Omit<NewDocument, 'requestId'>, DocumentRecord>(
+        salesService.createDocument,
+      ),
   )
   const copy = documentCopy[kind]
-  const { demo, base } = useAccess()
+  const mounted = useRef(false)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
   const {
     data,
     loading,
@@ -91,11 +115,19 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
     loading: draftsLoading,
     retry: retryDrafts,
   } = useWorkspaceDrafts(draftStorageKey(kind), documentDraftSchema)
-  const [currency, setCurrency] = useState<Currency>('NIO')
+  const [currency, setCurrency] = useState<Currency>(
+    restored?.draft.currency ?? 'NIO',
+  )
   // `null` significa «no lo he tocado»: entonces rige la tasa del negocio. Una
   // cadena vacía es una decisión del usuario y deja el campo en blanco.
-  const [exchangeText, setExchangeText] = useState<string | null>(null)
-  const [tier, setTier] = useState<PriceTier>('emprendedor')
+  const [exchangeText, setExchangeText] = useState<string | null>(
+    restored?.draft.currency === 'USD' && restored.draft.exchangeRate != null
+      ? String(restored.draft.exchangeRate)
+      : null,
+  )
+  const [tier, setTier] = useState<PriceTier>(
+    restored?.draft.tier ?? 'emprendedor',
+  )
   const loadCustomers = useCallback(
     () => (demo ? Promise.resolve([]) : listContacts('customers')),
     [demo],
@@ -105,29 +137,163 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
     error: customersError,
     retry: retryCustomers,
   } = useQuery(loadCustomers)
-  const [customerId, setCustomerId] = useState<string | null>(null)
-  const [customer, setCustomer] = useState('')
-  const [phone, setPhone] = useState('')
-  const [taxId, setTaxId] = useState('')
-  const [payment, setPayment] = useState<DocumentDraft['payment']>('pending')
-  const [location, setLocation] = useState<InventoryLocation>('store')
-  const [validUntil, setValidUntil] = useState(defaultValidUntil())
-  const [notes, setNotes] = useState('')
-  const [lines, setLines] = useState<DraftLine[]>([])
+  const [customerId, setCustomerId] = useState<string | null>(
+    restored?.draft.customerId ?? null,
+  )
+  const [customer, setCustomer] = useState(restored?.draft.customer ?? '')
+  const [phone, setPhone] = useState(restored?.draft.phone ?? '')
+  const [taxId, setTaxId] = useState(restored?.draft.taxId ?? '')
+  const [payment, setPayment] = useState<DocumentDraft['payment']>(
+    restored?.draft.payment ?? 'pending',
+  )
+  const [location, setLocation] = useState<InventoryLocation>(
+    restored?.draft.location ?? 'store',
+  )
+  const [validUntil, setValidUntil] = useState(
+    restored?.draft.validUntil ?? defaultValidUntil(),
+  )
+  const [notes, setNotes] = useState(restored?.draft.notes ?? '')
+  const [lines, setLines] = useState<DraftLine[]>(() =>
+    structuredClone(restored?.draft.lines ?? []),
+  )
   const [current, setCurrent] = useState<{
     id: string
     reference: string
     createdAt: string
-  } | null>(null)
+  } | null>(
+    restored?.requestIdSeed
+      ? {
+          id: restored.draft.id,
+          reference: restored.draft.reference,
+          createdAt: restored.draft.createdAt,
+        }
+      : null,
+  )
   const [issued, setIssued] = useState<DocumentRecord | null>(null)
   const [message, setMessage] = useState('')
-  const [failure, setFailure] = useState('')
+  const [failure, setFailure] = useState(
+    restored
+      ? 'Hay una emisión pendiente de confirmar. Reintenta la misma operación para recuperar el documento sin duplicarlo.'
+      : '',
+  )
   const [busy, setBusy] = useState(false)
   // Guardar y compartir tienen su propio estado: el botón muestra qué ocurre
   // y un doble clic no envía dos veces la misma revisión de borradores.
   const [savingDraft, setSavingDraft] = useState(false)
   const [sharing, setSharing] = useState(false)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
+  const [replaceWith, setReplaceWith] = useState<
+    { draft: DocumentDraft } | { empty: true } | { path: string } | null
+  >(null)
+  const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null)
+  // Una respuesta perdida no autoriza una venta distinta. Se conserva en
+  // memoria la solicitud original hasta recibir una respuesta definitiva.
+  const [pendingIssue, setPendingIssue] = useState<Omit<
+    NewDocument,
+    'requestId'
+  > | null>(restored?.payload ?? null)
+  const loadDay = useCallback(
+    () =>
+      demo || kind !== 'invoice' ? Promise.resolve(null) : getBusinessDay(),
+    [demo, kind],
+  )
+  const {
+    data: businessDay,
+    error: dayError,
+    refresh: refreshDay,
+  } = useQuery(loadDay)
+  useEffect(() => {
+    if (demo || kind !== 'invoice') return
+    const update = () => {
+      if (!busy && document.visibilityState === 'visible') refreshDay()
+    }
+    window.addEventListener('focus', update)
+    window.addEventListener('online', update)
+    document.addEventListener('visibilitychange', update)
+    const timer = window.setInterval(update, 60000)
+    return () => {
+      window.removeEventListener('focus', update)
+      window.removeEventListener('online', update)
+      document.removeEventListener('visibilitychange', update)
+      window.clearInterval(timer)
+    }
+  }, [demo, kind, busy, refreshDay])
+
+  const formSnapshot = JSON.stringify({
+    customerId,
+    customer,
+    phone,
+    taxId,
+    currency,
+    exchangeText,
+    tier,
+    payment,
+    location,
+    validUntil,
+    notes,
+    lines,
+  })
+  const hasContent = !!(
+    customerId ||
+    customer ||
+    phone ||
+    taxId ||
+    notes ||
+    lines.length
+  )
+  const dirty =
+    !issued &&
+    (!!pendingIssue ||
+      (savedSnapshot !== null ? savedSnapshot !== formSnapshot : hasContent))
+  useEffect(() => {
+    if (!dirty && !busy && !savingDraft) return
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [dirty, busy, savingDraft])
+  useEffect(() => {
+    if (!dirty && !busy && !savingDraft) return
+    const protectNavigation = (event: MouseEvent) => {
+      if (
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey ||
+        !(event.target instanceof Element)
+      )
+        return
+      const link = event.target.closest('a[href]')
+      if (!(link instanceof HTMLAnchorElement)) return
+      if (link.hasAttribute('download')) return
+      if (link.target && link.target !== '_self') return
+      const destination = new URL(link.href, window.location.href)
+      if (
+        !['http:', 'https:'].includes(destination.protocol) ||
+        destination.origin !== window.location.origin ||
+        (destination.pathname === window.location.pathname &&
+          destination.search === window.location.search)
+      )
+        return
+      event.preventDefault()
+      event.stopPropagation()
+      if (pendingIssue)
+        setFailure(
+          `Verifica primero la ${copy.singular} pendiente de confirmación con «Reintentar emisión».`,
+        )
+      else if (busy || savingDraft)
+        setFailure('Espera a que termine la operación antes de salir.')
+      else
+        setReplaceWith({
+          path: destination.pathname + destination.search + destination.hash,
+        })
+    }
+    document.addEventListener('click', protectNavigation, true)
+    return () => document.removeEventListener('click', protectNavigation, true)
+  }, [dirty, busy, savingDraft, pendingIssue, copy.singular])
 
   const exchangeField =
     exchangeText ?? (savedRate ? String(savedRate.usdToNio) : '')
@@ -299,6 +465,8 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
         ])
       ) {
         setCurrent(stamp)
+        setDraftRequestSeed(stamp.id)
+        setSavedSnapshot(formSnapshot)
         setMessage(
           demo
             ? 'Borrador guardado en este navegador.'
@@ -334,72 +502,127 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
     // emitir con un renglón sin producto termina en un error de la base y el
     // vendedor pierde el documento que ya tenía armado.
     if (
-      !lines.length ||
-      !valid ||
-      shortages > 0 ||
-      dataIssues ||
-      (kind === 'invoice' && !validExchange) ||
+      (!pendingIssue &&
+        (!lines.length ||
+          !valid ||
+          shortages > 0 ||
+          dataIssues ||
+          (kind === 'invoice' && !validExchange))) ||
       busy ||
       issued ||
       demo
     )
       return
+    const attemptDraft = pendingDocument(scope, kind)?.draft ?? draft
+    if (!attemptDraft) return
     setBusy(true)
     setFailure('')
     setMessage('')
+    const payload = pendingIssue ?? {
+      kind,
+      customerId: customerId ?? undefined,
+      customerName: customer.trim(),
+      customerTaxId: taxId.trim(),
+      customerPhone: whatsappNumber(phone),
+      tier,
+      currency,
+      exchangeRate: currency === 'NIO' ? 1 : (exchangeRate ?? undefined),
+      location: kind === 'invoice' ? location : null,
+      paymentMethod: kind === 'invoice' ? payment : null,
+      validUntil: kind === 'proforma' ? validUntil : null,
+      notes,
+      items: lines.map((line) => ({
+        productId: line.productId,
+        quantity: line.quantity,
+      })),
+    }
+    rememberDocument(scope, {
+      kind,
+      operation,
+      payload,
+      draft: structuredClone(attemptDraft),
+      requestIdSeed: draftRequestSeed,
+      status: 'sending',
+    })
+    let record: DocumentRecord
     try {
-      if (kind === 'invoice') {
-        const day = await getBusinessDay()
-        if (day.status !== 'open') {
-          setFailure(
-            'La tienda está cerrada. Un administrador debe abrir la jornada desde Inicio.',
-          )
-          return
-        }
-      }
-      const record = await operation.execute({
-        kind,
-        customerId: customerId ?? undefined,
-        customerName: customer.trim(),
-        customerTaxId: taxId.trim(),
-        customerPhone: whatsappNumber(phone),
-        tier,
-        currency,
-        // Una proforma en dólares puede emitirse sin tasa: el contrato la
-        // omite en lugar de guardar un nulo que la base rechazaría.
-        exchangeRate: currency === 'NIO' ? 1 : (exchangeRate ?? undefined),
-        location: kind === 'invoice' ? location : null,
-        paymentMethod: kind === 'invoice' ? payment : null,
-        validUntil: kind === 'proforma' ? validUntil : null,
-        notes,
-        items: lines.map((line) => ({
-          productId: line.productId,
-          quantity: line.quantity,
-        })),
-      })
-      setIssued(record)
-      if (current) await save(drafts.filter((item) => item.id !== current.id))
-      setCurrent({
-        id: record.id,
-        reference: record.number,
-        createdAt: record.createdAt,
-      })
-      setMessage(
-        kind === 'invoice'
-          ? `Factura ${record.number} emitida. Las existencias ya se descontaron.`
-          : `Proforma ${record.number} emitida. No modifica inventario.`,
-      )
-      retry()
+      // PostgreSQL busca primero requestId y luego comprueba la jornada. Un
+      // preflight aquí impediría recuperar una factura ya emitida si otro
+      // administrador cerró la tienda mientras se perdió su respuesta.
+      // El UUID del borrador se mantiene incluso después de recargar. Si
+      // retirar ese borrador falla, volver a abrirlo recupera su emisión previa
+      // o rechaza datos distintos; jamás registra una segunda venta.
+      record = await operation.execute(payload, draftRequestSeed)
     } catch (issueError) {
-      setFailure(errorMessage(issueError))
-    } finally {
+      const definitive =
+        issueError instanceof AppError &&
+        [
+          'validation',
+          'unauthorized',
+          'rate_limited',
+          'configuration',
+        ].includes(issueError.kind)
+      if (definitive) forgetDocument(scope, kind, operation)
+      else documentAttemptStatus(scope, kind, operation, 'uncertain')
+      if (!mounted.current) return
+      setPendingIssue(definitive ? null : payload)
+      setFailure(
+        definitive
+          ? errorMessage(issueError)
+          : 'No pudimos confirmar la emisión. Conservamos los datos: reintenta esta misma operación para comprobarla sin duplicarla.',
+      )
+      if (mounted.current) {
+        setBusy(false)
+        if (kind === 'invoice') refreshDay()
+      }
+      return
+    }
+    documentAttemptStatus(scope, kind, operation, 'confirmed')
+    // Si Atrás/Adelante desmontó el formulario, se conserva la confirmación
+    // para recuperarla desde el aviso del panel con la misma promesa resuelta.
+    if (!mounted.current) return
+    setPendingIssue(null)
+    setIssued(record)
+    setCurrent({
+      id: record.id,
+      reference: record.number,
+      createdAt: record.createdAt,
+    })
+    setMessage(
+      kind === 'invoice'
+        ? `Factura ${record.number} emitida. Las existencias ya se descontaron.`
+        : `Proforma ${record.number} emitida. No modifica inventario.`,
+    )
+    forgetDocument(scope, kind, operation)
+    // La emisión ya está confirmada. Un fallo al retirar su borrador nunca
+    // vuelve a convertirla en una venta pendiente ni permite emitirla otra vez.
+    if (current && drafts.some((item) => item.id === current.id)) {
+      try {
+        const removed = await save(
+          drafts.filter((item) => item.id !== current.id),
+        )
+        if (!removed && mounted.current)
+          setFailure(
+            `La ${copy.singular} está emitida, pero no se pudo retirar su borrador. No vuelvas a emitir ese borrador.`,
+          )
+      } catch {
+        if (mounted.current)
+          setFailure(
+            `La ${copy.singular} está emitida, pero no se pudo retirar su borrador. No vuelvas a emitir ese borrador.`,
+          )
+      }
+    }
+    if (mounted.current) {
+      retry()
       setBusy(false)
+      if (kind === 'invoice') refreshDay()
     }
   }
 
   function load(item: DocumentDraft) {
     operation.reset()
     setCurrent(item)
+    setDraftRequestSeed(item.id)
     setIssued(null)
     setCurrency(item.currency)
     setExchangeText(
@@ -436,6 +659,25 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
       return { ...line, prices }
     })
     setLines(refreshedLines)
+    setSavedSnapshot(
+      JSON.stringify({
+        customerId: item.customerId,
+        customer: item.customer,
+        phone: item.phone,
+        taxId: item.taxId,
+        currency: item.currency,
+        exchangeText:
+          item.currency === 'USD' && item.exchangeRate != null
+            ? String(item.exchangeRate)
+            : null,
+        tier: item.tier,
+        payment: item.payment,
+        location: item.location,
+        validUntil: item.validUntil || defaultValidUntil(),
+        notes: item.notes,
+        lines: pricesChanged ? item.lines : refreshedLines,
+      }),
+    )
     setFailure('')
     setMessage(
       pricesChanged
@@ -460,6 +702,25 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
     setFailure('')
     setPayment('pending')
     setLocation('store')
+    setSavedSnapshot(null)
+    setPendingIssue(null)
+    setDraftRequestSeed(undefined)
+  }
+
+  function requestReplace(next: NonNullable<typeof replaceWith>) {
+    if (busy || savingDraft || pendingIssue) return
+    if (dirty) setReplaceWith(next)
+    else if ('draft' in next) load(next.draft)
+    else if ('path' in next) void navigate(next.path)
+    else clear()
+  }
+
+  function replaceDocument() {
+    if (!replaceWith || busy || savingDraft || pendingIssue) return
+    if ('draft' in replaceWith) load(replaceWith.draft)
+    else if ('path' in replaceWith) void navigate(replaceWith.path)
+    else clear()
+    setReplaceWith(null)
   }
 
   function sendWhatsapp() {
@@ -501,10 +762,15 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
   // Guardar un borrador o imprimirlo no toca el inventario; emitir sí, así que
   // sólo la emisión exige que cada renglón tenga existencias suficientes.
   const issuable =
-    ready &&
-    shortages === 0 &&
-    !dataIssues &&
-    (kind !== 'invoice' || validExchange)
+    !!pendingIssue ||
+    (ready &&
+      shortages === 0 &&
+      !dataIssues &&
+      (kind !== 'invoice' || validExchange) &&
+      (kind !== 'invoice' ||
+        !businessDay ||
+        (businessDay.status === 'open' &&
+          businessDay.day === businessDay.today)))
   // El borrador abierto sigue en la lista: se puede eliminar.
   const discardable =
     !!current && !issued && drafts.some((item) => item.id === current.id)
@@ -543,7 +809,11 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
             Ver ejemplo en carta
           </a>
         )}
-        <Button variant="secondary" onClick={clear} disabled={busy}>
+        <Button
+          variant="secondary"
+          onClick={() => requestReplace({ empty: true })}
+          disabled={busy || savingDraft || !!pendingIssue}
+        >
           <Plus size={18} />
           {kind === 'invoice' ? 'Nueva factura' : 'Nueva proforma'}
         </Button>
@@ -557,10 +827,49 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
           </Link>
         </p>
       )}
+      {!demo && kind === 'invoice' && (
+        <div
+          className={`sales-day-status no-print ${businessDay?.status === 'open' ? 'is-open' : ''}`}
+          role="status"
+          aria-label="Jornada para facturar"
+        >
+          {businessDay?.status === 'open' ? (
+            <DoorOpen size={19} aria-hidden="true" />
+          ) : (
+            <DoorClosed size={19} aria-hidden="true" />
+          )}
+          <div>
+            <strong>
+              {dayError
+                ? 'No se pudo actualizar la jornada'
+                : !businessDay
+                  ? 'Consultando jornada…'
+                  : businessDay.status === 'open'
+                    ? 'Tienda abierta'
+                    : businessDay.status === 'closed'
+                      ? 'Jornada cerrada'
+                      : businessDay.openDay
+                        ? 'Hay una jornada anterior pendiente'
+                        : 'Tienda sin abrir'}
+            </strong>
+            {businessDay && <span>{formatDate(businessDay.today)}</span>}
+          </div>
+          <Link to={base || '/'}>Ver jornada en Inicio</Link>
+          <Button
+            type="button"
+            variant="ghost"
+            aria-label="Actualizar jornada de facturación"
+            onClick={refreshDay}
+            disabled={busy}
+          >
+            <RefreshCw size={17} />
+          </Button>
+        </div>
+      )}
       <div className={`invoice-layout doc-${kind} no-print`}>
         <fieldset
           className="invoice-editor no-print"
-          disabled={busy || !!issued}
+          disabled={busy || !!issued || !!pendingIssue}
         >
           <Card className="form-card picker-panel">
             <div className="section-heading">
@@ -723,7 +1032,10 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
               <h2>Borradores de {copy.plural}</h2>
               <div className="saved-drafts">
                 {drafts.map((item) => (
-                  <button key={item.id} onClick={() => load(item)}>
+                  <button
+                    key={item.id}
+                    onClick={() => requestReplace({ draft: item })}
+                  >
                     <strong>
                       {item.reference} · {item.customer || 'Sin cliente'}
                     </strong>
@@ -813,7 +1125,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
                       min={1}
                       max={9999}
                       step={1}
-                      disabled={busy || !!issued}
+                      disabled={busy || !!issued || !!pendingIssue}
                       value={Number.isNaN(line.quantity) ? '' : line.quantity}
                       onChange={(e) =>
                         setLines(
@@ -829,7 +1141,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
                       className="no-print"
                       variant="ghost"
                       aria-label={`Quitar ${line.name}`}
-                      disabled={busy || !!issued}
+                      disabled={busy || !!issued || !!pendingIssue}
                       onClick={() => {
                         setIssued(null)
                         setLines(
@@ -885,13 +1197,13 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
               rows={2}
               maxLength={1500}
               value={notes}
-              disabled={busy || !!issued}
+              disabled={busy || !!issued || !!pendingIssue}
               onChange={(e) => setNotes(e.target.value)}
             />
           </label>
           <p className="print-only">{notes}</p>
 
-          {!issued && shortages > 0 && (
+          {!issued && !pendingIssue && shortages > 0 && (
             <p className="inline-error no-print" role="status">
               {shortages === 1
                 ? 'No se puede emitir: un renglón necesita revisión, mira el aviso bajo su cantidad.'
@@ -913,7 +1225,9 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
                 ? `${copy.stamp} emitida`
                 : busy
                   ? 'Emitiendo…'
-                  : `Emitir ${copy.singular}`}
+                  : pendingIssue
+                    ? 'Reintentar emisión'
+                    : `Emitir ${copy.singular}`}
             </Button>
             <Button
               type="button"
@@ -924,6 +1238,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
                 busy ||
                 savingDraft ||
                 !!issued ||
+                !!pendingIssue ||
                 draftsLoading ||
                 !!error
               }
@@ -938,7 +1253,13 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
                 variant="ghost"
                 className="record-delete"
                 onClick={() => setConfirmDiscard(true)}
-                disabled={busy || savingDraft || draftsLoading || !!error}
+                disabled={
+                  busy ||
+                  savingDraft ||
+                  !!pendingIssue ||
+                  draftsLoading ||
+                  !!error
+                }
               >
                 <Trash2 size={17} />
                 Eliminar borrador
@@ -1006,6 +1327,26 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
           <p>
             ¿Eliminar el borrador <strong>{current?.reference}</strong>? No
             afecta al inventario ni a los documentos emitidos.
+          </p>
+        </ConfirmDialog>
+      )}
+      {replaceWith && (
+        <ConfirmDialog
+          open
+          title="Cambios sin guardar"
+          confirmLabel={
+            'draft' in replaceWith
+              ? 'Abrir otro borrador'
+              : 'path' in replaceWith
+                ? 'Salir sin guardar'
+                : 'Descartar cambios'
+          }
+          onConfirm={replaceDocument}
+          onCancel={() => setReplaceWith(null)}
+        >
+          <p>
+            Hay cambios sin guardar en esta {copy.singular}. Si continúas, se
+            perderán esos cambios.
           </p>
         </ConfirmDialog>
       )}
