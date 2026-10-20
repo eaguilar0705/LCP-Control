@@ -38,6 +38,7 @@ import {
 } from '../../services/workspace'
 import { useServices } from '../../services/useServices'
 import type { UserRole } from '../../lib/domain'
+import { BusinessImport } from './BusinessImport'
 export function StaffPage() {
   const { user } = useAuth()
   const [removing, setRemoving] = useState<StaffAccount | null>(null)
@@ -376,6 +377,7 @@ export function BusinessPage() {
   const [message, setMessage] = useState('')
   const [failure, setFailure] = useState('')
   const [busy, setBusy] = useState(false)
+  const [importVersion, setImportVersion] = useState(0)
   if (!demo && !can(role, 'settings.manage'))
     return (
       <ErrorState message="Solo los administradores pueden configurar el negocio." />
@@ -417,7 +419,14 @@ export function BusinessPage() {
         title="Datos del negocio"
 
         icon={Store}
-      />
+      >
+        <BusinessImport
+          onImported={() => {
+            retry()
+            setImportVersion((version) => version + 1)
+          }}
+        />
+      </WorkspaceHeading>
       {loading && <LoadingState />}
       {error && <ErrorState message={error} retry={retry} />}
       <div className="business-settings-layout">
@@ -508,7 +517,7 @@ export function BusinessPage() {
             </p>
           )}
         </Card>
-        <ExchangeRateCard />
+        <ExchangeRateCard key={importVersion} />
       </div>
     </>
   )

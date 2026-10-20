@@ -4,6 +4,8 @@ Código fuente de la aplicación de inventario, facturación, proformas y contab
 
 Contabilidad presenta comprobantes, cobros y pagos, catálogo de cuentas, balanza de comprobación, estado de resultado y estado de situación financiera. El libro integra operaciones automáticas y comprobantes manuales de partida doble. La descarga de Excel contiene las cuatro hojas de estados y catálogo. «Pendiente» indica que falta información para confirmar el importe; no equivale a cero. Los saldos iniciales y ajustes se registran desde Comprobantes; los cobros y pagos se vinculan a su deuda. Los precios se editan en cada perfume.
 
+En **Negocio → Importar desde Excel**, los administradores pueden descargar la plantilla y cargar productos, precios, existencias de bodega y tienda, cuentas y saldos iniciales, clientes, proveedores y datos del negocio. Incluye vista previa, validación completa y protección contra cargas duplicadas. Ver [formato y puesta en marcha](docs/importacion-excel.md); la función requiere aplicar la migración de importación en Supabase antes de utilizarla con la base remota.
+
 ## Instalar y ejecutar
 
 Requiere Node.js 22.12 o superior y npm. Ejecutar desde la raíz:

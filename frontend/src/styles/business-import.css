@@ -1,0 +1,103 @@
+.dialog.business-import-dialog {
+  width: min(900px, calc(100vw - 32px));
+  max-width: 900px;
+}
+.business-import-dialog > p,
+.business-import-steps {
+  line-height: 1.6;
+}
+.business-import-steps {
+  padding-left: 1.4rem;
+}
+.business-import-steps li + li {
+  margin-top: 0.4rem;
+}
+.business-import-fields {
+  margin-top: 1.25rem;
+}
+.business-import-fields input[type='file'] {
+  max-width: 100%;
+  padding: 0.65rem;
+}
+.business-import-counts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 0.7rem;
+  margin: 1rem 0;
+}
+.business-import-counts > div {
+  padding: 0.75rem;
+  border: 1px solid var(--border, #e7e0de);
+  border-radius: 8px;
+}
+.business-import-counts dt {
+  font-size: 0.8rem;
+  color: var(--muted, #746b69);
+}
+.business-import-counts dd {
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin: 0.3rem 0 0;
+}
+.business-import-preview {
+  border-bottom: 1px solid var(--border, #e7e0de);
+  padding: 0.8rem 0;
+}
+.business-import-preview summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.business-import-table {
+  overflow: auto;
+  max-height: 280px;
+  margin-top: 0.75rem;
+}
+.business-import-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+.business-import-table th,
+.business-import-table td {
+  padding: 0.65rem;
+  border-bottom: 1px solid var(--border, #e7e0de);
+  text-align: left;
+  white-space: nowrap;
+}
+.business-import-review {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  margin: 1rem 0;
+  line-height: 1.5;
+}
+.business-import-review input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+.business-import-problems {
+  border-left: 3px solid var(--danger, #a33030);
+  padding-left: 1rem;
+  margin-top: 1rem;
+  overflow-wrap: anywhere;
+}
+.business-import-success {
+  padding: 1rem 0;
+}
+.business-import-dialog h3 {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .dialog.business-import-dialog {
+    width: calc(100vw - 20px);
+    padding: 1rem;
+  }
+  .business-import-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .business-import-counts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
