@@ -1,6 +1,7 @@
 const grants = new Map<string, { url: string; expires: number }>()
 let generation = 0
 let userId: string | null = null
+const clearListeners = new Set<() => void>()
 
 /** Sólo memoria; una firma pendiente no puede repoblar una sesión terminada. */
 export const privateImageCache = {
@@ -16,6 +17,13 @@ export const privateImageCache = {
   clear() {
     grants.clear()
     generation++
+    for (const listener of clearListeners) listener()
+  },
+  onClear(listener: () => void) {
+    clearListeners.add(listener)
+    return () => {
+      clearListeners.delete(listener)
+    }
   },
   setSession(nextUserId: string | null) {
     if (nextUserId !== userId) {
