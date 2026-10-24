@@ -20,6 +20,7 @@
     "test:accounting": "node --test scripts/tests/*.test.mjs",
     "test:business-import": "node --test scripts/tests/business-import.test.mjs && node scripts/tests/business-import.mjs",
     "test:browser:business-import": "node scripts/tests/browser-business-import.mjs",
+    "test:browser:suppliers": "node scripts/tests/browser-supplier-autocomplete.mjs",
     "lint": "eslint .",
     "format": "prettier --write frontend shared scripts *.json *.js *.md",
     "preview": "npm run preview --workspace @lcp/frontend --",

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { ProductSelect } from '../../components/ProductSelect'
+import { SupplierAutocomplete } from '../../components/SupplierAutocomplete'
 import { Button, Dialog, Input, Select } from '../../components/ui'
 import { useServices } from '../../services/useServices'
 import { errorMessage } from '../../lib/errors'
@@ -186,11 +187,10 @@ export function PurchaseDialog({
               error={checked ? (dateProblem ?? undefined) : undefined}
               onChange={(event) => setIncurredOn(event.target.value)}
             />
-            <Input
-              label="Proveedor"
-              maxLength={160}
+            <SupplierAutocomplete
               value={supplier}
-              onChange={(event) => setSupplier(event.target.value)}
+              onChange={setSupplier}
+              disabled={busy}
             />
             <Input
               label="Factura o referencia"

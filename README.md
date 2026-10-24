@@ -10,6 +10,8 @@ En **Inventario → Listas de precios**, administración puede crear listas con 
 
 **Entrada** y **Agregar unidades** conducen a Registrar compra con el producto, la ubicación y la cantidad elegidos. La compra conserva su costo y actualiza el promedio ponderado; **Ajuste** se utiliza para registrar o corregir conteos. El rol **Caja** tiene facturación e historial propio; las proformas, la edición de clientes y los movimientos de inventario requieren otro rol autorizado.
 
+En Registrar compra, el campo Proveedor sugiere los proveedores activos guardados al buscar por nombre, teléfono o RUC. Se puede elegir con el ratón o con las flechas y Enter; también admite un nombre escrito libremente sin crear otro contacto.
+
 ## Instalar y ejecutar
 
 Requiere Node.js 22.12 o superior y npm. Ejecutar desde la raíz:
