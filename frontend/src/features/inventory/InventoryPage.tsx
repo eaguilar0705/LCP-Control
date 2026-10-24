@@ -12,6 +12,7 @@ import {
   LayoutGrid,
   List,
   Sigma,
+  SlidersHorizontal,
   Store,
   Warehouse,
 } from 'lucide-react'
@@ -59,12 +60,14 @@ import { useAccess } from '../../app/AccessContext'
 import { MovementDrafts } from './MovementDrafts'
 import { InventoryMovements } from './InventoryMovements'
 import { PriceListsPanel } from '../pricing/PriceListsPanel'
+import '../../styles/everyday-usability.css'
 export function InventoryPage() {
   const { base, demo, role } = useAccess()
   const { state } = useLocation()
   const manage = can(role, 'product.manage') || demo
   const [catalog, setCatalog] = useState(true)
   const [status, setStatus] = useState('active')
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const { inventoryService } = useServices()
   const load = useCallback(
     () => inventoryService.getInventory(manage),
@@ -76,6 +79,15 @@ export function InventoryPage() {
   const [tier, setTier] = useState<PriceTier>('emprendedor')
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<Product | null>(null)
+  const activeFilterCount =
+    [
+      filters.category,
+      filters.brand,
+      filters.gender,
+      filters.size,
+      filters.location,
+      filters.stock,
+    ].filter(Boolean).length + (status === 'active' ? 0 : 1)
   const items = filterInventory(
     (data ?? []).filter(
       ({ product }) =>
@@ -139,16 +151,19 @@ export function InventoryPage() {
           {state.message}
         </p>
       )}
-      {demo ? (
-        <MovementDrafts items={(data ?? []).filter((i) => i.product.active)} />
-      ) : (
-        <InventoryMovements
-          items={(data ?? []).filter((i) => i.product.active)}
-          onRecorded={retry}
-        />
-      )}
-      <Card>
-        <InventoryTotals totals={totals} count={items.length} />
+      <div className="inventory-movement-area">
+        {demo ? (
+          <MovementDrafts
+            items={(data ?? []).filter((i) => i.product.active)}
+          />
+        ) : (
+          <InventoryMovements
+            items={(data ?? []).filter((i) => i.product.active)}
+            onRecorded={retry}
+          />
+        )}
+      </div>
+      <Card className="inventory-workspace">
         <div className="inventory-toolbar">
           <div className="catalog-toolbar-heading">
             <h2>{data?.length ?? '—'} referencias</h2>
@@ -159,7 +174,7 @@ export function InventoryPage() {
               onTier={setTier}
             />
           </div>
-          <div className="filter-grid">
+          <div className="inventory-primary-search">
             <div className="search-with-scan">
               <Input
                 label="Buscar producto"
@@ -176,6 +191,55 @@ export function InventoryPage() {
                 }}
               />
             </div>
+          </div>
+          <div className="inventory-results-heading">
+            <Button
+              type="button"
+              variant="secondary"
+              className="inventory-filter-toggle"
+              aria-expanded={filtersOpen}
+              aria-controls="inventory-secondary-filters"
+              onClick={() => setFiltersOpen(!filtersOpen)}
+            >
+              <SlidersHorizontal size={17} aria-hidden="true" />
+              Filtros
+              {activeFilterCount > 0 && (
+                <span className="inventory-filter-count">
+                  {activeFilterCount}
+                </span>
+              )}
+            </Button>
+            <div
+              className="inventory-view-switch"
+              role="group"
+              aria-label="Vista de inventario"
+            >
+              <Button
+                variant="ghost"
+                aria-pressed={catalog}
+                onClick={() => setCatalog(true)}
+              >
+                <LayoutGrid size={17} /> Tarjetas
+              </Button>
+              <Button
+                variant="ghost"
+                aria-pressed={!catalog}
+                onClick={() => setCatalog(false)}
+              >
+                <List size={17} /> Tabla
+              </Button>
+            </div>
+            <span className="inventory-results-count" role="status">
+              {items.length} de {data?.length ?? 0} productos
+            </span>
+          </div>
+          <div
+            id="inventory-secondary-filters"
+            className="filter-grid inventory-secondary-filters"
+            hidden={!filtersOpen}
+            role="group"
+            aria-label="Filtros de inventario"
+          >
             <Select
               label="Categoría"
               value={filters.category}
@@ -263,43 +327,27 @@ export function InventoryPage() {
               <option value="out">Sin existencias</option>
             </Select>
           </div>
-          <div className="filter-note">
-            <span>
-              {uncounted
-                ? '— indica que el conteo aún no está registrado. Puedes registrarlo desde Editar.'
-                : ''}
-            </span>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setFilters(emptyFilters)
-                setPage(1)
-              }}
-            >
-              Limpiar filtros
-            </Button>
-          </div>
+          {(uncounted || filters.search || activeFilterCount > 0) && (
+            <div className="filter-note">
+              <span>
+                {uncounted
+                  ? '— indica que el conteo aún no está registrado. Puedes registrarlo desde Editar.'
+                  : ''}
+              </span>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setFilters(emptyFilters)
+                  setStatus('active')
+                  setPage(1)
+                }}
+              >
+                Limpiar filtros
+              </Button>
+            </div>
+          )}
         </div>
-        <div
-          className="inventory-view-switch"
-          role="group"
-          aria-label="Vista de inventario"
-        >
-          <Button
-            variant="ghost"
-            aria-pressed={catalog}
-            onClick={() => setCatalog(true)}
-          >
-            <LayoutGrid size={17} /> Tarjetas
-          </Button>
-          <Button
-            variant="ghost"
-            aria-pressed={!catalog}
-            onClick={() => setCatalog(false)}
-          >
-            <List size={17} /> Tabla
-          </Button>
-        </div>
+        <InventoryTotals totals={totals} count={items.length} />
         {loading ? (
           <LoadingState />
         ) : error ? (

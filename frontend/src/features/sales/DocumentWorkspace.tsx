@@ -1,10 +1,12 @@
 import { ProductPicker } from './ProductPicker'
+import './document-workbench.css'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { listContacts } from '../../services/workspace'
 import { DocumentPrint } from './DocumentPrint'
 import {
   CircleCheckBig,
+  ChevronDown,
   DoorClosed,
   DoorOpen,
   FileDown,
@@ -800,6 +802,26 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
     setReplaceWith(null)
   }
 
+  function goToSection(id: string) {
+    const section = document.getElementById(id)
+    if (id === 'document-customer') {
+      const details = section?.querySelector('details')
+      if (details) details.open = true
+    }
+    section?.scrollIntoView({ block: 'start', behavior: 'auto' })
+    const target =
+      id === 'document-catalog'
+        ? section?.querySelector<HTMLInputElement>('input[type="search"]')
+        : id === 'document-customer'
+          ? (section?.querySelector<HTMLElement>('[aria-invalid="true"]') ??
+            section?.querySelector<HTMLElement>(
+              'input:not(:disabled), select:not(:disabled)',
+            ))
+          : section
+    const focusTarget = target ?? section
+    focusTarget?.focus({ preventScroll: true })
+  }
+
   function sendWhatsapp() {
     if (!shareable) return
     window.open(whatsappUrl(shareable), '_blank', 'noopener,noreferrer')
@@ -944,16 +966,189 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
           </Button>
         </div>
       )}
-      <div className={`invoice-layout doc-${kind} no-print`}>
+      <nav
+        className="document-navigation no-print"
+        aria-label="Moverse por el documento"
+      >
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => goToSection('document-catalog')}
+        >
+          Buscar productos
+        </Button>
+        <span>
+          <small>
+            {lines.length} {lines.length === 1 ? 'producto' : 'productos'}
+          </small>
+          <strong>
+            {displayedTotal === null
+              ? 'Revisar total'
+              : formatCurrency(displayedTotal, issued?.currency ?? currency)}
+          </strong>
+        </span>
+        <Button type="button" onClick={() => goToSection('document-review')}>
+          Ver documento
+        </Button>
+      </nav>
+      <div className={`invoice-layout document-workbench doc-${kind} no-print`}>
         <fieldset
-          className="invoice-editor no-print"
+          id="document-customer"
+          tabIndex={-1}
+          className="document-customer-panel"
+          disabled={busy || !!issued || !!pendingIssue}
+        >
+          <Card className="form-card document-customer-card">
+            <details>
+              <summary className="document-customer-summary">
+                <div>
+                  <h2>Datos de la {copy.singular}</h2>
+                  <span>
+                    {customer || 'Cliente por indicar'} ·{' '}
+                    {kind === 'invoice'
+                      ? `${paymentOptions[payment]} · ${labels.location[location]}`
+                      : validUntil
+                        ? `Válida hasta ${formatDate(validUntil)}`
+                        : 'Vigencia por indicar'}
+                  </span>
+                  {!issued &&
+                    lines.length > 0 &&
+                    (dataIssues || (kind === 'invoice' && !validExchange)) && (
+                      <small className="document-customer-warning">
+                        Completar datos
+                      </small>
+                    )}
+                </div>
+                <ChevronDown size={19} aria-hidden="true" />
+              </summary>
+              <div className="form-grid">
+                {!demo && (
+                  <Select
+                    label="Cliente registrado"
+                    value={customerId ?? ''}
+                    onChange={(e) => {
+                      const selected = customers?.find(
+                        (c) => c.id === e.target.value,
+                      )
+                      setCustomerId(selected?.id ?? null)
+                      setCustomer(selected?.name ?? '')
+                      setPhone(selected?.phone ?? '')
+                      setTaxId(selected?.taxId ?? '')
+                      if (selected?.priceTier)
+                        setTier(selected.priceTier as PriceTier)
+                    }}
+                  >
+                    <option value="">Nuevo cliente</option>
+                    {customers
+                      ?.filter((c) => c.active)
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} · {c.phone}
+                        </option>
+                      ))}
+                  </Select>
+                )}
+                {customersError && (
+                  <ErrorState message={customersError} retry={retryCustomers} />
+                )}
+                <Input
+                  label="Cliente"
+                  maxLength={MAX_CUSTOMER_NAME}
+                  // Con el formulario en blanco no se marca nada; en cuanto hay
+                  // productos, el documento necesita a quién va dirigido.
+                  error={issued || !lines.length ? undefined : customerIssue}
+                  value={customer}
+                  disabled={!!customerId}
+                  onChange={(e) => setCustomer(e.target.value)}
+                  placeholder="Nombre del cliente"
+                />
+                <Input
+                  label="WhatsApp del cliente"
+                  type="tel"
+                  inputMode="tel"
+                  maxLength={40}
+                  error={issued ? undefined : phoneIssue}
+                  value={phone}
+                  disabled={!!customerId}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="8888 0000"
+                />
+                <Input
+                  label="RUC / Identificación del cliente"
+                  maxLength={80}
+                  value={taxId}
+                  onChange={(e) => setTaxId(e.target.value)}
+                />
+                {kind === 'invoice' ? (
+                  <>
+                    <Select
+                      label="Forma de pago"
+                      value={payment}
+                      onChange={(e) =>
+                        setPayment(e.target.value as DocumentDraft['payment'])
+                      }
+                    >
+                      {Object.entries(paymentOptions).map(([id, label]) => (
+                        <option value={id} key={id}>
+                          {label}
+                        </option>
+                      ))}
+                    </Select>
+                    <Select
+                      label="Sale de"
+                      value={location}
+                      onChange={(e) =>
+                        setLocation(e.target.value as InventoryLocation)
+                      }
+                    >
+                      {Object.entries(labels.location).map(([id, label]) => (
+                        <option value={id} key={id}>
+                          {label}
+                        </option>
+                      ))}
+                    </Select>
+                  </>
+                ) : (
+                  <Input
+                    label="Válida hasta"
+                    type="date"
+                    required
+                    min={isoDate(new Date())}
+                    error={issued ? undefined : validityIssue}
+                    value={validUntil}
+                    onChange={(e) => setValidUntil(e.target.value)}
+                  />
+                )}
+                {currency === 'USD' && (
+                  <Input
+                    label="Tipo de cambio (NIO por 1 USD)"
+                    type="number"
+                    min="0.000001"
+                    max={1000000}
+                    step="0.000001"
+                    value={exchangeField}
+                    error={
+                      kind === 'invoice' && !validExchange
+                        ? 'Registra el tipo de cambio para contabilizar esta venta.'
+                        : undefined
+                    }
+                    onChange={(event) => setExchangeText(event.target.value)}
+                  />
+                )}
+              </div>
+            </details>
+          </Card>
+        </fieldset>
+        <fieldset
+          id="document-catalog"
+          tabIndex={-1}
+          className="invoice-editor document-catalog"
           disabled={busy || !!issued || !!pendingIssue}
         >
           <Card className="form-card picker-panel">
             <div className="section-heading">
               <div>
-                <span className="section-kicker">ELIGE TUS PERFUMES</span>
-                <h2>Catálogo a la mano</h2>
+                <h2>Productos</h2>
               </div>
               <span className="section-counter">
                 {lines.length} {lines.length === 1 ? 'agregado' : 'agregados'}
@@ -980,131 +1175,313 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
               onAdd={add}
             />
           </Card>
-          <Card className="form-card">
-            <div className="section-heading">
+        </fieldset>
+        <section
+          id="document-review"
+          tabIndex={-1}
+          className="document-review-panel"
+          aria-label="Documento actual"
+        >
+          <Card className="invoice-paper">
+            <div className="invoice-heading">
+              <Brand wordmark />
               <div>
-                <span className="section-kicker">CLIENTE Y CONDICIONES</span>
-                <h2>Datos de la {copy.singular}</h2>
+                <strong>
+                  {issued ? copy.stamp : `${copy.stamp} · BORRADOR`}
+                </strong>
+                <span>{current?.reference ?? 'Sin guardar'}</span>
               </div>
             </div>
-            {!demo && (
-              <Select
-                label="Cliente registrado"
-                value={customerId ?? ''}
-                onChange={(e) => {
-                  const selected = customers?.find(
-                    (c) => c.id === e.target.value,
-                  )
-                  setCustomerId(selected?.id ?? null)
-                  setCustomer(selected?.name ?? '')
-                  setPhone(selected?.phone ?? '')
-                  setTaxId(selected?.taxId ?? '')
-                  if (selected?.priceTier)
-                    setTier(selected.priceTier as PriceTier)
-                }}
-              >
-                <option value="">Nuevo cliente</option>
-                {customers
-                  ?.filter((c) => c.active)
-                  .map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} · {c.phone}
-                    </option>
-                  ))}
-              </Select>
-            )}
-            {customersError && (
-              <ErrorState message={customersError} retry={retryCustomers} />
-            )}
-            <div className="form-grid">
-              <Input
-                label="Cliente"
-                maxLength={MAX_CUSTOMER_NAME}
-                // Con el formulario en blanco no se marca nada; en cuanto hay
-                // productos, el documento necesita a quién va dirigido.
-                error={issued || !lines.length ? undefined : customerIssue}
-                value={customer}
-                disabled={!!customerId}
-                onChange={(e) => setCustomer(e.target.value)}
-                placeholder="Nombre del cliente"
-              />
-              <Input
-                label="WhatsApp del cliente"
-                type="tel"
-                inputMode="tel"
-                maxLength={40}
-                error={issued ? undefined : phoneIssue}
-                value={phone}
-                disabled={!!customerId}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="8888 0000"
-              />
-              <Input
-                label="RUC / Identificación del cliente"
-                maxLength={80}
-                value={taxId}
-                onChange={(e) => setTaxId(e.target.value)}
-              />
-              {kind === 'invoice' ? (
-                <>
-                  <Select
-                    label="Forma de pago"
-                    value={payment}
-                    onChange={(e) =>
-                      setPayment(e.target.value as DocumentDraft['payment'])
-                    }
-                  >
-                    {Object.entries(paymentOptions).map(([id, label]) => (
-                      <option value={id} key={id}>
-                        {label}
-                      </option>
-                    ))}
-                  </Select>
-                  <Select
-                    label="Sale de"
-                    value={location}
-                    onChange={(e) =>
-                      setLocation(e.target.value as InventoryLocation)
-                    }
-                  >
-                    {Object.entries(labels.location).map(([id, label]) => (
-                      <option value={id} key={id}>
-                        {label}
-                      </option>
-                    ))}
-                  </Select>
-                </>
+            <div className="invoice-meta">
+              <p>
+                {issued?.customerName || customer || 'Cliente por indicar'}
+                {(issued ? issued.customerPhone : phone) && (
+                  <small>
+                    WhatsApp: {issued ? issued.customerPhone : phone}
+                  </small>
+                )}
+                {!issued && taxId && <small>RUC: {taxId}</small>}
+              </p>
+              <p>
+                {formatDate(current?.createdAt ?? new Date())}
+                <small>
+                  {priceTierLabels[tier]} · {currency}
+                  {kind === 'invoice'
+                    ? ` · ${paymentOptions[payment]}`
+                    : validUntil
+                      ? ` · Válida hasta ${formatDate(validUntil)}`
+                      : ''}
+                </small>
+                {kind === 'invoice' && (
+                  <small>Sale de {labels.location[location]}</small>
+                )}
+              </p>
+            </div>
+            <div className="invoice-lines">
+              {issued ? (
+                issued.items.map((item) => (
+                  <div className="invoice-line" key={item.id}>
+                    <div>
+                      <strong>{item.description}</strong>
+                      <span>
+                        {formatCurrency(item.unitPrice, issued.currency)} por
+                        unidad
+                      </span>
+                    </div>
+                    <span>{item.quantity} uds.</span>
+                    <strong>
+                      {formatCurrency(item.lineTotal, issued.currency)}
+                    </strong>
+                  </div>
+                ))
+              ) : lines.length === 0 ? (
+                <p className="empty-lines">Sin productos</p>
               ) : (
-                <Input
-                  label="Válida hasta"
-                  type="date"
-                  required
-                  min={isoDate(new Date())}
-                  error={issued ? undefined : validityIssue}
-                  value={validUntil}
-                  onChange={(e) => setValidUntil(e.target.value)}
-                />
+                lines.map((line) => (
+                  <div className="invoice-line" key={line.productId}>
+                    <div>
+                      <strong>{line.name}</strong>
+                      <small>
+                        {line.size} · {line.barcode}
+                      </small>
+                      <span>
+                        {draftLinePrice(line, tier, currency) === null
+                          ? 'Sin precio en esta lista'
+                          : `${formatCurrency(draftLinePrice(line, tier, currency)!, currency)} por unidad`}
+                      </span>
+                    </div>
+                    <div className="invoice-line-quantity">
+                      <Input
+                        label={`Cantidad de ${line.name}`}
+                        error={issued ? undefined : quantityIssue(line)}
+                        type="number"
+                        min={1}
+                        max={9999}
+                        step={1}
+                        disabled={busy || !!issued || !!pendingIssue}
+                        value={Number.isNaN(line.quantity) ? '' : line.quantity}
+                        onChange={(e) =>
+                          setLines(
+                            lines.map((item) =>
+                              item.productId === line.productId
+                                ? { ...item, quantity: e.target.valueAsNumber }
+                                : item,
+                            ),
+                          )
+                        }
+                      />
+                      <Button
+                        className="no-print"
+                        variant="ghost"
+                        aria-label={`Quitar ${line.name}`}
+                        disabled={busy || !!issued || !!pendingIssue}
+                        onClick={() => {
+                          setIssued(null)
+                          setLines(
+                            lines.filter(
+                              (item) => item.productId !== line.productId,
+                            ),
+                          )
+                        }}
+                      >
+                        <Trash2 size={16} />
+                      </Button>
+                    </div>
+                    <strong>
+                      {Number.isInteger(line.quantity) &&
+                      line.quantity > 0 &&
+                      line.quantity <= 9999 &&
+                      draftLinePrice(line, tier, currency) !== null
+                        ? formatCurrency(
+                            (Math.round(
+                              draftLinePrice(line, tier, currency)! * 100,
+                            ) *
+                              line.quantity) /
+                              100,
+                            currency,
+                          )
+                        : draftLinePrice(line, tier, currency) === null
+                          ? 'Sin precio'
+                          : 'Revisar cantidad'}
+                    </strong>
+                  </div>
+                ))
               )}
             </div>
-            <div className="form-grid">
-              {currency === 'USD' && (
-                <Input
-                  label="Tipo de cambio (NIO por 1 USD)"
-                  type="number"
-                  min="0.000001"
-                  max={1000000}
-                  step="0.000001"
-                  value={exchangeField}
-                  error={
-                    kind === 'invoice' && !validExchange
-                      ? 'Registra el tipo de cambio para contabilizar esta venta.'
-                      : undefined
-                  }
-                  onChange={(event) => setExchangeText(event.target.value)}
+            <div className="document-checkout">
+              <div className="invoice-total">
+                <span>Total de la {copy.singular}</span>
+                <strong>
+                  {issued
+                    ? formatCurrency(issued.total, issued.currency)
+                    : total === null
+                      ? valid
+                        ? 'Revisar precios'
+                        : 'Revisar cantidades'
+                      : formatCurrency(total, currency)}
+                </strong>
+              </div>
+              {equivalent && (
+                <p className="invoice-equivalent">
+                  <span>
+                    Equivale a{' '}
+                    <strong>
+                      {formatCurrency(equivalent.amount, equivalent.currency)}
+                    </strong>
+                  </span>
+                  <small>{displayedRate} C$ por dólar</small>
+                </p>
+              )}
+              <label className="field no-print">
+                <span>Notas</span>
+                <textarea
+                  rows={1}
+                  maxLength={1500}
+                  value={notes}
+                  disabled={busy || !!issued || !!pendingIssue}
+                  onChange={(e) => setNotes(e.target.value)}
                 />
+              </label>
+              <p className="print-only">{notes}</p>
+
+              {!issued && !pendingIssue && shortages > 0 && (
+                <p className="inline-error no-print" role="status">
+                  {shortages === 1
+                    ? 'No se puede emitir: un renglón necesita revisión, mira el aviso bajo su cantidad.'
+                    : `No se puede emitir: ${shortages} renglones necesitan revisión, mira los avisos bajo sus cantidades.`}
+                </p>
+              )}
+              {!issued &&
+                lines.length > 0 &&
+                (dataIssues || (kind === 'invoice' && !validExchange)) && (
+                  <div
+                    className="document-data-issue inline-error no-print"
+                    role="status"
+                  >
+                    <span>{`No se puede emitir: revisa los datos marcados en «Datos de la ${copy.singular}».`}</span>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => goToSection('document-customer')}
+                    >
+                      Revisar datos
+                    </Button>
+                  </div>
+                )}
+              <div className="form-actions no-print">
+                <Button
+                  onClick={issue}
+                  disabled={demo || !issuable || busy || !!issued}
+                >
+                  <CircleCheckBig size={17} />
+                  {issued
+                    ? `${copy.stamp} emitida`
+                    : busy
+                      ? 'Emitiendo…'
+                      : pendingIssue
+                        ? 'Reintentar emisión'
+                        : `Emitir ${copy.singular}`}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => void saveDraft()}
+                  disabled={
+                    !ready ||
+                    busy ||
+                    savingDraft ||
+                    !!issued ||
+                    !!pendingIssue ||
+                    draftsLoading ||
+                    !!error
+                  }
+                  aria-busy={savingDraft}
+                >
+                  <Save size={17} />
+                  {savingDraft ? 'Guardando…' : 'Guardar borrador'}
+                </Button>
+                {discardable && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="record-delete"
+                    onClick={() => setConfirmDiscard(true)}
+                    disabled={
+                      busy ||
+                      savingDraft ||
+                      !!pendingIssue ||
+                      draftsLoading ||
+                      !!error
+                    }
+                  >
+                    <Trash2 size={17} />
+                    Eliminar borrador
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => window.print()}
+                  disabled={!ready}
+                >
+                  <Printer size={17} />
+                  Imprimir
+                </Button>
+              </div>
+              <div className="form-actions whatsapp-actions no-print">
+                <Button
+                  className="button-whatsapp"
+                  onClick={sendWhatsapp}
+                  disabled={!shareable}
+                >
+                  <MessageCircle size={17} />
+                  Enviar por WhatsApp
+                </Button>
+                <Button
+                  type="button"
+                  className="button-whatsapp-outline"
+                  onClick={() => void sharePdf()}
+                  disabled={!shareable || busy}
+                  aria-busy={sharing}
+                >
+                  <FileDown size={17} />
+                  {sharing ? 'Generando PDF…' : 'Compartir PDF'}
+                </Button>
+              </div>
+
+              {message && (
+                <p role="status" className="page-feedback no-print">
+                  {message}
+                </p>
+              )}
+              {error && (
+                <Button variant="secondary" onClick={retryDrafts}>
+                  Recargar borradores
+                </Button>
+              )}
+              {(failure || error) && (
+                <p role="alert" className="inline-error no-print">
+                  {failure || error}
+                </p>
+              )}
+              {priceReviewRequired && !issued && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={busy || !!pendingIssue}
+                  onClick={() => void updatePrices()}
+                >
+                  <RefreshCw size={17} />
+                  Actualizar precios
+                </Button>
               )}
             </div>
           </Card>
+        </section>
+        <fieldset
+          className="document-saved-drafts"
+          disabled={busy || !!issued || !!pendingIssue}
+        >
           {drafts.length > 0 && (
             <Card className="form-card">
               <h2>Borradores de {copy.plural}</h2>
@@ -1126,285 +1503,6 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
             </Card>
           )}
         </fieldset>
-        <Card className="invoice-paper">
-          <div className="invoice-heading">
-            <Brand wordmark />
-            <div>
-              <strong>
-                {issued ? copy.stamp : `${copy.stamp} · BORRADOR`}
-              </strong>
-              <span>{current?.reference ?? 'Sin guardar'}</span>
-            </div>
-          </div>
-          <div className="invoice-meta">
-            <p>
-              {issued?.customerName || customer || 'Cliente por indicar'}
-              {(issued ? issued.customerPhone : phone) && (
-                <small>WhatsApp: {issued ? issued.customerPhone : phone}</small>
-              )}
-              {!issued && taxId && <small>RUC: {taxId}</small>}
-            </p>
-            <p>
-              {formatDate(current?.createdAt ?? new Date())}
-              <small>
-                {priceTierLabels[tier]} · {currency}
-                {kind === 'invoice'
-                  ? ` · ${paymentOptions[payment]}`
-                  : validUntil
-                    ? ` · Válida hasta ${formatDate(validUntil)}`
-                    : ''}
-              </small>
-              {kind === 'invoice' && (
-                <small>Sale de {labels.location[location]}</small>
-              )}
-            </p>
-          </div>
-          <div className="invoice-lines">
-            {issued ? (
-              issued.items.map((item) => (
-                <div className="invoice-line" key={item.id}>
-                  <div>
-                    <strong>{item.description}</strong>
-                    <span>
-                      {formatCurrency(item.unitPrice, issued.currency)} por
-                      unidad
-                    </span>
-                  </div>
-                  <span>{item.quantity} uds.</span>
-                  <strong>
-                    {formatCurrency(item.lineTotal, issued.currency)}
-                  </strong>
-                </div>
-              ))
-            ) : lines.length === 0 ? (
-              <p className="empty-lines">Sin productos</p>
-            ) : (
-              lines.map((line) => (
-                <div className="invoice-line" key={line.productId}>
-                  <div>
-                    <strong>{line.name}</strong>
-                    <small>
-                      {line.size} · {line.barcode}
-                    </small>
-                    <span>
-                      {draftLinePrice(line, tier, currency) === null
-                        ? 'Sin precio en esta lista'
-                        : `${formatCurrency(draftLinePrice(line, tier, currency)!, currency)} por unidad`}
-                    </span>
-                  </div>
-                  <div className="invoice-line-quantity">
-                    <Input
-                      label={`Cantidad de ${line.name}`}
-                      error={issued ? undefined : quantityIssue(line)}
-                      type="number"
-                      min={1}
-                      max={9999}
-                      step={1}
-                      disabled={busy || !!issued || !!pendingIssue}
-                      value={Number.isNaN(line.quantity) ? '' : line.quantity}
-                      onChange={(e) =>
-                        setLines(
-                          lines.map((item) =>
-                            item.productId === line.productId
-                              ? { ...item, quantity: e.target.valueAsNumber }
-                              : item,
-                          ),
-                        )
-                      }
-                    />
-                    <Button
-                      className="no-print"
-                      variant="ghost"
-                      aria-label={`Quitar ${line.name}`}
-                      disabled={busy || !!issued || !!pendingIssue}
-                      onClick={() => {
-                        setIssued(null)
-                        setLines(
-                          lines.filter(
-                            (item) => item.productId !== line.productId,
-                          ),
-                        )
-                      }}
-                    >
-                      <Trash2 size={16} />
-                    </Button>
-                  </div>
-                  <strong>
-                    {Number.isInteger(line.quantity) &&
-                    line.quantity > 0 &&
-                    line.quantity <= 9999 &&
-                    draftLinePrice(line, tier, currency) !== null
-                      ? formatCurrency(
-                          (Math.round(
-                            draftLinePrice(line, tier, currency)! * 100,
-                          ) *
-                            line.quantity) /
-                            100,
-                          currency,
-                        )
-                      : draftLinePrice(line, tier, currency) === null
-                        ? 'Sin precio'
-                        : 'Revisar cantidad'}
-                  </strong>
-                </div>
-              ))
-            )}
-          </div>
-          <div className="invoice-total">
-            <span>Total de la {copy.singular}</span>
-            <strong>
-              {issued
-                ? formatCurrency(issued.total, issued.currency)
-                : total === null
-                  ? valid
-                    ? 'Revisar precios'
-                    : 'Revisar cantidades'
-                  : formatCurrency(total, currency)}
-            </strong>
-          </div>
-          {equivalent && (
-            <p className="invoice-equivalent">
-              <span>
-                Equivale a{' '}
-                <strong>
-                  {formatCurrency(equivalent.amount, equivalent.currency)}
-                </strong>
-              </span>
-              <small>{displayedRate} C$ por dólar</small>
-            </p>
-          )}
-          <label className="field no-print">
-            <span>Notas</span>
-            <textarea
-              rows={2}
-              maxLength={1500}
-              value={notes}
-              disabled={busy || !!issued || !!pendingIssue}
-              onChange={(e) => setNotes(e.target.value)}
-            />
-          </label>
-          <p className="print-only">{notes}</p>
-
-          {!issued && !pendingIssue && shortages > 0 && (
-            <p className="inline-error no-print" role="status">
-              {shortages === 1
-                ? 'No se puede emitir: un renglón necesita revisión, mira el aviso bajo su cantidad.'
-                : `No se puede emitir: ${shortages} renglones necesitan revisión, mira los avisos bajo sus cantidades.`}
-            </p>
-          )}
-          {!issued && lines.length > 0 && dataIssues && (
-            <p className="inline-error no-print" role="status">
-              {`No se puede emitir: revisa los datos marcados en «Datos de la ${copy.singular}».`}
-            </p>
-          )}
-          <div className="form-actions no-print">
-            <Button
-              onClick={issue}
-              disabled={demo || !issuable || busy || !!issued}
-            >
-              <CircleCheckBig size={17} />
-              {issued
-                ? `${copy.stamp} emitida`
-                : busy
-                  ? 'Emitiendo…'
-                  : pendingIssue
-                    ? 'Reintentar emisión'
-                    : `Emitir ${copy.singular}`}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => void saveDraft()}
-              disabled={
-                !ready ||
-                busy ||
-                savingDraft ||
-                !!issued ||
-                !!pendingIssue ||
-                draftsLoading ||
-                !!error
-              }
-              aria-busy={savingDraft}
-            >
-              <Save size={17} />
-              {savingDraft ? 'Guardando…' : 'Guardar borrador'}
-            </Button>
-            {discardable && (
-              <Button
-                type="button"
-                variant="ghost"
-                className="record-delete"
-                onClick={() => setConfirmDiscard(true)}
-                disabled={
-                  busy ||
-                  savingDraft ||
-                  !!pendingIssue ||
-                  draftsLoading ||
-                  !!error
-                }
-              >
-                <Trash2 size={17} />
-                Eliminar borrador
-              </Button>
-            )}
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => window.print()}
-              disabled={!ready}
-            >
-              <Printer size={17} />
-              Imprimir
-            </Button>
-          </div>
-          <div className="form-actions whatsapp-actions no-print">
-            <Button
-              className="button-whatsapp"
-              onClick={sendWhatsapp}
-              disabled={!shareable}
-            >
-              <MessageCircle size={17} />
-              Enviar por WhatsApp
-            </Button>
-            <Button
-              type="button"
-              className="button-whatsapp-outline"
-              onClick={() => void sharePdf()}
-              disabled={!shareable || busy}
-              aria-busy={sharing}
-            >
-              <FileDown size={17} />
-              {sharing ? 'Generando PDF…' : 'Compartir PDF'}
-            </Button>
-          </div>
-
-          {message && (
-            <p role="status" className="page-feedback no-print">
-              {message}
-            </p>
-          )}
-          {error && (
-            <Button variant="secondary" onClick={retryDrafts}>
-              Recargar borradores
-            </Button>
-          )}
-          {(failure || error) && (
-            <p role="alert" className="inline-error no-print">
-              {failure || error}
-            </p>
-          )}
-          {priceReviewRequired && !issued && (
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={busy || !!pendingIssue}
-              onClick={() => void updatePrices()}
-            >
-              <RefreshCw size={17} />
-              Actualizar precios
-            </Button>
-          )}
-        </Card>
       </div>
       {confirmDiscard && (
         <ConfirmDialog

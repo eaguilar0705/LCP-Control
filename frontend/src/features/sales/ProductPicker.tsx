@@ -18,6 +18,7 @@ import type {
 } from '../../lib/domain'
 import { formatCurrency } from '../../lib/format'
 import { productPrice } from '../../lib/pricing'
+import './product-picker.css'
 const normalize = (s: string) =>
   s
     .normalize('NFD')
@@ -101,7 +102,10 @@ export function ProductPicker({
                   />
                   {selected && (
                     <span className="picker-selected">
-                      <Check size={12} /> En el documento
+                      <Check size={12} />
+                      <span className="picker-selected-text">
+                        En el documento
+                      </span>
                     </span>
                   )}
                 </div>
@@ -122,23 +126,23 @@ export function ProductPicker({
                       : `${stock} disponibles`}{' '}
                     · {location === 'store' ? 'Tienda' : 'Bodega'}
                   </span>
-                  <div className="picker-product-footer">
-                    <strong>
-                      {price !== null
-                        ? formatCurrency(price, currency)
-                        : 'Sin precio'}
-                    </strong>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      disabled={selected || price === null}
-                      aria-label={`Agregar ${p.brand} ${p.name} ${p.size ?? ''} ${p.unit}`}
-                      onClick={() => onAdd(p.id)}
-                    >
-                      {selected ? <Check size={16} /> : <Plus size={16} />}
-                      <span>{selected ? 'Agregado' : 'Agregar'}</span>
-                    </Button>
-                  </div>
+                </div>
+                <div className="picker-product-footer">
+                  <strong>
+                    {price !== null
+                      ? formatCurrency(price, currency)
+                      : 'Sin precio'}
+                  </strong>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={selected || price === null}
+                    aria-label={`Agregar ${p.brand} ${p.name} ${p.size ?? ''} ${p.unit}`}
+                    onClick={() => onAdd(p.id)}
+                  >
+                    {selected ? <Check size={16} /> : <Plus size={16} />}
+                    <span>{selected ? 'Agregado' : 'Agregar'}</span>
+                  </Button>
                 </div>
               </article>
             )

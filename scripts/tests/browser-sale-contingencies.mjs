@@ -32,6 +32,12 @@ try {
         globalThis.dispatchEvent(new globalThis.PopStateEvent('popstate'))
       }, path)
       await page.locator('.main-content h1').first().waitFor()
+      if (path === '/sales' || path === '/proformas') {
+        const details = page.locator('.document-customer-panel details')
+        await details.waitFor()
+        if ((await details.getAttribute('open')) === null)
+          await details.locator(':scope > summary').click()
+      }
     }
     const beforeUnloadWarns = () =>
       page.evaluate(() => {
@@ -555,6 +561,11 @@ try {
       await page
         .getByRole('button', { name: 'Nueva proforma', exact: true })
         .click()
+      const unsavedCustomerDetails = page.locator(
+        '.document-customer-panel details',
+      )
+      if ((await unsavedCustomerDetails.getAttribute('open')) === null)
+        await unsavedCustomerDetails.locator(':scope > summary').click()
       await page
         .getByLabel('Cliente', { exact: true })
         .fill('Cliente sin borrador guardado')

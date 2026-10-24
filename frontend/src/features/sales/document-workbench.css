@@ -1,0 +1,375 @@
+.document-workbench.invoice-layout {
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+.document-workbench > .document-customer-panel,
+.document-workbench > .invoice-editor {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.document-workbench > .document-customer-panel {
+  grid-column: 1;
+  grid-row: 1;
+}
+.document-workbench > .invoice-editor {
+  display: block;
+  grid-column: 1;
+  grid-row: 2;
+}
+.document-workbench .form-card,
+.document-workbench .invoice-paper {
+  margin: 0;
+  padding: 20px;
+}
+.document-workbench .section-heading {
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.document-workbench .section-heading h2 {
+  margin: 0;
+  font-size: 17px;
+}
+.document-customer-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  list-style: none;
+}
+.document-customer-summary::-webkit-details-marker {
+  display: none;
+}
+.document-customer-summary h2 {
+  margin: 0 0 5px;
+  font-size: 17px;
+}
+.document-customer-summary span {
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.document-customer-warning {
+  display: block;
+  margin-top: 5px;
+  color: var(--wine);
+  font-size: 12px;
+  font-weight: 600;
+}
+.document-data-issue {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.document-data-issue > span {
+  flex: 1 1 180px;
+}
+.document-checkout .document-data-issue .button {
+  min-height: 36px;
+}
+.document-customer-summary svg {
+  flex-shrink: 0;
+  color: var(--wine);
+  transition: transform 150ms;
+}
+.document-customer-card details[open] > summary svg {
+  transform: rotate(180deg);
+}
+.document-customer-card .form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+.document-customer-card .form-grid:empty {
+  display: none;
+}
+.document-workbench .field,
+.document-workbench input,
+.document-workbench select,
+.document-workbench textarea {
+  min-width: 0;
+  max-width: 100%;
+}
+.document-workbench .field {
+  font-size: 12px;
+}
+.document-workbench .field input,
+.document-workbench .field select {
+  min-height: 42px;
+  padding-block: 10px;
+}
+.document-review-panel {
+  min-width: 0;
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  position: sticky;
+  top: 18px;
+}
+.document-workbench .invoice-paper {
+  position: static;
+  display: flex;
+  flex-direction: column;
+  height: min(680px, calc(100dvh - 280px));
+  min-height: min(640px, calc(100dvh - 38px));
+  overflow-y: auto;
+}
+.document-workbench .invoice-heading {
+  flex: 0 0 auto;
+  gap: 14px;
+  padding-bottom: 12px;
+}
+.document-workbench .invoice-heading .brand-wordmark {
+  width: 112px;
+}
+.document-workbench .invoice-meta {
+  flex: 0 0 auto;
+  gap: 14px;
+  margin: 10px 0;
+  font-size: 12px;
+}
+.document-workbench .invoice-meta p {
+  margin: 0;
+}
+.document-workbench .invoice-meta small {
+  margin-top: 3px;
+}
+.document-workbench .invoice-lines {
+  flex: 1 1 auto;
+  min-height: 90px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #cba1a9 transparent;
+  padding-right: 5px;
+}
+.document-workbench .empty-lines {
+  min-height: 90px;
+  margin: 0;
+}
+.document-workbench .invoice-line {
+  grid-template-columns: minmax(0, 1fr) 110px;
+  gap: 8px 12px;
+  padding: 12px 0;
+}
+.document-workbench .invoice-line > div:first-child {
+  gap: 4px;
+}
+.document-workbench .invoice-line > strong {
+  font-size: 13px;
+}
+.document-workbench .invoice-line-quantity {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+.document-workbench .invoice-line-quantity .field {
+  flex: 1;
+  min-width: 0;
+}
+.document-workbench .invoice-line-quantity > .button {
+  flex-shrink: 0;
+  margin-top: 19px;
+  min-height: 36px;
+}
+.document-checkout {
+  flex: 0 0 auto;
+  border-top: 1px solid var(--line);
+  background: #fff;
+  padding-top: 4px;
+}
+.document-checkout .invoice-total {
+  gap: 12px;
+  padding: 8px 0 6px;
+}
+.document-checkout .invoice-total strong {
+  font-size: 24px;
+  white-space: nowrap;
+}
+.document-checkout .invoice-equivalent {
+  margin: 0 0 10px;
+  font-size: 12px;
+  padding-bottom: 8px;
+}
+.document-checkout > .field {
+  margin: 8px 0;
+  gap: 4px;
+}
+.document-checkout textarea {
+  min-height: 38px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+.document-checkout .form-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.document-checkout .whatsapp-actions {
+  padding-top: 8px;
+}
+.document-checkout .form-actions:not(.whatsapp-actions) > .button:first-child {
+  grid-column: 1 / -1;
+}
+.document-checkout .button {
+  min-width: 0;
+  min-height: 40px;
+  padding: 9px 8px;
+  font-size: 12px;
+  line-height: 1.35;
+  justify-content: center;
+  white-space: normal;
+}
+.document-checkout .button svg {
+  flex-shrink: 0;
+}
+.document-checkout .page-feedback,
+.document-checkout .inline-error {
+  margin: 10px 0 0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.document-saved-drafts {
+  grid-column: 1 / -1;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.document-saved-drafts:empty {
+  display: none;
+}
+.document-navigation {
+  display: none;
+}
+#document-catalog,
+#document-review,
+#document-customer {
+  scroll-margin-top: 90px;
+}
+@media (min-width: 1280px) {
+  .document-customer-card .form-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 999px) {
+  .document-customer-card .form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .document-workbench.invoice-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .document-workbench > .document-customer-panel,
+  .document-workbench > .invoice-editor,
+  .document-review-panel,
+  .document-saved-drafts {
+    grid-column: 1;
+    grid-row: auto;
+  }
+  .document-review-panel {
+    position: static;
+  }
+  .document-workbench .invoice-paper {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+  .document-workbench .invoice-lines {
+    max-height: min(400px, 44dvh);
+  }
+  .document-navigation {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    position: sticky;
+    top: 10px;
+    z-index: 15;
+    margin-bottom: 16px;
+    padding: 9px;
+    background: #fffdf9;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 4px 16px #57171c0d;
+  }
+  .document-navigation > span {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+    text-align: center;
+    color: var(--wine);
+    overflow-wrap: anywhere;
+  }
+  .document-navigation small {
+    font-size: 10px;
+    color: var(--muted);
+  }
+  .document-navigation strong {
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  .document-navigation .button {
+    flex: 0 1 125px;
+    min-width: 0;
+    min-height: 44px;
+    padding: 9px;
+    font-size: 12px;
+    white-space: normal;
+    line-height: 1.35;
+    text-align: center;
+    justify-content: center;
+  }
+}
+@media (max-width: 760px) {
+  .document-navigation {
+    top: 69px;
+  }
+  #document-catalog,
+  #document-review,
+  #document-customer {
+    scroll-margin-top: 150px;
+  }
+  .document-workbench .form-card,
+  .document-workbench .invoice-paper {
+    padding: 16px;
+  }
+  .document-workbench .field input,
+  .document-workbench .field select,
+  .document-checkout textarea {
+    font-size: 16px;
+  }
+  .document-checkout .button,
+  .document-workbench .invoice-line-quantity > .button {
+    min-height: 44px;
+  }
+}
+@media (max-width: 480px) {
+  .document-customer-card .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .document-navigation {
+    gap: 5px;
+    padding: 6px;
+  }
+  .document-navigation .button {
+    font-size: 11px;
+    padding-inline: 7px;
+  }
+  .document-navigation strong {
+    font-size: 12px;
+  }
+  .document-checkout .invoice-total strong {
+    font-size: 22px;
+  }
+}
+@media (max-width: 360px) {
+  .document-catalog .price-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

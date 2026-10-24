@@ -42,6 +42,12 @@ try {
                 ? 'Reportes'
                 : 'Editar perfume'
       await page.getByRole('heading', { name: heading, exact: true }).waitFor()
+      if (path === '/sales' || path === '/proformas') {
+        const details = page.locator('.document-customer-panel details')
+        await details.waitFor()
+        if ((await details.getAttribute('open')) === null)
+          await details.locator(':scope > summary').click()
+      }
     }
     const healthy = async (name) => {
       equal(errors, [], name + ': sin errores JavaScript')

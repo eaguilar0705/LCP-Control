@@ -37,6 +37,7 @@ import {
 } from '../../services/workspace'
 import { whatsappNumber } from '../sales/whatsapp'
 import { matchesSearch } from '../../lib/search'
+import '../../styles/everyday-usability.css'
 const empty: ContactRecord = {
   id: '',
   revision: 0,
@@ -270,7 +271,9 @@ export function ContactsPage({ kind }: { kind: Kind }) {
           </>
         )}
       </ConfirmDialog>
-      <div className="directory-toolbar">
+      <div
+        className={`directory-toolbar directory-toolbar-compact ${supplier ? 'directory-suppliers' : ''}`}
+      >
         <Input
           label="Buscar"
           type="search"
@@ -305,8 +308,9 @@ export function ContactsPage({ kind }: { kind: Kind }) {
             ))}
           </Select>
         )}
-        <span className="directory-count">
-          {visible.length} {supplier ? 'proveedores' : 'clientes'}
+        <span className="directory-count" role="status">
+          {visible.length} de {data?.length ?? 0}{' '}
+          {supplier ? 'proveedores' : 'clientes'}
         </span>
       </div>
       <div className="record-grid">

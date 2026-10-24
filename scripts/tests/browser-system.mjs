@@ -34,6 +34,11 @@ try {
       await page.locator('.main-content h1').first().waitFor()
       await page.waitForTimeout(200)
     }
+    const openDocumentData = async () => {
+      const details = page.locator('.document-customer-panel details')
+      if (!(await details.evaluate((element) => element.open)))
+        await details.locator('summary').click()
+    }
     const healthy = async (label) => {
       assert.deepEqual(errors, [], label + ' runtime errors')
       assert.deepEqual(fixture.failures, [], label + ' API failures')
@@ -118,6 +123,7 @@ try {
         })
       }
       await navigate('/sales')
+      await openDocumentData()
       await page
         .getByLabel('Cliente', { exact: true })
         .fill('Cliente Venta Auditoría')
@@ -257,6 +263,7 @@ try {
           await page
             .getByRole('button', { name: 'Nueva factura', exact: true })
             .click()
+        await openDocumentData()
         await page
           .getByLabel('Cliente', { exact: true })
           .fill('Cliente Crédito')
