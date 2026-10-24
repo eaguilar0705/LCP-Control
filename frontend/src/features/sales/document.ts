@@ -15,7 +15,7 @@ export const draftLineSchema = z.object({
   barcode: z.string(),
   size: z.string(),
   quantity: z.number().int().min(1).max(9999),
-  prices: z.object({ emprendedor: pair, vip: pair, premium: pair }),
+  prices: z.record(z.string().min(1).max(100), pair),
 })
 // One schema, one discriminating field. A draft always knows whether it is an
 // invoice or a proforma, so a proforma can never be reopened as an invoice.
@@ -39,7 +39,7 @@ export const documentDraftSchema = z.object({
     .max(1000000)
     .nullable()
     .optional(),
-  tier: z.enum(['emprendedor', 'vip', 'premium']),
+  tier: z.string().min(1).max(100),
   payment: z.enum(['pending', ...paymentMethods]),
   location: z.enum(['warehouse', 'store']),
   validUntil: z.string().max(10).default(''),
@@ -49,13 +49,24 @@ export const documentDraftSchema = z.object({
 })
 export type DocumentDraft = z.infer<typeof documentDraftSchema>
 export type DraftLine = z.infer<typeof draftLineSchema>
+export function draftLinePrice(
+  line: DraftLine,
+  tier: PriceTier,
+  currency: Currency,
+): number | null {
+  const value = line.prices[tier]?.[currency]
+  return value != null && Number.isFinite(value) && value > 0 ? value : null
+}
 export function draftTotal(
   lines: DraftLine[],
   tier: PriceTier,
   currency: Currency,
 ) {
+  if (lines.some((line) => draftLinePrice(line, tier, currency) === null))
+    return null
   const total = lines.reduce(
-    (sum, line) => sum + lineCents(line.prices[tier][currency], line.quantity),
+    (sum, line) =>
+      sum + lineCents(draftLinePrice(line, tier, currency)!, line.quantity),
     0,
   )
   if (!Number.isSafeInteger(total))
@@ -88,6 +99,9 @@ export function draftPreview(
   /** Tasa vigente del catálogo, para imprimir el equivalente del borrador. */
   catalogRate?: number | null,
 ): DocumentRecord {
+  const total = draftTotal(draft.lines, draft.tier, draft.currency)
+  if (total === null)
+    throw new Error('Hay perfumes sin precio en la lista seleccionada.')
   return {
     catalogRate: catalogRate ?? null,
     id: draft.id,
@@ -102,7 +116,7 @@ export function draftPreview(
     tier: draft.tier,
     currency: draft.currency,
     exchangeRate: draft.currency === 'NIO' ? 1 : draft.exchangeRate,
-    total: draftTotal(draft.lines, draft.tier, draft.currency),
+    total,
     location: draft.kind === 'invoice' ? draft.location : null,
     validUntil: draft.kind === 'proforma' ? draft.validUntil || null : null,
     paymentMethod: draft.kind === 'invoice' ? draft.payment : null,

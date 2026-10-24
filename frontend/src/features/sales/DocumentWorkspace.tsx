@@ -42,13 +42,18 @@ import type {
   PriceTier,
   NewDocument,
 } from '../../lib/domain'
-import { equivalentAmount, priceTierLabels } from '../../lib/pricing'
+import {
+  equivalentAmount,
+  priceTierLabels,
+  productPrice,
+} from '../../lib/pricing'
 import {
   defaultValidUntil,
   documentDraftSchema,
   draftPreview,
   draftStorageKey,
   draftTotal,
+  draftLinePrice,
   isoDate,
   type DocumentDraft,
   type DraftLine,
@@ -71,6 +76,10 @@ const paymentOptions = {
 const MAX_CUSTOMER_NAME = 160
 const MAX_DOCUMENT_ITEMS = 100
 const DAY_ONLY = /^\d{4}-\d{2}-\d{2}$/
+function formattedDraftTotal(draft: DocumentDraft) {
+  const total = draftTotal(draft.lines, draft.tier, draft.currency)
+  return total === null ? 'Sin precio' : formatCurrency(total, draft.currency)
+}
 
 export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
   const navigate = useNavigate()
@@ -328,6 +337,11 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
     const item = data?.find((entry) => entry.product.id === line.productId)
     if (!item || !item.product.active || !item.product.prices)
       return 'Este producto ya no está disponible. Retíralo del documento.'
+    if (
+      draftLinePrice(line, tier, currency) === null ||
+      productPrice(item.product, tier, currency) === null
+    )
+      return 'Sin precio en la lista seleccionada. Registra su precio o cambia de lista.'
     if (kind !== 'invoice') return undefined
     const available = item.quantities[location]
     if (available == null)
@@ -367,7 +381,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
           : undefined
   const dataIssues = !!(customerIssue || phoneIssue || validityIssue)
   const draft: DocumentDraft | null =
-    lines.length && valid
+    lines.length && valid && total !== null
       ? {
           id: current?.id ?? 'preview',
           kind,
@@ -397,8 +411,8 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
 
   function add(productId: string) {
     const product = data?.find((item) => item.product.id === productId)?.product
-    if (!product?.prices) {
-      setMessage('Selecciona un producto del catálogo.')
+    if (!product?.prices || productPrice(product, tier, currency) === null) {
+      setMessage('El perfume no tiene precio en la lista seleccionada.')
       return
     }
     if (lines.some((line) => line.productId === product.id)) {
@@ -556,6 +570,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
         (priceReviewRequired ||
           !lines.length ||
           !valid ||
+          total === null ||
           shortages > 0 ||
           dataIssues ||
           (kind === 'invoice' && !validExchange))) ||
@@ -711,8 +726,8 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
         Object.keys(priceTierLabels).some((key) => {
           const priceTier = key as PriceTier
           return (
-            prices[priceTier].NIO !== line.prices[priceTier].NIO ||
-            prices[priceTier].USD !== line.prices[priceTier].USD
+            prices[priceTier]?.NIO !== line.prices[priceTier]?.NIO ||
+            prices[priceTier]?.USD !== line.prices[priceTier]?.USD
           )
         })
       )
@@ -820,7 +835,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
   if (loadError) return <ErrorState message={loadError} retry={retry} />
   if (businessError)
     return <ErrorState message={businessError} retry={retryBusiness} />
-  const ready = !!lines.length && valid
+  const ready = !!lines.length && valid && total !== null
   // Guardar un borrador o imprimirlo no toca el inventario; emitir sí, así que
   // sólo la emisión exige que cada renglón tenga existencias suficientes.
   const issuable =
@@ -1103,11 +1118,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
                       {item.reference} · {item.customer || 'Sin cliente'}
                     </strong>
                     <span>
-                      {formatCurrency(
-                        draftTotal(item.lines, item.tier, item.currency),
-                        item.currency,
-                      )}{' '}
-                      · {formatDate(item.createdAt)}
+                      {formattedDraftTotal(item)} · {formatDate(item.createdAt)}
                     </span>
                   </button>
                 ))}
@@ -1176,8 +1187,9 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
                       {line.size} · {line.barcode}
                     </small>
                     <span>
-                      {formatCurrency(line.prices[tier][currency], currency)}{' '}
-                      por unidad
+                      {draftLinePrice(line, tier, currency) === null
+                        ? 'Sin precio en esta lista'
+                        : `${formatCurrency(draftLinePrice(line, tier, currency)!, currency)} por unidad`}
                     </span>
                   </div>
                   <div className="invoice-line-quantity">
@@ -1220,14 +1232,19 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
                   <strong>
                     {Number.isInteger(line.quantity) &&
                     line.quantity > 0 &&
-                    line.quantity <= 9999
+                    line.quantity <= 9999 &&
+                    draftLinePrice(line, tier, currency) !== null
                       ? formatCurrency(
-                          (Math.round(line.prices[tier][currency] * 100) *
+                          (Math.round(
+                            draftLinePrice(line, tier, currency)! * 100,
+                          ) *
                             line.quantity) /
                             100,
                           currency,
                         )
-                      : 'Revisar cantidad'}
+                      : draftLinePrice(line, tier, currency) === null
+                        ? 'Sin precio'
+                        : 'Revisar cantidad'}
                   </strong>
                 </div>
               ))
@@ -1239,7 +1256,9 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
               {issued
                 ? formatCurrency(issued.total, issued.currency)
                 : total === null
-                  ? 'Revisar cantidades'
+                  ? valid
+                    ? 'Revisar precios'
+                    : 'Revisar cantidades'
                   : formatCurrency(total, currency)}
             </strong>
           </div>

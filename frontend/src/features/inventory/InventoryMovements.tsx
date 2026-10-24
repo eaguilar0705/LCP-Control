@@ -11,6 +11,7 @@ import {
 import { can, type Capability } from '../../lib/permissions'
 import { errorMessage } from '../../lib/errors'
 import { createIdempotentOperation } from '../../lib/idempotentOperation'
+import { ProductCostDialog } from '../products/ProductCostDialog'
 
 // `title` y `done` se escriben enteros: «Dañado» y «Ajuste» no concuerdan con
 // «de inventario … registrada» como sí lo hacen «Entrada» y «Salida».
@@ -68,6 +69,14 @@ export function InventoryMovements({
   const [action, setAction] = useState<(typeof actions)[number] | null>(null)
   const [productId, setProductId] = useState('')
   const [location, setLocation] = useState<MovementRequest['location']>('store')
+  const [quantityText, setQuantityText] = useState('')
+  const [noteText, setNoteText] = useState('')
+  const [purchase, setPurchase] = useState<{
+    productId: string
+    location: MovementRequest['location']
+    quantity: number
+    note: string
+  } | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
@@ -90,6 +99,19 @@ export function InventoryMovements({
       note.length > 2000
     ) {
       setError('Selecciona un producto, una cantidad válida y el motivo.')
+      return
+    }
+    // Las unidades compradas necesitan su costo y cuenta de pago. El ajuste
+    // sigue disponible para registrar el conteo inicial o corregirlo.
+    if (action.type === 'ENTRY') {
+      if (!can(role, 'product.edit_cost')) {
+        setError(
+          'Solicita a un administrador que registre la compra con su costo.',
+        )
+        return
+      }
+      setError('')
+      setPurchase({ productId, location, quantity: nextQuantity, note })
       return
     }
     if (quantity == null && action.type !== 'ADJUSTMENT') {
@@ -146,6 +168,8 @@ export function InventoryMovements({
                 operation.reset()
                 setAction(entry)
                 setProductId(items.length === 1 ? items[0].product.id : '')
+                setQuantityText('')
+                setNoteText('')
                 setError('')
                 setMessage('')
               }}
@@ -160,7 +184,7 @@ export function InventoryMovements({
           {message}
         </p>
       )}
-      {action && (
+      {action && !purchase && (
         <Dialog
           open
           title={action.title}
@@ -200,8 +224,17 @@ export function InventoryMovements({
                 min={action.type === 'ADJUSTMENT' ? 0 : 1}
                 max={1000000}
                 step={1}
+                value={quantityText}
+                onChange={(event) => setQuantityText(event.target.value)}
               />
-              <Input label="Motivo" name="note" required maxLength={2000} />
+              <Input
+                label="Motivo"
+                name="note"
+                required
+                maxLength={2000}
+                value={noteText}
+                onChange={(event) => setNoteText(event.target.value)}
+              />
             </fieldset>
             {error && (
               <p role="alert" className="inline-error">
@@ -210,7 +243,11 @@ export function InventoryMovements({
             )}
             <div className="form-actions">
               <Button type="submit" disabled={busy}>
-                {busy ? 'Registrando…' : 'Confirmar movimiento'}
+                {busy
+                  ? 'Registrando…'
+                  : action.type === 'ENTRY' && can(role, 'product.edit_cost')
+                    ? 'Continuar con la compra'
+                    : 'Confirmar movimiento'}
               </Button>
               <Button
                 type="button"
@@ -223,6 +260,21 @@ export function InventoryMovements({
             </div>
           </form>
         </Dialog>
+      )}
+      {purchase && (
+        <ProductCostDialog
+          productId={purchase.productId}
+          initialLocation={purchase.location}
+          purchase={purchase}
+          onClose={() => setPurchase(null)}
+          onRecorded={(message) => {
+            setMessage(message)
+            setPurchase(null)
+            setAction(null)
+            operation.reset()
+            onRecorded()
+          }}
+        />
       )}
     </section>
   )

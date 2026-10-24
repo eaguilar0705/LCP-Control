@@ -1,19 +1,53 @@
-import type { Currency, PriceTier, PricingInput, Product } from './domain'
+import type {
+  Currency,
+  PriceTier,
+  PriceTierDefinition,
+  PricingInput,
+  Product,
+} from './domain'
+export const legacyPriceTiers = ['emprendedor', 'vip', 'premium'] as const
+export const defaultPriceTiers: PriceTierDefinition[] = [
+  { code: 'emprendedor', name: 'Emprendedor', sortOrder: 1 },
+  { code: 'vip', name: 'VIP', sortOrder: 2 },
+  { code: 'premium', name: 'Premium', sortOrder: 3 },
+]
 export const priceTierLabels: Record<PriceTier, string> = {
   emprendedor: 'Emprendedor',
   vip: 'VIP',
   premium: 'Premium',
 }
 export const priceTiers = Object.keys(priceTierLabels) as PriceTier[]
+let tierDefinitions = defaultPriceTiers
+const tierListeners = new Set<() => void>()
+export const getPriceTiers = () => tierDefinitions
+export function subscribePriceTiers(listener: () => void) {
+  tierListeners.add(listener)
+  return () => {
+    tierListeners.delete(listener)
+  }
+}
+export function setPriceTiers(definitions: PriceTierDefinition[]) {
+  const next = [...definitions].sort(
+    (a, b) => a.sortOrder - b.sortOrder || a.code.localeCompare(b.code),
+  )
+  if (JSON.stringify(next) === JSON.stringify(tierDefinitions)) return
+  tierDefinitions = next
+  for (const key of Object.keys(priceTierLabels)) delete priceTierLabels[key]
+  priceTiers.splice(0, priceTiers.length, ...next.map((tier) => tier.code))
+  for (const tier of next) priceTierLabels[tier.code] = tier.name
+  for (const listener of tierListeners) listener()
+}
 export function productPrice(
   product: Product,
   tier: PriceTier,
   currency: Currency,
 ): number | null {
-  return (
-    product.prices?.[tier]?.[currency] ??
-    (product.currency === currency ? product.price : null)
-  )
+  const value = product.prices
+    ? product.prices[tier]?.[currency]
+    : tier === 'emprendedor' && product.currency === currency
+      ? product.price
+      : null
+  return value != null && Number.isFinite(value) && value > 0 ? value : null
 }
 /**
  * El equivalente del mismo importe en la otra moneda. El catálogo se cotiza en
@@ -276,7 +310,7 @@ export function applyPricing(
   rate: number | null | undefined,
 ): TierPrices {
   const next = structuredClone(prices)
-  for (const tier of priceTiers) {
+  for (const tier of legacyPriceTiers) {
     const quote = tierQuote(pricing, tier, rate)
     if (quote) next[tier] = { ...quote.prices }
   }
@@ -287,13 +321,14 @@ export function samePricing(a: PricingInput, b: PricingInput): boolean {
   return (
     a.purchasePrice === b.purchasePrice &&
     (a.purchasePrice === null || a.purchaseCurrency === b.purchaseCurrency) &&
-    priceTiers.every((tier) => a.markups[tier] === b.markups[tier])
+    legacyPriceTiers.every((tier) => a.markups[tier] === b.markups[tier])
   )
 }
 /** Cuántas listas del perfume salen del precio de compra. */
 export function computedTiers(pricing: PricingInput | null | undefined) {
-  return priceTiers.filter((tier) => tierStatus(pricing, tier) === 'computed')
-    .length
+  return legacyPriceTiers.filter(
+    (tier) => tierStatus(pricing, tier) === 'computed',
+  ).length
 }
 /** El costo promedio con sus seis decimales, sin ceros de sobra. */
 export function exactCost(value: number): string {

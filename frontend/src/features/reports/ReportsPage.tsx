@@ -29,6 +29,7 @@ import { formatCurrency, formatDate } from '../../lib/format'
 import { errorMessage } from '../../lib/errors'
 import type { Currency, PriceTier } from '../../lib/domain'
 import { priceTierLabels } from '../../lib/pricing'
+import { usePriceTiers } from '../../lib/usePriceTiers'
 import {
   change,
   concentration,
@@ -67,6 +68,7 @@ export function ReportsPage() {
 }
 
 function Reports() {
+  const tiers = usePriceTiers()
   const { reportService, salesService } = useServices()
   const { demo } = useAccess()
   // `null`: fechas elegidas a mano, ningún botón de periodo queda marcado.
@@ -184,9 +186,9 @@ function Reports() {
             value={tier}
             onChange={(e) => setTier(e.target.value as PriceTier)}
           >
-            {(Object.keys(priceTierLabels) as PriceTier[]).map((key) => (
-              <option key={key} value={key}>
-                {priceTierLabels[key]}
+            {tiers.map(({ code, name }) => (
+              <option key={code} value={code}>
+                {name}
               </option>
             ))}
           </Select>
@@ -319,15 +321,36 @@ function ReportBody({ report, tier }: { report: ReportData; tier: PriceTier }) {
             Precio de lista {priceTierLabels[tier]}
           </p>
           {idle.length ? (
-            <RankedBars
-              label="Productos sin ventas por valor detenido"
-              format={money}
-              bars={idle.map((row) => ({
-                label: row.description,
-                value: row.listValue,
-                detail: `${whole.format(row.stock)} unidades`,
-              }))}
-            />
+            <>
+              {idle.some((row) => row.listValue !== null) && (
+                <RankedBars
+                  label="Productos sin ventas por valor detenido"
+                  format={money}
+                  bars={idle
+                    .filter((row) => row.listValue !== null)
+                    .map((row) => ({
+                      label: row.description,
+                      value: row.listValue!,
+                      detail: `${whole.format(row.stock)} unidades`,
+                    }))}
+                />
+              )}
+              {idle.some((row) => row.listValue === null) && (
+                <ul className="lapsed-list">
+                  {idle
+                    .filter((row) => row.listValue === null)
+                    .map((row) => (
+                      <li key={row.productId}>
+                        <div>
+                          <strong>{row.description}</strong>
+                          <small>{row.stock} unidades</small>
+                        </div>
+                        <span>Sin precio</span>
+                      </li>
+                    ))}
+                </ul>
+              )}
+            </>
           ) : (
             <EmptyState title="Todo se movió" />
           )}
@@ -338,9 +361,15 @@ function ReportBody({ report, tier }: { report: ReportData; tier: PriceTier }) {
             <h2>Estado de las existencias</h2>
             <span className="badge badge-neutral">{priceTierLabels[tier]}</span>
           </div>
-          <p className="report-figure">{money(health.listValue)}</p>
+          <p className="report-figure">
+            {health.listValue === null
+              ? 'Valor pendiente'
+              : money(health.listValue)}
+          </p>
           <p className="muted report-note">
             {whole.format(health.units)} unidades · valor a precio de lista
+            {health.missingPrices > 0 &&
+              ` · ${health.missingPrices} perfumes sin precio`}
           </p>
           <SplitBar
             label="Estado de las existencias"
@@ -384,15 +413,34 @@ function ReportBody({ report, tier }: { report: ReportData; tier: PriceTier }) {
           {damaged.length > 0 && (
             <>
               <h3 className="report-subhead">Mermas por producto</h3>
-              <RankedBars
-                label="Unidades dañadas por valor"
-                format={money}
-                bars={damaged.map((row) => ({
-                  label: row.description,
-                  value: row.listValue,
-                  detail: `${whole.format(row.units)} unidades dañadas`,
-                }))}
-              />
+              {damaged.some((row) => row.listValue !== null) && (
+                <RankedBars
+                  label="Unidades dañadas por valor"
+                  format={money}
+                  bars={damaged
+                    .filter((row) => row.listValue !== null)
+                    .map((row) => ({
+                      label: row.description,
+                      value: row.listValue!,
+                      detail: `${whole.format(row.units)} unidades dañadas`,
+                    }))}
+                />
+              )}
+              {damaged.some((row) => row.listValue === null) && (
+                <ul className="lapsed-list">
+                  {damaged
+                    .filter((row) => row.listValue === null)
+                    .map((row) => (
+                      <li key={row.productId}>
+                        <div>
+                          <strong>{row.description}</strong>
+                          <small>{row.units} unidades dañadas</small>
+                        </div>
+                        <span>Sin precio</span>
+                      </li>
+                    ))}
+                </ul>
+              )}
             </>
           )}
         </Card>

@@ -357,8 +357,8 @@ export function StaffPage() {
       <div className="role-guide">
         {[
           ['Administración', 'Catálogo, ventas, inventario y equipo.'],
-          ['Ventas', 'Clientes, facturas, proformas y salidas.'],
-          ['Inventario', 'Entradas, salidas, daños y conteos.'],
+          ['Caja', 'Facturación y consulta de sus propias ventas.'],
+          ['Inventario', 'Salidas, daños y conteos; compras por Administración.'],
           ['Solo consulta', 'Catálogo, fotografías y existencias.'],
         ].map(([title, detail]) => (
           <div key={title}>

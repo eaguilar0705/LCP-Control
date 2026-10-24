@@ -46,13 +46,11 @@ const actions: {
 export function ProductStockEditor({
   product,
   disabled = false,
-  hasAverageCost = false,
   purchaseDisabled = false,
   onPurchase,
 }: {
   product: Product
   disabled?: boolean
-  hasAverageCost?: boolean
   purchaseDisabled?: boolean
   onPurchase?: (location: InventoryLocation) => void
 }) {
@@ -79,8 +77,7 @@ export function ProductStockEditor({
   const before = item?.quantities[location] ?? null
   const initial = before === null
   const movementType = initial ? 'ADJUSTMENT' : type
-  const requiresPurchase =
-    movementType === 'ENTRY' && hasAverageCost && !!onPurchase
+  const requiresPurchase = movementType === 'ENTRY' && !!onPurchase
   const action = actions.find((a) => a.type === movementType)!
   const available = actions.filter((a) => can(role, a.permission) || demo)
   const amount = Number(quantity)

@@ -3,6 +3,7 @@ export type Capability =
   | 'inventory.read'
   | 'scanner.use'
   | 'sale.create'
+  | 'proforma.create'
   | 'product.manage'
   | 'product.edit_cost'
   | 'inventory.create_entry'
@@ -24,6 +25,7 @@ const common: Capability[] = [
   'inventory.read',
   'scanner.use',
   'sale.create',
+  'proforma.create',
   'inventory.create_exit',
   'inventory.create_damage',
   'customer.read',
@@ -62,7 +64,7 @@ const permissions: Record<UserRole, readonly Capability[]> = {
     'staff.manage',
     'settings.manage',
   ],
-  operator: common,
+  operator: ['scanner.use', 'sale.create'],
   warehouse: [
     'inventory.read',
     'scanner.use',
@@ -89,7 +91,7 @@ export function parseRole(value: unknown): UserRole | null {
 export const roleLabels: Record<UserRole, string> = {
   superadmin: 'SuperAdmin',
   admin: 'Administrador',
-  operator: 'Ventas',
+  operator: 'Caja',
   warehouse: 'Inventario',
   viewer: 'Solo consulta',
 }

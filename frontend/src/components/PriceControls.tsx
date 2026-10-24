@@ -1,6 +1,6 @@
 import { Select } from './ui'
 import type { Currency, PriceTier } from '../lib/domain'
-import { priceTierLabels } from '../lib/pricing'
+import { usePriceTiers } from '../lib/usePriceTiers'
 export function PriceControls({
   currency,
   tier,
@@ -12,6 +12,7 @@ export function PriceControls({
   onCurrency: (v: Currency) => void
   onTier: (v: PriceTier) => void
 }) {
+  const tiers = usePriceTiers()
   return (
     <div className="price-controls">
       <Select
@@ -27,9 +28,9 @@ export function PriceControls({
         value={tier}
         onChange={(e) => onTier(e.target.value as PriceTier)}
       >
-        {Object.entries(priceTierLabels).map(([id, label]) => (
-          <option value={id} key={id}>
-            {label}
+        {tiers.map(({ code, name }) => (
+          <option value={code} key={code}>
+            {name}
           </option>
         ))}
       </Select>

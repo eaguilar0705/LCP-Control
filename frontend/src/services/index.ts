@@ -10,6 +10,8 @@ import type {
   DocumentKind,
   MovementRequest,
   NewDocument,
+  NewPriceTier,
+  PriceListSave,
 } from '@lcp/contracts/domain'
 import {
   pricingInputSchema,
@@ -28,6 +30,9 @@ export function createServices(provider: DataProvider) {
   return {
     mode: provider.mode,
     productService: {
+      listPriceTiers: () => provider.listPriceTiers(),
+      createPriceTier: (input: NewPriceTier) => provider.createPriceTier(input),
+      saveListPrices: (input: PriceListSave) => provider.saveListPrices(input),
       listProducts: () => provider.listProducts(),
       saveProduct: (input: ProductInput) =>
         provider.saveProduct(productInputSchema.parse(input)),

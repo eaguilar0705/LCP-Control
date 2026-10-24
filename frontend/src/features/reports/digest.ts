@@ -330,9 +330,11 @@ function ordered<K extends string>(
   labels: Record<K, string>,
 ): Share[] {
   // Orden fijo: el color sigue a la forma de pago o a la lista, no a su monto.
-  return (Object.keys(labels) as K[]).flatMap((key) => {
+  return [
+    ...new Set([...Object.keys(labels), ...rows.map((row) => row.key)]),
+  ].flatMap((key) => {
     const row = rows.find((share) => share.key === key)
-    return row ? [{ ...row, label: labels[key] }] : []
+    return row ? [{ ...row, label: labels[key as K] ?? key }] : []
   })
 }
 

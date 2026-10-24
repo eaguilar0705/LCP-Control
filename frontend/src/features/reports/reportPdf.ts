@@ -362,7 +362,7 @@ export async function renderReportPdf(context: ReportContext): Promise<Blob> {
     ],
   )
 
-  space(60)
+  space(tables.health.listValue === null ? 74 : 60)
   y += 22
   pdf.setDrawColor(...WINE).setLineWidth(1)
   pdf.line(left, y, right, y)
@@ -377,6 +377,18 @@ export async function renderReportPdf(context: ReportContext): Promise<Blob> {
     GRAY,
   )
   y += 11
+  if (tables.health.listValue === null) {
+    text(
+      `Valoración pendiente: ${tables.health.missingPrices} perfumes sin precio · ${tables.health.uncounted} sin conteo.`,
+      left,
+      y,
+      7.5,
+      false,
+      'left',
+      GRAY,
+    )
+    y += 11
+  }
   text(
     'Ventas por moneda original; contabilidad en NIO con las tasas registradas en cada operación.',
     left,

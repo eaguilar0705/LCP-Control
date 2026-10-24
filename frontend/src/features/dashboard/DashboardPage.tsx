@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useCallback } from 'react'
 import {
   ArrowRight,
   Package,
@@ -16,18 +17,22 @@ import { Reflection } from './Reflection'
 import { HomeCharts } from './HomeCharts'
 import { can } from '../../lib/permissions'
 import { BusinessDayPanel } from '../accounting/BusinessDayPanel'
+import { priceTiers } from '../../lib/pricing'
 const actions = [
-  ['/products', 'Catálogo', Package],
-  ['/sales', 'Facturación', ReceiptText],
-  ['/inventory', 'Inventario', Warehouse],
-  ['/suppliers', 'Proveedores', Truck],
+  ['/sales', 'Facturación', ReceiptText, 'sale.create'],
+  ['/inventory', 'Inventario', Warehouse, 'inventory.read'],
+  ['/suppliers', 'Proveedores', Truck, 'supplier.read'],
 ] as const
 export function DashboardPage() {
   const { inventoryService } = useServices()
-  const { data, loading, error, retry } = useQuery(
-    inventoryService.getInventory,
-  )
   const { base, demo, role } = useAccess()
+  const inventoryVisible = demo || can(role, 'inventory.read')
+  const load = useCallback(
+    () =>
+      inventoryVisible ? inventoryService.getInventory() : Promise.resolve([]),
+    [inventoryVisible, inventoryService],
+  )
+  const { data, loading, error, retry } = useQuery(load)
   if (loading) return <LoadingState />
   if (error || !data)
     return (
@@ -56,41 +61,35 @@ export function DashboardPage() {
         <Reflection />
       </section>
       <BusinessDayPanel />
-      <div className="stats-grid">
-        {[
-          ['Referencias', data.length, 'Catálogo mayorista'],
-          ['Marcas', brands, 'En las listas recibidas'],
-          ['Listas de precios', 3, 'Emprendedor, VIP y Premium'],
-          [
-            'Existencias',
-            pending === balances.length ? '—' : units,
-            pending
-              ? `${pending} saldos pendientes de conteo`
-              : 'Unidades entre Bodega y Tienda',
-          ],
-        ].map(([title, value, detail]) => (
-          <Card className="stat-card" key={title}>
-            <div>
-              {title}
-              <Package size={18} />
-            </div>
-            <strong>{value}</strong>
-            <small>{detail}</small>
-          </Card>
-        ))}
-      </div>
+      {inventoryVisible && (
+        <div className="stats-grid">
+          {[
+            ['Referencias', data.length, 'Catálogo mayorista'],
+            ['Marcas', brands, 'En las listas recibidas'],
+            ['Listas de precios', priceTiers.length, ''],
+            [
+              'Existencias',
+              pending === balances.length ? '—' : units,
+              pending
+                ? `${pending} saldos pendientes de conteo`
+                : 'Unidades entre Bodega y Tienda',
+            ],
+          ].map(([title, value, detail]) => (
+            <Card className="stat-card" key={title}>
+              <div>
+                {title}
+                <Package size={18} />
+              </div>
+              <strong>{value}</strong>
+              <small>{detail}</small>
+            </Card>
+          ))}
+        </div>
+      )}
       {can(role, 'finance.read') || demo ? <HomeCharts /> : null}
       <div className="home-actions">
         {actions
-          .filter(
-            ([path]) =>
-              demo ||
-              (path === '/sales'
-                ? can(role, 'sale.create')
-                : path === '/suppliers'
-                  ? can(role, 'supplier.read')
-                  : true),
-          )
+          .filter(([, , , permission]) => demo || can(role, permission))
           .map(([path, title, Icon]) => (
             <Link className="home-action card" key={path} to={`${base}${path}`}>
               <Icon size={22} />
@@ -100,7 +99,7 @@ export function DashboardPage() {
             </Link>
           ))}
       </div>
-      {pending > 0 && (
+      {inventoryVisible && pending > 0 && (
         <p className="workspace-disclaimer">{pending} saldos sin conteo.</p>
       )}
     </>

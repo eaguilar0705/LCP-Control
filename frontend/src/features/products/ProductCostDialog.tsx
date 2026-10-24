@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { Link } from 'react-router-dom'
 import { Button, Dialog, ErrorState, LoadingState } from '../../components/ui'
 import { useAccess } from '../../app/AccessContext'
 import { can } from '../../lib/permissions'
@@ -10,11 +11,13 @@ import type { InventoryLocation } from '../../lib/domain'
 export function ProductCostDialog({
   productId,
   initialLocation,
+  purchase,
   onClose,
   onRecorded,
 }: {
   productId: string
   initialLocation?: InventoryLocation
+  purchase?: { quantity: number; note: string }
   onClose: () => void
   onRecorded: (message: string) => void
 }) {
@@ -24,6 +27,7 @@ export function ProductCostDialog({
     <CostLoader
       productId={productId}
       initialLocation={initialLocation}
+      purchase={purchase}
       onClose={onClose}
       onRecorded={onRecorded}
     />
@@ -33,14 +37,17 @@ export function ProductCostDialog({
 function CostLoader({
   productId,
   initialLocation,
+  purchase,
   onClose,
   onRecorded,
 }: {
   productId: string
   initialLocation?: InventoryLocation
+  purchase?: { quantity: number; note: string }
   onClose: () => void
   onRecorded: (message: string) => void
 }) {
+  const { base } = useAccess()
   const { inventoryService, productService, settingsService } = useServices()
   const load = useCallback(async () => {
     const [inventory, pricing, cost, rate] = await Promise.all([
@@ -75,22 +82,33 @@ function CostLoader({
           <>
             <p>Falta el conteo de Tienda o Bodega.</p>
 
-            <Button
-              type="button"
-              onClick={() => {
-                onClose()
-                requestAnimationFrame(() => {
-                  const section = document.getElementById('cantidades-perfume')
-                  section?.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start',
+            {purchase ? (
+              <Link
+                className="button button-primary"
+                to={`${base}/products/${productId}/edit`}
+                onClick={onClose}
+              >
+                Registrar conteo
+              </Link>
+            ) : (
+              <Button
+                type="button"
+                onClick={() => {
+                  onClose()
+                  requestAnimationFrame(() => {
+                    const section =
+                      document.getElementById('cantidades-perfume')
+                    section?.scrollIntoView({
+                      behavior: 'smooth',
+                      block: 'start',
+                    })
+                    section?.focus()
                   })
-                  section?.focus()
-                })
-              }}
-            >
-              Registrar conteo
-            </Button>
+                }}
+              >
+                Registrar conteo
+              </Button>
+            )}
           </>
         )}
       </Dialog>
@@ -105,8 +123,13 @@ function CostLoader({
         item={item}
         pricing={data.pricing.rows.find((row) => row.productId === productId)}
         catalogRate={data.rate}
+        notice={
+          purchase
+            ? `Registra primero el costo de las unidades que ya tienes. Después continuarás con la entrada de ${purchase.quantity} unidades.`
+            : undefined
+        }
         onClose={onClose}
-        onRecorded={onRecorded}
+        onRecorded={purchase ? () => retry() : onRecorded}
       />
     )
   }
@@ -117,6 +140,8 @@ function CostLoader({
       catalogRate={data.rate}
       initialProduct={productId}
       initialLocation={initialLocation}
+      initialQuantity={purchase?.quantity}
+      initialNote={purchase?.note}
       onClose={onClose}
       onRecorded={onRecorded}
     />

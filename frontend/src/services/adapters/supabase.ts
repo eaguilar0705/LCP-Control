@@ -2,6 +2,7 @@ import { supabase } from '../../lib/supabase'
 import { privateImageCache as imageCache } from '../../lib/privateImageCache'
 import { AppError } from '../../lib/errors'
 import { businessFromRow } from '../../lib/business'
+import { setPriceTiers } from '../../lib/pricing'
 import type {
   BusinessSettings,
   Category,
@@ -18,6 +19,7 @@ import type {
   PriceChange,
   PriceChangeCause,
   PriceTier,
+  PriceTierDefinition,
   Product,
   ProductPricing,
 } from '@lcp/contracts/domain'
@@ -212,18 +214,33 @@ async function activeProductRows(
   includeInactive = false,
 ) {
   async function query(selection: string) {
-    let request = client().from('products').select(selection)
-    if (!includeInactive) request = request.eq('active', true)
-    if (column && code) request = request.eq(column, code)
-    return request.order('name').limit(column ? 1 : 2000)
+    return readReportPages<ProductRow>((start, end) => {
+      let request = client()
+        .from('products')
+        .select(selection, { count: 'exact' })
+      if (!includeInactive) request = request.eq('active', true)
+      if (column && code) request = request.eq(column, code)
+      return request.order('name').order('id').range(start, end)
+    })
   }
-  let result = await query(productSelect)
-  if (result.error?.code === '42703' || result.error?.code === 'PGRST204')
-    result = await query(productSelect.replace('image_path,revision,', ''))
-  if (result.error) fail(result.error)
-  const rows = (result.data ?? []) as unknown as ProductRow[]
-  await signImages(rows)
-  return rows
+  let result: Awaited<ReturnType<typeof query>>
+  try {
+    result = await query(productSelect)
+  } catch (error) {
+    const code = (error as { code?: string }).code
+    if (code !== '42703' && code !== 'PGRST204')
+      fail(error as { code?: string; message?: string })
+    result = await query(
+      productSelect.replace('image_path,revision,', ''),
+    ).catch(fail)
+  }
+  if (result.truncated)
+    throw new AppError(
+      'validation',
+      'El catálogo supera el límite de lectura. Contacta al administrador antes de modificar precios o existencias.',
+    )
+  await signImages(result.rows)
+  return result.rows
 }
 
 // PostgREST returns numeric as string to preserve precision; parse explicitly.
@@ -287,11 +304,7 @@ function fail(error: { message?: string; code?: string } | null): never {
   throw toAppError(error)
 }
 function emptyPrices(): Record<PriceTier, Record<Currency, number>> {
-  return {
-    emprendedor: { NIO: 0, USD: 0 },
-    vip: { NIO: 0, USD: 0 },
-    premium: { NIO: 0, USD: 0 },
-  }
+  return {}
 }
 // Drive is retained only as a manually opened source link. The app loads images
 // from its own private Storage bucket; URLs are signed once and reused.
@@ -321,8 +334,10 @@ async function signImages(rows: ProductRow[]) {
 }
 function toProduct(row: ProductRow): Product {
   const prices = emptyPrices()
-  for (const price of row.product_prices ?? [])
+  for (const price of row.product_prices ?? []) {
+    prices[price.tier_code] ??= {} as Record<Currency, number>
     prices[price.tier_code][price.currency] = amount(price.amount)
+  }
   const size = row.size === null ? null : amount(row.size)
   const category: Category = row.category ?? 'unspecified'
   const gender: Gender = row.gender ?? 'unspecified'
@@ -339,7 +354,7 @@ function toProduct(row: ProductRow): Product {
     gender,
     size,
     unit: row.unit,
-    price: prices.emprendedor.NIO,
+    price: prices.emprendedor?.NIO ?? 0,
     currency: 'NIO',
     prices,
     minimumStock: row.minimum_stock ?? null,
@@ -420,16 +435,45 @@ function digestMissing(error: { code?: string } | null) {
 
 export const supabaseAdapter: DataProvider = {
   mode: 'supabase',
-  async listProducts() {
+  async listPriceTiers() {
     const { data, error } = await client()
-      .from('products')
-      .select(productSelect)
-      .order('name')
-      .limit(2000)
+      .from('price_tiers')
+      .select('code,name,sort_order')
+      .order('sort_order')
+      .order('code')
     if (error) fail(error)
-    const rows = (data ?? []) as unknown as ProductRow[]
-    await signImages(rows)
-    return rows.map(toProduct)
+    const tiers: PriceTierDefinition[] = (data ?? []).map(
+      (row: { code: string; name: string; sort_order: number }) => ({
+        code: row.code,
+        name: row.name,
+        sortOrder: row.sort_order,
+      }),
+    )
+    if (!tiers.length)
+      throw new AppError(
+        'configuration',
+        'No hay listas de precios registradas.',
+      )
+    setPriceTiers(tiers)
+    return tiers
+  },
+  async createPriceTier(input) {
+    const { data, error } = await client().rpc('create_price_tier', {
+      p_input: input,
+    })
+    if (error) fail(error)
+    await supabaseAdapter.listPriceTiers()
+    return String(data)
+  },
+  async saveListPrices(input) {
+    const { data, error } = await client().rpc('save_price_list', {
+      p_input: input,
+    })
+    if (error) fail(error)
+    return Number(data)
+  },
+  async listProducts() {
+    return (await activeProductRows(undefined, undefined, true)).map(toProduct)
   },
   async saveProduct(input) {
     const { data, error } = await client().rpc('save_catalog_product', {
@@ -634,7 +678,7 @@ export const supabaseAdapter: DataProvider = {
   // Todos los clientes, por páginas: un límite fijo dejaba fuera del selector
   // de la factura, sin aviso, a los que quedaban después del corte.
   async listCustomers() {
-    const { rows } = await readReportPages<{
+    const { rows, truncated } = await readReportPages<{
       id: string
       name: string
       phone: string | null
@@ -643,10 +687,16 @@ export const supabaseAdapter: DataProvider = {
       client()
         .from('customers')
         .select('id,name,phone,price_tier', { count: 'exact' })
+        .eq('active', true)
         .order('name')
         .order('id')
         .range(start, end),
     ).catch(fail)
+    if (truncated)
+      throw new AppError(
+        'validation',
+        'La lista de clientes supera el límite de lectura. Contacta al administrador.',
+      )
     return rows.map((row) => ({
       id: row.id,
       name: row.name,

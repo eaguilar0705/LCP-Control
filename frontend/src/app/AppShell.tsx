@@ -19,6 +19,7 @@ import { useAuth } from '../features/auth/AuthContext'
 import { AccessContext } from './AccessContext'
 import { Button } from '../components/ui'
 import { Brand } from '../components/Brand'
+import { PriceTiersBoundary } from '../components/PriceTiersBoundary'
 import { errorMessage } from '../lib/errors'
 import { can, roleLabels, type Capability } from '../lib/permissions'
 import {
@@ -45,8 +46,11 @@ const links = [
 // teléfono usan la misma regla: un enlace que sólo lleva a «No tienes permiso»
 // no se muestra en ninguno de los dos.
 const linkPermission: Record<string, Capability> = {
+  '/inventory': 'inventory.read',
+  '/inventory/history': 'inventory.read',
+  '/alerts': 'inventory.read',
   '/sales': 'sale.create',
-  '/proformas': 'sale.create',
+  '/proformas': 'proforma.create',
   '/customers': 'customer.read',
   '/suppliers': 'supplier.read',
   '/reports': 'finance.read',
@@ -263,9 +267,11 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
               <span className="muted">Administración</span>
             </div>
             <div className="topbar-actions">
-              <Link aria-label="Ver alertas" to={`${base}/alerts`}>
-                <Bell size={20} />
-              </Link>
+              {(demo || can(role, 'inventory.read')) && (
+                <Link aria-label="Ver alertas" to={`${base}/alerts`}>
+                  <Bell size={20} />
+                </Link>
+              )}
               <span className="avatar avatar-small">
                 {demo ? 'D' : user?.email.charAt(0).toUpperCase()}
               </span>
@@ -307,7 +313,9 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
             </aside>
           )}
           <main id="main" className="main-content">
-            <Outlet key={`${demo ? 'demo' : user?.id}:${role}`} />
+            <PriceTiersBoundary demo={demo}>
+              <Outlet key={`${demo ? 'demo' : user?.id}:${role}`} />
+            </PriceTiersBoundary>
           </main>
           <footer className="workspace-footer">
             La Casa del Perfume<span>Managua, Nicaragua</span>

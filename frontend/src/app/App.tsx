@@ -103,8 +103,22 @@ export function App() {
   const pages = (demo: boolean) => (
     <>
       <Route index element={<DashboardPage />} />
-      <Route path="inventory" element={<InventoryPage />} />
-      <Route path="scanner" element={<ScannerPage />} />
+      <Route
+        path="inventory"
+        element={
+          <AccessGate permission="inventory.read">
+            <InventoryPage />
+          </AccessGate>
+        }
+      />
+      <Route
+        path="scanner"
+        element={
+          <AccessGate permission="inventory.read">
+            <ScannerPage />
+          </AccessGate>
+        }
+      />
       <Route path="suppliers" element={<SuppliersPage />} />
       <Route
         path="sales"
@@ -117,7 +131,7 @@ export function App() {
       <Route
         path="proformas"
         element={
-          <AccessGate permission="sale.create">
+          <AccessGate permission="proforma.create">
             <ProformaPage />
           </AccessGate>
         }
@@ -125,7 +139,14 @@ export function App() {
       <Route path="customers" element={<ContactsPage kind="customers" />} />
       <Route path="staff" element={<StaffPage />} />
       <Route path="settings" element={<BusinessPage />} />
-      <Route path="inventory/history" element={<MovementHistory />} />
+      <Route
+        path="inventory/history"
+        element={
+          <AccessGate permission="inventory.read">
+            <MovementHistory />
+          </AccessGate>
+        }
+      />
       <Route
         path="sales/history"
         element={
@@ -137,15 +158,43 @@ export function App() {
       <Route
         path="proformas/history"
         element={
-          <AccessGate permission="sale.create">
+          <AccessGate permission="proforma.create">
             <DocumentHistory key="proforma" kind="proforma" />
           </AccessGate>
         }
       />
-      <Route path="products" element={<InventoryRedirect />} />
-      <Route path="products/new" element={<ProductEditorPage />} />
-      <Route path="products/manage" element={<InventoryRedirect />} />
-      <Route path="products/:id/edit" element={<ProductEditorPage />} />
+      <Route
+        path="products"
+        element={
+          <AccessGate permission="inventory.read">
+            <InventoryRedirect />
+          </AccessGate>
+        }
+      />
+      <Route
+        path="products/new"
+        element={
+          <AccessGate permission="product.manage">
+            <ProductEditorPage />
+          </AccessGate>
+        }
+      />
+      <Route
+        path="products/manage"
+        element={
+          <AccessGate permission="inventory.read">
+            <InventoryRedirect />
+          </AccessGate>
+        }
+      />
+      <Route
+        path="products/:id/edit"
+        element={
+          <AccessGate permission="product.manage">
+            <ProductEditorPage />
+          </AccessGate>
+        }
+      />
       <Route path="account" element={<AccountPage />} />
       {demo && (
         <Route
@@ -169,7 +218,14 @@ export function App() {
           </AccessGate>
         }
       />
-      <Route path="alerts" element={<AlertsPage />} />
+      <Route
+        path="alerts"
+        element={
+          <AccessGate permission="inventory.read">
+            <AlertsPage />
+          </AccessGate>
+        }
+      />
     </>
   )
   return (

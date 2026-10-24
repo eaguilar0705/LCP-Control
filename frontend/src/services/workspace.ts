@@ -10,6 +10,8 @@ export type {
 } from '@lcp/contracts/workspace'
 import { supabase } from '../lib/supabase'
 import { toAppError } from './adapters/supabase'
+import { readReportPages } from './adapters/accounting'
+import { AppError } from '../lib/errors'
 
 function client() {
   if (!supabase)
@@ -28,11 +30,21 @@ export async function listContacts(
   kind: 'customers' | 'suppliers',
   id?: string,
 ): Promise<ContactRecord[]> {
-  const query = client().from(kind).select('*').order('name').limit(2000)
-  if (id) query.eq('id', id)
-  const { data, error } = await query
-  if (error) throw toAppError(error)
-  return (data ?? []).map((row) => ({
+  const { rows, truncated } = await readReportPages<Record<string, unknown>>(
+    (from, to) => {
+      const query = client().from(kind).select('*', { count: 'exact' })
+      if (id) query.eq('id', id)
+      return query.order('name').order('id').range(from, to)
+    },
+  ).catch((error) => {
+    throw toAppError(error)
+  })
+  if (truncated)
+    throw new AppError(
+      'unexpected',
+      'El registro de contactos supera el límite de consulta. Contacta al administrador.',
+    )
+  return rows.map((row) => ({
     ...row,
     phone: row.phone ?? '',
     taxId: row.tax_id,

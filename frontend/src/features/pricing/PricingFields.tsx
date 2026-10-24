@@ -4,7 +4,7 @@ import { Input, Select } from '../../components/ui'
 import { formatCurrency } from '../../lib/format'
 import {
   priceTierLabels,
-  priceTiers,
+  legacyPriceTiers,
   tierQuote,
   tierStatus,
   type TierPrices,
@@ -96,7 +96,7 @@ export function PricingFields({
           <span>Ganancia</span>
           <span>Precio de venta</span>
         </div>
-        {priceTiers.map((tier) => {
+        {legacyPriceTiers.map((tier) => {
           const status = tierStatus(pricing, tier)
           const quote = tierQuote(pricing, tier, rate)
           const label = priceTierLabels[tier]

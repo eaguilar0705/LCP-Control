@@ -87,6 +87,7 @@ export async function browserDatabase(page) {
     'finance_entries',
     'user_drafts',
     'product_prices',
+    'price_tiers',
     'business_days',
   ])
   await page.route('**/*.supabase.co/**', async (route) => {

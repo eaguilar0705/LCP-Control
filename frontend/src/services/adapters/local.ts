@@ -5,6 +5,7 @@ import { emptyLedger } from '../../features/accounting/finance'
 import type { CreditLedger } from '@lcp/contracts/finance'
 import { emptyCashflow } from '../../features/accounting/cashflow'
 import type { ReportRange } from '@lcp/contracts/reports'
+import { defaultPriceTiers, setPriceTiers } from '../../lib/pricing'
 // Shared by the catalog and demo providers: the local views read the catalogue
 // but must never look as if they issued a document or moved real stock.
 // Invented business details: the local view never shows the real ones.
@@ -34,6 +35,9 @@ function missingConfiguration(): never {
 }
 // Production build without a configured project: nothing to read or write.
 export const unconfiguredAdapter: DataProvider = {
+  listPriceTiers: async () => missingConfiguration(),
+  createPriceTier: async () => missingConfiguration(),
+  saveListPrices: async () => missingConfiguration(),
   listProducts: async () => missingConfiguration(),
   saveProduct: async () => missingConfiguration(),
   removeProduct: async () => missingConfiguration(),
@@ -70,6 +74,12 @@ export const unconfiguredAdapter: DataProvider = {
   voidFinanceEntry: async () => missingConfiguration(),
 }
 export const localWrites = {
+  async listPriceTiers() {
+    setPriceTiers(defaultPriceTiers)
+    return defaultPriceTiers
+  },
+  createPriceTier: async () => unavailable(),
+  saveListPrices: async () => unavailable(),
   listProducts: async () => unavailable(),
   saveProduct: async () => unavailable(),
   removeProduct: async () => unavailable(),

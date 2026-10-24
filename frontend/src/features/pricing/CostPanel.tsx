@@ -53,6 +53,8 @@ export function PurchaseDialog({
   catalogRate,
   initialProduct,
   initialLocation = 'warehouse',
+  initialQuantity,
+  initialNote = '',
   onClose,
   onRecorded,
 }: {
@@ -61,6 +63,8 @@ export function PurchaseDialog({
   catalogRate: number | null
   initialProduct: string
   initialLocation?: InventoryLocation
+  initialQuantity?: number
+  initialNote?: string
   onClose: () => void
   onRecorded: (message: string) => void
 }) {
@@ -79,9 +83,13 @@ export function PurchaseDialog({
     catalogRate ? String(catalogRate) : '',
   )
   const [shipping, setShipping] = useState('0')
-  const [note, setNote] = useState('')
+  const [note, setNote] = useState(initialNote)
   const [lines, setLines] = useState<PurchaseLineDraft[]>([
-    { ...blankLine(initialProduct), location: initialLocation },
+    {
+      ...blankLine(initialProduct),
+      location: initialLocation,
+      quantity: initialQuantity === undefined ? '' : String(initialQuantity),
+    },
   ])
   const [checked, setChecked] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -451,12 +459,14 @@ function CostOutcome({
 export function OpeningCostDialog({
   item,
   catalogRate,
+  notice,
   onClose,
   onRecorded,
 }: {
   item: InventoryItem
   pricing: ProductPricing | undefined
   catalogRate: number | null
+  notice?: string
   onClose: () => void
   onRecorded: (message: string) => void
 }) {
@@ -523,6 +533,7 @@ export function OpeningCostDialog({
       }}
     >
       <form noValidate onSubmit={(event) => void submit(event)}>
+        {notice && <p role="status">{notice}</p>}
         <p className="muted">
           {counts.format(total)} unidades contadas en tienda y bodega.
         </p>

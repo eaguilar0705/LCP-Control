@@ -18,6 +18,9 @@ import type {
   MovementRequest,
   NewDocument,
   PriceChange,
+  PriceTierDefinition,
+  NewPriceTier,
+  PriceListSave,
   PricingList,
   Product,
 } from '@lcp/contracts/domain'
@@ -40,6 +43,9 @@ import type {
   CashflowReport,
 } from '@lcp/contracts/cashflow'
 export interface DataProvider {
+  listPriceTiers(): Promise<PriceTierDefinition[]>
+  createPriceTier(input: NewPriceTier): Promise<string>
+  saveListPrices(input: PriceListSave): Promise<number>
   listProducts(): Promise<Product[]>
   saveProduct(input: ProductInput): Promise<string>
   removeProduct(id: string, revision: number): Promise<'archived' | 'deleted'>

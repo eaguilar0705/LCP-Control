@@ -265,3 +265,10 @@
     width: 100%;
   }
 }
+/* La fecha completa necesita más espacio que dos columnas en un teléfono
+   pequeño. Se conserva el calendario nativo sin recortar el año. */
+@media (max-width: 400px) {
+  .history-filter-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

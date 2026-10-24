@@ -604,6 +604,13 @@ try {
           'proforma',
         )
         const stockBefore = products.map((product) => product.store)
+        if (dayIndex === 0 && saleIndex === 0)
+          await rejects(
+            () => call('create_document', quote),
+            /insufficient_privilege/,
+            'Caja no emite proformas',
+          )
+        await identity(db, admin)
         const q = await call('create_document', quote)
         equal(
           (await call('create_document', quote)).id,
@@ -616,6 +623,7 @@ try {
           'modelo no descuenta proforma',
         )
         proformas++
+        await identity(db, operator)
       }
     }
     await identity(db, admin)

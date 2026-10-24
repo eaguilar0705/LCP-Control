@@ -25,7 +25,7 @@ export type {
   CustomerVisits,
 } from '@lcp/contracts/reports'
 import type { Currency, InventoryItem, PriceTier } from '../../lib/domain'
-import { productPrice } from '../../lib/pricing'
+import { productPrice, priceTierLabels } from '../../lib/pricing'
 import { bankTransferLabels } from '../../lib/domain'
 import { totalStock } from '../inventory/model'
 
@@ -219,11 +219,7 @@ export function paymentBreakdown(
     .filter((share): share is Share => !!share)
 }
 
-export const tierLabels: Record<PriceTier, string> = {
-  emprendedor: 'Emprendedor',
-  vip: 'VIP',
-  premium: 'Premium',
-}
+export const tierLabels = priceTierLabels
 export function tierBreakdown(
   documents: ReportDocument[],
   currency: Currency,
@@ -232,7 +228,7 @@ export function tierBreakdown(
   for (const document of invoices(documents, currency)) {
     const current = byTier.get(document.tier) ?? {
       key: document.tier,
-      label: tierLabels[document.tier],
+      label: tierLabels[document.tier] ?? document.tier,
       value: 0,
       count: 0,
     }
@@ -240,9 +236,9 @@ export function tierBreakdown(
     current.count += 1
     byTier.set(document.tier, current)
   }
-  return (Object.keys(tierLabels) as PriceTier[])
-    .map((tier) => byTier.get(tier))
-    .filter((share): share is Share => !!share)
+  return [...byTier.values()].sort((a, b) =>
+    a.label.localeCompare(b.label, 'es'),
+  )
 }
 
 interface CustomerActivity {
@@ -302,7 +298,8 @@ interface InventoryHealth {
   uncounted: number
   units: number
   /** Valor a precio de lista, sólo orientativo: no es el costo de compra. */
-  listValue: number
+  listValue: number | null
+  missingPrices: number
 }
 export function inventoryHealth(
   items: InventoryItem[],
@@ -316,7 +313,9 @@ export function inventoryHealth(
     uncounted: 0,
     units: 0,
     listValue: 0,
+    missingPrices: 0,
   }
+  let knownValue = 0
   for (const item of items) {
     const total = totalStock(item)
     if (total === null) {
@@ -325,7 +324,8 @@ export function inventoryHealth(
     }
     health.units += total
     const price = productPrice(item.product, tier, currency)
-    if (price !== null) health.listValue += price * total
+    if (price !== null) knownValue += price * total
+    else if (total > 0) health.missingPrices += 1
     if (total === 0) health.out += 1
     else if (
       item.product.minimumStock !== null &&
@@ -334,6 +334,8 @@ export function inventoryHealth(
       health.low += 1
     else health.available += 1
   }
+  health.listValue =
+    health.missingPrices || health.uncounted ? null : knownValue
   return health
 }
 export function movementSummary(movements: ReportMovement[]): MovementSummary {
@@ -464,7 +466,7 @@ interface IdleProduct {
   productId: string
   description: string
   stock: number
-  listValue: number
+  listValue: number | null
 }
 /** Existencias que no se movieron en el periodo: capital detenido en bodega. */
 export function idleStock(
@@ -491,15 +493,17 @@ export function idleFromSold(
   for (const item of inventory) {
     const stock = totalStock(item)
     if (stock === null || stock <= 0 || sold.has(item.product.id)) continue
-    const price = productPrice(item.product, tier, currency) ?? 0
+    const price = productPrice(item.product, tier, currency)
     rows.push({
       productId: item.product.id,
       description: `${item.product.brand} · ${item.product.name}`,
       stock,
-      listValue: price * stock,
+      listValue: price === null ? null : price * stock,
     })
   }
-  return rows.sort((a, b) => b.listValue - a.listValue).slice(0, limit)
+  return rows
+    .sort((a, b) => (b.listValue ?? -1) - (a.listValue ?? -1))
+    .slice(0, limit)
 }
 
 /** Parte del total que aportan los `top` mayores valores, entre 0 y 1. */
@@ -683,7 +687,7 @@ interface Shrinkage {
   productId: string
   description: string
   units: number
-  listValue: number
+  listValue: number | null
 }
 /** Unidades dañadas y lo que habrían facturado a precio de lista. */
 export function shrinkage(
@@ -727,20 +731,19 @@ export function shrinkageFromUnits(
   return damaged
     .map(({ productId, units }) => {
       const item = catalogue.get(productId)
+      const price = item ? productPrice(item.product, tier, currency) : null
       return {
         productId,
         description: item
           ? `${item.product.brand} · ${item.product.name}`
           : 'Producto retirado del catálogo',
         units,
-        listValue: item
-          ? (productPrice(item.product, tier, currency) ?? 0) * units
-          : 0,
+        listValue: price === null ? null : price * units,
       }
     })
     .sort(
       (a, b) =>
-        b.listValue - a.listValue ||
+        (b.listValue ?? -1) - (a.listValue ?? -1) ||
         b.units - a.units ||
         compareText(a.productId, b.productId),
     )

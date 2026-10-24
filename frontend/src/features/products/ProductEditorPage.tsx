@@ -18,18 +18,18 @@ import {
 import { useAccess } from '../../app/AccessContext'
 import { useServices } from '../../services/useServices'
 import { useQuery } from '../../lib/useQuery'
+import { usePriceTiers } from '../../lib/usePriceTiers'
 import { errorMessage, issuesByField } from '../../lib/errors'
 import {
   labels,
   type PricingInput,
   type Product,
-  type PriceTier,
   type InventoryLocation,
 } from '../../lib/domain'
 import {
   applyPricing,
   priceTierLabels,
-  priceTiers,
+  legacyPriceTiers,
   tierQuote,
 } from '../../lib/pricing'
 import {
@@ -117,11 +117,6 @@ function ProductLoader() {
             : null
         }
         rate={data?.rate ?? null}
-        hasAverageCost={
-          data?.pricing?.rows.some(
-            (row) => row.productId === id && row.averageCost !== null,
-          ) ?? false
-        }
         onCostRecorded={(message) => {
           setCostMessage(message)
           retry()
@@ -135,7 +130,6 @@ function ProductForm({
   brands,
   pricing,
   rate,
-  hasAverageCost,
   onCostRecorded,
 }: {
   product?: Product
@@ -147,13 +141,13 @@ function ProductForm({
    * un precio, así que el formulario lo dice y no deja guardar a ciegas.
    */
   rate: number | null
-  hasAverageCost: boolean
   onCostRecorded: (message: string) => void
 }) {
   const { base, demo, role } = useAccess()
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const { productService } = useServices()
+  const allTiers = usePriceTiers()
   const [value, setValue] = useState(() => ({
     ...productInput(product),
     manufacturerBarcode:
@@ -175,7 +169,7 @@ function ProductForm({
       const prices = applyPricing(current.prices, current.pricing, rate)
       // A mano manda el dólar: el córdoba vuelve a salir de la tasa, igual
       // que lo guardará la base.
-      for (const tier of priceTiers) {
+      for (const tier of legacyPriceTiers) {
         if (tierQuote(next, tier, rate)) continue
         // Sin tasa no hay dólar calculado: queda el que ya tenía la lista.
         const usd = Number.isFinite(prices[tier].USD)
@@ -539,7 +533,7 @@ function ProductForm({
                   }}
                 />
               ) : (
-                (Object.keys(priceTierLabels) as PriceTier[]).map((tier) => {
+                legacyPriceTiers.map((tier) => {
                   const nio = value.prices[tier].NIO
                   // Un dólar vacío ya deja su propio aviso en el campo; repetirlo
                   // bajo el córdoba sería marcar dos veces el mismo descuido.
@@ -586,6 +580,60 @@ function ProductForm({
                   )
                 })
               )}
+              {allTiers
+                .filter(
+                  ({ code }) =>
+                    !legacyPriceTiers.some((legacy) => legacy === code),
+                )
+                .map(({ code, name }) => {
+                  const pair = value.prices[code]
+                  const usdError = fieldErrors[`prices.${code}.USD`]
+                  const nioError = fieldErrors[`prices.${code}.NIO`]
+                  return (
+                    <div className="product-price-row" key={code}>
+                      <h3>{name}</h3>
+                      <Input
+                        label={`${name} USD`}
+                        type="number"
+                        inputMode="decimal"
+                        min={0.01}
+                        max={10000000}
+                        step={0.01}
+                        placeholder="Sin precio"
+                        error={usdError}
+                        value={
+                          pair && Number.isFinite(pair.USD) ? pair.USD : ''
+                        }
+                        onChange={(e) => {
+                          const prices = { ...value.prices }
+                          if (e.target.value === '' && !product?.prices?.[code])
+                            delete prices[code]
+                          else {
+                            const usd = e.target.valueAsNumber
+                            prices[code] = {
+                              USD: usd,
+                              NIO: nioFromUsd(usd, rate),
+                            }
+                          }
+                          update('prices', prices)
+                        }}
+                      />
+                      <div
+                        className={`product-price-derived ${nioError ? 'field-invalid' : ''}`}
+                      >
+                        <span>{name} NIO</span>
+                        <strong>
+                          {pair && Number.isFinite(pair.NIO)
+                            ? formatCurrency(pair.NIO, 'NIO')
+                            : 'Sin precio'}
+                        </strong>
+                        {nioError && !usdError && (
+                          <small className="field-error">{nioError}</small>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
             </Card>
           )}
         </fieldset>
@@ -628,7 +676,6 @@ function ProductForm({
           <ProductStockEditor
             product={product}
             disabled={busy}
-            hasAverageCost={hasAverageCost}
             purchaseDisabled={unsaved}
             onPurchase={(location) => {
               setCostLocation(location)

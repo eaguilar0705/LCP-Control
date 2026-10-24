@@ -31,7 +31,7 @@ export type {
   BelowCostSale,
 } from '@lcp/contracts/accounting'
 import type { InventoryItem, PriceTier } from '../../lib/domain'
-import { marginRate, productPrice } from '../../lib/pricing'
+import { marginRate, productPrice, priceTiers } from '../../lib/pricing'
 import {
   compareText,
   daysBetween,
@@ -668,7 +668,15 @@ export function catalogMargins(
       row.averageCostNio,
     ]),
   )
-  return (['emprendedor', 'vip', 'premium'] as const).map((tier) => {
+  const tiers = [
+    ...new Set([
+      ...priceTiers,
+      ...source.inventory.flatMap(({ product }) =>
+        Object.keys(product.prices ?? {}),
+      ),
+    ]),
+  ]
+  return tiers.map((tier) => {
     const rates: number[] = []
     let belowCost = 0
     for (const item of source.inventory) {

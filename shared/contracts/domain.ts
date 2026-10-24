@@ -27,7 +27,25 @@ export type Category = 'arabian' | 'designer' | 'niche' | 'unspecified'
 
 export type Gender = 'male' | 'female' | 'unisex' | 'unspecified'
 
-export type PriceTier = 'emprendedor' | 'vip' | 'premium'
+export type PriceTier = string
+
+export interface PriceTierDefinition {
+  code: PriceTier
+  name: string
+  sortOrder: number
+}
+
+export interface NewPriceTier {
+  requestId: string
+  name: string
+}
+
+export interface PriceListSave {
+  requestId: string
+  tier: PriceTier
+  currency: Currency
+  rows: { productId: string; revision: number; amount: number }[]
+}
 
 /**
  * Un cambio de precio de una lista. `beforeUsd` en nulo es el precio con el que

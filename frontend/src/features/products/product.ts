@@ -89,7 +89,9 @@ export const productInputSchema: z.ZodType<ProductInput> = z.object({
     .max(1000000, 'El mínimo es demasiado alto.'),
   active: z.boolean(),
   imagePath: z.string().max(250).nullable(),
-  prices: z.object({ emprendedor: pair, vip: pair, premium: pair }),
+  prices: z
+    .object({ emprendedor: pair, vip: pair, premium: pair })
+    .catchall(pair),
   /**
    * Sólo viaja cuando quien edita es dueño y la base ya guarda porcentajes.
    * Sin él, la base respeta lo que tenía guardado.

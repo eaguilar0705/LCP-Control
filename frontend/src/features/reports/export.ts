@@ -1,6 +1,6 @@
 import type { BusinessSettings, Currency, PriceTier } from '../../lib/domain'
 import { formatCurrency, formatDate } from '../../lib/format'
-import { priceTierLabels } from '../../lib/pricing'
+import { priceTierLabels, productPrice } from '../../lib/pricing'
 import { buildWorkbook, type Sheet } from '../../lib/xlsx'
 import { totalStock } from '../inventory/model'
 import { fillDays, type ReportRange } from './model'
@@ -139,11 +139,13 @@ function buildReportWorkbook({
         { header: 'Unidades', format: 'integer', width: 12 },
         { header: 'Importe', format: 'money', width: 16 },
       ],
-      rows: view.topProducts(currency, DIGEST_LIST_LIMIT).map((product) => [
-        product.description,
-        product.quantity,
-        product.revenue,
-      ]),
+      rows: view
+        .topProducts(currency, DIGEST_LIST_LIMIT)
+        .map((product) => [
+          product.description,
+          product.quantity,
+          product.revenue,
+        ]),
     })
     const clients = view.customerActivity(currency, DIGEST_LIST_LIMIT)
     sheets.push({
@@ -178,18 +180,19 @@ function buildReportWorkbook({
         { header: 'Importe anterior', format: 'money', width: 18 },
       ],
       rows: [
-        ...view.lapsedCustomers(currency, DIGEST_LIST_LIMIT).map(
-          (client) => [
+        ...view
+          .lapsedCustomers(currency, DIGEST_LIST_LIMIT)
+          .map((client) => [
             client.name,
             'No volvió',
             client.lastPurchase,
             client.daysSince,
             client.orders,
             client.previousRevenue,
-          ],
-        ),
-        ...view.purchaseFrequency(currency, range.to, DIGEST_LIST_LIMIT).map(
-          (client) => [
+          ]),
+        ...view
+          .purchaseFrequency(currency, range.to, DIGEST_LIST_LIMIT)
+          .map((client) => [
             client.name,
             client.averageDays === null
               ? 'Una sola compra'
@@ -198,8 +201,7 @@ function buildReportWorkbook({
             client.daysSinceLast,
             client.orders,
             null,
-          ],
-        ),
+          ]),
       ],
     })
     sheets.push({
@@ -224,11 +226,9 @@ function buildReportWorkbook({
         { header: 'Ingresos', format: 'money', width: 16 },
         { header: 'Facturas', format: 'integer', width: 12 },
       ],
-      rows: view.salesByWeekday(currency).map((day) => [
-        day.label,
-        day.revenue,
-        day.count,
-      ]),
+      rows: view
+        .salesByWeekday(currency)
+        .map((day) => [day.label, day.revenue, day.count]),
     })
     sheets.push({
       name: `Cobros ${currency}`,
@@ -239,16 +239,16 @@ function buildReportWorkbook({
         { header: 'Importe', format: 'money', width: 16 },
       ],
       rows: [
-        ...view.paymentBreakdown(currency).map((share) => [
-          `Forma de pago: ${share.label}`,
-          share.count,
-          share.value,
-        ]),
-        ...view.tierBreakdown(currency).map((share) => [
-          `Lista: ${share.label}`,
-          share.count,
-          share.value,
-        ]),
+        ...view
+          .paymentBreakdown(currency)
+          .map((share) => [
+            `Forma de pago: ${share.label}`,
+            share.count,
+            share.value,
+          ]),
+        ...view
+          .tierBreakdown(currency)
+          .map((share) => [`Lista: ${share.label}`, share.count, share.value]),
       ],
     })
   }
@@ -263,6 +263,7 @@ function buildReportWorkbook({
       ...header,
       `Valorado con la lista ${priceTierLabels[tier]}. Es precio de venta, no costo de compra.`,
       `Con existencias ${health.available} · Bajo el mínimo ${health.low} · Agotados ${health.out} · Sin conteo ${health.uncounted}`,
+      `Sin precio en la lista: ${health.missingPrices}. ${health.listValue === null ? 'Valor total pendiente.' : ''}`,
       `Movimientos: entradas ${movements.entries} · ventas ${movements.sales} · salidas ${movements.exits} · dañados ${movements.damaged} · ajustes ${movements.adjustments}`,
     ],
     columns: [
@@ -283,7 +284,7 @@ function buildReportWorkbook({
       item.quantities.store,
       totalStock(item),
       item.product.minimumStock,
-      item.product.prices?.[tier][currencies[0] ?? 'NIO'] ?? null,
+      productPrice(item.product, tier, currencies[0] ?? 'NIO'),
     ]),
   })
 
@@ -303,24 +304,26 @@ function buildReportWorkbook({
       { header: 'Valor a lista', format: 'money', width: 16 },
     ],
     rows: [
-      ...view.stockCoverage(first, 500).map(
-        (row) => [
+      ...view
+        .stockCoverage(first, 500)
+        .map((row) => [
           row.description,
           'Se vende',
           row.stock,
           Number(row.perDay.toFixed(2)),
           Number.isFinite(row.days) ? Number(row.days.toFixed(1)) : null,
           null,
-        ],
-      ),
-      ...view.idleStock(tier, first, 500).map((row) => [
-        row.description,
-        'Sin ventas en el periodo',
-        row.stock,
-        0,
-        null,
-        row.listValue,
-      ]),
+        ]),
+      ...view
+        .idleStock(tier, first, 500)
+        .map((row) => [
+          row.description,
+          'Sin ventas en el periodo',
+          row.stock,
+          0,
+          null,
+          row.listValue,
+        ]),
     ],
   })
 
@@ -368,6 +371,7 @@ export function reportTables({ report, tier }: ReportContext) {
     health: view.inventoryHealth(tier, first),
     movements: view.movementSummary(),
     /** Moneda de referencia para las cifras que no van por moneda. */
-    money: (value: number) => formatCurrency(value, first),
+    money: (value: number | null) =>
+      value === null ? 'Sin precio' : formatCurrency(value, first),
   }
 }

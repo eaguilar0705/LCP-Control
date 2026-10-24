@@ -6,6 +6,10 @@ Contabilidad presenta comprobantes, cobros y pagos, catálogo de cuentas, balanz
 
 En **Negocio → Importar desde Excel**, los administradores pueden descargar la plantilla y cargar productos, precios, existencias de bodega y tienda, cuentas y saldos iniciales, clientes, proveedores y datos del negocio. Incluye vista previa, validación completa y protección contra cargas duplicadas. Ver [formato y puesta en marcha](docs/importacion-excel.md); la función requiere aplicar la migración de importación en Supabase antes de utilizarla con la base remota.
 
+En **Inventario → Listas de precios**, administración puede crear listas con su propio nombre y editar varios perfumes a la vez. Las listas adicionales empiezan sin precios y también se pueden completar desde la edición del perfume. Un perfume sin precio en la lista elegida no puede facturarse con ella. La plantilla inicial de Excel conserva las columnas de Emprendedor, VIP y Premium; las listas adicionales se completan desde Inventario.
+
+**Entrada** y **Agregar unidades** conducen a Registrar compra con el producto, la ubicación y la cantidad elegidos. La compra conserva su costo y actualiza el promedio ponderado; **Ajuste** se utiliza para registrar o corregir conteos. El rol **Caja** tiene facturación e historial propio; las proformas, la edición de clientes y los movimientos de inventario requieren otro rol autorizado.
+
 ## Instalar y ejecutar
 
 Requiere Node.js 22.12 o superior y npm. Ejecutar desde la raíz:
@@ -42,12 +46,15 @@ npm run typecheck
 npm run test:accounting
 npm run test:database
 npm run test:store
+npm run test:price-lists
 npm run preview
 ```
 
 `check` valida lint y compila la aplicación en `output/dist/`. Publicar esa carpeta en un hosting HTTPS con fallback de rutas a `index.html`. `preview` permite revisar la compilación localmente y mantiene el servidor limitado a este equipo.
 
 Con el servidor local activo, `npm run test:browser:accounting` verifica el módulo en Chrome a 1440, 390 y 320 px; `npm run test:browser` recorre también inventario, ventas y reportes. Las pruebas interceptan Supabase y usan datos aislados. `LCP_TEST_BASE_URL` permite elegir un servidor local distinto del puerto 5173. La auditoría y sus correcciones se documentan en [el informe contable](docs/auditoria-contabilidad-2026-10-13.md).
+
+`npm run test:browser:store` verifica las entradas con costo, las listas adicionales, Caja y los filtros de clientes. La [revisión del 24 de octubre](docs/revision-tienda-2026-10-24.md) resume los cambios y sus comprobaciones.
 
 `test:store` simula 30 jornadas con 1,200 facturas y concilia inventario, caja, bancos y contabilidad en una base desechable. La [revisión de entrega del 16 de octubre](docs/revision-entrega-2026-10-16.md) documenta las comprobaciones, los comprobantes automáticos y la carga de costos.
 

@@ -12,7 +12,7 @@ import {
   WorkspaceHeading,
   WorkspaceEmpty,
 } from '../../components/WorkspacePresentation'
-import { priceTierLabels } from '../../lib/pricing'
+import { priceTierLabels, priceTiers } from '../../lib/pricing'
 import type { PriceTier } from '../../lib/domain'
 import { useCallback, useState, type FormEvent } from 'react'
 import {
@@ -88,6 +88,7 @@ export function ContactsPage({ kind }: { kind: Kind }) {
   const [removeError, setRemoveError] = useState('')
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('active')
+  const [tierFilter, setTierFilter] = useState('all')
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
   if (!permitted && !demo)
@@ -191,6 +192,7 @@ export function ContactsPage({ kind }: { kind: Kind }) {
   const visible = (data ?? []).filter(
     (r) =>
       (status === 'all' || r.active === (status === 'active')) &&
+      (supplier || tierFilter === 'all' || r.priceTier === tierFilter) &&
       matchesSearch(
         `${r.name} ${r.phone} ${r.email} ${r.taxId ?? ''} ${r.contact ?? ''} ${r.brands ?? ''}`,
         search,
@@ -289,6 +291,20 @@ export function ContactsPage({ kind }: { kind: Kind }) {
           <option value="all">Todos</option>
           <option value="archived">Archivados</option>
         </Select>
+        {!supplier && (
+          <Select
+            label="Lista de precios"
+            value={tierFilter}
+            onChange={(e) => setTierFilter(e.target.value)}
+          >
+            <option value="all">Todas</option>
+            {priceTiers.map((tier) => (
+              <option key={tier} value={tier}>
+                {priceTierLabels[tier]}
+              </option>
+            ))}
+          </Select>
+        )}
         <span className="directory-count">
           {visible.length} {supplier ? 'proveedores' : 'clientes'}
         </span>
@@ -458,9 +474,11 @@ function ContactForm({
             }
             onChange={(e) => onChange({ ...form, priceTier: e.target.value })}
           >
-            <option value="emprendedor">Emprendedor</option>
-            <option value="vip">VIP</option>
-            <option value="premium">Premium</option>
+            {priceTiers.map((tier) => (
+              <option key={tier} value={tier}>
+                {priceTierLabels[tier]}
+              </option>
+            ))}
           </Select>
         )}
         {canArchive && (

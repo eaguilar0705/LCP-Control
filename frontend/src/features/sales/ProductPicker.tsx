@@ -17,6 +17,7 @@ import type {
   PriceTier,
 } from '../../lib/domain'
 import { formatCurrency } from '../../lib/format'
+import { productPrice } from '../../lib/pricing'
 const normalize = (s: string) =>
   s
     .normalize('NFD')
@@ -86,6 +87,7 @@ export function ProductPicker({
           .map(({ product: p, quantities }) => {
             const selected = added.includes(p.id)
             const stock = quantities[location]
+            const price = productPrice(p, tier, currency)
             return (
               <article
                 className={`picker-product ${selected ? 'is-added' : ''}`}
@@ -122,14 +124,14 @@ export function ProductPicker({
                   </span>
                   <div className="picker-product-footer">
                     <strong>
-                      {p.prices
-                        ? formatCurrency(p.prices[tier][currency], currency)
+                      {price !== null
+                        ? formatCurrency(price, currency)
                         : 'Sin precio'}
                     </strong>
                     <Button
                       type="button"
                       variant="secondary"
-                      disabled={selected || !p.prices}
+                      disabled={selected || price === null}
                       aria-label={`Agregar ${p.brand} ${p.name} ${p.size ?? ''} ${p.unit}`}
                       onClick={() => onAdd(p.id)}
                     >
