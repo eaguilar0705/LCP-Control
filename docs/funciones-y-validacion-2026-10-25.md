@@ -77,6 +77,14 @@ Para pruebas de navegador se usa `LCP_TEST_BASE_URL` con el servidor local. Las 
 
 Las evidencias quedan en `output/`, excluido de Git: `inventory-value`, `browser-inventory-valuation`, `purchase-corrections`, `sales-returns-split`, `functional-recovery-pagination`, `functional-recovery-browser` y `enterprise-pdf`.
 
+## Publicación verificada
+
+El código funcional se publicó en `main`, commit `5f9b072`. Cloudflare sirve `/assets/index-CwKV40YP.js`, coincidente con la compilación local. Las cuatro suites sobre el frontend HTTPS aprobaron **408 comprobaciones**: valorización 39, ventas y notas de crédito 111, compras 126, recuperación y navegación 132. Toda la API se interceptó para usar PostgreSQL desechable; no se crearon operaciones en la tienda real.
+
+El primer intento publicado de navegación encontró una carrera del arnés después de cancelar Adelante. Se corrigió la espera hasta que desaparezca el aviso, se estabilice la ruta y el estado de edición confirme el nombre restaurado. Se añadió una aserción por ancho y la suite completa volvió a pasar; no se cambió la lógica de la aplicación para ocultar el fallo.
+
+Evidencias: `output/published-functional-valuation/`, `output/published-functional-sales/`, `output/published-functional-purchases/`, `output/published-functional-recovery/` y `output/new-functions-final-verification.json`.
+
 ## Datos para la entrega
 
 Estas funciones no sustituyen el conteo físico ni los datos reales del negocio. Permanecen por completar las cantidades pendientes, la razón social y RUC, y las dos imágenes reales que indicó la auditoría anterior. Los productos DEMO relacionados con operaciones necesitan una depuración contable acordada; cambiarles el nombre o desactivarlos no revierte sus movimientos.

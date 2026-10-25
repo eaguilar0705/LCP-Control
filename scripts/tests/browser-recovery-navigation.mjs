@@ -124,6 +124,10 @@ try {
         .getByRole('dialog')
         .getByRole('button', { name: 'Cancelar', exact: true })
         .click()
+      await page
+        .getByRole('dialog', { name: 'Cambios sin guardar' })
+        .waitFor({ state: 'hidden' })
+      await page.waitForURL(`**/products/${product}/edit`)
       equal(await name.inputValue(), 'Edición conservada al pulsar Atrás')
       equal(new URL(page.url()).pathname, `/products/${product}/edit`)
       await page.goBack()
@@ -156,8 +160,18 @@ try {
         .getByRole('dialog')
         .getByRole('button', { name: 'Cancelar', exact: true })
         .click()
+      await page
+        .getByRole('dialog', { name: 'Cambios sin guardar' })
+        .waitFor({ state: 'hidden' })
+      await page.waitForURL(`**/products/${product}/edit`)
       equal(await name.inputValue(), 'Edición conservada al pulsar Adelante')
       await name.fill(original)
+      // React debe haber reconocido la restauración antes de navegar. El
+      // botón de costo sólo se habilita cuando ya no quedan cambios pendientes.
+      await page
+        .getByRole('button', { name: 'Costo de inventario', exact: true })
+        .click({ trial: true })
+      equal(await name.inputValue(), original)
       await page
         .getByRole('link', { name: 'Volver al inventario', exact: true })
         .click()
