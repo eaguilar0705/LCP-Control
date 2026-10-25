@@ -34,10 +34,31 @@ export function incomeStatement(summary: AccountingSummary): StatementRow[] {
     summary.expensesNio + summary.inventoryWriteOffNio,
   )
   return [
-    { key: 'revenue', label: 'Ventas netas', amount: summary.revenueNio, kind: 'line' },
-    { key: 'cost', label: 'Costo de ventas', amount: summary.costOfSalesNio, kind: 'line', negative: true },
-    { key: 'gross', label: 'Utilidad bruta', amount: summary.grossProfitNio, kind: 'subtotal' },
-    { key: 'operating', label: 'Gastos de operación', amount: null, kind: 'heading' },
+    {
+      key: 'revenue',
+      label: 'Ventas netas',
+      amount: summary.revenueNio,
+      kind: 'line',
+    },
+    {
+      key: 'cost',
+      label: 'Costo de ventas',
+      amount: summary.costOfSalesNio,
+      kind: 'line',
+      negative: true,
+    },
+    {
+      key: 'gross',
+      label: 'Utilidad bruta',
+      amount: summary.grossProfitNio,
+      kind: 'subtotal',
+    },
+    {
+      key: 'operating',
+      label: 'Gastos de operación',
+      amount: null,
+      kind: 'heading',
+    },
     ...deducting.map((row) => ({
       key: row.account,
       label: expenseAccounts[row.account].label,
@@ -45,12 +66,44 @@ export function incomeStatement(summary: AccountingSummary): StatementRow[] {
       kind: 'line' as const,
       negative: true,
     })),
-    { key: 'writeOff', label: 'Mermas y otras salidas', amount: summary.inventoryWriteOffNio, kind: 'line', negative: true },
-    { key: 'operatingTotal', label: 'Total gastos de operación', amount: operating, kind: 'subtotal', negative: true },
-    { key: 'net', label: 'Utilidad neta', amount: summary.netProfitNio, kind: 'total' },
-    { key: 'memo', label: 'Partidas informativas', amount: null, kind: 'heading' },
-    { key: 'loans', label: 'Pago de préstamos', amount: summary.loanPaymentsNio, kind: 'info' },
-    { key: 'purchases', label: 'Compras de mercadería', amount: summary.purchasesNio, kind: 'info' },
+    {
+      key: 'writeOff',
+      label: 'Mermas y otras salidas',
+      amount: summary.inventoryWriteOffNio,
+      kind: 'line',
+      negative: true,
+    },
+    {
+      key: 'operatingTotal',
+      label: 'Total gastos de operación',
+      amount: operating,
+      kind: 'subtotal',
+      negative: true,
+    },
+    {
+      key: 'net',
+      label: 'Utilidad neta',
+      amount: summary.netProfitNio,
+      kind: 'total',
+    },
+    {
+      key: 'memo',
+      label: 'Partidas informativas',
+      amount: null,
+      kind: 'heading',
+    },
+    {
+      key: 'loans',
+      label: 'Pago de préstamos',
+      amount: summary.loanPaymentsNio,
+      kind: 'info',
+    },
+    {
+      key: 'purchases',
+      label: 'Compras de mercadería',
+      amount: summary.purchasesNio,
+      kind: 'info',
+    },
   ]
 }
 /** Parte de las ventas netas que representa un renglón; `null` sin ventas. */
@@ -102,8 +155,10 @@ export function dailyClose(
     }
   for (const shipment of shipmentsInRange(report, range))
     at(shipment.incurredOn).purchasesNio +=
-      roundMoney(shipment.goodsAmount * shipment.exchangeRate) +
-      roundMoney(shipment.shippingAmount * shipment.exchangeRate)
+      (shipment.goodsNio ??
+        roundMoney(shipment.goodsAmount * shipment.exchangeRate)) +
+      (shipment.shippingNio ??
+        roundMoney(shipment.shippingAmount * shipment.exchangeRate))
   for (const expense of expensesInRange(report, range)) {
     // Igual que en el resultado: una categoría desconocida no se suma a ojo.
     if (expense.voidedAt || !expenseCategories[expense.category]) continue
@@ -134,7 +189,10 @@ export function dailyTotals(rows: DailyClose[]): Omit<DailyClose, 'day'> {
     total.expensesNio += row.expensesNio
   }
   return {
-    sales: { NIO: roundMoney(total.sales.NIO), USD: roundMoney(total.sales.USD) },
+    sales: {
+      NIO: roundMoney(total.sales.NIO),
+      USD: roundMoney(total.sales.USD),
+    },
     invoices: total.invoices,
     purchasesNio: roundMoney(total.purchasesNio),
     expensesNio: roundMoney(total.expensesNio),

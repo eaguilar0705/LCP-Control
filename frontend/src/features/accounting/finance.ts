@@ -104,8 +104,11 @@ export const emptyLedger: FinanceLedger = {
   expenses: [],
 }
 
-export const toNio = (row: { amount: number; exchangeRate: number }) =>
-  roundMoney(row.amount * row.exchangeRate)
+export const toNio = (row: {
+  amount: number
+  exchangeRate: number
+  amountNio?: number
+}) => row.amountNio ?? roundMoney(row.amount * row.exchangeRate)
 export const isMoneyAccount = (value: string): value is MoneyAccount =>
   Object.hasOwn(moneyAccounts, value)
 /** Un pago de préstamo baja la deuda; los demás gastos sólo sacan dinero. */
@@ -281,8 +284,13 @@ export function financeTurnovers(
         credit('prestamos', amount)
         break
       case 'supplier_payment':
-        if (money) credit(money, amount)
-        debit('proveedores', amount)
+        if (amount < 0) {
+          if (money) debit(money, -amount)
+          credit('proveedores', -amount)
+        } else {
+          if (money) credit(money, amount)
+          debit('proveedores', amount)
+        }
         break
       case 'collection':
         if (money) debit(money, amount)
@@ -290,11 +298,11 @@ export function financeTurnovers(
         break
     }
   }
-  for (const row of source.shipments)
-    credit(
-      row.account === 'credito' ? 'proveedores' : row.account,
-      row.amountNio,
-    )
+  for (const row of source.shipments) {
+    const account = row.account === 'credito' ? 'proveedores' : row.account
+    if (row.amountNio < 0) debit(account, -row.amountNio)
+    else credit(account, row.amountNio)
+  }
   for (const row of source.expenses) {
     if (row.voided) continue
     credit(row.account, row.amountNio)

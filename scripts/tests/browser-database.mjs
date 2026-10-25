@@ -153,7 +153,7 @@ export async function browserDatabase(page) {
         (select coalesce(jsonb_agg(p),'[]') from public.product_prices p where p.product_id=t.id) product_prices,
         (select coalesce(jsonb_agg(b),'[]') from public.inventory_balances b where b.product_id=t.id) inventory_balances`
       if (table === 'documents')
-        extra = `,(select coalesce(jsonb_agg(i),'[]') from public.document_items i where i.document_id=t.id) document_items`
+        extra = `,(select coalesce(jsonb_agg(i),'[]') from public.document_items i where i.document_id=t.id) document_items,t.request_payload->'payments' payments`
       if (table === 'inventory_movements')
         extra = `,(select jsonb_build_object('sku',sku,'name',name) from public.products where id=t.product_id) products`
       const conditions = [],

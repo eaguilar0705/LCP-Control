@@ -6,6 +6,11 @@ import { useServices } from '../../services/useServices'
 import { useQuery } from '../../lib/useQuery'
 import { usePriceTiers } from '../../lib/usePriceTiers'
 import { createIdempotentOperation } from '../../lib/idempotentOperation'
+import {
+  forgetOperationReference,
+  getOperationReferences,
+  rememberOperationReference,
+} from '../../lib/operationRecovery'
 import { can } from '../../lib/permissions'
 import { AppError, errorMessage } from '../../lib/errors'
 import { formatCurrency } from '../../lib/format'
@@ -188,9 +193,27 @@ function PriceListEditor({
     setBusy(true)
     setFailure('')
     const signature = JSON.stringify({ tier, currency, rows })
-    if (priceRequest.current?.signature !== signature)
-      priceRequest.current = { signature, requestId: crypto.randomUUID() }
+    let submittedId: string | null = null
+    let recovering = false
     try {
+      const previous = getOperationReferences(storageScope).find(
+        (reference) => reference.kind === 'price-list-prices',
+      )
+      recovering = !!previous
+      if (
+        previous &&
+        (!priceRequest.current ||
+          previous.requestId !== priceRequest.current.requestId ||
+          signature !== priceRequest.current.signature)
+      )
+        throw new AppError(
+          'validation',
+          'Hay un lote de precios anterior por verificar. Consulta el aviso de recuperación antes de cambiar o registrar otros precios.',
+        )
+      if (priceRequest.current?.signature !== signature)
+        priceRequest.current = { signature, requestId: crypto.randomUUID() }
+      submittedId = priceRequest.current.requestId
+      rememberOperationReference(storageScope, 'price-list-prices', submittedId)
       // Reintentar conserva el UUID: la base recupera el lote confirmado sin
       // depender de que otra persona haya puesto los mismos importes.
       await productService.saveListPrices({
@@ -199,6 +222,7 @@ function PriceListEditor({
         rows,
         requestId: priceRequest.current.requestId,
       })
+      forgetOperationReference(storageScope, 'price-list-prices', submittedId)
       setEdits({})
       priceRequest.current = null
       setMessage(
@@ -207,6 +231,16 @@ function PriceListEditor({
       retry()
       onSaved?.()
     } catch (error) {
+      if (
+        submittedId &&
+        error instanceof AppError &&
+        (error.kind === 'validation' ||
+          (!recovering &&
+            ['unauthorized', 'configuration', 'rate_limited'].includes(
+              error.kind,
+            )))
+      )
+        forgetOperationReference(storageScope, 'price-list-prices', submittedId)
       setFailure(
         error instanceof AppError && error.kind === 'network'
           ? 'No pudimos confirmar el guardado. Reintenta Guardar precios para recuperar el mismo lote.'

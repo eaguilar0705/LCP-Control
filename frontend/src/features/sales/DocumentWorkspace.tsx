@@ -1,4 +1,6 @@
 import { ProductPicker } from './ProductPicker'
+import { SplitPayments } from './SplitPayments'
+import { splitPaymentsValid } from './splitPaymentModel'
 import './document-workbench.css'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -43,6 +45,7 @@ import type {
   InventoryLocation,
   PriceTier,
   NewDocument,
+  InvoicePayment,
 } from '../../lib/domain'
 import {
   equivalentAmount,
@@ -97,6 +100,11 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
       restored?.operation ??
       createIdempotentOperation<Omit<NewDocument, 'requestId'>, DocumentRecord>(
         salesService.createDocument,
+        {
+          scope,
+          key: kind,
+          label: kind === 'invoice' ? 'Factura' : 'Proforma',
+        },
       ),
   )
   const copy = documentCopy[kind]
@@ -157,6 +165,9 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
   const [taxId, setTaxId] = useState(restored?.draft.taxId ?? '')
   const [payment, setPayment] = useState<DocumentDraft['payment']>(
     restored?.draft.payment ?? 'pending',
+  )
+  const [payments, setPayments] = useState<InvoicePayment[]>(
+    restored?.draft.payments ?? [],
   )
   const [location, setLocation] = useState<InventoryLocation>(
     restored?.draft.location ?? 'store',
@@ -241,6 +252,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
     exchangeText,
     tier,
     payment,
+    payments,
     location,
     validUntil,
     notes,
@@ -252,7 +264,8 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
     phone ||
     taxId ||
     notes ||
-    lines.length
+    lines.length ||
+    payments.length
   )
   const dirty =
     !issued &&
@@ -325,6 +338,8 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
       Number.isFinite(exchangeRate) &&
       exchangeRate > 0 &&
       exchangeRate <= 1000000)
+  const paymentRate = currency === 'NIO' ? 1 : (exchangeRate ?? 0)
+  const splitValid = splitPaymentsValid(payments, total, currency, paymentRate)
   /**
    * Motivo por el que una línea no puede facturarse, junto a su cantidad. Las
    * existencias se comprueban al emitir en PostgreSQL, que es la autoridad;
@@ -396,6 +411,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
           exchangeRate: currency === 'NIO' ? 1 : exchangeRate,
           tier,
           payment,
+          payments: payments.length ? payments : undefined,
           location,
           validUntil,
           notes,
@@ -465,6 +481,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
       phone,
       taxId,
       payment,
+      payments: payments.length ? payments : undefined,
       location,
       validUntil,
       notes,
@@ -575,7 +592,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
           total === null ||
           shortages > 0 ||
           dataIssues ||
-          (kind === 'invoice' && !validExchange))) ||
+          (kind === 'invoice' && (!validExchange || !splitValid)))) ||
       busy ||
       issued ||
       demo
@@ -596,7 +613,9 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
       currency,
       exchangeRate: currency === 'NIO' ? 1 : (exchangeRate ?? undefined),
       location: kind === 'invoice' ? location : null,
-      paymentMethod: kind === 'invoice' ? payment : null,
+      paymentMethod:
+        kind === 'invoice' ? (payments[0]?.method ?? payment) : null,
+      ...(kind === 'invoice' && payments.length ? { payments } : {}),
       validUntil: kind === 'proforma' ? validUntil : null,
       notes,
       expectedTotal: total ?? undefined,
@@ -714,6 +733,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
     setPhone(item.phone)
     setTaxId(item.taxId)
     setPayment(item.payment)
+    setPayments(item.payments ?? [])
     setLocation(item.location)
     setValidUntil(item.validUntil || defaultValidUntil())
     setNotes(item.notes)
@@ -750,6 +770,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
             : null,
         tier: item.tier,
         payment: item.payment,
+        payments: item.payments ?? [],
         location: item.location,
         validUntil: item.validUntil || defaultValidUntil(),
         notes: item.notes,
@@ -780,6 +801,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
     setMessage('')
     setFailure('')
     setPayment('pending')
+    setPayments([])
     setLocation('store')
     setSavedSnapshot(null)
     setPendingIssue(null)
@@ -867,6 +889,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
       shortages === 0 &&
       !dataIssues &&
       (kind !== 'invoice' || validExchange) &&
+      (kind !== 'invoice' || splitValid) &&
       (kind !== 'invoice' ||
         !businessDay ||
         (businessDay.status === 'open' &&
@@ -1006,7 +1029,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
                   <span>
                     {customer || 'Cliente por indicar'} ·{' '}
                     {kind === 'invoice'
-                      ? `${paymentOptions[payment]} · ${labels.location[location]}`
+                      ? `${payments.length ? 'Pago dividido' : paymentOptions[payment]} · ${labels.location[location]}`
                       : validUntil
                         ? `Válida hasta ${formatDate(validUntil)}`
                         : 'Vigencia por indicar'}
@@ -1081,19 +1104,45 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
                 />
                 {kind === 'invoice' ? (
                   <>
-                    <Select
-                      label="Forma de pago"
-                      value={payment}
-                      onChange={(e) =>
-                        setPayment(e.target.value as DocumentDraft['payment'])
-                      }
-                    >
-                      {Object.entries(paymentOptions).map(([id, label]) => (
-                        <option value={id} key={id}>
-                          {label}
-                        </option>
-                      ))}
-                    </Select>
+                    {!payments.length && (
+                      <Select
+                        label="Forma de pago"
+                        value={payment}
+                        onChange={(e) =>
+                          setPayment(e.target.value as DocumentDraft['payment'])
+                        }
+                      >
+                        {Object.entries(paymentOptions).map(([id, label]) => (
+                          <option value={id} key={id}>
+                            {label}
+                          </option>
+                        ))}
+                      </Select>
+                    )}
+                    {!payments.length && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() =>
+                          setPayments([
+                            {
+                              method: payment === 'pending' ? 'cash' : payment,
+                              currency,
+                              amount: 0,
+                              exchangeRate: paymentRate || 1,
+                            },
+                            {
+                              method: 'card_pos',
+                              currency,
+                              amount: 0,
+                              exchangeRate: paymentRate || 1,
+                            },
+                          ])
+                        }
+                      >
+                        Dividir pago
+                      </Button>
+                    )}
                     <Select
                       label="Sale de"
                       value={location}
@@ -1118,6 +1167,21 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
                     value={validUntil}
                     onChange={(e) => setValidUntil(e.target.value)}
                   />
+                )}
+                {kind === 'invoice' && !!payments.length && (
+                  <SplitPayments
+                    value={payments}
+                    onChange={setPayments}
+                    total={total}
+                    currency={currency}
+                    rate={paymentRate || 1}
+                  />
+                )}
+                {kind === 'invoice' && !splitValid && (
+                  <p role="alert" className="inline-error">
+                    Revisa los importes, monedas y tipos de cambio: los pagos
+                    deben completar el total.
+                  </p>
                 )}
                 {currency === 'USD' && (
                   <Input
@@ -1207,7 +1271,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
                 <small>
                   {priceTierLabels[tier]} · {currency}
                   {kind === 'invoice'
-                    ? ` · ${paymentOptions[payment]}`
+                    ? ` · ${payments.length ? 'Pago dividido' : paymentOptions[payment]}`
                     : validUntil
                       ? ` · Válida hasta ${formatDate(validUntil)}`
                       : ''}

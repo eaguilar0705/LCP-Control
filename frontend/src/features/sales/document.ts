@@ -41,6 +41,17 @@ export const documentDraftSchema = z.object({
     .optional(),
   tier: z.string().min(1).max(100),
   payment: z.enum(['pending', ...paymentMethods]),
+  payments: z
+    .array(
+      z.object({
+        method: z.enum(paymentMethods),
+        currency: z.enum(['NIO', 'USD']),
+        amount: money,
+        exchangeRate: z.number().finite().positive().max(1000000),
+      }),
+    )
+    .max(10)
+    .optional(),
   location: z.enum(['warehouse', 'store']),
   validUntil: z.string().max(10).default(''),
   notes: z.string().max(1500),
@@ -120,6 +131,7 @@ export function draftPreview(
     location: draft.kind === 'invoice' ? draft.location : null,
     validUntil: draft.kind === 'proforma' ? draft.validUntil || null : null,
     paymentMethod: draft.kind === 'invoice' ? draft.payment : null,
+    payments: draft.kind === 'invoice' ? draft.payments : undefined,
     notes: draft.notes,
     createdAt: draft.createdAt,
     items: draft.lines.map((line) => ({

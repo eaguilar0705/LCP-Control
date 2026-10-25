@@ -201,6 +201,8 @@ export function FinanceMovements({
                             <Badge>Anulado</Badge>
                             <small>{row.voidReason}</small>
                           </>
+                        ) : row.readOnly ? (
+                          'Compensado'
                         ) : (
                           <Button
                             variant="ghost"

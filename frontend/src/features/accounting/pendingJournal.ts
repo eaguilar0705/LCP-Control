@@ -1,4 +1,8 @@
 import type { JournalLine } from './journalModel'
+import {
+  rememberOperationReference,
+  forgetOperationReference,
+} from '../../lib/operationRecovery'
 
 export interface JournalSubmission {
   occurredOn: string
@@ -41,8 +45,14 @@ export function setPendingJournal(
   scope: string,
   input: JournalSubmission | null,
 ) {
-  if (input) pending.set(scope, structuredClone(input))
-  else pending.delete(scope)
+  if (input) {
+    rememberOperationReference(scope, 'journal', input.requestId)
+    pending.set(scope, structuredClone(input))
+  } else {
+    const previous = pending.get(scope)
+    if (previous) forgetOperationReference(scope, 'journal', previous.requestId)
+    pending.delete(scope)
+  }
   revision++
   listeners.forEach((listener) => listener())
 }

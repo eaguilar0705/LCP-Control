@@ -1,5 +1,7 @@
 # Auditoría del flujo de la empresa — 24 de octubre de 2026
 
+**Actualización:** los pendientes de funciones de este informe se trabajan en la [implementación y validación del 25 de octubre](funciones-y-validacion-2026-10-25.md). Este documento conserva los resultados y limitaciones de la versión auditada el día 24.
+
 ## Alcance y criterio de aprobación
 
 La revisión parte de `main`, commit `0bb1ded`, y usa las migraciones reales del repositorio en bases PostgreSQL desechables (PGlite). Chrome recorre los formularios reales contra esas bases. Las cuentas, documentos, productos y fechas simuladas no se envían a la tienda alojada en Supabase.
@@ -54,9 +56,9 @@ Se aplicaron las cuatro migraciones a Supabase y se compararon conteos y huellas
 | Se intenta entrar a un módulo sin permiso                                          | Se deniega también desde PostgreSQL/RLS. Ocultar una pestaña no es la única protección.                                                                                  |
 | Dos administradores editan el mismo usuario o Negocio                              | Se rechaza el formulario obsoleto y se ofrece cargar los datos actuales, pidiendo confirmación antes de descartar lo escrito. No se restauran permisos o datos antiguos. |
 
-## Funciones que todavía necesitan una solución
+## Funciones pendientes detectadas en la auditoría inicial
 
-Estas limitaciones no se consideran aprobadas por el hecho de que las pruebas del flujo habitual pasen.
+Estas limitaciones motivaron la actualización del 25 de octubre. Su implementación y pruebas están en el informe enlazado al inicio; la tabla siguiente conserva el diagnóstico original.
 
 | Prioridad | Falta                                                           | Consecuencia y trabajo necesario                                                                                                                                                                                                                                                                                  |
 | --------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

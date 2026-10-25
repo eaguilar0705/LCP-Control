@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import {
   DoorClosed,
   DoorOpen,
@@ -9,7 +10,13 @@ import {
 import { useAccess } from '../../app/AccessContext'
 import { Button, Card, Dialog, Input } from '../../components/ui'
 import { useQuery } from '../../lib/useQuery'
-import { errorMessage } from '../../lib/errors'
+import { AppError, errorMessage } from '../../lib/errors'
+import {
+  forgetOperationReference,
+  getOperationReferences,
+  rememberOperationReference,
+  type OperationKind,
+} from '../../lib/operationRecovery'
 import { formatCurrency, formatDate } from '../../lib/format'
 import { labels, type PaymentMethod } from '../../lib/domain'
 import {
@@ -44,6 +51,7 @@ export function BusinessDayPanel() {
 }
 
 function DayPanel({ admin }: { admin: boolean }) {
+  const { base } = useAccess()
   const [date, setDate] = useState('')
   const load = useCallback(
     () => dayRpc('get_business_day', { p_day: date || null }),
@@ -208,6 +216,23 @@ function DayPanel({ admin }: { admin: boolean }) {
       )}
       {admin && report && (
         <>
+          {data?.status === 'open' &&
+            (report.expectedNio < 0 || report.expectedUsd < 0) && (
+              <div className="day-notice" role="alert">
+                <strong>El efectivo esperado es negativo.</strong>
+                <p>
+                  Revisa pagos, compras y retiros antes del arqueo. Si entró
+                  dinero a caja, registra su origen real; no cambies el conteo
+                  para ocultar la diferencia.
+                </p>
+                <Link
+                  className="button button-secondary"
+                  to={`${base}/accounting?section=credits`}
+                >
+                  Revisar cobros y pagos
+                </Link>
+              </div>
+            )}
           <div className="day-metrics">
             <div>
               <span>Facturas</span>
@@ -227,6 +252,18 @@ function DayPanel({ admin }: { admin: boolean }) {
             </div>
           </div>
           <div className="day-payment-list">
+            {(report.returnsCount ?? 0) > 0 && (
+              <div>
+                <span>
+                  Notas de crédito: {report.returnsCount} ·{' '}
+                  {report.returnedUnits ?? 0} unidades devueltas
+                </span>
+                <strong>
+                  {formatCurrency(report.returnedNio ?? 0, 'NIO')} devueltos ·
+                  Venta neta {formatCurrency(report.netSalesNio ?? 0, 'NIO')}
+                </strong>
+              </div>
+            )}
             {report.payments.map((p) => (
               <div key={`${p.method}-${p.currency}`}>
                 <span>
@@ -345,6 +382,7 @@ function DayDialog({
   onClose: () => void
   onSaved: () => void
 }) {
+  const { base, storageScope = 'anonymous' } = useAccess()
   const [preview, setPreview] = useState(day)
   const [nio, setNio] = useState('')
   const [usd, setUsd] = useState('')
@@ -429,15 +467,40 @@ function DayDialog({
     )
       return
     const requestId = retrying ? attempt.requestId : crypto.randomUUID()
+    const operationKind: OperationKind = `business-day-${action}`
+    if (
+      getOperationReferences(storageScope).some(
+        (reference) =>
+          reference.kind === operationKind && reference.requestId !== requestId,
+      )
+    ) {
+      setError(
+        'Hay una solicitud anterior de jornada por verificar. Consulta el aviso de recuperación antes de continuar.',
+      )
+      return
+    }
     setAttempt({ key, requestId })
     setBusy(true)
     setError('')
     try {
+      rememberOperationReference(storageScope, operationKind, requestId)
       await dayRpc(`${action}_business_day`, {
         p_input: { ...payload, requestId },
       })
+      forgetOperationReference(storageScope, operationKind, requestId)
       onSaved()
     } catch (e) {
+      if (
+        e instanceof AppError &&
+        !retrying &&
+        [
+          'validation',
+          'unauthorized',
+          'configuration',
+          'rate_limited',
+        ].includes(e.kind)
+      )
+        forgetOperationReference(storageScope, operationKind, requestId)
       setError(errorMessage(e))
       onRefresh()
     } finally {
@@ -463,6 +526,25 @@ function DayDialog({
         <p className="day-dialog-date">
           <strong>{formatDate(preview.day)}</strong>
         </p>
+        {action === 'close' &&
+          preview.report &&
+          (preview.report.expectedNio < 0 ||
+            preview.report.expectedUsd < 0) && (
+            <div className="day-notice" role="alert">
+              <strong>Revisa el efectivo esperado antes de cerrar.</strong>
+              <p>
+                Hay más salidas de caja que fondos registrados. Revisa los
+                movimientos y registra el origen real de cualquier entrada de
+                dinero que falte. El conteo físico debe ser cero o positivo.
+              </p>
+              <Link
+                className="button button-secondary"
+                to={`${base}/accounting?section=credits`}
+              >
+                Revisar cobros y pagos
+              </Link>
+            </div>
+          )}
         {action !== 'reopen' ? (
           <>
             <p>

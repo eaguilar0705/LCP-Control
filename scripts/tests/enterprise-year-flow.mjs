@@ -89,6 +89,7 @@ let invoiceLines = 0
 let purchases = 0
 let bankWithdrawals = 0
 let refunds = 0
+let creditNotes = 0
 let soldUnits = 0
 const rate = 36.6
 // Las entradas llegan en decimales. El modelo usa microunidades enteras para
@@ -110,20 +111,27 @@ const micros = (amount) => scaled(amount, 6)
 const cents = (amount) => Number(scaled(amount, 2)) || 0
 const money = (amount) => cents(amount) / 100
 const six = (amount) => Number(micros(amount)) / 1e6
-const weightedAverage = (average, units, landed, quantity) =>
-  Number(
-    divideHalfUp(
-      micros(average) * BigInt(units) + micros(landed) * BigInt(quantity),
-      BigInt(units + quantity),
-    ),
-  ) / 1e6
-const landedCost = (price, freight, exchangeRate) =>
-  Number(
-    divideHalfUp(
-      (micros(price) + micros(freight)) * micros(exchangeRate),
-      1000000n,
-    ),
-  ) / 1e6
+function receiveValue(product, quantity, valueNio) {
+  product.value += cents(valueNio)
+  product.average =
+    Number(
+      divideHalfUp(
+        BigInt(product.value) * 10000n,
+        BigInt(product.store + product.warehouse + quantity),
+      ),
+    ) / 1e6
+}
+function consumeValue(product, quantity) {
+  const units = product.store + product.warehouse
+  const value =
+    quantity === units
+      ? product.value
+      : Number(
+          divideHalfUp(BigInt(product.value) * BigInt(quantity), BigInt(units)),
+        )
+  product.value -= value
+  return value / 100
+}
 const equal = (actual, expected, message) => {
   assert.equal(actual, expected, message)
   checks++
@@ -200,7 +208,7 @@ const invoice = (
   kind = 'invoice',
 ) => {
   const [method, currency] = paymentMethods[saleIndex % paymentMethods.length]
-  return {
+  const input = {
     requestId: crypto.randomUUID(),
     kind,
     customerId: customerId(saleIndex % 20),
@@ -224,6 +232,25 @@ const invoice = (
       quantity: 1 + ((saleIndex + line) % 2),
     })),
   }
+  if (kind === 'invoice' && saleIndex === 20) {
+    const total = money(
+      input.items.reduce(
+        (sum, item) => sum + item.quantity * itemProduct(item).prices.NIO,
+        0,
+      ),
+    )
+    const cash = money(total / 2)
+    input.payments = [
+      { method: 'cash', currency: 'NIO', amount: cash, exchangeRate: 1 },
+      {
+        method: 'card_pos',
+        currency: 'NIO',
+        amount: money(total - cash),
+        exchangeRate: 1,
+      },
+    ]
+  }
+  return input
 }
 const itemProduct = (item) => products.find((p) => p.id === item.productId)
 function modelSale(input) {
@@ -232,7 +259,7 @@ function modelSale(input) {
     const revenue = money(
       item.quantity * product.prices[input.currency] * input.exchangeRate,
     )
-    const cost = money(item.quantity * product.average)
+    const cost = consumeValue(product, item.quantity)
     product.store -= item.quantity
     assert.ok(product.store >= 0)
     post(
@@ -263,6 +290,11 @@ function modelSale(input) {
     if (input.currency === 'NIO') cashNio = money(cashNio + total)
     else cashUsd = money(cashUsd + total)
   }
+  if (input.payments) {
+    const card = input.payments.find((p) => p.method === 'card_pos').amount
+    post('1142', '1110-001', card)
+    cashNio = money(cashNio - card)
+  }
   invoices++
   invoiceLines += input.items.length
   soldUnits += input.items.reduce((sum, item) => sum + item.quantity, 0)
@@ -283,6 +315,7 @@ function rememberDocument(result, payload, snapshots = null) {
       quantity: item.quantity,
       unitPrice: product.prices[payload.currency],
       average: snapshot?.average ?? null,
+      cost: snapshot?.cost ?? null,
       revenue: snapshot?.revenue ?? null,
     }
   })
@@ -310,7 +343,7 @@ async function verifyDocuments(ids, label) {
   equal(actualDocuments.length, ids.length, label + ': cabeceras completas')
   const actualItems = (
     await db.query(
-      'select i.*,c.unit_cost_nio,c.net_revenue_nio,c.tax_nio,c.exchange_rate cost_rate,c.quantity cost_quantity from public.document_items i left join public.document_item_costs c on c.document_item_id=i.id where i.document_id=any($1::uuid[])',
+      'select i.*,c.unit_cost_nio,c.total_cost_nio,c.net_revenue_nio,c.tax_nio,c.exchange_rate cost_rate,c.quantity cost_quantity from public.document_items i left join public.document_item_costs c on c.document_item_id=i.id where i.document_id=any($1::uuid[])',
       [ids],
     )
   ).rows
@@ -408,6 +441,11 @@ async function verifyDocuments(ids, label) {
       )
       if (expected.kind === 'invoice') {
         equal(
+          cents(Number(item.total_cost_nio)),
+          cents(expectedItem.cost),
+          label + ': costo total reconocido exacto',
+        )
+        equal(
           micros(item.unit_cost_nio),
           micros(expectedItem.average),
           label + ': instantánea de costo',
@@ -460,6 +498,7 @@ async function rejectAtomic(payload, pattern, label) {
 }
 function checkpointState(nextDayIndex) {
   return {
+    modelVersion: 2,
     nextDayIndex,
     days,
     salesPerDay,
@@ -502,6 +541,7 @@ function checkpointState(nextDayIndex) {
     purchases,
     bankWithdrawals,
     refunds,
+    creditNotes,
     soldUnits,
     persistedHeaderChecks,
     persistedItemChecks,
@@ -528,6 +568,11 @@ async function saveCheckpoint(
   console.log(`CHECKPOINT guardado: ${directory}`)
 }
 function restoreCheckpoint(state) {
+  assert.equal(
+    state.modelVersion,
+    2,
+    'Usar checkpoint del modelo de valor exacto, no uno del promedio anterior',
+  )
   assert.ok(
     state.nextDayIndex >= 0 && state.nextDayIndex <= days,
     'El checkpoint debe ser de una jornada completada',
@@ -580,6 +625,7 @@ function restoreCheckpoint(state) {
   purchases = state.purchases
   bankWithdrawals = state.bankWithdrawals ?? 0
   refunds = state.refunds
+  creditNotes = state.creditNotes
   soldUnits = state.soldUnits
   persistedHeaderChecks = state.persistedHeaderChecks
   persistedItemChecks = state.persistedItemChecks
@@ -640,6 +686,29 @@ async function reconcile(dayIndex) {
     'flujo bancario coincide con todos los bancos',
   )
   const current = (await get('select public.get_business_day(null) r')).r
+  const digest = (
+    await get('select public.report_digest($1,$2) r', [startDate, date])
+  ).r
+  equal(
+    cents(digest.ledger.revenueNio),
+    -(accounts.get('4110') ?? 0),
+    'reporte de ventas netas concilia NC y mayor',
+  )
+  equal(
+    cents(digest.ledger.costOfSalesNio),
+    accounts.get('5120') ?? 0,
+    'costo del reporte coincide con costos reconocidos y NC',
+  )
+  equal(
+    cents(digest.ledger.inventoryWriteOffNio),
+    accounts.get('5150') ?? 0,
+    'merma del reporte coincide con mayor',
+  )
+  equal(
+    digest.ledger.soldUnits,
+    soldUnits,
+    'unidades netas del reporte incluyen NC',
+  )
   equal(
     cents(current.report.expectedNio),
     cents(cashNio),
@@ -655,7 +724,32 @@ async function reconcile(dayIndex) {
       'select b.product_id,b.location,b.quantity,c.average_cost_nio from public.inventory_balances b join public.product_costs c on c.product_id=b.product_id',
     )
   ).rows
+  await db.exec('reset role')
+  const recognized = (
+    await db.query(
+      'select product_id,quantity,value_nio from private.inventory_value_balances',
+    )
+  ).rows
+  await identity(db, admin)
+  equal(
+    products.reduce((sum, p) => sum + p.value, 0),
+    accounts.get('1130'),
+    'valor físico reconocido del modelo coincide al centavo con el mayor',
+  )
   for (const product of products) {
+    const value = recognized.find((v) => v.product_id === product.id)
+    if (value) {
+      equal(
+        value.quantity,
+        product.store + product.warehouse,
+        'unidades reconocidas del producto',
+      )
+      equal(
+        cents(value.value_nio),
+        product.value,
+        'valor reconocido exacto del producto',
+      )
+    }
     for (const location of ['store', 'warehouse']) {
       const actual = inventory.find(
         (row) => row.product_id === product.id && row.location === location,
@@ -729,6 +823,7 @@ try {
         store: 40,
         warehouse: 10,
         average: 100 + index,
+        value: (100 + index) * 50 * 100,
         prices: { NIO: 500 + index * 10, USD: money(20 + index / 5) },
         name: `Perfume ${index + 1}`,
       }
@@ -878,6 +973,9 @@ try {
         exchangeRate,
         shippingAmount,
         account,
+        ...(account === 'banco'
+          ? { bankLedgerAccount: currency === 'USD' ? '1120-002' : '1120-001' }
+          : {}),
         lines,
       }
       const id = await call('record_shipment', payload)
@@ -892,27 +990,35 @@ try {
         account === 'credito'
           ? '2111'
           : account === 'banco'
-            ? '1120-000'
+            ? currency === 'USD'
+              ? '1120-002'
+              : '1120-001'
             : '1110-001',
         amountNio,
       )
       if (account === 'credito')
         payables.push({ shipmentId: id, documentId: null, balance: amountNio })
       if (account === 'caja') cashNio = money(cashNio - goods - shippingAmount)
-      for (const line of lines) {
+      let allocated = 0
+      const orderedLines = [...lines].sort((a, b) =>
+        a.productId.localeCompare(b.productId),
+      )
+      for (const [lineIndex, line] of orderedLines.entries()) {
         const product = itemProduct(line)
-        const units = product.store + product.warehouse
         const shippingPerUnit = six(
           shippingAmount /
             lines.reduce((sum, entry) => sum + entry.quantity, 0),
         )
-        const landed = landedCost(line.unitPrice, shippingPerUnit, exchangeRate)
-        product.average = weightedAverage(
-          product.average,
-          units,
-          landed,
-          line.quantity,
-        )
+        const value =
+          lineIndex === orderedLines.length - 1
+            ? money(amountNio - allocated)
+            : money(
+                (money(line.quantity * line.unitPrice) +
+                  six(shippingPerUnit * line.quantity)) *
+                  exchangeRate,
+              )
+        allocated = money(allocated + value)
+        receiveValue(product, line.quantity, value)
         product[line.location] += line.quantity
       }
       purchases++
@@ -976,12 +1082,10 @@ try {
       payables.push({ shipmentId: id, documentId: null, balance: goods })
       for (const line of restock.lines) {
         const product = itemProduct(line)
-        const units = product.store + product.warehouse
-        product.average = weightedAverage(
-          product.average,
-          units,
-          line.unitPrice,
+        receiveValue(
+          product,
           line.quantity,
+          money(line.unitPrice * line.quantity),
         )
         product.store += line.quantity
       }
@@ -1189,6 +1293,7 @@ try {
       'Revisión aislada de devolución',
     ])
     for (const snapshot of refund.snapshots) {
+      receiveValue(snapshot.product, snapshot.quantity, snapshot.cost)
       snapshot.product.store += snapshot.quantity
       post('1110-001', '4110', -snapshot.revenue)
       post('5120', '1130', -snapshot.cost)
@@ -1218,17 +1323,56 @@ try {
           currency === document.payload.currency,
       )[2]
       for (const snapshot of document.snapshots) {
-        expectedLine(expectedSales, account, snapshot.revenue, 0)
+        if (!document.payload.payments)
+          expectedLine(expectedSales, account, snapshot.revenue, 0)
         expectedLine(expectedSales, '4110', 0, snapshot.revenue)
         expectedLine(expectedCosts, '5120', snapshot.cost, 0)
         expectedLine(expectedCosts, '1130', 0, snapshot.cost)
       }
+      if (document.payload.payments)
+        for (const payment of document.payload.payments)
+          expectedLine(
+            expectedSales,
+            payment.method === 'cash' ? '1110-001' : '1142',
+            payment.amount,
+            0,
+          )
     }
     automaticReports.push({
       date,
       sales: expectedSales,
       sales_cost: expectedCosts,
     })
+    const returned = dayInvoices[10]
+    const snapshot = returned.snapshots[1]
+    const returnItem = returned.items.find(
+      (item) => item.product_id === snapshot.product.id,
+    )
+    const returnInput = {
+      requestId: crypto.randomUUID(),
+      documentId: returned.id,
+      reason: 'Devolución parcial verificada en la jornada',
+      refundMethod: 'cash',
+      items: [{ itemId: returnItem.id, quantity: 1, restock: true }],
+    }
+    const creditNote = await call('record_sales_return', returnInput)
+    equal(
+      (await call('record_sales_return', returnInput)).id,
+      creditNote.id,
+      'NC idempotente después de respuesta perdida',
+    )
+    const returnedCost =
+      Number(
+        divideHalfUp(BigInt(cents(snapshot.cost)), BigInt(snapshot.quantity)),
+      ) / 100
+    const returnedRevenue = snapshot.revenue / snapshot.quantity
+    receiveValue(snapshot.product, 1, returnedCost)
+    snapshot.product.store++
+    post('4110', '1110-001', returnedRevenue)
+    post('1130', '5120', returnedCost)
+    cashNio = money(cashNio - returnedRevenue)
+    soldUnits--
+    creditNotes++
     const clientDebt = receivables[dayIndex]
     const collected = money(clientDebt.balance / 2)
     const bank = dayIndex % 2 === 0 ? '1120-003' : '1120-005'
@@ -1370,11 +1514,29 @@ try {
         quantity: type === 'ADJUSTMENT' ? product.warehouse + 1 : 1,
         note: 'Prueba aislada de merma o conteo',
       })
+      const value =
+        change < 0 ? consumeValue(product, 1) : money(product.average)
+      if (change > 0) receiveValue(product, 1, value)
       product.warehouse += change
-      post(debit, credit, money(product.average))
+      post(debit, credit, value)
     }
     await identity(db, admin)
     const beforeClose = await reconcile(dayIndex)
+    equal(
+      beforeClose.report.returnsCount,
+      1,
+      'una NC parcial en el reporte diario',
+    )
+    equal(
+      beforeClose.report.returnedUnits,
+      1,
+      'unidad devuelta en el reporte diario',
+    )
+    equal(
+      cents(beforeClose.report.returnedNio),
+      cents(returnedRevenue),
+      'importe de NC diario exacto',
+    )
     monthlyModels.get(month).to = date
     monthlyModels.get(month).closing = new Map(accounts)
     equal(
@@ -1498,6 +1660,10 @@ try {
     console.log(
       `PASS jornada ${dayIndex + 1}/${days}: ${salesPerDay} facturas, ${Math.ceil(salesPerDay / 10)} proformas, ${purchases - purchasesBefore} compras, 1 devolución; inventario, auxiliares, caja y mayor conciliados`,
     )
+    if ((dayIndex + 1) % 15 === 0) {
+      await db.exec('reset role; analyze')
+      await identity(db, admin)
+    }
     if ((dayIndex + 1) % checkpointEvery === 0 || dayIndex + 1 === days)
       await saveCheckpoint(dayIndex + 1)
   }
@@ -1744,15 +1910,21 @@ try {
   console.log('POSTFLIGHT: conteos definitivos y exportar resultado')
   await db.exec('reset role')
   const counts = await get(
-    "select (select count(*)::int from public.documents where kind='invoice') invoices,(select count(*)::int from public.documents where kind='proforma') proformas,(select count(*)::int from public.document_items i join public.documents d on d.id=i.document_id where d.kind='invoice') invoice_lines,(select count(*)::int from public.purchase_shipments) purchases,(select count(*)::int from public.business_days where closed_at is not null) closed_days",
+    "select (select count(*)::int from public.documents where kind='invoice') invoices,(select count(*)::int from public.documents where kind='proforma') proformas,(select count(*)::int from public.document_items i join public.documents d on d.id=i.document_id where d.kind='invoice') invoice_lines,(select count(*)::int from public.purchase_shipments) purchases,(select count(*)::int from public.business_days where closed_at is not null) closed_days,(select count(*)::int from public.sales_returns) credit_notes,(select count(distinct document_id)::int from public.invoice_payments) split_invoices",
   )
   equal(counts.invoices, invoices, 'número final de facturas sin duplicados')
   equal(counts.proformas, proformas, 'número final de proformas')
   equal(counts.invoice_lines, invoiceLines, 'renglones finales')
   equal(counts.purchases, purchases, 'número final de compras')
   equal(counts.closed_days, days, 'todas las jornadas cerradas')
+  equal(
+    counts.credit_notes,
+    creditNotes,
+    'NC conservadas completas sin duplicados',
+  )
   const result = {
     isolated: true,
+    modelVersion: 2,
     productionDataTouched: false,
     salesPerDay,
     persistedHeaderChecks,
@@ -1766,6 +1938,8 @@ try {
     createdInvoices: invoices + refunds,
     activeInvoices: invoices,
     refunds,
+    creditNotes,
+    splitInvoices: counts.split_invoices,
     catalogEdits,
     staleWritesRejected,
     reopenings,
@@ -1784,6 +1958,8 @@ try {
       cashNio,
       cashUsd,
       inventoryNio: finalAccount('1130'),
+      recognizedInventoryNio:
+        products.reduce((sum, product) => sum + product.value, 0) / 100,
       revenueNio: -finalAccount('4110'),
       costOfSalesNio: finalAccount('5120'),
       writeOffNio: finalAccount('5150'),

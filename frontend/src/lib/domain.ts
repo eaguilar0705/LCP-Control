@@ -25,6 +25,7 @@ export type {
   DocumentKind,
   DocumentItemRecord,
   DocumentRecord,
+  InvoicePayment,
   NewDocumentItem,
   NewDocument,
   MovementRequest,

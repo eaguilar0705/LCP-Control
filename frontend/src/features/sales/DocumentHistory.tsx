@@ -29,6 +29,7 @@ import { errorMessage } from '../../lib/errors'
 import { documentCopy } from '../../lib/domain'
 import type { DocumentKind, DocumentRecord } from '../../lib/domain'
 import { DocumentPrint } from './DocumentPrint'
+import { SalesReturnDialog } from './SalesReturnDialog'
 import { downloadDocumentPdf, downloadPeriodPdf } from './pdf'
 import { matchesSearch } from '../../lib/search'
 import { adjustRange, type ReportRange } from '../reports/model'
@@ -43,7 +44,7 @@ const counts = new Intl.NumberFormat('es-NI')
 
 export function DocumentHistory({ kind }: { kind: DocumentKind }) {
   const { salesService } = useServices()
-  const { base, demo, role } = useAccess()
+  const { base, demo, role, storageScope } = useAccess()
   const { singular, plural } = documentCopy[kind]
   const noun = (n: number) =>
     `${counts.format(n)} ${n === 1 ? singular : plural}`
@@ -82,6 +83,7 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
   const [failure, setFailure] = useState('')
   const [downloading, setDownloading] = useState(false)
   const [removing, setRemoving] = useState<DocumentRecord | null>(null)
+  const [returning, setReturning] = useState<DocumentRecord | null>(null)
   const [reason, setReason] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [removeError, setRemoveError] = useState('')
@@ -315,6 +317,15 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
               {removable && (
                 <Button
                   type="button"
+                  variant="secondary"
+                  onClick={() => setReturning(d)}
+                >
+                  Devolución / nota de crédito
+                </Button>
+              )}
+              {removable && (
+                <Button
+                  type="button"
                   variant="ghost"
                   className="record-delete"
                   aria-label={`Eliminar factura ${d.number}`}
@@ -384,6 +395,15 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
             {removable && (
               <Button
                 type="button"
+                variant="secondary"
+                onClick={() => setReturning(selected)}
+              >
+                Devolución / nota de crédito
+              </Button>
+            )}
+            {removable && (
+              <Button
+                type="button"
                 variant="ghost"
                 className="record-delete"
                 onClick={() => askRemove(selected)}
@@ -402,6 +422,20 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
           </div>
         )}
         {failure && <ErrorState message={failure} />}
+        {returning && (
+          <SalesReturnDialog
+            document={returning}
+            scope={storageScope ?? 'anonymous'}
+            onClose={() => setReturning(null)}
+            onSaved={(number) => {
+              setReturning(null)
+              setNotice(
+                `${number} registrada. La factura original y sus cobros se conservan.`,
+              )
+              retry()
+            }}
+          />
+        )}
         <ConfirmDialog
           open={!!removing}
           title="Eliminar factura"

@@ -184,6 +184,14 @@
   gap: 0.6rem;
   min-width: 0;
 }
+.pending-operation-row > div {
+  min-width: 0;
+  max-width: 100%;
+}
+.pending-operation-row small {
+  display: block;
+  overflow-wrap: anywhere;
+}
 .example-paper {
   overflow-x: auto;
   padding: 18px;

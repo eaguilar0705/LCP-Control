@@ -24,9 +24,31 @@ const { buildWorkbook } = await server.ssrLoadModule('/src/lib/xlsx.ts')
 const { localDay } = await server.ssrLoadModule(
   '/src/features/reports/model.ts',
 )
+const { accountingSummary, inventoryTurnover } = await server.ssrLoadModule(
+  '/src/features/reports/accounting.ts',
+)
 
 const range = { from: '2026-10-01', to: '2026-10-31' }
 const accounts = ['caja', 'banco', 'cobrar', 'prestamos', 'proveedores']
+
+test('el valor y la rotación usan centavos reconocidos; una lectura de cantidades obsoleta no inventa valorización', () => {
+  const source = report()
+  source.inventory[0].quantities = { store: 3, warehouse: 0 }
+  source.accounting.costs[0] = {
+    productId: 'perfume',
+    averageCostNio: 1033.333333,
+    updatedAt: range.to,
+    inventoryValueNio: 3100.01,
+    inventoryQuantity: 3,
+  }
+  let summary = accountingSummary(source, range)
+  assert.equal(summary.inventoryCostNio, 3100.01)
+  assert.equal(summary.unvaluedProducts, 0)
+  source.inventory[0].quantities.store = 2
+  summary = accountingSummary(source, range)
+  assert.equal(summary.unvaluedProducts, 1)
+  assert.equal(inventoryTurnover(summary, range).turnoverPerYear, null)
+})
 const emptySales = () => ({
   current: { revenue: 0, count: 0, units: 0, customers: 0 },
   previous: { revenue: 0, count: 0, units: 0, customers: 0 },

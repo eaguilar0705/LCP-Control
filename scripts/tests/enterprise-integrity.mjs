@@ -72,6 +72,15 @@ const snapshotTables = [
   'private.document_counters',
   'private.document_deletions',
   'private.business_day_events',
+  'private.inventory_value_balances',
+  'private.inventory_value_reconciliations',
+  'private.purchase_before_states',
+  'private.purchase_product_revisions',
+  'private.purchase_correction_refunds',
+  'public.purchase_corrections',
+  'public.sales_returns',
+  'public.sales_return_lines',
+  'public.invoice_payments',
 ]
 async function snapshot() {
   return (
@@ -563,7 +572,7 @@ try {
           Math.round((unit + Math.round((100 / 15) * 1e6) / 1e6) * 1e6) / 1e6
         const expected =
           Math.round(
-            ((products[index].cost * 280 + landed * quantity) /
+            ((products[index].cost * 280 + money(landed * quantity)) /
               (280 + quantity)) *
               1e6,
           ) / 1e6
@@ -653,16 +662,42 @@ try {
           ]),
         /abonos/,
       )
+      const returnDetail = (
+        await query('select public.invoice_return_detail($1) r', [document.id])
+      )[0].r
+      const returned = await call('record_sales_return', {
+        requestId: crypto.randomUUID(),
+        documentId: document.id,
+        reason: 'Corrección del cliente conservando el abono anulado',
+        refundMethod: 'cash',
+        items: [
+          {
+            itemId: returnDetail.items[0].id,
+            quantity: returnDetail.items[0].quantity,
+            restock: true,
+          },
+        ],
+      })
+      eq(returned.creditReductionNio, 200)
+      eq(returned.refundNio, 0)
+      eq(
+        (
+          await query(
+            'select count(*)::int n from public.finance_entries where id=$1 and voided_at is not null',
+            [paymentId],
+          )
+        )[0].n,
+        1,
+        'El abono anulado permanece en el historial',
+      )
       findings.push({
         severity: 'medium',
-        status: 'open',
+        status: 'fixed',
         key: 'credit_correction_after_voided_collection',
         reproduction:
           'Factura a crédito; cobro equivocado; anular el cobro; intentar corregir/anular factura.',
-        actual:
-          'Se conserva el documento porque mantiene el vínculo con el abono anulado. No existe nota de crédito ni corrección vinculada para el usuario.',
-        proposed:
-          'Incorporar corrección o nota de crédito auditada, sin borrar abonos ni reescribir cierres.',
+        resolution:
+          'La nota de crédito vinculada reduce la deuda y devuelve existencias conservando la factura y los abonos anulados.',
       })
       const cleanInput = invoice({ customerPhone: '88880002' }, 1)
       const clean = await call('create_document', cleanInput)
@@ -691,7 +726,7 @@ try {
       eq(await snapshot(), after)
       report = await checkLedger()
       eq(credit(report, '4110'), 200)
-      eq(report.accounts.find((a) => a.code === '1140').closing, 200)
+      eq(report.accounts.find((a) => a.code === '1140').closing, 0)
     },
   )
 
@@ -1155,7 +1190,7 @@ try {
   )
 
   await scenario(
-    'Una compra equivocada no puede deshacerse mediante un simple ajuste de inventario',
+    'Una compra equivocada se reemplaza con historial y sin registrar una pérdida ficticia',
     async () => {
       const product = products[0]
       const id = await call(
@@ -1189,36 +1224,50 @@ try {
             "select count(*)::int n from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname in ('void_purchase','void_shipment','cancel_shipment','update_shipment','delete_shipment','reverse_shipment','correct_purchase')",
           )
         )[0].n,
-        0,
+        1,
       )
       const report = await checkLedger()
       eq(credit(report, '2111'), 15100)
-      const cost = Number(
-        (
-          await query(
-            'select average_cost_nio from public.product_costs where product_id=$1',
-            [product.id],
-          )
-        )[0].average_cost_nio,
-      )
-      await call('record_inventory_movement', {
+      const correctedInput = {
         requestId: crypto.randomUUID(),
-        productId: product.id,
-        location: 'store',
-        type: 'ADJUSTMENT',
-        quantity: 210,
-        note: 'Intento de corregir cien unidades cuando debían ser diez',
-      })
+        shipmentId: id,
+        reason: 'Se registraron cien unidades, pero llegaron diez',
+        refundConfirmed: false,
+        replacement: shipment({
+          lines: [
+            {
+              productId: product.id,
+              location: 'store',
+              quantity: 10,
+              unitPrice: 150,
+            },
+          ],
+        }),
+      }
+      const correction = await call('correct_purchase', correctedInput)
+      eq(
+        await call('correct_purchase', correctedInput),
+        correction,
+        'Reintento recupera el mismo reemplazo',
+      )
+      ok(correction.replacementId, 'Nueva compra vinculada')
       const after = await checkLedger()
       eq(
-        credit(after, '2111'),
-        15100,
-        'El ajuste de unidades no revierte la deuda de compra equivocada',
+        after.accounts.find((a) => a.code === '2111').closing,
+        -1600,
+        'La deuda conserva únicamente diez unidades y el envío',
       )
+      eq(debit(after, '5150'), 0, 'Una corrección no se registra como merma')
       eq(
-        debit(after, '5150'),
-        money(90 * cost),
-        'El ajuste se registra como pérdida, no corrección de la compra',
+        Number(
+          (
+            await query(
+              "select quantity from public.inventory_balances where product_id=$1 and location='store'",
+              [product.id],
+            )
+          )[0].quantity,
+        ),
+        210,
       )
       eq(
         (
@@ -1230,14 +1279,12 @@ try {
       )
       findings.push({
         severity: 'high',
-        status: 'open',
+        status: 'fixed',
         key: 'purchase_correction_unavailable',
         reproduction:
           'Registrar 100 unidades cuando llegaron 10; intentar corregir compra o usar Ajuste para restar 90.',
-        actual:
-          'No hay edición/anulación de compras. El ajuste sólo reduce inventario y registra pérdida; la deuda, compra y costo promedio originales permanecen.',
-        proposed:
-          'Agregar reversión/corrección auditada de compras con restricciones para ventas, pagos y jornadas cerradas posteriores. No corregir sólo unidades ni borrar la compra.',
+        resolution:
+          'La corrección anula y reemplaza dentro de una transacción, conserva la compra original y revierte cantidades, deuda y costo sin simular una pérdida.',
       })
     },
   )

@@ -195,6 +195,7 @@ export const paymentLabels: Record<string, string> = {
   bank_transfer: 'Transferencia',
   ...bankTransferLabels,
   pending: 'Pendiente de pago',
+  credit_note: 'Notas de crédito',
 }
 export function paymentBreakdown(
   documents: ReportDocument[],
@@ -449,7 +450,7 @@ export function coverageFromSold(
   for (const item of inventory) {
     const units = sold.get(item.product.id)
     const stock = totalStock(item)
-    if (!units || stock === null) continue
+    if (!units || units <= 0 || stock === null) continue
     const perDay = units / days
     rows.push({
       productId: item.product.id,

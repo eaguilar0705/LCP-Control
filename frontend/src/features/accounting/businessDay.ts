@@ -2,6 +2,10 @@ import { supabase } from '../../lib/supabase'
 import { AppError } from '../../lib/errors'
 
 export interface DailyReport {
+  returnsCount?: number
+  returnedUnits?: number
+  returnedNio?: number
+  netSalesNio?: number
   invoices: number
   units: number
   products: { product_id: string; description: string; units: number }[]
@@ -59,21 +63,33 @@ async function callDayRpc(name: string, args: Record<string, unknown>) {
       'configuration',
       'La conexión con la tienda no está disponible.',
     )
-  const { data, error } = await supabase.rpc(name, args)
+  const { data, error, status } = await supabase.rpc(name, args)
   if (error) {
     if (
       !navigator.onLine ||
+      status === 0 ||
+      status >= 500 ||
       /failed to fetch|network|load failed|timeout/i.test(error.message)
     )
       throw new AppError(
         'network',
         'No pudimos confirmar la operación. Revisa tu conexión y reintenta sin cambiar los datos.',
       )
+    if (error.code === '42501' || status === 401 || status === 403)
+      throw new AppError(
+        'unauthorized',
+        'No tienes permiso para esta operación.',
+      )
+    if (error.code === 'LCP429' || status === 429)
+      throw new AppError(
+        'rate_limited',
+        'Demasiadas operaciones seguidas. Espera un momento y vuelve a verificar.',
+      )
     throw new AppError(
       'validation',
-      error.code === '42501'
-        ? 'No tienes permiso para esta operación.'
-        : error.message,
+      error.code === 'P0001' && error.message.trim().length <= 300
+        ? error.message.trim()
+        : 'No pudimos completar la operación de jornada. Revisa los datos e inténtalo de nuevo.',
     )
   }
   return data

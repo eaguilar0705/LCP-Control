@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { FileSpreadsheet } from 'lucide-react'
 import {
   Button,
@@ -18,6 +19,7 @@ import { journalModel } from './journalModel'
 import { JournalWorkspace, AccountEditor } from './JournalWorkspace'
 import { emptyLedger } from './finance'
 import { CreditWorkspace } from './CreditWorkspace'
+import { InventoryValuation } from './InventoryValuation'
 import '../../styles/accounting.css'
 import '../../styles/business-day.css'
 
@@ -28,7 +30,13 @@ const views = {
 }
 export function AccountingPage() {
   const { salesService } = useServices()
-  const [view, setView] = useState<keyof typeof views>('journal')
+  const [params] = useSearchParams()
+  const [view, setView] = useState<keyof typeof views>(() => {
+    const section = params.get('section')
+    return section && section in views
+      ? (section as keyof typeof views)
+      : 'journal'
+  })
   const [range, setRange] = useState(() => {
     const today = localDay(new Date())
     return { from: today.slice(0, 7) + '-01', to: today }
@@ -66,6 +74,7 @@ export function AccountingPage() {
     <>
       <div className="page-heading">
         <h1>Contabilidad</h1>
+        <InventoryValuation onChanged={refresh} />
       </div>
       <nav
         className="accounting-tabs accounting-tabs-standalone"

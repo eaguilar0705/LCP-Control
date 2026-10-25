@@ -96,6 +96,21 @@ const documents = [
     notes: longNotes,
     file: 'factura-notas-largas.pdf',
   },
+  {
+    ...common,
+    kind: 'invoice',
+    number: 'FAC-900004',
+    file: 'factura-100-productos-10-pagos.pdf',
+    payments: Array.from({ length: 10 }, (_, index) => ({
+      method: index % 2 ? 'bac_nio' : 'cash',
+      currency: 'NIO',
+      exchangeRate: 1,
+      amount:
+        index === 9
+          ? Math.round((total - (9 * Math.floor(total * 10)) / 100) * 100) / 100
+          : Math.floor(total * 10) / 100,
+    })),
+  },
 ]
 const browser = await chromium.launch({ channel: 'chrome', headless: true })
 const page = await browser.newPage()
@@ -169,6 +184,10 @@ for document in data['documents']:
         total=f"{document['total']:,.2f}"
         if total not in normalized:issues.append({'type':'total-missing','total':total})
         if 'TOTAL NIO' not in normalized:issues.append({'type':'total-label-missing'})
+        if document.get('payments'):
+            if 'Pago dividido' not in normalized:issues.append({'type':'split-payments-label-missing'})
+            for payment in document['payments']:
+                if f"{payment['amount']:,.2f}" not in normalized:issues.append({'type':'payment-amount-missing','amount':payment['amount']})
         if document['kind']=='invoice':
             for marker in ['Por favor, revise su producto antes de retirarse de la tienda.',
                 'En caso de presentar un posible defecto de fabricación,',

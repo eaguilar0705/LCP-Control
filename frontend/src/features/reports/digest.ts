@@ -345,7 +345,8 @@ function ordered<K extends string>(
 export function reportView(report: ReportData) {
   const { range, sales, inventory, movements } = report
   const currencies = (['NIO', 'USD'] as Currency[]).filter(
-    (code) => sales[code].current.count > 0,
+    (code) =>
+      sales[code].current.count > 0 || sales[code].current.revenue !== 0,
   )
   const first = currencies[0] ?? 'NIO'
   const soldAnywhere = new Set(

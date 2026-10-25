@@ -69,7 +69,11 @@ test('an incomplete sales aggregate is rejected instead of inventing zero sales'
         )
         return query
       },
-      rpc: async () => ({ data: sales, error: null }),
+      rpc: async (name) => ({
+        data:
+          name === 'purchase_report_events' ? { rows: [], count: 0 } : sales,
+        error: null,
+      }),
     }
     const adapter = createAccountingAdapter(
       () => client,

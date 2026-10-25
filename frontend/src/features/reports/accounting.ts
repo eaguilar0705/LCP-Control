@@ -268,7 +268,8 @@ function ledgerPeriod(source: ReportSource, range: ReportRange): LedgerPeriod {
       result.soldUnits += item.quantity
       product.quantity += item.quantity
       if (costKnown) {
-        const cost = roundMoney(row.unitCostNio! * item.quantity)
+        const cost =
+          row.totalCostNio ?? roundMoney(row.unitCostNio! * item.quantity)
         result.costOfSalesNio += cost
         product.costNio += cost
         tier.costNio += cost
@@ -290,7 +291,8 @@ function ledgerPeriod(source: ReportSource, range: ReportRange): LedgerPeriod {
   for (const row of accounting.movementCosts ?? []) {
     if (!datedInRange(localDay(row.createdAt), range)) continue
     if (known(row.unitCostNio))
-      result.inventoryWriteOffNio += roundMoney(row.quantity * row.unitCostNio)
+      result.inventoryWriteOffNio +=
+        row.totalCostNio ?? roundMoney(row.quantity * row.unitCostNio)
     else result.missingWriteOffUnits += row.quantity
   }
   const costedMovements = new Set(
@@ -416,10 +418,10 @@ function composeAccounting(
     expenseByAccount: [],
   }
   for (const row of shipmentsInRange(input, range)) {
-    result.purchaseGoodsNio += roundMoney(row.goodsAmount * row.exchangeRate)
-    result.purchaseShippingNio += roundMoney(
-      row.shippingAmount * row.exchangeRate,
-    )
+    result.purchaseGoodsNio +=
+      row.goodsNio ?? roundMoney(row.goodsAmount * row.exchangeRate)
+    result.purchaseShippingNio +=
+      row.shippingNio ?? roundMoney(row.shippingAmount * row.exchangeRate)
     result.purchasedUnits += row.units
   }
   const groups = new Map<ExpenseCategory, number>()
@@ -439,14 +441,19 @@ function composeAccounting(
     accounts.set(account, (accounts.get(account) ?? 0) + amount)
   }
   const costByProduct = new Map(
-    accounting.costs.map((row) => [row.productId, row.averageCostNio]),
+    accounting.costs.map((row) => [row.productId, row]),
   )
   for (const item of input.inventory) {
     const stock = totalStock(item)
     const cost = costByProduct.get(item.product.id)
     if (stock === 0) continue
-    if (stock === null || !known(cost)) result.unvaluedProducts++
-    else result.inventoryCostNio += roundMoney(stock * cost)
+    if (stock === null || !known(cost?.averageCostNio))
+      result.unvaluedProducts++
+    else if (cost?.inventoryQuantity !== undefined) {
+      if (cost.inventoryQuantity !== stock || !known(cost.inventoryValueNio))
+        result.unvaluedProducts++
+      else result.inventoryCostNio += cost.inventoryValueNio
+    } else result.inventoryCostNio += roundMoney(stock * cost.averageCostNio)
   }
   const reliable =
     accounting.available && !input.truncated && !accounting.truncated
@@ -566,7 +573,8 @@ export function belowCostSales(
     for (const item of document.items) {
       const row = snapshot(document.id, item.productId, item.quantity)
       if (!row || !known(row.unitCostNio) || !known(row.netRevenueNio)) continue
-      const costNio = roundMoney(row.unitCostNio * item.quantity)
+      const costNio =
+        row.totalCostNio ?? roundMoney(row.unitCostNio * item.quantity)
       if (costNio <= row.netRevenueNio) continue
       rows.push({
         documentId: document.id,

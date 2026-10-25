@@ -20,6 +20,13 @@ import { shipmentPayments, type ShipmentPayment } from '../accounting/finance'
 import { localDay } from '../reports/model'
 import { PaymentDateConfirmation } from '../accounting/PaymentDateConfirmation'
 import {
+  correctPurchase,
+  purchaseBanks,
+  purchaseConfirmation,
+  type PurchasePaymentTreatment,
+  type PurchaseHistoryRecord,
+} from './purchaseService'
+import {
   hasDecimals,
   previewPurchase,
   typed,
@@ -57,6 +64,7 @@ export function PurchaseDialog({
   initialLocation = 'warehouse',
   initialQuantity,
   initialNote = '',
+  correcting,
   onClose,
   onRecorded,
 }: {
@@ -67,34 +75,89 @@ export function PurchaseDialog({
   initialLocation?: InventoryLocation
   initialQuantity?: number
   initialNote?: string
+  correcting?: PurchaseHistoryRecord
   onClose: () => void
   onRecorded: (message: string) => void
 }) {
   const { accountingService } = useServices()
   const { storageScope } = useAccess()
   const [operation] = useState(() =>
-    createIdempotentOperation<Omit<ShipmentInput, 'requestId'>, unknown>(
-      accountingService.recordShipment,
-      { scope: storageScope ?? 'anonymous', key: 'purchase', label: 'Compra' },
+    createIdempotentOperation<
+      Omit<ShipmentInput, 'requestId'> & {
+        correctionReason?: string
+        refundConfirmed?: boolean
+        paymentTreatment?: PurchasePaymentTreatment
+      },
+      unknown
+    >(
+      ({
+        correctionReason,
+        refundConfirmed,
+        paymentTreatment,
+        requestId,
+        ...purchase
+      }) =>
+        correcting
+          ? correctPurchase({
+              requestId,
+              shipmentId: correcting.id,
+              reason: correctionReason ?? '',
+              refundConfirmed: refundConfirmed ?? false,
+              paymentTreatment,
+              replacement: purchase,
+            })
+          : accountingService.recordShipment({ ...purchase, requestId }),
+      {
+        scope: storageScope ?? 'anonymous',
+        key: correcting ? 'purchase-correction' : 'purchase',
+        label: correcting ? 'Corrección de compra' : 'Compra',
+      },
     ),
   )
   const [incurredOn, setIncurredOn] = useState(localDay(new Date()))
-  const [supplier, setSupplier] = useState('')
-  const [reference, setReference] = useState('')
-  const [payment, setPayment] = useState<ShipmentPayment>('caja')
-  const [currency, setCurrency] = useState<Currency>('NIO')
-  const [rateText, setRateText] = useState(
-    catalogRate ? String(catalogRate) : '',
+  const [supplier, setSupplier] = useState(correcting?.supplier ?? '')
+  const [reference, setReference] = useState(correcting?.reference ?? '')
+  const [payment, setPayment] = useState<ShipmentPayment>(
+    correcting?.account ?? 'caja',
   )
-  const [shipping, setShipping] = useState('0')
-  const [note, setNote] = useState(initialNote)
-  const [lines, setLines] = useState<PurchaseLineDraft[]>([
-    {
-      ...blankLine(initialProduct),
-      location: initialLocation,
-      quantity: initialQuantity === undefined ? '' : String(initialQuantity),
-    },
-  ])
+  const [currency, setCurrency] = useState<Currency>(
+    correcting?.currency ?? 'NIO',
+  )
+  const [bank, setBank] = useState(correcting?.bank_ledger_account ?? '')
+  const [correctionReason, setCorrectionReason] = useState('')
+  const [refundConfirmed, setRefundConfirmed] = useState(false)
+  const [paymentTreatment, setPaymentTreatment] =
+    useState<PurchasePaymentTreatment>(
+      correcting?.account === 'credito' ? 'keep_payments' : 'recording_error',
+    )
+  const [rateText, setRateText] = useState(
+    correcting
+      ? String(correcting.exchange_rate)
+      : catalogRate
+        ? String(catalogRate)
+        : '',
+  )
+  const [shipping, setShipping] = useState(
+    String(correcting?.shipping_amount ?? 0),
+  )
+  const [note, setNote] = useState(correcting?.note ?? initialNote)
+  const [lines, setLines] = useState<PurchaseLineDraft[]>(
+    correcting
+      ? correcting.lines.map((line) => ({
+          productId: line.product_id,
+          location: line.location,
+          quantity: String(line.quantity),
+          unitPrice: String(line.unit_price),
+        }))
+      : [
+          {
+            ...blankLine(initialProduct),
+            location: initialLocation,
+            quantity:
+              initialQuantity === undefined ? '' : String(initialQuantity),
+          },
+        ],
+  )
   const [checked, setChecked] = useState(false)
   const [busy, setBusy] = useState(false)
   const [failure, setFailure] = useState('')
@@ -105,8 +168,30 @@ export function PurchaseDialog({
     shippingText: shipping,
     currency,
     rateText,
-    inventory,
-    pricing,
+    inventory: correcting
+      ? inventory.map((item) => {
+          const previous = correcting.before_states.find(
+            (s) => s.product_id === item.product.id,
+          )
+          return previous
+            ? {
+                ...item,
+                quantities: {
+                  store: previous.store_before,
+                  warehouse: previous.warehouse_before,
+                },
+              }
+            : item
+        })
+      : inventory,
+    pricing: correcting
+      ? pricing.map((row) => {
+          const previous = correcting.before_states.find(
+            (s) => s.product_id === row.productId,
+          )
+          return previous ? { ...row, averageCost: previous.cost_before } : row
+        })
+      : pricing,
     catalogRate,
   })
   const products = inventory.map((item) => item.product)
@@ -148,6 +233,25 @@ export function PurchaseDialog({
     setToday(submitToday)
     if (!preview.ready || !incurredOn || incurredOn > submitToday) return
     if (
+      payment === 'banco' &&
+      !purchaseBanks.some(
+        (item) => item.code === bank && item.currency === currency,
+      )
+    ) {
+      setFailure('Selecciona el banco pagador en la moneda de la compra.')
+      return
+    }
+    if (
+      correcting &&
+      (correctionReason.trim().length < 3 ||
+        (correcting.refund_nio > 0 && !refundConfirmed))
+    ) {
+      setFailure(
+        'Escribe el motivo y confirma cómo se corregirán los pagos de la compra original.',
+      )
+      return
+    }
+    if (
       payment !== 'credito' &&
       incurredOn < submitToday &&
       confirmedPaymentDate !== dateKey
@@ -169,6 +273,14 @@ export function PurchaseDialog({
         exchangeRate: rate,
         shippingAmount: round2(typed(shipping)),
         account: payment,
+        ...(payment === 'banco' ? { bankLedgerAccount: bank } : {}),
+        ...(correcting
+          ? {
+              correctionReason: correctionReason.trim(),
+              refundConfirmed,
+              paymentTreatment,
+            }
+          : {}),
         lines: preview.lines.map((line, index) => ({
           productId: line.productId,
           location: lines[index].location,
@@ -177,7 +289,9 @@ export function PurchaseDialog({
         })),
       })
       onRecorded(
-        `Compra registrada: ${counts.format(preview.units)} ${preview.units === 1 ? 'unidad' : 'unidades'} en inventario y costo promedio actualizado.`,
+        correcting
+          ? 'Compra corregida. El original y su anulación permanecen en el historial.'
+          : `Compra registrada: ${counts.format(preview.units)} ${preview.units === 1 ? 'unidad' : 'unidades'} en inventario y costo promedio actualizado.`,
       )
     } catch (error) {
       setFailure(errorMessage(error))
@@ -188,7 +302,7 @@ export function PurchaseDialog({
   return (
     <Dialog
       open
-      title="Registrar compra"
+      title={correcting ? 'Corregir compra' : 'Registrar compra'}
       className="pricing-purchase-dialog"
       dismissible={!busy && !uncertain}
       onClose={() => {
@@ -200,10 +314,64 @@ export function PurchaseDialog({
           disabled={busy || uncertain}
           className="pricing-purchase-form"
         >
+          {correcting && (
+            <>
+              <p>
+                Se anulará la compra original y se registrará este reemplazo en
+                la jornada de hoy. Los precios de venta se conservan.
+              </p>
+              <Input
+                label="Motivo de la corrección"
+                required
+                minLength={3}
+                maxLength={500}
+                value={correctionReason}
+                onChange={(event) => setCorrectionReason(event.target.value)}
+              />
+              {correcting.refund_nio > 0 && (
+                <Select
+                  label="Tratamiento de los pagos"
+                  value={paymentTreatment}
+                  onChange={(event) => {
+                    setPaymentTreatment(
+                      event.target.value as PurchasePaymentTreatment,
+                    )
+                    setRefundConfirmed(false)
+                  }}
+                >
+                  {correcting.account === 'credito' && (
+                    <option value="keep_payments">
+                      Conservar abonos reales en el reemplazo
+                    </option>
+                  )}
+                  <option value="recording_error">
+                    Corregir pagos registrados por error
+                  </option>
+                  <option value="refund">
+                    Registrar devolución real del proveedor
+                  </option>
+                </Select>
+              )}
+              {correcting.refund_nio > 0 && (
+                <label className="checkbox-field">
+                  <input
+                    type="checkbox"
+                    checked={refundConfirmed}
+                    onChange={(event) =>
+                      setRefundConfirmed(event.target.checked)
+                    }
+                  />
+                  {purchaseConfirmation(paymentTreatment)} (C${' '}
+                  {Number(correcting.refund_nio).toFixed(2)}).
+                </label>
+              )}
+            </>
+          )}
           <div className="form-grid">
             <Input
-              label="Fecha de la compra"
+              label={correcting ? 'Fecha del reemplazo' : 'Fecha de la compra'}
               type="date"
+              disabled={Boolean(correcting)}
               required
               max={today}
               value={incurredOn}
@@ -239,11 +407,31 @@ export function PurchaseDialog({
             <Select
               label="Moneda de la compra"
               value={currency}
-              onChange={(event) => setCurrency(event.target.value as Currency)}
+              onChange={(event) => {
+                setCurrency(event.target.value as Currency)
+                setBank('')
+              }}
             >
               <option value="NIO">C$ Córdobas</option>
               <option value="USD">US$ Dólares</option>
             </Select>
+            {payment === 'banco' && (
+              <Select
+                label="Banco pagador"
+                value={bank}
+                onChange={(event) => setBank(event.target.value)}
+                required
+              >
+                <option value="">Seleccionar banco</option>
+                {purchaseBanks
+                  .filter((item) => item.currency === currency)
+                  .map((item) => (
+                    <option key={item.code} value={item.code}>
+                      {item.name}
+                    </option>
+                  ))}
+              </Select>
+            )}
             {currency === 'USD' && (
               <Input
                 label="Tasa del pedido (C$ por dólar)"
@@ -342,7 +530,9 @@ export function PurchaseDialog({
               ? 'Registrando…'
               : uncertain
                 ? 'Verificar guardado'
-                : 'Registrar compra'}
+                : correcting
+                  ? 'Guardar corrección'
+                  : 'Registrar compra'}
           </Button>
           <Button
             type="button"
@@ -473,7 +663,7 @@ function CostOutcome({
         {incoming !== null &&
           incomingCost !== null &&
           ` + ${counts.format(incoming)} u. × C$ ${exactCost(incomingCost)}`}{' '}
-        → costo promedio <strong>C$ {exactCost(nextAverage)}</strong>
+        → promedio estimado <strong>C$ {exactCost(nextAverage)}</strong>
       </p>
     </div>
   )
@@ -498,9 +688,11 @@ export function OpeningCostDialog({
   onRecorded: (message: string) => void
 }) {
   const { accountingService } = useServices()
+  const { storageScope = 'anonymous' } = useAccess()
   const [operation] = useState(() =>
     createIdempotentOperation<Omit<OpeningCostInput, 'requestId'>, unknown>(
       accountingService.setOpeningCost,
+      { scope: storageScope, key: 'opening-cost', label: 'Costo inicial' },
     ),
   )
   const [currency, setCurrency] = useState<Currency>('NIO')

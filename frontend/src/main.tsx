@@ -1,6 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { AuthProvider } from './features/auth/AuthProvider'
 import { App } from './app/App'
 import { ErrorBoundary } from './app/ErrorBoundary'
@@ -17,11 +17,18 @@ import './styles/pricing.css'
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <BrowserRouter>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </BrowserRouter>
+      <RouterProvider
+        router={createBrowserRouter([
+          {
+            path: '*',
+            element: (
+              <AuthProvider>
+                <App />
+              </AuthProvider>
+            ),
+          },
+        ])}
+      />
     </ErrorBoundary>
   </React.StrictMode>,
 )

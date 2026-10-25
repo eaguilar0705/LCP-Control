@@ -20,6 +20,12 @@ import { AccessContext } from './AccessContext'
 import { Button } from '../components/ui'
 import { Brand } from '../components/Brand'
 import { PriceTiersBoundary } from '../components/PriceTiersBoundary'
+import { OperationRecoveryBanner } from '../components/OperationRecoveryBanner'
+import {
+  getOperationReferences,
+  operationReferencesRevision,
+  subscribeOperationReferences,
+} from '../lib/operationRecovery'
 import { errorMessage } from '../lib/errors'
 import { can, roleLabels, type Capability } from '../lib/permissions'
 import {
@@ -83,6 +89,20 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
   const outstanding = demo ? [] : pendingDocuments(storageScope)
   const outstandingJournal = !demo && getPendingJournal(storageScope)
   const outstandingOperations = demo ? [] : listPendingOperations(storageScope)
+  useSyncExternalStore(
+    subscribeOperationReferences,
+    operationReferencesRevision,
+  )
+  const recoveredReferences = demo
+    ? []
+    : getOperationReferences(storageScope).filter(
+        (reference) =>
+          !outstandingOperations.some(
+            (entry) => entry.key === reference.kind,
+          ) &&
+          !outstanding.some((entry) => entry.kind === reference.kind) &&
+          !(outstandingJournal && reference.kind === 'journal'),
+      )
   const [verifying, setVerifying] = useState<string | null>(null)
   const [operationNotice, setOperationNotice] = useState<{
     revision: number
@@ -179,6 +199,12 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
     return () => window.removeEventListener('beforeunload', warn)
   }, [outstanding.length, outstandingJournal, outstandingOperations.length])
   async function logout() {
+    if (!demo && recoveredReferences.length) {
+      setError(
+        'Confirma primero las solicitudes pendientes antes de cerrar sesión.',
+      )
+      return
+    }
     if (!demo && listPendingOperations(storageScope).length) {
       setError(
         'Confirma primero las operaciones pendientes antes de cerrar sesión.',
@@ -358,6 +384,11 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
               para evitar duplicados.
             </div>
           )}
+          <OperationRecoveryBanner
+            references={recoveredReferences}
+            base={base}
+            onConfirmed={() => setError('')}
+          />
           {outstanding.length > 0 && (
             <aside
               className="sales-pending-banner no-print"

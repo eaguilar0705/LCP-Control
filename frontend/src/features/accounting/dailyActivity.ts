@@ -143,7 +143,7 @@ export function dailyActivities(
       return {
         ...row,
         id: `${row.source}:${row.id}`,
-        amount: original.amount,
+        amount: row.readOnly ? Math.abs(original.amount) : original.amount,
         currency: original.currency,
       }
     })
@@ -152,7 +152,10 @@ export function dailyActivities(
     .map((row): DailyActivity => ({
       id: `purchase:${row.id}`,
       createdAt: row.createdAt,
-      type: 'Compra de mercadería',
+      type:
+        row.eventKind === 'cancellation'
+          ? 'Anulación de compra'
+          : 'Compra de mercadería',
       detail: [row.supplier, row.reference, row.note]
         .filter(Boolean)
         .join(' · '),
@@ -160,8 +163,9 @@ export function dailyActivities(
       amount: roundMoney(row.goodsAmount + row.shippingAmount),
       currency: row.currency,
       amountNio: roundMoney(
-        roundMoney(row.goodsAmount * row.exchangeRate) +
-          roundMoney(row.shippingAmount * row.exchangeRate),
+        (row.goodsNio ?? roundMoney(row.goodsAmount * row.exchangeRate)) +
+          (row.shippingNio ??
+            roundMoney(row.shippingAmount * row.exchangeRate)),
       ),
       voidReason: null,
     }))

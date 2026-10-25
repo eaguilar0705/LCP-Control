@@ -78,9 +78,11 @@ export function DocumentPrint({ document: d }: { document: DocumentRecord }) {
               ? d.validUntil
                 ? formatDate(d.validUntil)
                 : '____________'
-              : d.paymentMethod && d.paymentMethod !== 'pending'
-                ? labels.payment[d.paymentMethod]
-                : 'Pendiente'}
+              : d.payments?.length
+                ? 'Pago dividido'
+                : d.paymentMethod && d.paymentMethod !== 'pending'
+                  ? labels.payment[d.paymentMethod]
+                  : 'Pendiente'}
           </span>
         </p>
         {d.currency === 'USD' && d.exchangeRate != null && (
@@ -139,6 +141,16 @@ export function DocumentPrint({ document: d }: { document: DocumentRecord }) {
           )}
           {d.kind === 'invoice' && d.location && (
             <p>Entrega desde: {labels.location[d.location]}</p>
+          )}
+          {!!d.payments?.length && (
+            <p>
+              {d.payments
+                .map(
+                  (p) =>
+                    `${labels.payment[p.method]}: ${formatCurrency(p.amount, p.currency)}${p.currency === 'USD' ? ` (${p.exchangeRate} C$/US$)` : ''}`,
+                )
+                .join(' · ')}
+            </p>
           )}
         </div>
         <div className="letter-totals">

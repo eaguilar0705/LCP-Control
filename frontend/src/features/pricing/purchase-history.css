@@ -1,0 +1,66 @@
+.purchase-history-dialog {
+  width: min(68rem, calc(100vw - 2rem));
+}
+.purchase-history-list {
+  display: grid;
+  gap: 0.75rem;
+  margin-block: 1rem;
+}
+.purchase-history-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid var(--border, #e4d7cf);
+  border-radius: 0.9rem;
+  min-width: 0;
+}
+.purchase-history-row p {
+  margin: 0.35rem 0;
+  overflow-wrap: anywhere;
+}
+.purchase-history-detail {
+  grid-column: 1 / -1;
+  min-width: 0;
+  border-top: 1px solid var(--border, #e4d7cf);
+  padding-top: 1rem;
+}
+.purchase-history-detail table {
+  width: 100%;
+}
+.purchase-correction-record {
+  border-left: 3px solid var(--wine, #842934);
+  padding-left: 1rem;
+}
+.purchase-history-status {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  margin: 0 0.5rem 0.4rem 0;
+  color: #842934;
+  background: #f7eaec;
+  border-radius: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.checkbox-field {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+  margin-block: 1rem;
+  line-height: 1.5;
+}
+.checkbox-field input {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: 0 0 auto;
+  margin-top: 0.2rem;
+}
+@media (max-width: 600px) {
+  .purchase-history-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .purchase-history-row > button {
+    justify-self: start;
+  }
+}

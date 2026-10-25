@@ -199,6 +199,8 @@ export function CreditWorkspace({
                   <td className="credit-action">
                     {r.voidReason !== null ? (
                       'Anulado'
+                    ) : r.readOnly ? (
+                      'Compensado'
                     ) : (
                       <Button
                         variant="ghost"

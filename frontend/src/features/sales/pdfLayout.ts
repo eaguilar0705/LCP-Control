@@ -217,9 +217,11 @@ export function layoutDocumentPdf(
         ? d.validUntil
           ? formatDate(d.validUntil)
           : '____________'
-        : d.paymentMethod && d.paymentMethod !== 'pending'
-          ? labels.payment[d.paymentMethod]
-          : 'Pendiente',
+        : d.payments?.length
+          ? 'Pago dividido'
+          : d.paymentMethod && d.paymentMethod !== 'pending'
+            ? labels.payment[d.paymentMethod]
+            : 'Pendiente',
       c2,
       row2,
     )
@@ -249,7 +251,17 @@ export function layoutDocumentPdf(
 
   // ── Resumen: se mide antes para saber cuánto alto queda para la tabla ──
   const notes = wrap(
-    d.notes || 'Gracias por elegir La Casa del Perfume.',
+    [
+      d.payments
+        ?.map(
+          (p) =>
+            `${labels.payment[p.method]}: ${formatCurrency(p.amount, p.currency)}${p.currency === 'USD' ? ` (${p.exchangeRate} C$/US$)` : ''}`,
+        )
+        .join(' · '),
+      d.notes,
+    ]
+      .filter(Boolean)
+      .join('\n') || 'Gracias por elegir La Casa del Perfume.',
     300,
     8,
   )

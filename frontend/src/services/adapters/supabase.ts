@@ -166,6 +166,7 @@ interface DocumentItemRow {
   line_total: number | string
 }
 interface DocumentRow {
+  payments?: DocumentRecord['payments']
   exchange_rate?: number | string | null
   catalog_rate?: number | string | null
   tax_rate?: number | string | null
@@ -201,7 +202,7 @@ document_items(id,product_id,description,quantity,unit_price,line_total)`
 // base valida y guarda tal cual. Sin leerlos de ahí, la factura reabierta,
 // impresa o compartida perdía el «Impuesto incluido» y el tipo de cambio.
 const documentAccountingColumns =
-  ',exchange_rate:request_payload->exchangeRate,tax_rate:request_payload->taxRate,catalog_rate'
+  ',exchange_rate:request_payload->exchangeRate,tax_rate:request_payload->taxRate,catalog_rate,payments:request_payload->payments'
 function missingDocumentColumns(error: { code?: string } | null) {
   return error?.code === '42703' || error?.code === 'PGRST204'
 }
@@ -378,6 +379,11 @@ function toItem(row: ProductRow): InventoryItem {
 }
 function toDocument(row: DocumentRow): DocumentRecord {
   return {
+    payments: row.payments?.map((payment) => ({
+      ...payment,
+      amount: amount(payment.amount),
+      exchangeRate: amount(payment.exchangeRate),
+    })),
     id: row.id,
     kind: row.kind,
     number: row.number,
@@ -794,6 +800,7 @@ export const supabaseAdapter: DataProvider = {
         taxRate: input.taxRate ?? 0,
         location: input.location ?? null,
         paymentMethod: input.paymentMethod ?? null,
+        ...(input.payments?.length ? { payments: input.payments } : {}),
         // Una fecha borrada llega como '': la base la recibe como nula y
         // responde «Revisa la vigencia» en lugar de un error de conversión.
         validUntil: input.validUntil || null,

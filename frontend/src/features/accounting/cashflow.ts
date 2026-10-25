@@ -19,6 +19,8 @@ export const cashflowCategories = {
   sales: 'Ventas cobradas',
   collection: 'Cobros a clientes',
   purchases: 'Pedidos pagados',
+  purchase_refund: 'Devoluciones de compras',
+  purchase_correction: 'Correcciones de pagos de compras',
   supplier_payment: 'Pagos a proveedores',
   expense: 'Gastos',
   loan_payment: 'Pago de préstamos',

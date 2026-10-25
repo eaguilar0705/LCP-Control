@@ -4,6 +4,8 @@ export type CashflowCategory =
   | 'sales'
   | 'collection'
   | 'purchases'
+  | 'purchase_refund'
+  | 'purchase_correction'
   | 'supplier_payment'
   | 'expense'
   | 'loan_payment'

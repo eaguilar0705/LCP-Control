@@ -1,6 +1,19 @@
-import { useState, useSyncExternalStore, type FormEvent } from 'react'
+import {
+  useCallback,
+  useState,
+  useSyncExternalStore,
+  type FormEvent,
+} from 'react'
 import { Plus, Trash2 } from 'lucide-react'
-import { Button, Card, Dialog, Input, Select } from '../../components/ui'
+import {
+  Button,
+  Card,
+  Dialog,
+  ErrorState,
+  Input,
+  LoadingState,
+  Select,
+} from '../../components/ui'
 import { AppError, errorMessage } from '../../lib/errors'
 import { useAccess } from '../../app/AccessContext'
 import {
@@ -21,7 +34,9 @@ import {
   type JournalLine,
   type LedgerReport,
 } from './journalModel'
-import { journalRpc } from './journalService'
+import { journalRpc, readJournalPage } from './journalService'
+import { useQuery } from '../../lib/useQuery'
+import { getOperationReferences } from '../../lib/operationRecovery'
 import { JournalDetail } from './JournalDetail'
 
 const journalKinds = {
@@ -53,12 +68,31 @@ export function JournalWorkspace({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [detailId, setDetailId] = useState<string | null>(null)
-  const entries = [...data.entries, ...(data.automaticEntries ?? [])].sort(
-    (a, b) =>
-      b.occurred_on.localeCompare(a.occurred_on) ||
-      b.number - a.number ||
-      a.id.localeCompare(b.id),
+  const [pageState, setPageState] = useState<{
+    source: LedgerReport
+    offset: number
+    asOf: string
+    total: number
+  } | null>(null)
+  const paging = pageState?.source === data ? pageState : null
+  const offset = paging?.offset ?? 0
+  const loadPage = useCallback(
+    () =>
+      readJournalPage(
+        data.from,
+        data.to,
+        offset,
+        paging?.asOf ?? null,
+        paging?.total ?? null,
+      ),
+    [data, offset, paging?.asOf, paging?.total],
   )
+  const history = useQuery(loadPage)
+  const currentPage =
+    history.data?.offset === offset &&
+    history.data.from === data.from &&
+    history.data.to === data.to
+  const entries = currentPage ? history.data!.entries : []
   async function cancel(e: FormEvent) {
     e.preventDefault()
     if (!voidId || busy) return
@@ -97,7 +131,20 @@ export function JournalWorkspace({
             </Button>
           ))}
       </div>
-      <div className="accounting-table-scroll">
+      {history.error && (
+        <ErrorState
+          message={history.error}
+          retry={() => {
+            setPageState(null)
+            history.retry()
+          }}
+        />
+      )}
+      {!history.error && !currentPage && <LoadingState />}
+      <div
+        className="accounting-table-scroll"
+        aria-busy={!currentPage && !history.error}
+      >
         <table className="accounting-table">
           <thead>
             <tr>
@@ -109,7 +156,7 @@ export function JournalWorkspace({
             </tr>
           </thead>
           <tbody>
-            {entries.slice(0, 500).map((e) => (
+            {entries.map((e) => (
               <tr key={e.id}>
                 <td>
                   <Button variant="ghost" onClick={() => setDetailId(e.id)}>
@@ -155,12 +202,72 @@ export function JournalWorkspace({
           </tbody>
         </table>
       </div>
-      {entries.length === 0 && <p>Sin comprobantes en este período.</p>}
-      {entries.length > 500 && (
-        <p role="status">
-          Se muestran 500 comprobantes. Reduce el período para consultar los
-          restantes.
-        </p>
+      {currentPage && !history.error && history.data!.total === 0 && (
+        <p>Sin comprobantes en este período.</p>
+      )}
+      {currentPage && !history.error && history.data!.total > 0 && (
+        <nav className="form-actions" aria-label="Páginas de comprobantes">
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={offset === 0}
+            onClick={() =>
+              setPageState({
+                source: data,
+                offset: Math.max(0, offset - 50),
+                asOf: history.data!.asOf,
+                total: history.data!.total,
+              })
+            }
+          >
+            Anterior
+          </Button>
+          <span role="status">
+            {offset + 1}–
+            {Math.min(offset + entries.length, history.data!.total)} de{' '}
+            {history.data!.total} comprobantes
+          </span>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={offset + entries.length >= history.data!.total}
+            onClick={() =>
+              setPageState({
+                source: data,
+                offset: offset + 50,
+                asOf: history.data!.asOf,
+                total: history.data!.total,
+              })
+            }
+          >
+            Siguiente
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={offset + entries.length >= history.data!.total}
+            onClick={() =>
+              setPageState({
+                source: data,
+                offset: Math.floor((history.data!.total - 1) / 50) * 50,
+                asOf: history.data!.asOf,
+                total: history.data!.total,
+              })
+            }
+          >
+            Última
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setPageState(null)
+              history.retry()
+            }}
+          >
+            Actualizar comprobantes
+          </Button>
+        </nav>
       )}
       {action && (
         <JournalDialog
@@ -176,7 +283,10 @@ export function JournalWorkspace({
       {detailId && (
         <JournalDetail
           id={detailId}
-          entry={data.automaticEntries?.find((e) => e.id === detailId)}
+          entry={
+            entries.find((e) => e.id === detailId && isAutomaticJournal(e)) as
+              import('./journalModel').AutomaticJournalRecord | undefined
+          }
           onClose={() => setDetailId(null)}
         />
       )}
@@ -345,6 +455,18 @@ function JournalDialog({
   async function save(e: FormEvent) {
     e.preventDefault()
     if (busy) return
+    if (
+      getOperationReferences(storageScope).some(
+        (reference) =>
+          reference.kind === 'journal' &&
+          reference.requestId !== pending?.requestId,
+      )
+    ) {
+      setError(
+        'Hay un comprobante anterior por verificar. Consulta el aviso de recuperación antes de registrar otro.',
+      )
+      return
+    }
     if (!pending && !valid) {
       setError(
         settlementError ||
@@ -380,8 +502,8 @@ function JournalDialog({
         : {}),
     }
     setPending(payload)
-    setPendingJournal(storageScope, payload)
     try {
+      setPendingJournal(storageScope, payload)
       await journalRpc('record_journal_entry', {
         p_input: payload,
       })

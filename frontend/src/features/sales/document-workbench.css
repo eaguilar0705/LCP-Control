@@ -373,3 +373,30 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+.split-payments {
+  grid-column: 1 / -1;
+  border: 1px solid var(--border, #e3d8d0);
+  border-radius: 14px;
+  padding: 16px;
+  min-width: 0;
+}
+.split-payment-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding-block: 12px;
+  border-bottom: 1px solid var(--border, #e3d8d0);
+}
+.sales-return-fields {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+@media (max-width: 480px) {
+  .split-payment-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

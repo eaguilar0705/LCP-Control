@@ -5,7 +5,13 @@ import { ScanButton } from '../scanner/ScanButton'
 import { ProductStockEditor } from './ProductStockEditor'
 import { can } from '../../lib/permissions'
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import {
+  Link,
+  useBlocker,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from 'react-router-dom'
 import {
   Button,
   Card,
@@ -215,8 +221,14 @@ function ProductForm({
   const [busy, setBusy] = useState(false)
   const [stockPending, setStockPending] = useState(false)
   const [error, setError] = useState('')
-  const [leavePath, setLeavePath] = useState<string | null>(null)
   const leaving = useRef(false)
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      !leaving.current &&
+      (unsaved || busy || stockPending) &&
+      (currentLocation.pathname !== nextLocation.pathname ||
+        currentLocation.search !== nextLocation.search),
+  )
   // Un aviso único no dice qué campo falta entre nueve datos y seis precios.
   // La clave es la ruta del dato («name», «prices.vip.USD»). Los avisos
   // aparecen al intentar guardar y desde entonces siguen a lo que se escribe:
@@ -239,50 +251,9 @@ function ProductForm({
       event.preventDefault()
       event.returnValue = ''
     }
-    const protect = (event: MouseEvent) => {
-      if (
-        leaving.current ||
-        event.button !== 0 ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.shiftKey ||
-        event.altKey ||
-        !(event.target instanceof Element)
-      )
-        return
-      const link = event.target.closest('a[href]')
-      if (
-        !(link instanceof HTMLAnchorElement) ||
-        link.hasAttribute('download') ||
-        (link.target && link.target !== '_self')
-      )
-        return
-      const destination = new URL(link.href, window.location.href)
-      if (
-        !['http:', 'https:'].includes(destination.protocol) ||
-        destination.origin !== window.location.origin ||
-        (destination.pathname === window.location.pathname &&
-          destination.search === window.location.search)
-      )
-        return
-      event.preventDefault()
-      event.stopPropagation()
-      if (stockPending)
-        setError(
-          'Verifica primero el guardado de las cantidades antes de salir.',
-        )
-      else if (busy)
-        setError('Espera a que termine el guardado antes de salir.')
-      else
-        setLeavePath(
-          destination.pathname + destination.search + destination.hash,
-        )
-    }
     window.addEventListener('beforeunload', warn)
-    document.addEventListener('click', protect, true)
     return () => {
       window.removeEventListener('beforeunload', warn)
-      document.removeEventListener('click', protect, true)
     }
   }, [unsaved, busy, stockPending])
   useEffect(() => {
@@ -853,19 +824,35 @@ function ProductForm({
           </div>
         </Dialog>
       )}
-      {leavePath && (
+      {blocker.state === 'blocked' && !busy && !stockPending && (
         <ConfirmDialog
           open
           title="Cambios sin guardar"
           confirmLabel="Salir sin guardar"
           onConfirm={() => {
             leaving.current = true
-            navigate(leavePath)
+            blocker.proceed()
           }}
-          onCancel={() => setLeavePath(null)}
+          onCancel={() => blocker.reset()}
         >
           <p>Hay cambios sin guardar en este perfume. Si sales, se perderán.</p>
         </ConfirmDialog>
+      )}
+      {blocker.state === 'blocked' && (busy || stockPending) && (
+        <Dialog open title="Guardado pendiente" onClose={() => blocker.reset()}>
+          <p>
+            {stockPending
+              ? 'Verifica primero el guardado de las cantidades antes de salir.'
+              : 'Espera a que termine el guardado antes de salir.'}
+          </p>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => blocker.reset()}
+          >
+            Continuar en el perfume
+          </Button>
+        </Dialog>
       )}
     </>
   )

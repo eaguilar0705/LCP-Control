@@ -126,6 +126,14 @@ try {
         [id(4)],
       )
       await identity(fixture.db, admin)
+      await fixture.db.query('select public.open_business_day($1::jsonb)', [
+        JSON.stringify({
+          requestId: crypto.randomUUID(),
+          expectedDay: fixture.today,
+          openingNio: 1000,
+          openingUsd: 0,
+        }),
+      ])
       await page.goto(base + '/login')
       await page
         .getByLabel('Correo electrónico', { exact: true })
@@ -369,20 +377,14 @@ try {
         await navigate('/inventory')
         await page.getByRole('button', { name: 'Entrada', exact: true }).click()
         dialog = page.getByRole('dialog')
-        await select(dialog, 'QA-0001')
-        await dialog.getByLabel('Cantidad', { exact: true }).fill('1')
         await dialog
-          .getByLabel('Motivo', { exact: true })
-          .fill('Compra que requiere administración')
-        await dialog
-          .getByRole('button', { name: 'Confirmar movimiento', exact: true })
-          .click()
-        await dialog
-          .getByText(
-            'Solicita a un administrador que registre la compra con su costo.',
-            { exact: true },
-          )
+          .getByText('Esta entrada necesita Administración.', { exact: true })
           .waitFor()
+        equal(
+          await dialog.getByLabel('Cantidad', { exact: true }).count(),
+          0,
+          'la restricción se explica antes de pedir cantidades',
+        )
         equal(
           await totals(id(1)),
           { store: 15, warehouse: 3, cost: '1061.111111', purchases: 2 },

@@ -32,6 +32,8 @@
     "test:store": "node scripts/tests/extended-store-flow.mjs",
     "test:enterprise": "node scripts/tests/enterprise-integrity.mjs && node scripts/tests/enterprise-year-flow.mjs",
     "test:enterprise:pdf": "node scripts/tests/enterprise-document-pdf.mjs",
+    "test:financial-corrections": "node scripts/tests/inventory-value.mjs && node scripts/tests/sales-returns-and-split.mjs && node scripts/tests/purchase-corrections.mjs && node scripts/tests/recovery-pagination.mjs",
+    "test:browser:financial-corrections": "node scripts/tests/browser-inventory-valuation.mjs && node scripts/tests/browser-sales-returns-and-split.mjs && node scripts/tests/browser-purchase-corrections.mjs && node scripts/tests/browser-recovery-navigation.mjs",
     "test:browser:enterprise": "node scripts/tests/browser-first-use-audit.mjs && node scripts/tests/browser-journal-contingencies.mjs && node scripts/tests/browser-movement-confirmation.mjs && node scripts/tests/browser-operation-confirmation.mjs && node scripts/tests/browser-price-tier-confirmation.mjs && node scripts/tests/browser-master-data-concurrency.mjs && node scripts/tests/browser-inventory-transfers.mjs",
     "test:browser": "node scripts/tests/browser-system.mjs && node scripts/tests/browser-sales-journal.mjs",
     "test:browser:accounting": "node scripts/tests/browser-accounting.mjs",

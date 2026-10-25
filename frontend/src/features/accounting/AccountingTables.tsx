@@ -361,6 +361,8 @@ export function AccountingTables({
                       <td>
                         {row.voidReason !== null ? (
                           'Anulado'
+                        ) : row.readOnly ? (
+                          'Compensado'
                         ) : (
                           <Button
                             variant="secondary"

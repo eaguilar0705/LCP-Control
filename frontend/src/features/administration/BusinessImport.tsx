@@ -7,7 +7,12 @@ import type {
 import { useAccess } from '../../app/AccessContext'
 import { Button, Dialog, Input } from '../../components/ui'
 import { can } from '../../lib/permissions'
-import { errorMessage } from '../../lib/errors'
+import { AppError, errorMessage } from '../../lib/errors'
+import {
+  forgetOperationReference,
+  getOperationReferences,
+  rememberOperationReference,
+} from '../../lib/operationRecovery'
 import { formatCurrency } from '../../lib/format'
 import { download } from '../reports/export'
 import { localDay } from '../reports/model'
@@ -24,7 +29,7 @@ const costFormat = new Intl.NumberFormat('es-NI', {
 })
 
 export function BusinessImport({ onImported }: { onImported: () => void }) {
-  const { role, demo } = useAccess()
+  const { role, demo, storageScope = 'anonymous' } = useAccess()
   const [open, setOpen] = useState(false)
   const [date, setDate] = useState(() => localDay(new Date()))
   const [input, setInput] = useState<BusinessImportRequest | null>(null)
@@ -112,10 +117,41 @@ export function BusinessImport({ onImported }: { onImported: () => void }) {
   async function commit() {
     if (!input || !preview || !reviewed || !start('import')) return
     try {
+      if (
+        getOperationReferences(storageScope).some(
+          (reference) =>
+            reference.kind === 'business-import' &&
+            reference.requestId !== input.requestId,
+        )
+      )
+        throw new AppError(
+          'validation',
+          'Hay una importación anterior por verificar. Consulta el aviso de recuperación antes de importar de nuevo.',
+        )
+      rememberOperationReference(
+        storageScope,
+        'business-import',
+        input.requestId,
+      )
       const result = await importBusinessExcel(input, false)
+      forgetOperationReference(storageScope, 'business-import', input.requestId)
       setDone(result)
       onImported()
     } catch (error) {
+      if (
+        error instanceof AppError &&
+        [
+          'validation',
+          'unauthorized',
+          'configuration',
+          'rate_limited',
+        ].includes(error.kind)
+      )
+        forgetOperationReference(
+          storageScope,
+          'business-import',
+          input.requestId,
+        )
       setFailure(errorMessage(error))
     } finally {
       finish()

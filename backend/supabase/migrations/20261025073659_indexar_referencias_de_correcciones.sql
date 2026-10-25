@@ -1,0 +1,7 @@
+-- Cubrir las referencias nuevas del historial y de las cuentas bancarias.
+create index purchase_before_states_product_idx on private.purchase_before_states(product_id);
+create index purchase_correction_refunds_payment_idx on private.purchase_correction_refunds(finance_entry_id);
+create index purchase_correction_refunds_account_idx on private.purchase_correction_refunds(ledger_account);
+create index purchase_payment_reallocations_payment_idx on private.purchase_payment_reallocations(finance_entry_id);
+create index purchase_corrections_replacement_idx on public.purchase_corrections(replacement_id);
+create index purchase_shipments_bank_account_idx on public.purchase_shipments(bank_ledger_account);

@@ -1,6 +1,52 @@
 import { supabase } from '../../lib/supabase'
 import { AppError } from '../../lib/errors'
-import type { AutomaticJournalRecord, LedgerReport } from './journalModel'
+import type {
+  AutomaticJournalRecord,
+  JournalRecord,
+  LedgerReport,
+} from './journalModel'
+
+export interface JournalPage {
+  entries: (JournalRecord | AutomaticJournalRecord)[]
+  total: number
+  offset: number
+  limit: number
+  asOf: string
+  from: string
+  to: string
+}
+export async function readJournalPage(
+  from: string,
+  to: string,
+  offset = 0,
+  asOf: string | null = null,
+  total: number | null = null,
+) {
+  const result = await journalRpc<JournalPage>('journal_entries_page', {
+    p_from: from,
+    p_to: to,
+    p_offset: offset,
+    p_limit: 50,
+    p_as_of: asOf,
+    p_expected_total: total,
+  })
+  if (
+    !Array.isArray(result.entries) ||
+    result.entries.some((entry) => !entry || typeof entry.id !== 'string') ||
+    !Number.isInteger(result.total) ||
+    result.total < 0 ||
+    result.offset !== offset ||
+    result.from !== from ||
+    result.to !== to ||
+    result.entries.length > 50 ||
+    typeof result.asOf !== 'string'
+  )
+    throw new AppError(
+      'unexpected',
+      'No se recibió la página completa de comprobantes. Vuelve a intentarlo.',
+    )
+  return result
+}
 
 export async function journalRpc<T>(
   name: string,

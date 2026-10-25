@@ -43,6 +43,10 @@ export interface FinanceEntryRecord extends FinanceEntryInput {
   createdAt: string
   voidedAt: string | null
   voidReason: string | null
+  /** Importe congelado de una compensación de compra, solo de lectura. */
+  amountNio?: number
+  readOnly?: boolean
+  compensationKind?: 'refund' | 'recording_error'
 }
 
 export interface PaidExpense extends ExpenseRecord {

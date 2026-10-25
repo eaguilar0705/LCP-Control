@@ -31,6 +31,7 @@ export interface ShipmentInput {
   lines: ShipmentLineInput[]
   /** Con qué se pagó: caja, banco o a crédito del proveedor. */
   account?: 'caja' | 'banco' | 'credito'
+  bankLedgerAccount?: string | null
 }
 
 export interface OpeningCostInput {
@@ -93,6 +94,9 @@ export interface ShipmentRecord extends Omit<ShipmentInput, 'lines'> {
   goodsAmount: number
   shippingPerUnit: number
   lines: ShipmentLine[]
+  eventKind?: 'purchase' | 'cancellation'
+  goodsNio?: number
+  shippingNio?: number
 }
 
 export interface ExpenseRecord extends ExpenseInput {
@@ -106,6 +110,8 @@ export interface AverageCost {
   productId: string
   averageCostNio: number | null
   updatedAt: string
+  inventoryValueNio?: number | null
+  inventoryQuantity?: number
 }
 
 export interface SaleCostSnapshot {
@@ -113,6 +119,7 @@ export interface SaleCostSnapshot {
   productId: string
   quantity: number
   unitCostNio: number | null
+  totalCostNio?: number | null
   netRevenueNio: number | null
   taxNio: number | null
 }
@@ -129,6 +136,7 @@ export interface AccountingSource {
     type: string
     quantity: number
     unitCostNio: number | null
+    totalCostNio?: number | null
     createdAt: string
   }[]
   truncated: boolean

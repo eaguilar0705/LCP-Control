@@ -1,4 +1,10 @@
 import { AppError } from './errors'
+import {
+  forgetOperationReference,
+  getOperationReferences,
+  isOperationKind,
+  rememberOperationReference,
+} from './operationRecovery'
 
 const pendingMessage =
   'Hay un guardado pendiente de confirmar. Reintenta con los datos originales antes de cambiarlos.'
@@ -91,6 +97,21 @@ export function createIdempotentOperation<T extends object, R>(
         pending.get(options.scope)?.get(options.key)?.operation !== operation
       )
         return Promise.reject(new AppError('validation', pendingMessage))
+      if (
+        options &&
+        isOperationKind(options.key) &&
+        getOperationReferences(options.scope).some(
+          (reference) =>
+            reference.kind === options.key &&
+            reference.requestId !== (current?.requestId ?? configuredRequestId),
+        )
+      )
+        return Promise.reject(
+          new AppError(
+            'validation',
+            'Hay una solicitud anterior por verificar. Consulta el aviso de recuperación antes de registrar otra operación.',
+          ),
+        )
       const signature = JSON.stringify(payload)
       const changed =
         current &&
@@ -114,6 +135,12 @@ export function createIdempotentOperation<T extends object, R>(
         const recovering = attempt.status === 'ambiguous'
         attempt.status = 'sending'
         const clearPending = () => {
+          if (options && isOperationKind(options.key))
+            forgetOperationReference(
+              options.scope,
+              options.key,
+              attempt.requestId,
+            )
           if (
             options &&
             pending.get(options.scope)?.get(options.key)?.operation ===
@@ -126,12 +153,18 @@ export function createIdempotentOperation<T extends object, R>(
           }
         }
         attempt.promise = Promise.resolve()
-          .then(() =>
-            send({
+          .then(() => {
+            if (options && isOperationKind(options.key))
+              rememberOperationReference(
+                options.scope,
+                options.key,
+                attempt.requestId,
+              )
+            return send({
               ...structuredClone(attempt.payload),
               requestId: attempt.requestId,
-            }),
-          )
+            })
+          })
           .then((result) => {
             attempt.status = 'confirmed'
             clearPending()

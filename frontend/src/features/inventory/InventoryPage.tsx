@@ -60,6 +60,7 @@ import { useAccess } from '../../app/AccessContext'
 import { MovementDrafts } from './MovementDrafts'
 import { InventoryMovements } from './InventoryMovements'
 import { PriceListsPanel } from '../pricing/PriceListsPanel'
+import { PurchaseHistoryPanel } from '../pricing/PurchaseHistoryPanel'
 import '../../styles/everyday-usability.css'
 export function InventoryPage() {
   const { base, demo, role } = useAccess()
@@ -139,6 +140,7 @@ export function InventoryPage() {
       >
         <div className="inventory-actions">
           <PriceListsPanel onSaved={retry} />
+          <PurchaseHistoryPanel onChanged={retry} />
           {manage && (
             <Link className="button button-primary" to={`${base}/products/new`}>
               <Plus size={18} /> Nuevo perfume

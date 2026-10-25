@@ -114,6 +114,14 @@ try {
         await one('select count(*)::int n from public.suppliers')
       ).n
       await identity(fixture.db, admin)
+      await fixture.db.query('select public.open_business_day($1::jsonb)', [
+        JSON.stringify({
+          requestId: crypto.randomUUID(),
+          expectedDay: fixture.today,
+          openingNio: 1000,
+          openingUsd: 0,
+        }),
+      ])
       await page.goto(base + '/login')
       await page
         .getByLabel('Correo electrónico', { exact: true })

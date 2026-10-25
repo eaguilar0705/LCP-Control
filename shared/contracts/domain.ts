@@ -188,6 +188,7 @@ export interface DocumentItemRecord {
 }
 
 export interface DocumentRecord {
+  payments?: InvoicePayment[]
   /** NIO per unit of document currency, saved at issuance. */
   exchangeRate?: number | null
   /**
@@ -226,6 +227,7 @@ export interface NewDocumentItem {
 }
 
 export interface NewDocument {
+  payments?: InvoicePayment[]
   expectedTotal?: number
   exchangeRate?: number
   taxRate?: number
@@ -242,6 +244,13 @@ export interface NewDocument {
   validUntil?: string | null
   notes: string
   items: NewDocumentItem[]
+}
+
+export interface InvoicePayment {
+  method: PaymentMethod
+  currency: Currency
+  amount: number
+  exchangeRate: number
 }
 
 export interface MovementRequest {

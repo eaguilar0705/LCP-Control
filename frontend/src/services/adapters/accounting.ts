@@ -120,6 +120,14 @@ function toShipment(row: AccountingRow): ShipmentRecord {
     note: row.note as string,
     currency: row.currency as ShipmentInput['currency'],
     account: row.account as ShipmentInput['account'],
+    bankLedgerAccount: (row.bank_ledger_account as string | null) ?? null,
+    ...(row.event_kind
+      ? {
+          eventKind: row.event_kind as ShipmentRecord['eventKind'],
+          goodsNio: numeric(row.goods_nio),
+          shippingNio: numeric(row.shipping_nio),
+        }
+      : {}),
     exchangeRate: numeric(row.exchange_rate),
     shippingAmount: numeric(row.shipping_amount),
     goodsAmount: numeric(row.goods_amount),
@@ -157,6 +165,16 @@ function toFinanceEntry(row: AccountingRow): FinanceEntryRecord {
     account: row.account as FinanceEntryRecord['account'],
     toAccount: (row.to_account ?? null) as FinanceEntryRecord['toAccount'],
     amount: numeric(row.amount),
+    ...(row.amount_nio === undefined
+      ? {}
+      : { amountNio: numeric(row.amount_nio) }),
+    ...(row.read_only === true ? { readOnly: true } : {}),
+    ...(row.compensation_kind
+      ? {
+          compensationKind:
+            row.compensation_kind as FinanceEntryRecord['compensationKind'],
+        }
+      : {}),
     currency: row.currency as FinanceEntryRecord['currency'],
     exchangeRate: numeric(row.exchange_rate),
     counterparty: row.counterparty as string,
@@ -184,6 +202,31 @@ export function createAccountingAdapter(
   client: () => SupabaseClient,
   errorToApp: (error: DatabaseError | null) => AppError,
 ) {
+  const purchaseEvents = (from: string, to: string) =>
+    readReportPages<AccountingRow>(async (start, end) => {
+      const { data, error } = await client().rpc('purchase_report_events', {
+        p_from: from,
+        p_to: to,
+        p_start: start,
+        p_limit: end - start + 1,
+      })
+      if (error) return { data: null, error, count: null }
+      if (
+        !data ||
+        !Array.isArray(data.rows) ||
+        !Number.isInteger(data.count) ||
+        data.count < 0
+      )
+        throw new AppError(
+          'unexpected',
+          'No se recibió el detalle completo de las compras. Vuelve a consultar el período.',
+        )
+      return {
+        data: data.rows as AccountingRow[],
+        error: null,
+        count: data.count as number,
+      }
+    })
   async function write(name: string, args: Record<string, unknown>) {
     const { data, error } = await client().rpc(name, args)
     if (error) {
@@ -290,21 +333,7 @@ export function createAccountingAdapter(
               .order('id')
               .range(start, end),
           ),
-          startOn
-            ? readReportPages<AccountingRow>((start, end) =>
-                client()
-                  .from('purchase_shipments')
-                  .select(
-                    'id,incurred_on,goods_amount,shipping_amount,exchange_rate,account',
-                    { count: 'exact' },
-                  )
-                  .gte('incurred_on', startOn)
-                  .lte('incurred_on', range.to)
-                  .order('incurred_on')
-                  .order('id')
-                  .range(start, end),
-              )
-            : Promise.resolve(noRows),
+          startOn ? purchaseEvents(startOn, range.to) : Promise.resolve(noRows),
           startOn
             ? client()
                 .rpc('finance_sales', { p_from: startOn, p_to: range.to })
@@ -354,7 +383,22 @@ export function createAccountingAdapter(
           )
         return financeLedger(
           {
-            entries,
+            entries: [
+              ...entries.map((entry) =>
+                shipments.rows.some(
+                  (row) =>
+                    row.event_kind === 'cancellation' &&
+                    row.original_shipment_id === entry.shipmentId,
+                )
+                  ? { ...entry, readOnly: true }
+                  : entry,
+              ),
+              ...shipments.rows.flatMap((row) =>
+                ((row.refund_entries ?? []) as AccountingRow[]).map(
+                  toFinanceEntry,
+                ),
+              ),
+            ],
             expenses: expenses.rows.map((row): PaidExpense => ({
               ...toExpense(row),
               account: row.account as PaidExpense['account'],
@@ -365,8 +409,11 @@ export function createAccountingAdapter(
                 incurredOn: row.incurred_on as string,
                 account: row.account as ShipmentPayment,
                 amountNio:
-                  Math.round(numeric(row.goods_amount) * rate * 100) / 100 +
-                  Math.round(numeric(row.shipping_amount) * rate * 100) / 100,
+                  row.goods_nio === undefined
+                    ? Math.round(numeric(row.goods_amount) * rate * 100) / 100 +
+                      Math.round(numeric(row.shipping_amount) * rate * 100) /
+                        100
+                    : numeric(row.goods_nio) + numeric(row.shipping_nio),
               }
             }),
             sales: totals,
@@ -411,28 +458,29 @@ export function createAccountingAdapter(
       // The role check avoids fetching confidential rows for operational roles;
       // database RLS independently enforces the same rule on every table.
       const results = await Promise.allSettled([
-        readReportPages<AccountingRow>((start, end) =>
-          client()
-            .from('product_costs')
-            .select('product_id,average_cost_nio,updated_at', {
-              count: 'exact',
-            })
-            .order('product_id')
-            .range(start, end),
-        ),
-        readReportPages<AccountingRow>((start, end) =>
-          client()
-            .from('purchase_shipments')
-            .select(
-              'id,request_id,incurred_on,supplier,agency,reference,note,currency,exchange_rate,shipping_amount,goods_amount,units,shipping_per_unit,account,created_at,purchase_shipment_lines(id,product_id,location,quantity,unit_price,goods_amount,shipping_share,landed_unit_cost_nio)',
-              { count: 'exact' },
+        readReportPages<AccountingRow>(async (start, end) => {
+          const { data, error } = await client().rpc('inventory_value_rows', {
+            p_start: start,
+            p_limit: end - start + 1,
+          })
+          if (error) return { data: null, error, count: null }
+          if (
+            !data ||
+            !Array.isArray(data.rows) ||
+            !Number.isInteger(data.count) ||
+            data.count < 0
+          )
+            throw new AppError(
+              'unexpected',
+              'No se recibió la valorización completa del inventario. Vuelve a consultar.',
             )
-            .gte('incurred_on', window.from)
-            .lte('incurred_on', window.to)
-            .order('incurred_on')
-            .order('id')
-            .range(start, end),
-        ),
+          return {
+            data: data.rows as AccountingRow[],
+            error: null,
+            count: data.count as number,
+          }
+        }),
+        purchaseEvents(window.from, window.to),
         readReportPages<AccountingRow>((start, end) =>
           client()
             .from('expense_records')
@@ -451,7 +499,7 @@ export function createAccountingAdapter(
               client()
                 .from('document_item_costs')
                 .select(
-                  'document_item_id,document_id,product_id,quantity,unit_cost_nio,net_revenue_nio,tax_nio,documents!inner(created_at)',
+                  'document_item_id,document_id,product_id,quantity,unit_cost_nio,total_cost_nio,net_revenue_nio,tax_nio,documents!inner(created_at)',
                   { count: 'exact' },
                 )
                 .gte('documents.created_at', from)
@@ -465,7 +513,7 @@ export function createAccountingAdapter(
               client()
                 .from('inventory_movement_costs')
                 .select(
-                  'movement_id,product_id,type,quantity,unit_cost_nio,created_at',
+                  'movement_id,product_id,type,quantity,unit_cost_nio,total_cost_nio,created_at',
                   { count: 'exact' },
                 )
                 .gte('created_at', from)
@@ -493,6 +541,8 @@ export function createAccountingAdapter(
           productId: row.product_id as string,
           averageCostNio: nullableNumeric(row.average_cost_nio),
           updatedAt: row.updated_at as string,
+          inventoryValueNio: nullableNumeric(row.inventory_value_nio),
+          inventoryQuantity: numeric(row.quantity),
         })),
         shipments: shipments.rows.map(toShipment),
         expenses: expenses.rows.map(toExpense),
@@ -501,6 +551,7 @@ export function createAccountingAdapter(
           productId: row.product_id as string,
           quantity: numeric(row.quantity),
           unitCostNio: nullableNumeric(row.unit_cost_nio),
+          totalCostNio: nullableNumeric(row.total_cost_nio),
           netRevenueNio: nullableNumeric(row.net_revenue_nio),
           taxNio: nullableNumeric(row.tax_nio),
         })),
@@ -510,6 +561,7 @@ export function createAccountingAdapter(
           type: row.type as 'DAMAGED' | 'EXIT' | 'ADJUSTMENT',
           quantity: numeric(row.quantity),
           unitCostNio: nullableNumeric(row.unit_cost_nio),
+          totalCostNio: nullableNumeric(row.total_cost_nio),
           createdAt: row.created_at as string,
         })),
         truncated: [costs, shipments, expenses, saleCosts, movementCosts].some(

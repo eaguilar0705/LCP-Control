@@ -91,18 +91,21 @@ export function TrendChart({
   const padding = { top: 16, right: 14, bottom: 26, left: 58 }
   const plotWidth = Math.max(10, width - padding.left - padding.right)
   const plotHeight = height - padding.top - padding.bottom
-  const max = niceCeiling(Math.max(...points.map((point) => point.value), 0))
+  const lower = Math.min(...points.map((point) => point.value), 0)
+  const upper = Math.max(...points.map((point) => point.value), 0)
+  const min = lower < 0 ? -niceCeiling(-lower) : 0
+  const max = upper > 0 ? niceCeiling(upper) : min < 0 ? 0 : 1
   const step = points.length > 1 ? plotWidth / (points.length - 1) : 0
   const at = (index: number) => padding.left + index * step
   const scale = (value: number) =>
-    padding.top + plotHeight - (value / max) * plotHeight
+    padding.top + ((max - value) / (max - min)) * plotHeight
   const line = points
     .map((point, index) => `${at(index)},${scale(point.value)}`)
     .join(' ')
   const area = points.length
-    ? `M${padding.left},${padding.top + plotHeight} L${line.replaceAll(' ', ' L')} L${at(points.length - 1)},${padding.top + plotHeight} Z`
+    ? `M${padding.left},${scale(0)} L${line.replaceAll(' ', ' L')} L${at(points.length - 1)},${scale(0)} Z`
     : ''
-  const ticks = [0, 0.5, 1].map((fraction) => max * fraction)
+  const ticks = [min, (min + max) / 2, max]
   // Con muchos días no cabe una fecha por punto: se rotulan cinco repartidas.
   const labelEvery = Math.max(1, Math.ceil(points.length / 5))
   const current = active === null ? null : points[active]
@@ -219,7 +222,7 @@ export function RankedBars({
   format: (value: number) => string
   label: string
 }) {
-  const max = Math.max(...bars.map((bar) => bar.value), 0) || 1
+  const max = Math.max(...bars.map((bar) => Math.abs(bar.value)), 0) || 1
   return (
     <ul className="ranked-bars" aria-label={label}>
       {bars.map((bar) => (
@@ -231,7 +234,7 @@ export function RankedBars({
           <div className="ranked-track">
             <div
               className="ranked-fill"
-              style={{ width: `${Math.max(2, (bar.value / max) * 100)}%` }}
+              style={{ width: `${(Math.abs(bar.value) / max) * 100}%` }}
             />
           </div>
           {bar.detail && <small>{bar.detail}</small>}
@@ -260,22 +263,29 @@ export function SplitBar({
   format: (value: number) => string
   label: string
 }) {
-  const total = segments.reduce((sum, segment) => sum + segment.value, 0)
-  if (!total) return null
+  const total = segments.reduce(
+    (sum, segment) => sum + Math.max(0, segment.value),
+    0,
+  )
+  if (!segments.some((segment) => segment.value !== 0)) return null
   return (
     <div className="split" aria-label={label}>
-      <div className="split-bar">
-        {segments.map((segment, index) => (
-          <div
-            key={segment.key}
-            className="split-piece"
-            style={{
-              width: `${(segment.value / total) * 100}%`,
-              background: SERIES[index % SERIES.length],
-            }}
-          />
-        ))}
-      </div>
+      {total > 0 && (
+        <div className="split-bar">
+          {segments.map((segment, index) =>
+            segment.value > 0 ? (
+              <div
+                key={segment.key}
+                className="split-piece"
+                style={{
+                  width: `${(segment.value / total) * 100}%`,
+                  background: SERIES[index % SERIES.length],
+                }}
+              />
+            ) : null,
+          )}
+        </div>
+      )}
       <ul className="split-legend">
         {segments.map((segment, index) => (
           <li key={segment.key}>
@@ -286,7 +296,11 @@ export function SplitBar({
             />
             <span className="split-name">{segment.label}</span>
             <strong>{format(segment.value)}</strong>
-            <small>{Math.round((segment.value / total) * 100)}%</small>
+            <small>
+              {segment.value < 0
+                ? 'Ajuste'
+                : `${Math.round((segment.value / (total || 1)) * 100)}%`}
+            </small>
           </li>
         ))}
       </ul>
@@ -311,10 +325,14 @@ export function ColumnChart({
   const padding = { top: 18, right: 8, bottom: 28, left: 52 }
   const plotWidth = Math.max(10, width - padding.left - padding.right)
   const plotHeight = height - padding.top - padding.bottom
-  const max = niceCeiling(Math.max(...bars.map((bar) => bar.value), 0))
+  const lower = Math.min(...bars.map((bar) => bar.value), 0)
+  const upper = Math.max(...bars.map((bar) => bar.value), 0)
+  const min = lower < 0 ? -niceCeiling(-lower) : 0
+  const max = upper > 0 ? niceCeiling(upper) : min < 0 ? 0 : 1
   const band = plotWidth / Math.max(bars.length, 1)
   const barWidth = Math.min(24, band - 8)
-  const scale = (value: number) => (value / max) * plotHeight
+  const yAt = (value: number) =>
+    padding.top + ((max - value) / (max - min)) * plotHeight
   return (
     <div className="chart" ref={ref}>
       <svg
@@ -324,28 +342,28 @@ export function ColumnChart({
         aria-label={label}
         onMouseLeave={() => setActive(null)}
       >
-        {[0, 0.5, 1].map((fraction) => (
-          <g key={fraction}>
+        {[min, (min + max) / 2, max].map((tick) => (
+          <g key={tick}>
             <line
               x1={padding.left}
               x2={width - padding.right}
-              y1={padding.top + plotHeight - scale(max * fraction)}
-              y2={padding.top + plotHeight - scale(max * fraction)}
+              y1={yAt(tick)}
+              y2={yAt(tick)}
               className="chart-grid"
             />
             <text
               x={padding.left - 8}
-              y={padding.top + plotHeight - scale(max * fraction) + 4}
+              y={yAt(tick) + 4}
               className="chart-axis"
               textAnchor="end"
             >
-              {format(max * fraction)}
+              {format(tick)}
             </text>
           </g>
         ))}
         {bars.map((bar, index) => {
           const x = padding.left + index * band + (band - barWidth) / 2
-          const barHeight = Math.max(bar.value > 0 ? 2 : 0, scale(bar.value))
+          const barHeight = Math.abs(yAt(bar.value) - yAt(0))
           return (
             <g key={bar.label} onMouseEnter={() => setActive(index)}>
               <rect
@@ -357,7 +375,7 @@ export function ColumnChart({
               />
               <rect
                 x={x}
-                y={padding.top + plotHeight - barHeight}
+                y={Math.min(yAt(0), yAt(bar.value))}
                 width={barWidth}
                 height={barHeight}
                 className="chart-column"
@@ -378,7 +396,7 @@ export function ColumnChart({
       {active !== null && bars[active] && (
         <Tip
           x={padding.left + active * band + band / 2}
-          y={padding.top + plotHeight - scale(bars[active].value) - 8}
+          y={yAt(bars[active].value) - 8}
           width={width}
         >
           <strong>{format(bars[active].value)}</strong>
