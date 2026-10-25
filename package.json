@@ -37,6 +37,8 @@
     "test:browser:enterprise": "node scripts/tests/browser-first-use-audit.mjs && node scripts/tests/browser-journal-contingencies.mjs && node scripts/tests/browser-movement-confirmation.mjs && node scripts/tests/browser-operation-confirmation.mjs && node scripts/tests/browser-price-tier-confirmation.mjs && node scripts/tests/browser-master-data-concurrency.mjs && node scripts/tests/browser-inventory-transfers.mjs",
     "test:browser": "node scripts/tests/browser-system.mjs && node scripts/tests/browser-sales-journal.mjs",
     "test:browser:accounting": "node scripts/tests/browser-accounting.mjs",
+    "test:business-day-opening": "node scripts/tests/business-day-opening.mjs && node scripts/tests/day-contingencies.mjs",
+    "test:browser:business-day": "node scripts/tests/browser-business-day-history.mjs",
     "test:contingencies": "node scripts/tests/browser-day-contingencies.mjs && node scripts/tests/browser-sale-contingencies.mjs && node scripts/tests/browser-payment-dates.mjs",
     "test:delivery": "node scripts/tests/browser-delivery-audit.mjs && node scripts/tests/browser-history-volume.mjs"
   },

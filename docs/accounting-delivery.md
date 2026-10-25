@@ -8,8 +8,9 @@ Revisión del 11 de octubre de 2026 sobre `main` (`fe7db69`): notas del negocio,
 
 - Una jornada por fecha de Managua y una sola jornada abierta a la vez.
 - Admin y superadmin abren y cierran desde Inicio. Ventas puede emitir únicamente durante la jornada del día. Una jornada anterior pendiente debe cerrarse antes de abrir la nueva.
-- La apertura guarda el efectivo físico en C$ y US$. No crea ingresos ni duplica el comprobante contable de apertura.
-- El cierre conserva ventas por pago y moneda, productos/unidades vendidos, efectivo esperado, conteo, diferencias, motivo y responsables. Se descarga un PDF. Los cierres son definitivos; no hay reapertura en esta versión.
+- La apertura guarda el efectivo físico en C$ y US$. Se puede reutilizar el conteo del último cierre o rellenar ambos importes con cero; los campos siguen siendo editables y siempre se confirma la apertura. No crea ingresos ni duplica el comprobante contable de apertura.
+- El cierre conserva ventas por pago y moneda, productos/unidades vendidos, efectivo esperado, conteo, diferencias, motivo y responsables. Admin y superadmin pueden reabrir la jornada del mismo día con motivo obligatorio; se conservan todos los cierres y reaperturas con su reporte original.
+- El historial corresponde a la fecha seleccionada en «Consultar jornada» y permanece desplegado al cambiarla. «Actualizar jornada» vuelve a consultar el estado, los importes y el historial, también después de un fallo de conexión.
 - La base serializa las operaciones con el cierre y bloquea escrituras en facturas, movimientos de inventario, compras, gastos y comprobantes de fechas cerradas. Las proformas no requieren apertura.
 - El efectivo esperado incluye ventas de contado, cobros, pagos, compras, gastos, transferencias y comprobantes que afecten la caja principal. Los comprobantes de apertura contable no se suman otra vez al efectivo del día.
 

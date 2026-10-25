@@ -116,6 +116,37 @@
   font-weight: 600;
   color: #792d38;
 }
+.day-history-date {
+  color: #756b65;
+  font-size: 0.85rem;
+  margin: 0.7rem 0;
+}
+.day-opening-shortcuts {
+  display: grid;
+  gap: 0.5rem;
+}
+.day-opening-shortcuts > .button {
+  justify-self: start;
+}
+.day-previous-closing {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem;
+  border: 1px solid #e8ddd5;
+  border-radius: 0.65rem;
+  background: #faf6f3;
+}
+.day-previous-closing > div {
+  min-width: 0;
+}
+.day-previous-closing span {
+  display: block;
+  margin-top: 0.35rem;
+  color: #756b65;
+}
 .day-history-event {
   display: grid;
   gap: 0.7rem;
