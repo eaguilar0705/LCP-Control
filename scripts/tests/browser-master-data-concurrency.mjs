@@ -37,6 +37,7 @@ try {
     const fixture = await browserDatabase(page)
     const db = fixture.db
     const errors = []
+    const lostResponseRequests = []
     page.on('pageerror', (error) => errors.push(error.message))
     const business = async () =>
       (
@@ -243,11 +244,29 @@ try {
       await page.getByLabel('Teléfono', { exact: true }).waitFor()
       await page.getByLabel('Teléfono', { exact: true }).fill('55554444')
       let businessLost = false
+      let businessMayReply = false
+      let businessOriginalRequest
       const loseBusiness = async (route) => {
-        if (businessLost) return route.fallback()
-        businessLost = true
-        const { p_payload, p_expected } = route.request().postDataJSON()
-        await saveBusiness(p_payload, p_expected)
+        const body = route.request().postDataJSON()
+        lostResponseRequests.push({
+          operation: 'business',
+          mayReply: businessMayReply,
+          body,
+        })
+        if (businessLost) {
+          assert.deepEqual(
+            body,
+            businessOriginalRequest,
+            'el reintento conserva la solicitud de Negocio',
+          )
+          if (businessMayReply) return route.fallback()
+        } else {
+          businessLost = true
+          businessOriginalRequest = body
+          await saveBusiness(body.p_payload, body.p_expected)
+        }
+        // Se mantiene la respuesta perdida hasta el reintento humano, aunque
+        // el transporte repita una petición internamente.
         await route.abort('failed')
       }
       await page.route(
@@ -261,6 +280,7 @@ try {
         await page.getByLabel('Teléfono', { exact: true }).inputValue(),
         '55554444',
       )
+      businessMayReply = true
       await page.getByRole('button', { name: 'Guardar', exact: true }).click()
       await page
         .getByText('Datos del negocio guardados.', { exact: true })
@@ -351,27 +371,75 @@ try {
       await page
         .getByRole('button', { name: 'Autorizar correo', exact: true })
         .click()
+      // openStaffForm lleva el foco al correo en requestAnimationFrame. Esperar
+      // su render evita que el foco cambie durante la escritura automatizada.
+      await page.evaluate(
+        () =>
+          new Promise((resolve) => {
+            globalThis.requestAnimationFrame(() =>
+              globalThis.requestAnimationFrame(resolve),
+            )
+          }),
+      )
+      equal(
+        await page
+          .getByLabel('Correo', { exact: true })
+          .evaluate((input) => input === globalThis.document.activeElement),
+        true,
+        'el autofocus de la autorización ya terminó',
+      )
       await page
         .getByLabel('Correo', { exact: true })
         .fill('respuesta-perdida@example.test')
       await page
         .getByLabel('Nombre', { exact: true })
         .fill('Acceso por confirmar')
+      equal(
+        await page.getByLabel('Correo', { exact: true }).inputValue(),
+        'respuesta-perdida@example.test',
+      )
+      equal(
+        await page.getByLabel('Nombre', { exact: true }).inputValue(),
+        'Acceso por confirmar',
+      )
+      equal(
+        await page
+          .getByLabel('Correo', { exact: true })
+          .evaluate((input) => input.form.checkValidity()),
+        true,
+        'el formulario es válido antes de simular la pérdida de respuesta',
+      )
       let staffLost = false
+      let staffMayReply = false
+      let staffOriginalRequest
       const loseStaff = async (route) => {
-        if (staffLost) return route.fallback()
-        staffLost = true
         const body = route.request().postDataJSON()
-        await db.query(
-          'select public.save_staff_account_checked($1,$2,$3,$4,$5::jsonb)',
-          [
-            body.p_email,
-            body.p_name,
-            body.p_role,
-            body.p_active,
-            body.p_expected === null ? null : JSON.stringify(body.p_expected),
-          ],
-        )
+        lostResponseRequests.push({
+          operation: 'staff',
+          mayReply: staffMayReply,
+          body,
+        })
+        if (staffLost) {
+          assert.deepEqual(
+            body,
+            staffOriginalRequest,
+            'el reintento conserva la solicitud de Usuarios',
+          )
+          if (staffMayReply) return route.fallback()
+        } else {
+          staffLost = true
+          staffOriginalRequest = body
+          await db.query(
+            'select public.save_staff_account_checked($1,$2,$3,$4,$5::jsonb)',
+            [
+              body.p_email,
+              body.p_name,
+              body.p_role,
+              body.p_active,
+              body.p_expected === null ? null : JSON.stringify(body.p_expected),
+            ],
+          )
+        }
         await route.abort('failed')
       }
       await page.route('**/rest/v1/rpc/save_staff_account_checked', loseStaff)
@@ -385,6 +453,7 @@ try {
         await page.getByLabel('Nombre', { exact: true }).inputValue(),
         'Acceso por confirmar',
       )
+      staffMayReply = true
       await page.getByRole('button', { name: 'Guardar', exact: true }).click()
       await page
         .getByText(
@@ -473,7 +542,40 @@ try {
         business: await business(),
         collaborator: await staff(email),
         responseLostStaff: await staff('respuesta-perdida@example.test'),
+        lostResponseRequests,
       })
+    } catch (error) {
+      await page.screenshot({
+        path: `${output}/fallo-${width}.png`,
+        fullPage: true,
+      })
+      await writeFile(
+        `${output}/fallo-${width}.json`,
+        JSON.stringify(
+          {
+            error: error.message,
+            url: page.url(),
+            lostResponseRequests,
+            errors,
+            databaseErrors: fixture.failures,
+            forms: await page.locator('form').evaluateAll((forms) =>
+              forms.map((form) => ({
+                valid: form.checkValidity(),
+                fields: Array.from(form.elements).map((field) => ({
+                  tag: field.tagName,
+                  name: field.getAttribute('name'),
+                  value: field.value,
+                  validationMessage: field.validationMessage,
+                  disabled: field.disabled,
+                })),
+              })),
+            ),
+          },
+          null,
+          2,
+        ),
+      )
+      throw error
     } finally {
       await context.close()
       await fixture.close()

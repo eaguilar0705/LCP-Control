@@ -1501,6 +1501,28 @@ try {
     if ((dayIndex + 1) % checkpointEvery === 0 || dayIndex + 1 === days)
       await saveCheckpoint(dayIndex + 1)
   }
+  // PGlite no ejecuta el autovacuum de un servidor. Actualizar las estadísticas
+  // del planificador evita medir planes con cardinalidades de la base vacía.
+  // Sólo cambia estadísticas de este motor aislado; no datos ni comprobaciones.
+  console.log('POSTFLIGHT: actualizar estadísticas del PostgreSQL aislado')
+  await db.exec('reset role; analyze')
+  const plannerStatistics = (
+    await db.query(
+      "select schemaname,relname,n_live_tup,last_analyze from pg_stat_user_tables where schemaname in ('public','private') order by schemaname,relname",
+    )
+  ).rows
+  const plannerIds = [...savedDocuments.keys()].slice(0, 500)
+  const planner = (
+    await db.query(
+      'explain (format json) select i.*,c.unit_cost_nio,c.net_revenue_nio,c.tax_nio,c.exchange_rate cost_rate,c.quantity cost_quantity from public.document_items i left join public.document_item_costs c on c.document_item_id=i.id where i.document_id=any($1::uuid[])',
+      [plannerIds],
+    )
+  ).rows
+  await writeFile(
+    `${artifactDirectory}/postflight-planner.json`,
+    JSON.stringify({ isolated: true, plannerStatistics, planner }, null, 2),
+  )
+  console.log('POSTFLIGHT: permisos de informes y apertura')
   for (const uid of [operator, warehouse, viewer, outsider]) {
     await identity(db, uid)
     await rejects(() =>
@@ -1527,6 +1549,7 @@ try {
     )
   }
   await identity(db, admin)
+  console.log('POSTFLIGHT: verificar facturas históricas inmutables')
   for (const snapshot of immutableDocuments) {
     const currentRows = (
       await db.query(
@@ -1544,11 +1567,17 @@ try {
   // Releer todas las facturas y proformas al final prueba que compras y cambios posteriores
   // no han reescrito los datos ya emitidos. Los lotes evitan enormes respuestas JSON.
   const persistedIds = [...savedDocuments.keys()]
-  for (let offset = 0; offset < persistedIds.length; offset += 500)
+  console.log(`POSTFLIGHT: releer ${persistedIds.length} documentos completos`)
+  for (let offset = 0; offset < persistedIds.length; offset += 500) {
     await verifyDocuments(
       persistedIds.slice(offset, offset + 500),
       'cierre anual',
     )
+    console.log(
+      `POSTFLIGHT: ${Math.min(offset + 500, persistedIds.length)}/${persistedIds.length} documentos completos comprobados`,
+    )
+  }
+  console.log('POSTFLIGHT: cierre histórico y mayor anual')
   const first = (
     await get('select public.get_business_day($1) r', ['2026-09-01'])
   ).r
@@ -1576,6 +1605,7 @@ try {
     ...monthlyModels.values(),
     { from: startDate, to: date, opening: new Map(), closing: accounts },
   ]) {
+    console.log(`POSTFLIGHT: estados financieros ${period.from} → ${period.to}`)
     const ledger = (
       await get('select public.ledger_report($1,$2) r', [
         period.from,
@@ -1654,12 +1684,28 @@ try {
   }
   const finalAccount = (code) =>
     finalLedger.accounts.find((account) => account.code === code).closing
-  const automatic = (
-    await get('select public.sales_journal_entries($1,$2) r', [
-      '2026-09-01',
-      date,
-    ])
-  ).r
+  console.log('POSTFLIGHT: comprobantes automáticos de cada jornada')
+  // El endpoint limita cada respuesta a 501 registros y la pantalla lo avisa.
+  // Consultar meses disjuntos conserva todas las comprobaciones de los 730
+  // comprobantes anuales, sin tomar una respuesta truncada como completa.
+  const automatic = []
+  for (const period of monthlyModels.values()) {
+    const entries = (
+      await get('select public.sales_journal_entries($1,$2) r', [
+        period.from,
+        period.to,
+      ])
+    ).r
+    assert.ok(entries.length < 501, 'mes de comprobantes sin truncamiento')
+    checks++
+    automatic.push(...entries)
+  }
+  equal(
+    new Set(automatic.map((entry) => `${entry.occurred_on}:${entry.kind}`))
+      .size,
+    automatic.length,
+    'comprobantes automáticos sin duplicar entre períodos',
+  )
   equal(automatic.length, days * 2, 'dos comprobantes automáticos por jornada')
   for (const report of automaticReports) {
     for (const kind of ['sales', 'sales_cost']) {
@@ -1695,6 +1741,7 @@ try {
       }
     }
   }
+  console.log('POSTFLIGHT: conteos definitivos y exportar resultado')
   await db.exec('reset role')
   const counts = await get(
     "select (select count(*)::int from public.documents where kind='invoice') invoices,(select count(*)::int from public.documents where kind='proforma') proformas,(select count(*)::int from public.document_items i join public.documents d on d.id=i.document_id where d.kind='invoice') invoice_lines,(select count(*)::int from public.purchase_shipments) purchases,(select count(*)::int from public.business_days where closed_at is not null) closed_days",
