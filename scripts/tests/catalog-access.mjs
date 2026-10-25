@@ -274,12 +274,22 @@ try {
     /propia/,
   )
   await rejects(
-    db.query('select public.save_staff_account($1,$2,$3,$4)', [
-      'admin@example.test',
-      'Principal',
-      'viewer',
-      true,
-    ]),
+    db.query(
+      'select public.save_staff_account_checked($1,$2,$3,$4,$5::jsonb)',
+      [
+        'admin@example.test',
+        'Principal',
+        'viewer',
+        true,
+        JSON.stringify(
+          (
+            await db.query(
+              "select to_jsonb(s) snapshot from public.list_staff_accounts() s where s.email='admin@example.test'",
+            )
+          ).rows[0].snapshot,
+        ),
+      ],
+    ),
     /propios/,
   )
   await db.query('select public.save_staff_account($1,$2,$3,$4)', [

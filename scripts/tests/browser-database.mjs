@@ -79,6 +79,7 @@ export async function browserDatabase(page) {
     'exchange_rates',
     'documents',
     'inventory_movements',
+    'inventory_transfers',
     'document_item_costs',
     'inventory_cost_losses',
     'expense_records',

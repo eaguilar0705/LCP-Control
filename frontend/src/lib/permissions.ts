@@ -10,6 +10,7 @@ export type Capability =
   | 'inventory.create_exit'
   | 'inventory.create_damage'
   | 'inventory.adjust'
+  | 'inventory.transfer'
   | 'finance.read'
   | 'pricing.manage'
   | 'customer.read'
@@ -38,6 +39,7 @@ const permissions: Record<UserRole, readonly Capability[]> = {
     'product.edit_cost',
     'inventory.create_entry',
     'inventory.adjust',
+    'inventory.transfer',
     'finance.read',
     'pricing.manage',
     'supplier.read',
@@ -54,6 +56,7 @@ const permissions: Record<UserRole, readonly Capability[]> = {
     'product.edit_cost',
     'inventory.create_entry',
     'inventory.adjust',
+    'inventory.transfer',
     'finance.read',
     'pricing.manage',
     'supplier.read',
@@ -72,6 +75,7 @@ const permissions: Record<UserRole, readonly Capability[]> = {
     'inventory.create_exit',
     'inventory.create_damage',
     'inventory.adjust',
+    'inventory.transfer',
     'supplier.read',
   ],
   viewer: ['inventory.read', 'scanner.use'],

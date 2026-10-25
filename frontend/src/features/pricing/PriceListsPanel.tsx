@@ -5,6 +5,7 @@ import { useAccess } from '../../app/AccessContext'
 import { useServices } from '../../services/useServices'
 import { useQuery } from '../../lib/useQuery'
 import { usePriceTiers } from '../../lib/usePriceTiers'
+import { createIdempotentOperation } from '../../lib/idempotentOperation'
 import { can } from '../../lib/permissions'
 import { AppError, errorMessage } from '../../lib/errors'
 import { formatCurrency } from '../../lib/format'
@@ -47,6 +48,17 @@ function PriceListEditor({
   onSaved?: () => void
 }) {
   const { productService, settingsService } = useServices()
+  const { storageScope = 'anonymous' } = useAccess()
+  const [creation] = useState(() =>
+    createIdempotentOperation<{ name: string }, string>(
+      productService.createPriceTier,
+      {
+        scope: storageScope,
+        key: 'price-tier-create',
+        label: 'Lista de precios',
+      },
+    ),
+  )
   const tiers = usePriceTiers()
   const load = useCallback(async () => {
     const [products, pricing, rate] = await Promise.all([
@@ -69,21 +81,21 @@ function PriceListEditor({
   const [failure, setFailure] = useState('')
   const [message, setMessage] = useState('')
   const [replace, setReplace] = useState<(() => void) | null>(null)
-  const request = useRef<{ name: string; requestId: string } | null>(null)
   const priceRequest = useRef<{ signature: string; requestId: string } | null>(
     null,
   )
   const working = useRef(false)
+  const uncertain = creation.isUncertain()
   const dirty = Object.keys(edits).length > 0
   useEffect(() => {
-    if (!dirty && !busy) return
+    if (!dirty && !busy && !uncertain) return
     const warn = (event: BeforeUnloadEvent) => {
       event.preventDefault()
       event.returnValue = ''
     }
     window.addEventListener('beforeunload', warn)
     return () => window.removeEventListener('beforeunload', warn)
-  }, [dirty, busy])
+  }, [dirty, busy, uncertain])
   const products = (data?.products ?? []).filter(
     (p) =>
       p.active &&
@@ -103,7 +115,7 @@ function PriceListEditor({
     return { USD, NIO: convertPrice(USD, 'USD', 'NIO', data?.rate) }
   }
   function choose(action: () => void) {
-    if (working.current) return
+    if (working.current || uncertain) return
     if (dirty) setReplace(() => action)
     else action()
   }
@@ -123,23 +135,23 @@ function PriceListEditor({
     event.preventDefault()
     if (working.current) return
     const trimmed = name.trim()
-    if (!trimmed) {
+    if (!uncertain && !trimmed) {
       setFailure('Escribe el nombre de la lista.')
       return
     }
     working.current = true
     setBusy(true)
     setFailure('')
-    if (request.current?.name !== trimmed)
-      request.current = { name: trimmed, requestId: crypto.randomUUID() }
     try {
-      const code = await productService.createPriceTier(request.current)
+      const code = uncertain
+        ? await creation.retryPending()
+        : await creation.execute({ name: trimmed })
+      creation.reset()
       setTier(code)
       setCurrency('USD')
       setPage(0)
       setCreating(false)
       setName('')
-      request.current = null
       setMessage('Lista creada. Agrega los precios de los perfumes.')
       onSaved?.()
     } catch (error) {
@@ -150,7 +162,7 @@ function PriceListEditor({
     }
   }
   async function save() {
-    if (working.current || !data || !dirty) return
+    if (working.current || uncertain || !data || !dirty) return
     const rows = Object.entries(edits).map(([productId, text]) => ({
       productId,
       revision: data.products.find((p) => p.id === productId)?.revision ?? 0,
@@ -210,9 +222,10 @@ function PriceListEditor({
       open
       title="Listas de precios"
       className="price-lists-dialog"
+      dismissible={!busy && !uncertain}
       onClose={() => choose(onClose)}
     >
-      <fieldset disabled={busy} className="price-lists-fields">
+      <fieldset disabled={busy || uncertain} className="price-lists-fields">
         <div className="price-lists-toolbar">
           <Select
             label="Lista de precios"
@@ -264,22 +277,36 @@ function PriceListEditor({
             <Plus size={17} /> Nueva lista
           </Button>
         </div>
-        {creating && (
-          <form className="price-list-create" onSubmit={create}>
-            <Input
-              label="Nombre de la nueva lista"
-              value={name}
-              maxLength={80}
-              required
-              autoFocus
-              onChange={(e) => setName(e.target.value)}
-            />
-            <Button type="submit">Crear lista</Button>
-            <Button variant="ghost" onClick={() => setCreating(false)}>
-              Cancelar
-            </Button>
-          </form>
-        )}
+      </fieldset>
+      {creating && (
+        <form className="price-list-create" onSubmit={create}>
+          <Input
+            label="Nombre de la nueva lista"
+            value={name}
+            maxLength={80}
+            required
+            autoFocus
+            disabled={busy || uncertain}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <Button type="submit" disabled={busy}>
+            {busy
+              ? 'Guardando…'
+              : uncertain
+                ? 'Verificar guardado'
+                : 'Crear lista'}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={busy || uncertain}
+            onClick={() => setCreating(false)}
+          >
+            Cancelar
+          </Button>
+        </form>
+      )}
+      <fieldset disabled={busy || uncertain} className="price-lists-fields">
         <div className="search-with-scan price-lists-search">
           <Input
             label="Buscar perfume"

@@ -12,6 +12,7 @@ import { can, type Capability } from '../../lib/permissions'
 import { errorMessage } from '../../lib/errors'
 import { createIdempotentOperation } from '../../lib/idempotentOperation'
 import { ProductCostDialog } from '../products/ProductCostDialog'
+import { InventoryTransfers } from './InventoryTransfers'
 
 // `title` y `done` se escriben enteros: «Dañado» y «Ajuste» no concuerdan con
 // «de inventario … registrada» como sí lo hacen «Entrada» y «Salida».
@@ -179,6 +180,7 @@ export function InventoryMovements({
   return (
     <section className="movement-section">
       <div className="movement-buttons">
+        <InventoryTransfers items={items} onRecorded={onRecorded} />
         {actions
           .filter((entry) => can(role, entry.capability))
           .map((entry) => (

@@ -78,12 +78,18 @@ export const deleteStaff = (record: StaffAccount) =>
     p_user_id: record.user_id ?? null,
     p_role: record.role,
   })
-export const saveStaff = (record: StaffAccount) =>
-  rpc('save_staff_account', {
+export const saveStaff = (
+  record: StaffAccount,
+  expected: StaffAccount | null,
+) =>
+  rpc('save_staff_account_checked', {
     p_email: record.email,
     p_name: record.display_name,
     p_role: record.role,
     p_active: record.active,
+    p_expected: expected
+      ? { ...expected, user_id: expected.user_id ?? null }
+      : null,
   })
 type MovementRow = {
   id: string

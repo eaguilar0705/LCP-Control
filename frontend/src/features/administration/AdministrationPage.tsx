@@ -52,6 +52,8 @@ export function StaffPage() {
   )
   const { data, error, loading, retry } = useQuery(load)
   const [form, setForm] = useState<StaffAccount | null>(null)
+  const [originalStaff, setOriginalStaff] = useState<StaffAccount | null>(null)
+  const [reloadStaff, setReloadStaff] = useState(false)
   const [editingEmail, setEditingEmail] = useState(false)
   const [message, setMessage] = useState('')
   const [formError, setFormError] = useState('')
@@ -63,6 +65,7 @@ export function StaffPage() {
   function openStaffForm(record: StaffAccount, editing: boolean) {
     setEditingEmail(editing)
     setForm(record)
+    setOriginalStaff(editing ? record : null)
     setFormError('')
     setMessage('')
     requestAnimationFrame(() => {
@@ -104,7 +107,7 @@ export function StaffPage() {
     setBusy(true)
     setFormError('')
     try {
-      await saveStaff(form)
+      await saveStaff(form, originalStaff)
       setForm(null)
       retry()
       setMessage(
@@ -114,6 +117,33 @@ export function StaffPage() {
       // El error queda dentro del formulario, con sus datos, y se anuncia
       // como error: antes salía arriba con el mismo aspecto que un «guardado».
       setFormError(errorMessage(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+  async function refreshStaffForm() {
+    if (!form || busy) return
+    setBusy(true)
+    setFormError('')
+    try {
+      const latest = (await listStaff()).find(
+        (record) => record.email.toLowerCase() === form.email.toLowerCase(),
+      )
+      if (latest) {
+        setForm(latest)
+        setOriginalStaff(latest)
+        setEditingEmail(true)
+      } else {
+        setForm(null)
+        setMessage(
+          'La cuenta ya no existe. Puedes autorizarla de nuevo si corresponde.',
+        )
+      }
+      setReloadStaff(false)
+      retry()
+    } catch (error) {
+      setFormError(errorMessage(error))
+      setReloadStaff(false)
     } finally {
       setBusy(false)
     }
@@ -128,7 +158,7 @@ export function StaffPage() {
       >
         <Button
           type="button"
-          disabled={demo}
+          disabled={demo || busy}
           onClick={() =>
             openStaffForm(
               {
@@ -164,52 +194,56 @@ export function StaffPage() {
               </div>
             </div>
             <form onSubmit={submit}>
-              <div className="form-grid">
-                <Input
-                  label="Correo"
-                  type="email"
-                  required
-                  value={form.email}
-                  disabled={editingEmail}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                />
-                <Input
-                  label="Nombre"
-                  required
-                  maxLength={100}
-                  value={form.display_name}
-                  onChange={(e) =>
-                    setForm({ ...form, display_name: e.target.value })
-                  }
-                />
-                <Select
-                  label="Permisos"
-                  value={form.role}
-                  onChange={(e) =>
-                    setForm({ ...form, role: e.target.value as UserRole })
-                  }
-                >
-                  {Object.entries(roleLabels)
-                    .filter(
-                      ([r]) => r !== 'superadmin' || role === 'superadmin',
-                    )
-                    .map(([r, label]) => (
-                      <option key={r} value={r}>
-                        {label}
-                      </option>
-                    ))}
-                </Select>
-                <Select
-                  label="Estado"
-                  value={String(form.active)}
-                  onChange={(e) =>
-                    setForm({ ...form, active: e.target.value === 'true' })
-                  }
-                >
-                  <option value="true">Activo</option>
-                  <option value="false">Deshabilitado</option>
-                </Select>
-              </div>
+              <fieldset className="journal-entry-fields" disabled={busy}>
+                <div className="form-grid">
+                  <Input
+                    label="Correo"
+                    type="email"
+                    required
+                    value={form.email}
+                    disabled={editingEmail}
+                    onChange={(e) =>
+                      setForm({ ...form, email: e.target.value })
+                    }
+                  />
+                  <Input
+                    label="Nombre"
+                    required
+                    maxLength={100}
+                    value={form.display_name}
+                    onChange={(e) =>
+                      setForm({ ...form, display_name: e.target.value })
+                    }
+                  />
+                  <Select
+                    label="Permisos"
+                    value={form.role}
+                    onChange={(e) =>
+                      setForm({ ...form, role: e.target.value as UserRole })
+                    }
+                  >
+                    {Object.entries(roleLabels)
+                      .filter(
+                        ([r]) => r !== 'superadmin' || role === 'superadmin',
+                      )
+                      .map(([r, label]) => (
+                        <option key={r} value={r}>
+                          {label}
+                        </option>
+                      ))}
+                  </Select>
+                  <Select
+                    label="Estado"
+                    value={String(form.active)}
+                    onChange={(e) =>
+                      setForm({ ...form, active: e.target.value === 'true' })
+                    }
+                  >
+                    <option value="true">Activo</option>
+                    <option value="false">Deshabilitado</option>
+                  </Select>
+                </div>
+              </fieldset>
               {formError && (
                 <p role="alert" className="inline-error">
                   {formError}
@@ -219,6 +253,16 @@ export function StaffPage() {
                 <Button type="submit" disabled={busy || demo} aria-busy={busy}>
                   {busy ? 'Guardando…' : 'Guardar'}
                 </Button>
+                {formError.startsWith('Otro administrador') && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={busy}
+                    onClick={() => setReloadStaff(true)}
+                  >
+                    Actualizar usuario
+                  </Button>
+                )}
                 <Button
                   type="button"
                   variant="secondary"
@@ -259,6 +303,7 @@ export function StaffPage() {
               <Button
                 type="button"
                 variant="secondary"
+                disabled={busy}
                 onClick={() => openStaffForm(r, true)}
               >
                 <Pencil size={14} /> Editar permisos
@@ -292,6 +337,19 @@ export function StaffPage() {
           </Card>
         ))}
       </div>
+      <ConfirmDialog
+        open={reloadStaff}
+        title="Actualizar usuario"
+        confirmLabel="Cargar datos actuales"
+        busy={busy}
+        onConfirm={() => void refreshStaffForm()}
+        onCancel={() => setReloadStaff(false)}
+      >
+        <p>
+          Se cargarán los permisos y datos actuales. Los cambios que escribiste
+          sin guardar se descartarán.
+        </p>
+      </ConfirmDialog>
       {!loading && !error && !data?.length && (
         <WorkspaceEmpty icon={UsersRound} title="Tu equipo comienza aquí" />
       )}
@@ -358,7 +416,10 @@ export function StaffPage() {
         {[
           ['Administración', 'Catálogo, ventas, inventario y equipo.'],
           ['Caja', 'Facturación y consulta de sus propias ventas.'],
-          ['Inventario', 'Salidas, daños y conteos; compras por Administración.'],
+          [
+            'Inventario',
+            'Salidas, daños, conteos y traslados; compras por Administración.',
+          ],
           ['Solo consulta', 'Catálogo, fotografías y existencias.'],
         ].map(([title, detail]) => (
           <div key={title}>
@@ -370,6 +431,17 @@ export function StaffPage() {
     </>
   )
 }
+const businessProfileFields = [
+  'name',
+  'legalName',
+  'taxId',
+  'address',
+  'phone',
+  'email',
+  'branch',
+  'billingDetails',
+] as const
+
 export function BusinessPage() {
   const { demo, role } = useAccess()
   const { salesService } = useServices()
@@ -377,6 +449,7 @@ export function BusinessPage() {
   const [message, setMessage] = useState('')
   const [failure, setFailure] = useState('')
   const [busy, setBusy] = useState(false)
+  const [reloadBusiness, setReloadBusiness] = useState(false)
   const [importVersion, setImportVersion] = useState(0)
   if (!demo && !can(role, 'settings.manage'))
     return (
@@ -390,18 +463,15 @@ export function BusinessPage() {
     setMessage('')
     setFailure('')
     try {
-      await rpc('save_business_profile', {
+      await rpc('save_business_profile_checked', {
+        p_expected: Object.fromEntries(
+          businessProfileFields.map((field) => [field, data?.[field] ?? '']),
+        ),
         p_payload: Object.fromEntries(
-          [
-            'name',
-            'legalName',
-            'taxId',
-            'address',
-            'phone',
-            'email',
-            'branch',
-            'billingDetails',
-          ].map((field) => [field, String(f.get(field) ?? '').trim()]),
+          businessProfileFields.map((field) => [
+            field,
+            String(f.get(field) ?? '').trim(),
+          ]),
         ),
       })
       setMessage('Datos del negocio guardados.')
@@ -444,65 +514,77 @@ export function BusinessPage() {
           </div>
           {data && (
             <form onSubmit={submit} key={JSON.stringify(data)}>
-              <Input
-                label="Nombre comercial"
-                name="name"
-                required
-                maxLength={160}
-                defaultValue={data.name}
-              />
-              <Input
-                label="Razón social / Nombre del titular"
-                name="legalName"
-                required
-                maxLength={160}
-                defaultValue={data.legalName ?? ''}
-              />
-              <Input
-                label="RUC del negocio"
-                name="taxId"
-                required
-                maxLength={40}
-                defaultValue={data.taxId ?? ''}
-              />
-              <Input
-                label="Sucursal"
-                name="branch"
-                maxLength={100}
-                defaultValue={data.branch ?? ''}
-              />
-              <Input
-                label="Dirección"
-                name="address"
-                required
-                maxLength={600}
-                defaultValue={data.address}
-              />
-              <Input
-                label="Teléfono"
-                name="phone"
-                required
-                maxLength={60}
-                defaultValue={data.phone}
-              />
-              <Input
-                label="Correo del negocio"
-                name="email"
-                type="email"
-                maxLength={160}
-                defaultValue={data.email ?? ''}
-              />
-              <Input
-                label="Datos adicionales de facturación"
-                name="billingDetails"
-                maxLength={240}
-                defaultValue={data.billingDetails ?? ''}
-                placeholder="Serie, autorización u otros datos que correspondan al negocio"
-              />
+              <fieldset className="journal-entry-fields" disabled={busy}>
+                <Input
+                  label="Nombre comercial"
+                  name="name"
+                  required
+                  maxLength={160}
+                  defaultValue={data.name}
+                />
+                <Input
+                  label="Razón social / Nombre del titular"
+                  name="legalName"
+                  required
+                  maxLength={160}
+                  defaultValue={data.legalName ?? ''}
+                />
+                <Input
+                  label="RUC del negocio"
+                  name="taxId"
+                  required
+                  maxLength={40}
+                  defaultValue={data.taxId ?? ''}
+                />
+                <Input
+                  label="Sucursal"
+                  name="branch"
+                  maxLength={100}
+                  defaultValue={data.branch ?? ''}
+                />
+                <Input
+                  label="Dirección"
+                  name="address"
+                  required
+                  maxLength={600}
+                  defaultValue={data.address}
+                />
+                <Input
+                  label="Teléfono"
+                  name="phone"
+                  required
+                  maxLength={60}
+                  defaultValue={data.phone}
+                />
+                <Input
+                  label="Correo del negocio"
+                  name="email"
+                  type="email"
+                  maxLength={160}
+                  defaultValue={data.email ?? ''}
+                />
+                <Input
+                  label="Datos adicionales de facturación"
+                  name="billingDetails"
+                  maxLength={240}
+                  defaultValue={data.billingDetails ?? ''}
+                  placeholder="Serie, autorización u otros datos que correspondan al negocio"
+                />
+              </fieldset>
               <div className="form-actions">
                 <Button type="submit" disabled={busy || demo} aria-busy={busy}>
                   {busy ? 'Guardando…' : 'Guardar'}
                 </Button>
+                {failure.startsWith('Otro administrador') && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={busy}
+                    onClick={() => setReloadBusiness(true)}
+                  >
+                    Actualizar datos
+                  </Button>
+                )}
               </div>
             </form>
           )}
@@ -519,6 +601,22 @@ export function BusinessPage() {
         </Card>
         <ExchangeRateCard key={importVersion} />
       </div>
+      <ConfirmDialog
+        open={reloadBusiness}
+        title="Actualizar datos del negocio"
+        confirmLabel="Cargar datos actuales"
+        onConfirm={() => {
+          setReloadBusiness(false)
+          setFailure('')
+          retry()
+        }}
+        onCancel={() => setReloadBusiness(false)}
+      >
+        <p>
+          Se cargarán los datos actuales del negocio. Los cambios que escribiste
+          sin guardar se descartarán.
+        </p>
+      </ConfirmDialog>
     </>
   )
 }
