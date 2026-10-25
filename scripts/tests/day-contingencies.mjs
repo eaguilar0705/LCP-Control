@@ -102,6 +102,10 @@ try {
     "insert into public.inventory_balances(product_id,location,quantity) values($1,'store',10),($1,'warehouse',0)",
     [product],
   )
+  await db.query(
+    'insert into public.product_costs(product_id,average_cost_nio) values($1,100)',
+    [product],
+  )
   await identity(db, admin)
   equal((await state()).status, 'not_opened')
   equal(await history('2026-10-16'), [])

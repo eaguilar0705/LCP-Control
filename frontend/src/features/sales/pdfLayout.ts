@@ -193,10 +193,7 @@ export function layoutDocumentPdf(
       c3 = left + 408
     pdf.setFont('helvetica', 'bold').setFontSize(6.5)
     const nameOffset = pdf.getTextWidth('CLIENTE / RAZÓN SOCIAL') + 4
-    const name = wrap(d.customerName, c2 - c1 - nameOffset - 8, 9, true).slice(
-      0,
-      2,
-    )
+    const name = wrap(d.customerName, c2 - c1 - nameOffset - 8, 9, true)
     const extra = (name.length - 1) * 10.4
     const height = 44 + extra
     pdf

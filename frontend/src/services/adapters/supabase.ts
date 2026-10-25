@@ -281,7 +281,7 @@ export function toAppError(
       'rate_limited',
       readable ?? 'Demasiadas operaciones seguidas. Espera un momento.',
     )
-  if (error?.code === 'P0001' || error?.code === 'P1001')
+  if (['P0001', 'P1001', 'P1002'].includes(error?.code ?? ''))
     return new AppError(
       'validation',
       readable ?? 'Revisa los datos de la operación.',

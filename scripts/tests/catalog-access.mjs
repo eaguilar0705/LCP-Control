@@ -116,6 +116,12 @@ try {
     db.query('select public.remove_catalog_product($1,$2)', [product.id, 2]),
     /existencias/,
   )
+  await db.exec('reset role')
+  await db.query(
+    'insert into public.product_costs(product_id,average_cost_nio) values($1,100)',
+    [product.id],
+  )
+  await identity(db, admin)
   await call('record_inventory_movement', {
     requestId: crypto.randomUUID(),
     productId: product.id,

@@ -59,11 +59,16 @@ export function InventoryMovements({
   items: InventoryItem[]
   onRecorded: () => void
 }) {
-  const { role, demo } = useAccess()
+  const { role, demo, storageScope = 'anonymous' } = useAccess()
   const { inventoryService } = useServices()
   const [operation] = useState(() =>
     createIdempotentOperation<Omit<MovementRequest, 'requestId'>, string>(
       inventoryService.recordMovement,
+      {
+        scope: storageScope,
+        key: 'inventory-movement',
+        label: 'Movimiento de inventario',
+      },
     ),
   )
   const [action, setAction] = useState<(typeof actions)[number] | null>(null)
@@ -80,6 +85,7 @@ export function InventoryMovements({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const uncertain = operation.isUncertain()
   const item = items.find(({ product }) => product.id === productId)
   const quantity = item?.quantities[location]
   if (demo) return null
@@ -87,6 +93,22 @@ export function InventoryMovements({
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (busy || !action || !can(role, action.capability)) return
+    if (uncertain) {
+      setBusy(true)
+      setError('')
+      try {
+        await operation.retryPending()
+        setMessage(`${action.done}. Inventario actualizado.`)
+        setAction(null)
+        operation.reset()
+        onRecorded()
+      } catch (failure) {
+        setError(errorMessage(failure))
+      } finally {
+        setBusy(false)
+      }
+      return
+    }
     const fields = new FormData(event.currentTarget)
     const nextQuantity = Number(fields.get('quantity'))
     const note = String(fields.get('note') ?? '').trim()
@@ -163,7 +185,7 @@ export function InventoryMovements({
             <Button
               key={entry.type}
               variant="secondary"
-              disabled={!items.length || busy}
+              disabled={!items.length || busy || uncertain}
               onClick={() => {
                 operation.reset()
                 setAction(entry)
@@ -188,12 +210,13 @@ export function InventoryMovements({
         <Dialog
           open
           title={action.title}
+          dismissible={!busy && !uncertain}
           onClose={() => {
-            if (!busy) setAction(null)
+            if (!busy && !uncertain) setAction(null)
           }}
         >
           <form onSubmit={submit} className="movement-form">
-            <fieldset disabled={busy} className="form-fields">
+            <fieldset disabled={busy || uncertain} className="form-fields">
               <ProductSelect
                 label="Producto del movimiento"
                 products={items.map(({ product }) => product)}
@@ -245,14 +268,16 @@ export function InventoryMovements({
               <Button type="submit" disabled={busy}>
                 {busy
                   ? 'Registrando…'
-                  : action.type === 'ENTRY' && can(role, 'product.edit_cost')
-                    ? 'Continuar con la compra'
-                    : 'Confirmar movimiento'}
+                  : uncertain
+                    ? 'Verificar guardado'
+                    : action.type === 'ENTRY' && can(role, 'product.edit_cost')
+                      ? 'Continuar con la compra'
+                      : 'Confirmar movimiento'}
               </Button>
               <Button
                 type="button"
                 variant="secondary"
-                disabled={busy}
+                disabled={busy || uncertain}
                 onClick={() => setAction(null)}
               >
                 Cancelar

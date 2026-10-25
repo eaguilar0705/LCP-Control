@@ -9,6 +9,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   Button,
   Card,
+  ConfirmDialog,
   Dialog,
   ErrorState,
   Input,
@@ -19,7 +20,7 @@ import { useAccess } from '../../app/AccessContext'
 import { useServices } from '../../services/useServices'
 import { useQuery } from '../../lib/useQuery'
 import { usePriceTiers } from '../../lib/usePriceTiers'
-import { errorMessage, issuesByField } from '../../lib/errors'
+import { AppError, errorMessage, issuesByField } from '../../lib/errors'
 import {
   labels,
   type PricingInput,
@@ -38,9 +39,37 @@ import {
   pricingInput,
   productInput,
   productInputSchema,
+  type ProductInput,
 } from './product'
 import { formatCurrency } from '../../lib/format'
 import { PricingFields } from '../pricing/PricingFields'
+
+function sameSavedProduct(saved: Product, submitted: ProductInput) {
+  const current = productInput(saved)
+  const fields = [
+    'id',
+    'name',
+    'category',
+    'gender',
+    'size',
+    'unit',
+    'manufacturerBarcode',
+    'minimumStock',
+    'active',
+    'imagePath',
+  ] as const
+  return (
+    fields.every((field) => current[field] === submitted[field]) &&
+    current.brand.trim().toLocaleLowerCase() ===
+      submitted.brand.trim().toLocaleLowerCase() &&
+    Object.entries(submitted.prices).every(
+      ([tier, prices]) =>
+        current.prices[tier]?.USD === prices.USD &&
+        current.prices[tier]?.NIO === prices.NIO,
+    ) &&
+    Object.keys(current.prices).length === Object.keys(submitted.prices).length
+  )
+}
 
 export function ProductEditorPage() {
   const { role, demo } = useAccess()
@@ -184,7 +213,10 @@ function ProductForm({
   const unsaved = file !== null || JSON.stringify(value) !== initialValue
   const [preview, setPreview] = useState(product?.imageUrl ?? '')
   const [busy, setBusy] = useState(false)
+  const [stockPending, setStockPending] = useState(false)
   const [error, setError] = useState('')
+  const [leavePath, setLeavePath] = useState<string | null>(null)
+  const leaving = useRef(false)
   // Un aviso único no dice qué campo falta entre nueve datos y seis precios.
   // La clave es la ruta del dato («name», «prices.vip.USD»). Los avisos
   // aparecen al intentar guardar y desde entonces siguen a lo que se escribe:
@@ -200,6 +232,59 @@ function ProductForm({
   const form = useRef<HTMLFormElement>(null)
   const [confirmRemove, setConfirmRemove] = useState(false)
   const back = `${base}/inventory`
+  useEffect(() => {
+    if (!unsaved && !busy && !stockPending) return
+    const warn = (event: BeforeUnloadEvent) => {
+      if (leaving.current) return
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    const protect = (event: MouseEvent) => {
+      if (
+        leaving.current ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey ||
+        !(event.target instanceof Element)
+      )
+        return
+      const link = event.target.closest('a[href]')
+      if (
+        !(link instanceof HTMLAnchorElement) ||
+        link.hasAttribute('download') ||
+        (link.target && link.target !== '_self')
+      )
+        return
+      const destination = new URL(link.href, window.location.href)
+      if (
+        !['http:', 'https:'].includes(destination.protocol) ||
+        destination.origin !== window.location.origin ||
+        (destination.pathname === window.location.pathname &&
+          destination.search === window.location.search)
+      )
+        return
+      event.preventDefault()
+      event.stopPropagation()
+      if (stockPending)
+        setError(
+          'Verifica primero el guardado de las cantidades antes de salir.',
+        )
+      else if (busy)
+        setError('Espera a que termine el guardado antes de salir.')
+      else
+        setLeavePath(
+          destination.pathname + destination.search + destination.hash,
+        )
+    }
+    window.addEventListener('beforeunload', warn)
+    document.addEventListener('click', protect, true)
+    return () => {
+      window.removeEventListener('beforeunload', warn)
+      document.removeEventListener('click', protect, true)
+    }
+  }, [unsaved, busy, stockPending])
   useEffect(() => {
     return () => {
       if (preview.startsWith('blob:')) URL.revokeObjectURL(preview)
@@ -227,7 +312,7 @@ function ProductForm({
   }
   async function save(event: FormEvent) {
     event.preventDefault()
-    if (busy || demo) return
+    if (busy || stockPending || demo) return
     if (!parsed.success) {
       setChecked(true)
       setError('')
@@ -248,10 +333,51 @@ function ProductForm({
         update('imagePath', imagePath)
         setFile(null) // Keep this path for a retry if the product save fails.
       }
-      const savedId = await productService.saveProduct({
+      const submitted = {
         ...parsed.data,
         imagePath,
-      })
+      }
+      let savedId: string
+      try {
+        savedId = await productService.saveProduct(submitted)
+      } catch (failure) {
+        if (
+          failure instanceof AppError &&
+          ['unauthorized', 'rate_limited', 'configuration'].includes(
+            failure.kind,
+          )
+        )
+          throw failure
+        let confirmed = false
+        try {
+          const saved = (await productService.listProducts()).find(
+            (item) => item.id === submitted.id,
+          )
+          if (saved && sameSavedProduct(saved, submitted)) {
+            if (!submitted.pricing) confirmed = true
+            else {
+              const pricing = await productService.listPricing(submitted.id)
+              const current = pricingInput(
+                pricing.rows.find((row) => row.productId === submitted.id),
+              )
+              confirmed =
+                pricing.available &&
+                current.purchasePrice === submitted.pricing.purchasePrice &&
+                current.purchaseCurrency ===
+                  submitted.pricing.purchaseCurrency &&
+                legacyPriceTiers.every(
+                  (tier) =>
+                    current.markups[tier] === submitted.pricing!.markups[tier],
+                )
+            }
+          }
+        } catch {
+          // Sin conexión se conserva el mismo UUID y el formulario para reintentar.
+        }
+        if (!confirmed) throw failure
+        savedId = submitted.id
+      }
+      leaving.current = true
       navigate(product ? back : `${base}/products/${savedId}/edit`, {
         state: { message: 'Perfume guardado.' },
       })
@@ -262,7 +388,7 @@ function ProductForm({
     }
   }
   async function remove() {
-    if (!product || busy || demo) return
+    if (!product || busy || stockPending || demo) return
     setBusy(true)
     setError('')
     try {
@@ -270,6 +396,7 @@ function ProductForm({
         product.id,
         product.revision ?? 0,
       )
+      leaving.current = true
       navigate(`${base}/inventory`, {
         state: {
           message:
@@ -299,7 +426,9 @@ function ProductForm({
             <Button
               type="button"
               variant="secondary"
-              disabled={busy || demo || unsaved || !product.active}
+              disabled={
+                busy || stockPending || demo || unsaved || !product.active
+              }
               onClick={() => {
                 setCostLocation('warehouse')
                 setCostOpen(true)
@@ -321,7 +450,10 @@ function ProductForm({
         </p>
       )}
       <form onSubmit={save} ref={form} noValidate>
-        <fieldset disabled={busy} className="form-fields product-editor">
+        <fieldset
+          disabled={busy || stockPending}
+          className="form-fields product-editor"
+        >
           <Card className="form-card">
             <h2>Foto del perfume</h2>
             <div className="editor-photo">
@@ -645,14 +777,18 @@ function ProductForm({
           </p>
         )}
         <div className="form-actions">
-          <Button type="submit" disabled={busy || demo} aria-busy={busy}>
+          <Button
+            type="submit"
+            disabled={busy || stockPending || demo}
+            aria-busy={busy}
+          >
             {busy ? 'Guardando…' : 'Guardar perfume'}
           </Button>
           {product && (
             <Button
               type="button"
               variant="secondary"
-              disabled={busy || demo}
+              disabled={busy || stockPending || demo}
               onClick={() => setConfirmRemove(true)}
             >
               Retirar perfume
@@ -674,6 +810,7 @@ function ProductForm({
       {product ? (
         <section id="cantidades-perfume" tabIndex={-1}>
           <ProductStockEditor
+            onPendingChange={setStockPending}
             product={product}
             disabled={busy}
             purchaseDisabled={unsaved}
@@ -715,6 +852,20 @@ function ProductForm({
             </Button>
           </div>
         </Dialog>
+      )}
+      {leavePath && (
+        <ConfirmDialog
+          open
+          title="Cambios sin guardar"
+          confirmLabel="Salir sin guardar"
+          onConfirm={() => {
+            leaving.current = true
+            navigate(leavePath)
+          }}
+          onCancel={() => setLeavePath(null)}
+        >
+          <p>Hay cambios sin guardar en este perfume. Si sales, se perderán.</p>
+        </ConfirmDialog>
       )}
     </>
   )

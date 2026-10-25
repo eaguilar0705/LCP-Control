@@ -8,18 +8,50 @@ export async function journalRpc<T>(
 ): Promise<T> {
   if (!supabase)
     throw new AppError('configuration', 'No hay conexión con la tienda.')
-  const { data, error } = await supabase.rpc(name, args)
-  if (error)
-    throw new AppError(
-      'validation',
-      error.code === '42501'
-        ? 'No tienes permiso para esta operación.'
-        : error.message,
+  const confirmationMessage =
+    name === 'record_journal_entry'
+      ? 'No pudimos confirmar si el comprobante se guardó. Usa «Verificar guardado» para recuperar el resultado sin duplicarlo.'
+      : 'No pudimos conectar con la información contable. Inténtalo de nuevo.'
+  const { data, error, status } = await supabase.rpc(name, args)
+  if (error) {
+    // Un corte de red o un error del servidor no confirma que PostgreSQL haya
+    // revertido el guardado. La interfaz debe verificar la solicitud original.
+    if (status === 0 || status >= 500)
+      throw new AppError('network', confirmationMessage)
+    if (
+      status === 401 ||
+      status === 403 ||
+      error.code === '42501' ||
+      error.code === 'PGRST301'
     )
+      throw new AppError(
+        'unauthorized',
+        'No tienes permiso para esta operación.',
+      )
+    const message = error.message?.trim()
+    const readable = message && message.length <= 300 ? message : null
+    if (status === 429 || error.code === 'LCP429')
+      throw new AppError(
+        'rate_limited',
+        (error.code === 'LCP429' ? readable : null) ??
+          'Demasiadas operaciones seguidas. Espera un momento.',
+      )
+    if (['P0001', 'P1001', 'P1002'].includes(error.code))
+      throw new AppError(
+        'validation',
+        readable ?? 'Revisa los datos del comprobante.',
+      )
+    throw new AppError(
+      status === 400 || status === 422 ? 'validation' : 'unexpected',
+      'No pudimos completar la operación contable. Revisa los datos e inténtalo de nuevo.',
+    )
+  }
   if (data === null || data === undefined)
     throw new AppError(
-      'unexpected',
-      'No se recibió la confirmación o el detalle del comprobante contable.',
+      name === 'record_journal_entry' ? 'network' : 'unexpected',
+      name === 'record_journal_entry'
+        ? confirmationMessage
+        : 'No se recibió el detalle contable. Inténtalo de nuevo.',
     )
   return data as T
 }

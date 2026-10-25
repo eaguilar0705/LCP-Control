@@ -121,6 +121,10 @@ try {
     "insert into public.product_prices(product_id,tier_code,currency,amount) values($1,'emprendedor','NIO',2500),($1,'emprendedor','USD',68.31)",
     [product],
   )
+  await db.query(
+    'insert into public.product_costs(product_id,average_cost_nio) values($1,1900)',
+    [product],
+  )
   await identity(db, admin)
   await rpc(db, 'record_journal_entry', {
     requestId: crypto.randomUUID(),
@@ -167,6 +171,13 @@ try {
     ])
     docs.push({ id: result.id, item })
   }
+  // Los registros históricos ya existían antes de exigir costo conocido.
+  // Su ausencia se prepara con privilegios de dueño sólo en esta base local.
+  await owner(
+    'update public.document_item_costs set unit_cost_nio=null where product_id=$1',
+    [product],
+  )
+  await owner('delete from public.product_costs where product_id=$1', [product])
   const lateTarget = [...docs].sort((a, b) => a.id.localeCompare(b.id))[1]
   const reconcileAudit = async () =>
     owner(

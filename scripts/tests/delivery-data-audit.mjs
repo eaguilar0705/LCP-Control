@@ -437,6 +437,10 @@ try {
   await scenario(
     'datos históricos incompletos siguen pendientes sin contaminar ventas nuevas',
     async () => {
+      await owner(
+        'insert into public.product_costs(product_id,average_cost_nio) values($1,90)',
+        [historical],
+      )
       const old = await call(
         'create_document',
         invoice({
@@ -446,9 +450,10 @@ try {
           ],
         }),
       )
+      // Representa un snapshot heredado, sin permitirlo en ventas nuevas.
       await owner(
-        'insert into public.product_costs(product_id,average_cost_nio) values($1,90)',
-        [historical],
+        'update public.document_item_costs set unit_cost_nio=null where document_id=$1',
+        [old.id],
       )
       const fresh = await call(
         'create_document',

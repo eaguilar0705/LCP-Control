@@ -388,8 +388,16 @@ try {
   equal((await query('select count(*)::int n from public.customers'))[0].n, 1)
 
   await db.exec('reset role')
+  await db.exec(
+    "insert into public.product_costs(product_id,average_cost_nio) select id,100 from public.products where sku='LEGACY-002'",
+  )
   await db.exec(`insert into public.inventory_movements(product_id,location,type,quantity,before_quantity,after_quantity,actor_id,note,created_at)
     select id,'store','EXIT',1,1,0,'${admin}','Operación posterior','2026-10-02T12:00:00-06:00' from public.products where sku='LEGACY-002'`)
+  // Una operación heredada anterior a conocer su costo no se puede volver a
+  // tratar como saldo inicial. Se prepara sólo con privilegios de propietario.
+  await db.exec(
+    "update public.inventory_movement_costs set unit_cost_nio=null where product_id=(select id from public.products where sku='LEGACY-002'); delete from public.product_costs where product_id=(select id from public.products where sku='LEGACY-002')",
+  )
   await act(admin)
   await rejects(
     request({

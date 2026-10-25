@@ -213,17 +213,22 @@ export function Dialog({
   onClose,
   children,
   className = '',
+  dismissible = true,
 }: {
   open: boolean
   title: string
   onClose: () => void
   children: ReactNode
   className?: string
+  dismissible?: boolean
 }) {
   const ref = useRef<HTMLDialogElement>(null)
   // Lo que tenía el foco al abrir el diálogo (el botón que lo abrió).
   const opener = useRef<Element | null>(null)
   const titleId = useId()
+  useEffect(() => {
+    ref.current?.setAttribute('closedby', dismissible ? 'closerequest' : 'none')
+  }, [dismissible])
   useEffect(() => {
     const dialog = ref.current
     if (!dialog) return
@@ -260,9 +265,22 @@ export function Dialog({
       aria-labelledby={titleId}
       onCancel={(event) => {
         event.preventDefault()
+        if (dismissible) onClose()
+      }}
+      onKeyDown={(event) => {
+        if (!dismissible && event.key === 'Escape') {
+          event.preventDefault()
+          event.stopPropagation()
+        }
+      }}
+      onClose={() => {
+        if (!dismissible && open) {
+          if (ref.current?.isConnected && !ref.current.open)
+            ref.current.showModal()
+          return
+        }
         onClose()
       }}
-      onClose={onClose}
     >
       <div className="section-heading">
         <h2 id={titleId}>{title}</h2>
@@ -270,6 +288,7 @@ export function Dialog({
           type="button"
           variant="ghost"
           aria-label="Cerrar"
+          disabled={!dismissible}
           onClick={onClose}
         >
           <X size={20} />
@@ -311,6 +330,7 @@ export function ConfirmDialog({
       open={open}
       title={title}
       className="confirm-dialog"
+      dismissible={!busy}
       onClose={() => {
         if (!busy) onCancel()
       }}

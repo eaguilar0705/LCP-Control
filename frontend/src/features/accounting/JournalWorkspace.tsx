@@ -1,7 +1,15 @@
-import { useState, type FormEvent } from 'react'
+import { useState, useSyncExternalStore, type FormEvent } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { Button, Card, Dialog, Input, Select } from '../../components/ui'
-import { errorMessage } from '../../lib/errors'
+import { AppError, errorMessage } from '../../lib/errors'
+import { useAccess } from '../../app/AccessContext'
+import {
+  getPendingJournal,
+  setPendingJournal,
+  subscribePendingJournal,
+  pendingJournalRevision,
+  type JournalSubmission,
+} from './pendingJournal'
 import { formatCurrency, formatDate } from '../../lib/format'
 import { localDay } from '../reports/model'
 import {
@@ -35,7 +43,11 @@ export function JournalWorkspace({
   data: LedgerReport
   onChanged: () => void
 }) {
-  const [action, setAction] = useState<Kind | null>(null)
+  const { storageScope = 'anonymous' } = useAccess()
+  useSyncExternalStore(subscribePendingJournal, pendingJournalRevision)
+  const [action, setAction] = useState<Kind | null>(
+    () => getPendingJournal(storageScope)?.kind ?? null,
+  )
   const [voidId, setVoidId] = useState<string | null>(null)
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
@@ -209,29 +221,46 @@ function JournalDialog({
   onClose: () => void
   onSaved: () => void
 }) {
-  const [date, setDate] = useState(localDay(new Date()))
-  const [description, setDescription] = useState('')
-  const [reference, setReference] = useState('')
-  const [currency, setCurrency] = useState<'NIO' | 'USD'>('NIO')
-  const [rate, setRate] = useState('')
-  const [lines, setLines] = useState<Line[]>([
-    { account: '', debit: 0, credit: 0 },
-    { account: '', debit: 0, credit: 0 },
-  ])
-  const [amount, setAmount] = useState('')
-  const [origin, setOrigin] = useState('')
-  const [destination, setDestination] = useState('')
-  const [commission, setCommission] = useState('')
-  const [withholding, setWithholding] = useState('')
+  const { storageScope = 'anonymous' } = useAccess()
+  const [restored] = useState(() => getPendingJournal(storageScope))
+  const [pending, setPending] = useState<JournalSubmission | null>(restored)
+  const [date, setDate] = useState(restored?.occurredOn ?? localDay(new Date()))
+  const [description, setDescription] = useState(restored?.description ?? '')
+  const [reference, setReference] = useState(restored?.reference ?? '')
+  const [currency, setCurrency] = useState<'NIO' | 'USD'>(
+    restored?.currency ?? 'NIO',
+  )
+  const [rate, setRate] = useState(
+    restored ? String(restored.exchangeRate) : '',
+  )
+  const [lines, setLines] = useState<Line[]>(
+    restored?.lines ?? [
+      { account: '', debit: 0, credit: 0 },
+      { account: '', debit: 0, credit: 0 },
+    ],
+  )
+  const [amount, setAmount] = useState(
+    restored ? String(restored.gross ?? restored.lines[0]?.debit ?? '') : '',
+  )
+  const [origin, setOrigin] = useState(restored?.lines.at(-1)?.account ?? '')
+  const [destination, setDestination] = useState(
+    restored?.bankAccount ?? restored?.lines[0]?.account ?? '',
+  )
+  const [commission, setCommission] = useState(
+    restored?.commissionRate?.toString() ?? '',
+  )
+  const [withholding, setWithholding] = useState(
+    restored?.withholdingRate?.toString() ?? '',
+  )
   const [withholdingBase, setWithholdingBase] = useState<
     'gross' | 'net_commission'
-  >('gross')
+  >(restored?.withholdingBase ?? 'gross')
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  const [attempt, setAttempt] = useState<{
-    key: string
-    requestId: string
-  } | null>(null)
+  const [error, setError] = useState(
+    restored
+      ? 'Verifica el guardado pendiente antes de registrar otro comprobante.'
+      : '',
+  )
   const simple =
     kind === 'transfer' || kind === 'deposit' || kind === 'card_settlement'
   const accounts = data.accounts.filter(
@@ -243,6 +272,7 @@ function JournalDialog({
   )
   const bankAccounts = accounts.filter((a) => a.code.startsWith('1120-'))
   let settlement: ReturnType<typeof cardSettlement> | null = null
+  let settlementError = ''
   try {
     if (
       kind === 'card_settlement' &&
@@ -256,8 +286,8 @@ function JournalDialog({
         Number(withholding),
         withholdingBase,
       )
-  } catch {
-    /* Inputs remain invalid until completed. */
+  } catch (e) {
+    settlementError = e instanceof Error ? e.message : errorMessage(e)
   }
   const activeLines: Line[] = simple
     ? kind === 'card_settlement'
@@ -289,13 +319,21 @@ function JournalDialog({
     credit,
     debitNio,
     creditNio,
+    roundingNio,
     valid: balanced,
-  } = journalTotals(activeLines, exchangeRate)
+  } = journalTotals(
+    activeLines,
+    exchangeRate,
+    kind === 'card_settlement' && currency === 'USD'
+      ? { roundingAccount: destination }
+      : undefined,
+  )
   const valid =
     balanced &&
     activeLines.every((l) => accounts.some((a) => a.code === l.account)) &&
     (!simple || activeLines[0].account !== activeLines.at(-1)?.account)
   function update(index: number, key: keyof Line, value: string) {
+    setError('')
     setLines((old) =>
       old.map((l, i) =>
         i === index
@@ -306,10 +344,24 @@ function JournalDialog({
   }
   async function save(e: FormEvent) {
     e.preventDefault()
-    if (busy || !valid) return
+    if (busy) return
+    if (!pending && !valid) {
+      setError(
+        settlementError ||
+          (simple && origin && origin === destination
+            ? 'Selecciona bancos distintos para el origen y el destino.'
+            : debit !== credit
+              ? 'El Debe y el Haber deben sumar lo mismo. Revisa los importes.'
+              : debitNio !== creditNio
+                ? 'El Debe y el Haber deben coincidir también en córdobas. Revisa el tipo de cambio y los importes.'
+                : 'Completa las cuentas y registra un importe positivo en el Debe o el Haber de cada renglón.'),
+      )
+      return
+    }
     setBusy(true)
     setError('')
-    const payload = {
+    const payload: JournalSubmission = pending ?? {
+      requestId: crypto.randomUUID(),
       occurredOn: date,
       kind,
       description,
@@ -327,15 +379,27 @@ function JournalDialog({
           }
         : {}),
     }
-    const key = JSON.stringify(payload),
-      requestId = attempt?.key === key ? attempt.requestId : crypto.randomUUID()
-    setAttempt({ key, requestId })
+    setPending(payload)
+    setPendingJournal(storageScope, payload)
     try {
       await journalRpc('record_journal_entry', {
-        p_input: { ...payload, requestId },
+        p_input: payload,
       })
+      setPendingJournal(storageScope, null)
+      setPending(null)
       onSaved()
     } catch (e) {
+      // Una denegación o límite del reintento no confirma el resultado de la
+      // primera solicitud. Su UUID sigue pendiente hasta verificarlo.
+      if (
+        e instanceof AppError &&
+        (e.kind === 'validation' ||
+          (!pending &&
+            ['unauthorized', 'rate_limited', 'configuration'].includes(e.kind)))
+      ) {
+        setPendingJournal(storageScope, null)
+        setPending(null)
+      }
       setError(errorMessage(e))
     } finally {
       setBusy(false)
@@ -346,90 +410,125 @@ function JournalDialog({
       open
       title={journalKinds[kind]}
       className="journal-dialog"
+      dismissible={!busy && !pending}
       onClose={() => {
+        if (pending) {
+          setError(
+            'Verifica primero el guardado pendiente con «Verificar guardado» para evitar duplicar el comprobante.',
+          )
+          return
+        }
         if (!busy) onClose()
       }}
     >
-      <form className="day-form" onSubmit={save}>
-        <div className="journal-fields">
-          <Input
-            label="Fecha"
-            type="date"
-            required
-            max={localDay(new Date())}
-            min={kind === 'opening' ? undefined : (data.startOn ?? undefined)}
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          />
-          <Input
-            label="Referencia / número de documento"
-            maxLength={200}
-            value={reference}
-            onChange={(e) => setReference(e.target.value)}
-          />
-          <Select
-            label="Moneda"
-            value={currency}
-            onChange={(e) => {
-              const next = e.target.value as 'NIO' | 'USD'
-              setCurrency(next)
-              if (kind !== 'opening') {
-                setLines((old) =>
-                  old.map((line) => ({
-                    ...line,
-                    account: accountAcceptsCurrency(line.account, next)
-                      ? line.account
-                      : '',
-                  })),
-                )
-                setOrigin((old) =>
-                  accountAcceptsCurrency(old, next) ? old : '',
-                )
-                setDestination((old) =>
-                  accountAcceptsCurrency(old, next) ? old : '',
-                )
-              }
-            }}
-          >
-            <option value="NIO">Córdobas</option>
-            <option value="USD">Dólares</option>
-          </Select>
-          {currency === 'USD' && (
+      <form
+        className="day-form"
+        onSubmit={save}
+        onChange={() => {
+          if (!pending) setError('')
+        }}
+      >
+        <fieldset
+          className="journal-entry-fields"
+          disabled={busy || pending !== null}
+        >
+          <div className="journal-fields">
             <Input
-              label="Tipo de cambio"
-              type="number"
-              min="0.000001"
-              max="1000"
-              step="0.000001"
+              label="Fecha"
+              type="date"
               required
-              value={rate}
-              onChange={(e) => setRate(e.target.value)}
+              max={localDay(new Date())}
+              min={kind === 'opening' ? undefined : (data.startOn ?? undefined)}
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
             />
+            <Input
+              label="Referencia / número de documento"
+              maxLength={200}
+              value={reference}
+              onChange={(e) => setReference(e.target.value)}
+            />
+            <Select
+              label="Moneda"
+              value={currency}
+              onChange={(e) => {
+                const next = e.target.value as 'NIO' | 'USD'
+                setCurrency(next)
+                if (kind !== 'opening') {
+                  setLines((old) =>
+                    old.map((line) => ({
+                      ...line,
+                      account: accountAcceptsCurrency(line.account, next)
+                        ? line.account
+                        : '',
+                    })),
+                  )
+                  setOrigin((old) =>
+                    accountAcceptsCurrency(old, next) ? old : '',
+                  )
+                  setDestination((old) =>
+                    accountAcceptsCurrency(old, next) ? old : '',
+                  )
+                }
+              }}
+            >
+              <option value="NIO">Córdobas</option>
+              <option value="USD">Dólares</option>
+            </Select>
+            {currency === 'USD' && (
+              <Input
+                label="Tipo de cambio"
+                type="number"
+                min="0.000001"
+                max="1000"
+                step="0.000001"
+                required
+                value={rate}
+                onChange={(e) => setRate(e.target.value)}
+              />
+            )}
+          </div>
+          <Input
+            label="Concepto"
+            required
+            maxLength={300}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+          {kind === 'opening' && (
+            <p>
+              Saldos al inicio de la fecha seleccionada. Registra únicamente
+              activo, pasivo y capital; los ingresos y gastos comienzan con las
+              operaciones.
+            </p>
           )}
-        </div>
-        <Input
-          label="Concepto"
-          required
-          maxLength={300}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-        {kind === 'opening' && (
-          <p>
-            Saldos al inicio de la fecha seleccionada. Registra únicamente
-            activo, pasivo y capital; los ingresos y gastos comienzan con las
-            operaciones.
-          </p>
-        )}
-        {simple ? (
-          <>
-            <div className="journal-fields">
-              {kind === 'transfer' && (
+          {simple ? (
+            <>
+              <div className="journal-fields">
+                {kind === 'transfer' && (
+                  <Select
+                    label="Banco de origen"
+                    required
+                    value={origin}
+                    onChange={(e) => setOrigin(e.target.value)}
+                  >
+                    <option value="">Seleccionar</option>
+                    {bankAccounts.map((a) => (
+                      <option key={a.code} value={a.code}>
+                        {a.name}
+                      </option>
+                    ))}
+                  </Select>
+                )}
                 <Select
-                  label="Banco de origen"
+                  label={
+                    kind === 'card_settlement'
+                      ? 'Banco que acredita'
+                      : 'Banco de destino'
+                  }
                   required
-                  value={origin}
-                  onChange={(e) => setOrigin(e.target.value)}
+                  value={destination}
+                  onChange={(e) => setDestination(e.target.value)}
                 >
                   <option value="">Seleccionar</option>
                   {bankAccounts.map((a) => (
@@ -438,185 +537,173 @@ function JournalDialog({
                     </option>
                   ))}
                 </Select>
-              )}
-              <Select
-                label={
-                  kind === 'card_settlement'
-                    ? 'Banco que acredita'
-                    : 'Banco de destino'
-                }
-                required
-                value={destination}
-                onChange={(e) => setDestination(e.target.value)}
-              >
-                <option value="">Seleccionar</option>
-                {bankAccounts.map((a) => (
-                  <option key={a.code} value={a.code}>
-                    {a.name}
-                  </option>
-                ))}
-              </Select>
-              <Input
-                label={
-                  kind === 'card_settlement'
-                    ? 'Venta bruta liquidada'
-                    : 'Importe'
-                }
-                type="number"
-                required
-                min="0.01"
-                max="100000000"
-                step="0.01"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-              />
-              {kind === 'card_settlement' && (
-                <>
-                  <Input
-                    label="Comisión bancaria (%)"
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.0001"
-                    required
-                    value={commission}
-                    onChange={(e) => setCommission(e.target.value)}
-                  />
-                  <Input
-                    label="Retención IR (%)"
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.0001"
-                    required
-                    value={withholding}
-                    onChange={(e) => setWithholding(e.target.value)}
-                  />
-                  <Select
-                    label="Base de retención"
-                    value={withholdingBase}
-                    onChange={(e) =>
-                      setWithholdingBase(
-                        e.target.value as 'gross' | 'net_commission',
-                      )
-                    }
-                  >
-                    <option value="gross">Venta bruta</option>
-                    <option value="net_commission">Venta menos comisión</option>
-                  </Select>
-                </>
-              )}
-            </div>
-            {settlement && (
-              <div className="day-closing">
-                Comisión: {formatCurrency(settlement.commission, currency)} ·
-                Retención acreditable:{' '}
-                {formatCurrency(settlement.withholding, currency)}
-                <p>
-                  <strong>
-                    Neto a acreditar: {formatCurrency(settlement.net, currency)}
-                  </strong>
-                </p>
-              </div>
-            )}
-          </>
-        ) : (
-          <>
-            <div className="journal-lines">
-              {lines.map((l, i) => (
-                <div className="journal-line" key={i}>
-                  <Select
-                    label={`Cuenta ${i + 1}`}
-                    required
-                    value={l.account}
-                    onChange={(e) => update(i, 'account', e.target.value)}
-                  >
-                    <option value="">Seleccionar cuenta</option>
-                    {accounts.map((a) => (
-                      <option key={a.code} value={a.code}>
-                        {a.code} · {a.name}
+                <Input
+                  label={
+                    kind === 'card_settlement'
+                      ? 'Venta bruta liquidada'
+                      : 'Importe'
+                  }
+                  type="number"
+                  required
+                  min="0.01"
+                  max="100000000"
+                  step="0.01"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                />
+                {kind === 'card_settlement' && (
+                  <>
+                    <Input
+                      label="Comisión bancaria (%)"
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.0001"
+                      required
+                      value={commission}
+                      onChange={(e) => setCommission(e.target.value)}
+                    />
+                    <Input
+                      label="Retención IR (%)"
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.0001"
+                      required
+                      value={withholding}
+                      onChange={(e) => setWithholding(e.target.value)}
+                    />
+                    <Select
+                      label="Base de retención"
+                      value={withholdingBase}
+                      onChange={(e) =>
+                        setWithholdingBase(
+                          e.target.value as 'gross' | 'net_commission',
+                        )
+                      }
+                    >
+                      <option value="gross">Venta bruta</option>
+                      <option value="net_commission">
+                        Venta menos comisión
                       </option>
-                    ))}
-                  </Select>
-                  <Input
-                    label="Debe"
-                    type="number"
-                    min="0"
-                    max="100000000"
-                    step="0.01"
-                    value={l.debit || ''}
-                    onChange={(e) => update(i, 'debit', e.target.value)}
-                  />
-                  <Input
-                    label="Haber"
-                    type="number"
-                    min="0"
-                    max="100000000"
-                    step="0.01"
-                    value={l.credit || ''}
-                    onChange={(e) => update(i, 'credit', e.target.value)}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    disabled={lines.length <= 2}
-                    aria-label={`Quitar renglón ${i + 1}`}
-                    onClick={() =>
-                      setLines((old) => old.filter((_, j) => j !== i))
-                    }
-                  >
-                    <Trash2 size={16} />
-                  </Button>
+                    </Select>
+                  </>
+                )}
+              </div>
+              {settlement && (
+                <div className="day-closing">
+                  Comisión: {formatCurrency(settlement.commission, currency)} ·
+                  Retención acreditable:{' '}
+                  {formatCurrency(settlement.withholding, currency)}
+                  <p>
+                    <strong>
+                      Neto a acreditar:{' '}
+                      {formatCurrency(settlement.net, currency)}
+                    </strong>
+                  </p>
                 </div>
-              ))}
-            </div>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={lines.length >= 100}
-              onClick={() =>
-                setLines((old) => [
-                  ...old,
-                  { account: '', debit: 0, credit: 0 },
-                ])
-              }
-            >
-              <Plus size={16} />
-              Agregar renglón
-            </Button>
-          </>
-        )}
-        <div className="journal-totals">
-          <span>
-            Debe <strong>{formatCurrency(debit, currency)}</strong>
-          </span>
-          <span>
-            Haber <strong>{formatCurrency(credit, currency)}</strong>
-          </span>
-          <span>
-            Diferencia{' '}
-            <strong>
-              {formatCurrency(
-                Math.round((debit - credit) * 100) / 100,
-                currency,
               )}
-            </strong>
-          </span>
-        </div>
-        {currency === 'USD' &&
-          Number.isFinite(exchangeRate) &&
-          exchangeRate > 0 && (
-            <p
-              className={
-                debitNio !== creditNio ? 'inline-error' : 'accounting-note'
-              }
-              role="status"
-            >
-              Debe C$: {formatCurrency(debitNio, 'NIO')} · Haber C$:{' '}
-              {formatCurrency(creditNio, 'NIO')}. Cada renglón se convierte por
-              separado; ambos totales deben coincidir también en córdobas.
-            </p>
+            </>
+          ) : (
+            <>
+              <div className="journal-lines">
+                {lines.map((l, i) => (
+                  <div className="journal-line" key={i}>
+                    <Select
+                      label={`Cuenta ${i + 1}`}
+                      required
+                      value={l.account}
+                      onChange={(e) => update(i, 'account', e.target.value)}
+                    >
+                      <option value="">Seleccionar cuenta</option>
+                      {accounts.map((a) => (
+                        <option key={a.code} value={a.code}>
+                          {a.code} · {a.name}
+                        </option>
+                      ))}
+                    </Select>
+                    <Input
+                      label="Debe"
+                      type="number"
+                      min="0"
+                      max="100000000"
+                      step="0.01"
+                      value={l.debit || ''}
+                      onChange={(e) => update(i, 'debit', e.target.value)}
+                    />
+                    <Input
+                      label="Haber"
+                      type="number"
+                      min="0"
+                      max="100000000"
+                      step="0.01"
+                      value={l.credit || ''}
+                      onChange={(e) => update(i, 'credit', e.target.value)}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={lines.length <= 2}
+                      aria-label={`Quitar renglón ${i + 1}`}
+                      onClick={() =>
+                        setLines((old) => old.filter((_, j) => j !== i))
+                      }
+                    >
+                      <Trash2 size={16} />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={lines.length >= 100}
+                onClick={() =>
+                  setLines((old) => [
+                    ...old,
+                    { account: '', debit: 0, credit: 0 },
+                  ])
+                }
+              >
+                <Plus size={16} />
+                Agregar renglón
+              </Button>
+            </>
           )}
+          <div className="journal-totals">
+            <span>
+              Debe <strong>{formatCurrency(debit, currency)}</strong>
+            </span>
+            <span>
+              Haber <strong>{formatCurrency(credit, currency)}</strong>
+            </span>
+            <span>
+              Diferencia{' '}
+              <strong>
+                {formatCurrency(
+                  Math.round((debit - credit) * 100) / 100,
+                  currency,
+                )}
+              </strong>
+            </span>
+          </div>
+          {currency === 'USD' &&
+            Number.isFinite(exchangeRate) &&
+            exchangeRate > 0 && (
+              <p
+                className={
+                  debitNio !== creditNio ? 'inline-error' : 'accounting-note'
+                }
+                role="status"
+              >
+                Debe C$: {formatCurrency(debitNio, 'NIO')} · Haber C$:{' '}
+                {formatCurrency(creditNio, 'NIO')}.
+                {roundingNio !== 0
+                  ? ` Ajuste de redondeo al banco: ${formatCurrency(roundingNio, 'NIO')}.`
+                  : ''}
+              </p>
+            )}
+        </fieldset>
         {error && (
           <p role="alert" className="inline-error">
             {error}
@@ -627,12 +714,22 @@ function JournalDialog({
             type="button"
             variant="secondary"
             disabled={busy}
-            onClick={onClose}
+            onClick={() => {
+              if (pending)
+                setError(
+                  'Verifica primero el guardado pendiente con «Verificar guardado» para evitar duplicar el comprobante.',
+                )
+              else onClose()
+            }}
           >
             Cancelar
           </Button>
-          <Button disabled={busy || !valid}>
-            {busy ? 'Guardando…' : 'Guardar comprobante'}
+          <Button disabled={busy}>
+            {busy
+              ? 'Guardando…'
+              : pending
+                ? 'Verificar guardado'
+                : 'Guardar comprobante'}
           </Button>
         </div>
       </form>

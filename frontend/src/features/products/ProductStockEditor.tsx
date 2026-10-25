@@ -1,4 +1,4 @@
-import { useCallback, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Minus, Plus, Package, ArrowRight } from 'lucide-react'
 import {
   Button,
@@ -48,13 +48,15 @@ export function ProductStockEditor({
   disabled = false,
   purchaseDisabled = false,
   onPurchase,
+  onPendingChange,
 }: {
   product: Product
   disabled?: boolean
   purchaseDisabled?: boolean
   onPurchase?: (location: InventoryLocation) => void
+  onPendingChange?: (pending: boolean) => void
 }) {
-  const { demo, role } = useAccess()
+  const { demo, role, storageScope = 'anonymous' } = useAccess()
   const { inventoryService } = useServices()
   const load = useCallback(
     () => inventoryService.getInventory(true),
@@ -64,6 +66,11 @@ export function ProductStockEditor({
   const [operation] = useState(() =>
     createIdempotentOperation<Omit<MovementRequest, 'requestId'>, string>(
       inventoryService.recordMovement,
+      {
+        scope: storageScope,
+        key: 'inventory-movement',
+        label: 'Movimiento de inventario',
+      },
     ),
   )
   const [location, setLocation] = useState<InventoryLocation>('store')
@@ -73,6 +80,10 @@ export function ProductStockEditor({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const uncertain = operation.isUncertain()
+  useEffect(() => {
+    onPendingChange?.(busy || uncertain)
+  }, [busy, uncertain, onPendingChange])
   const item = data?.find((i) => i.product.id === product.id)
   const before = item?.quantities[location] ?? null
   const initial = before === null
@@ -100,11 +111,11 @@ export function ProductStockEditor({
   async function submit(e: FormEvent) {
     e.preventDefault()
     if (locked || demo || !can(role, action.permission)) return
-    if (requiresPurchase) {
+    if (!uncertain && requiresPurchase) {
       if (!purchaseDisabled) onPurchase?.(location)
       return
     }
-    if (!valid || !note.trim() || note.trim().length > 2000) {
+    if (!uncertain && (!valid || !note.trim() || note.trim().length > 2000)) {
       setError(
         'Revisa la cantidad y escribe el motivo. Las existencias no pueden quedar negativas.',
       )
@@ -114,13 +125,15 @@ export function ProductStockEditor({
     setError('')
     setMessage('')
     try {
-      await operation.execute({
-        productId: product.id,
-        location,
-        type: movementType,
-        quantity: amount,
-        note: note.trim(),
-      })
+      if (uncertain) await operation.retryPending()
+      else
+        await operation.execute({
+          productId: product.id,
+          location,
+          type: movementType,
+          quantity: amount,
+          note: note.trim(),
+        })
       operation.reset()
       setQuantity('')
       setNote('')
@@ -173,7 +186,7 @@ export function ProductStockEditor({
           )}
           {available.length > 0 && (
             <form onSubmit={submit}>
-              <fieldset disabled={locked} className="form-fields">
+              <fieldset disabled={locked || uncertain} className="form-fields">
                 <div className="form-grid">
                   <Select
                     label="Ubicación de las cantidades"
@@ -287,7 +300,11 @@ export function ProductStockEditor({
                     type="submit"
                     disabled={locked || demo || !can(role, action.permission)}
                   >
-                    {busy ? 'Guardando cantidades…' : 'Guardar cantidades'}
+                    {busy
+                      ? 'Guardando cantidades…'
+                      : uncertain
+                        ? 'Verificar guardado'
+                        : 'Guardar cantidades'}
                   </Button>
                 )}
               </div>

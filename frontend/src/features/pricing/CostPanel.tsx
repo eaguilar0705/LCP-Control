@@ -4,6 +4,7 @@ import { ProductSelect } from '../../components/ProductSelect'
 import { SupplierAutocomplete } from '../../components/SupplierAutocomplete'
 import { Button, Dialog, Input, Select } from '../../components/ui'
 import { useServices } from '../../services/useServices'
+import { useAccess } from '../../app/AccessContext'
 import { errorMessage } from '../../lib/errors'
 import { createIdempotentOperation } from '../../lib/idempotentOperation'
 import { exactCost, landedUnitCost } from '../../lib/pricing'
@@ -70,9 +71,11 @@ export function PurchaseDialog({
   onRecorded: (message: string) => void
 }) {
   const { accountingService } = useServices()
+  const { storageScope } = useAccess()
   const [operation] = useState(() =>
     createIdempotentOperation<Omit<ShipmentInput, 'requestId'>, unknown>(
       accountingService.recordShipment,
+      { scope: storageScope ?? 'anonymous', key: 'purchase', label: 'Compra' },
     ),
   )
   const [incurredOn, setIncurredOn] = useState(localDay(new Date()))
@@ -95,6 +98,7 @@ export function PurchaseDialog({
   const [checked, setChecked] = useState(false)
   const [busy, setBusy] = useState(false)
   const [failure, setFailure] = useState('')
+  const uncertain = operation.isUncertain()
   const [confirmedPaymentDate, setConfirmedPaymentDate] = useState('')
   const preview = previewPurchase({
     lines,
@@ -124,6 +128,21 @@ export function PurchaseDialog({
   async function submit(event: FormEvent) {
     event.preventDefault()
     if (busy) return
+    if (uncertain) {
+      setBusy(true)
+      setFailure('')
+      try {
+        await operation.retryPending()
+        onRecorded(
+          'Compra confirmada. Inventario y costo promedio actualizados.',
+        )
+      } catch (error) {
+        setFailure(errorMessage(error))
+      } finally {
+        setBusy(false)
+      }
+      return
+    }
     setChecked(true)
     const submitToday = localDay(new Date())
     setToday(submitToday)
@@ -171,12 +190,16 @@ export function PurchaseDialog({
       open
       title="Registrar compra"
       className="pricing-purchase-dialog"
+      dismissible={!busy && !uncertain}
       onClose={() => {
-        if (!busy) onClose()
+        if (!busy && !uncertain) onClose()
       }}
     >
       <form noValidate onSubmit={(event) => void submit(event)}>
-        <fieldset disabled={busy} className="pricing-purchase-form">
+        <fieldset
+          disabled={busy || uncertain}
+          className="pricing-purchase-form"
+        >
           <div className="form-grid">
             <Input
               label="Fecha de la compra"
@@ -315,12 +338,16 @@ export function PurchaseDialog({
         )}
         <div className="form-actions">
           <Button type="submit" disabled={busy} aria-busy={busy}>
-            {busy ? 'Registrando…' : 'Registrar compra'}
+            {busy
+              ? 'Registrando…'
+              : uncertain
+                ? 'Verificar guardado'
+                : 'Registrar compra'}
           </Button>
           <Button
             type="button"
             variant="secondary"
-            disabled={busy}
+            disabled={busy || uncertain}
             onClick={onClose}
           >
             Cancelar

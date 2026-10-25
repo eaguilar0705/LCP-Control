@@ -38,6 +38,12 @@ try {
         globalThis.dispatchEvent(new globalThis.PopStateEvent('popstate'))
       }, path)
       await page.locator('.main-content h1').first().waitFor()
+      if (path === '/sales' || path === '/proformas') {
+        const details = page.locator('.document-customer-panel details')
+        await details.waitFor()
+        if (!(await details.evaluate((element) => element.open)))
+          await details.locator('summary').click()
+      }
     }
     const healthy = async (name) => {
       equal(errors, [], name + ': ejecución del navegador')

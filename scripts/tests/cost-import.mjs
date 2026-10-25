@@ -101,6 +101,10 @@ try {
   await db.exec(
     'alter table public.product_costs enable trigger sync_cost_prices;',
   )
+  await db.query(
+    'insert into public.product_costs(product_id,average_cost_nio) values($1,100)',
+    [ids[4]],
+  )
   await identity(db, admin)
   await rpc(db, 'open_business_day', {
     requestId: randomUUID(),
@@ -130,6 +134,19 @@ try {
   await db.exec(
     "reset role; select set_config('request.jwt.claim.sub','',false);",
   )
+  // Estado histórico preparado como propietario; la aplicación ya no emite
+  // ventas nuevas con costo desconocido ni modifica costos históricos.
+  await db.query(
+    'update public.document_item_costs set unit_cost_nio=null where product_id=$1',
+    [ids[4]],
+  )
+  await db.query(
+    'update public.inventory_movement_costs set unit_cost_nio=null where product_id=$1',
+    [ids[4]],
+  )
+  await db.query('delete from public.product_costs where product_id=$1', [
+    ids[4],
+  ])
   equal(
     (await get('select unit_cost_nio from public.document_item_costs'))
       .unit_cost_nio,

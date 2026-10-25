@@ -59,7 +59,22 @@ export interface LedgerReport {
   entries: JournalRecord[]
   automaticEntries?: AutomaticJournalRecord[]
 }
-const round = (x: number) => Math.round((x + Number.EPSILON) * 100) / 100
+const round = (x: number) => Math.round((x + Number.EPSILON) * 100) / 100 || 0
+function roundedRatio(numerator: bigint, denominator: bigint) {
+  return (2n * numerator + denominator) / (2n * denominator)
+}
+function convertedAmount(amount: number, exchangeRate: number) {
+  const cents = Math.round(amount * 100)
+  const rate = Math.round(exchangeRate * 1e6)
+  if (
+    !Number.isSafeInteger(cents) ||
+    !Number.isSafeInteger(rate) ||
+    cents < 0 ||
+    rate <= 0
+  )
+    return NaN
+  return Number(roundedRatio(BigInt(cents) * BigInt(rate), 1_000_000n)) / 100
+}
 // Contrapartidas de costos desconocidos en private.operational_postings:
 // ventas, pérdidas de inventario y sobrantes del conteo físico.
 const inventoryCostAccounts = new Set(['1130', '5120', '5150', '4190'])
@@ -85,15 +100,44 @@ export function accountAcceptsCurrency(code: string, currency: 'NIO' | 'USD') {
 }
 
 /** Cada renglón se convierte y redondea por separado, como en el libro mayor. */
-export function journalTotals(lines: JournalLine[], exchangeRate = 1) {
+export function journalTotals(
+  lines: JournalLine[],
+  exchangeRate = 1,
+  options?: { roundingAccount: string },
+) {
   const debit = round(lines.reduce((sum, line) => sum + line.debit, 0))
   const credit = round(lines.reduce((sum, line) => sum + line.credit, 0))
-  const debitNio = round(
-    lines.reduce((sum, line) => sum + round(line.debit * exchangeRate), 0),
+  let debitNio = round(
+    lines.reduce(
+      (sum, line) => sum + convertedAmount(line.debit, exchangeRate),
+      0,
+    ),
   )
   const creditNio = round(
-    lines.reduce((sum, line) => sum + round(line.credit * exchangeRate), 0),
+    lines.reduce(
+      (sum, line) => sum + convertedAmount(line.credit, exchangeRate),
+      0,
+    ),
   )
+  // Las liquidaciones POS calculadas distribuyen el centavo de conversión al
+  // banco receptor. El servidor vuelve a validar sus renglones e importes.
+  const difference = round(creditNio - debitNio)
+  const receivingLines = options?.roundingAccount
+    ? lines.filter(
+        (line) =>
+          line.account === options.roundingAccount &&
+          line.debit > 0 &&
+          line.credit === 0,
+      )
+    : []
+  const roundingNio =
+    debit === credit &&
+    Math.abs(difference) <= 0.02 &&
+    receivingLines.length === 1 &&
+    convertedAmount(receivingLines[0].debit, exchangeRate) + difference >= 0
+      ? difference
+      : 0
+  debitNio = round(debitNio + roundingNio)
   const valid =
     lines.length >= 2 &&
     lines.length <= 100 &&
@@ -117,7 +161,7 @@ export function journalTotals(lines: JournalLine[], exchangeRate = 1) {
     debit === credit &&
     debitNio > 0 &&
     debitNio === creditNio
-  return { debit, credit, debitNio, creditNio, valid }
+  return { debit, credit, debitNio, creditNio, roundingNio, valid }
 }
 
 export function journalModel(
@@ -359,17 +403,33 @@ export function cardSettlement(
     (withholdingBase !== 'gross' && withholdingBase !== 'net_commission')
   )
     throw new Error('Importe o tasas inválidos.')
-  const commission = round((gross * commissionRate) / 100),
-    withholding = round(
-      ((withholdingBase === 'gross' ? gross : gross - commission) *
-        withholdingRate) /
-        100,
-    )
-  if (commission + withholding > round(gross))
+  const grossCents = Math.round(gross * 100)
+  const commissionUnits = Math.round(commissionRate * 10000)
+  const withholdingUnits = Math.round(withholdingRate * 10000)
+  if (
+    !Number.isSafeInteger(grossCents) ||
+    grossCents / 100 !== gross ||
+    commissionUnits / 10000 !== commissionRate ||
+    withholdingUnits / 10000 !== withholdingRate
+  )
+    throw new Error('Importe o tasas inválidos.')
+  // Porcentajes con cuatro decimales, importes en centavos y redondeo NUMERIC.
+  // 53 × 4.5 % = 2.385 debe producir 2.39, sin errores de coma flotante.
+  const commissionCents = roundedRatio(
+    BigInt(grossCents) * BigInt(commissionUnits),
+    1_000_000n,
+  )
+  const withholdingCents = roundedRatio(
+    (withholdingBase === 'gross'
+      ? BigInt(grossCents)
+      : BigInt(grossCents) - commissionCents) * BigInt(withholdingUnits),
+    1_000_000n,
+  )
+  if (commissionCents + withholdingCents > BigInt(grossCents))
     throw new Error('Las deducciones superan el importe liquidado.')
   return {
-    commission,
-    withholding,
-    net: round(gross - commission - withholding),
+    commission: Number(commissionCents) / 100,
+    withholding: Number(withholdingCents) / 100,
+    net: Number(BigInt(grossCents) - commissionCents - withholdingCents) / 100,
   }
 }

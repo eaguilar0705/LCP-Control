@@ -115,6 +115,9 @@ try {
       await page
         .getByRole('heading', { name: 'Facturación', exact: true })
         .waitFor()
+      const customerDetails = page.locator('.document-customer-panel details')
+      if (!(await customerDetails.evaluate((element) => element.open)))
+        await customerDetails.locator(':scope > summary').click()
       await page
         .getByLabel('Cliente', { exact: true })
         .fill('Cliente de la caja móvil')

@@ -46,6 +46,15 @@ try {
     let missingCosts = 0
     let missingSales = 0
     let ledgerStartOn = today
+    const user = {
+      id: '11111111-1111-4111-8111-111111111111',
+      email: 'visual@example.test',
+      aud: 'authenticated',
+      role: 'authenticated',
+      app_metadata: {},
+      user_metadata: {},
+      created_at: new Date().toISOString(),
+    }
     page.on('pageerror', (e) => errors.push(e.message))
     await page.route('**/*.supabase.co/**', async (route) => {
       const url = new URL(route.request().url())
@@ -56,15 +65,6 @@ try {
           body: JSON.stringify(data),
         })
       if (url.pathname.includes('/auth/v1/token')) {
-        const user = {
-          id: '11111111-1111-4111-8111-111111111111',
-          email: 'visual@example.test',
-          aud: 'authenticated',
-          role: 'authenticated',
-          app_metadata: {},
-          user_metadata: {},
-          created_at: new Date().toISOString(),
-        }
         const token = [
           { alg: 'HS256', typ: 'JWT' },
           { sub: user.id, exp: Math.floor(Date.now() / 1000) + 3600 },
@@ -84,6 +84,15 @@ try {
           user,
         })
       }
+      if (url.pathname === '/auth/v1/user') return send(user)
+      if (url.pathname.endsWith('/price_tiers'))
+        return send(
+          ['emprendedor', 'vip', 'premium'].map((code, index) => ({
+            code,
+            name: ['Emprendedor', 'VIP', 'Premium'][index],
+            sort_order: index,
+          })),
+        )
       if (url.pathname.includes('staff_members'))
         return send({ role: 'superadmin', active: true })
       if (url.pathname.endsWith('/rpc/sales_journal_entries')) return send([])

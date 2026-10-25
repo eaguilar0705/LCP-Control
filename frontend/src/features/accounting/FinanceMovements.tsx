@@ -10,6 +10,7 @@ import {
   Select,
 } from '../../components/ui'
 import { useServices } from '../../services/useServices'
+import { useAccess } from '../../app/AccessContext'
 import { useQuery } from '../../lib/useQuery'
 import { errorMessage } from '../../lib/errors'
 import { formatCurrency, formatDate } from '../../lib/format'
@@ -285,15 +286,22 @@ export function RecordDialog({
   onRecorded: (message: string) => void
 }) {
   const { accountingService, financeService, settingsService } = useServices()
+  const { storageScope } = useAccess()
   const { data: savedRate } = useQuery(settingsService.getExchangeRate)
   const [entryOperation] = useState(() =>
     createIdempotentOperation<Omit<FinanceEntryInput, 'requestId'>, unknown>(
       financeService.recordEntry,
+      {
+        scope: storageScope ?? 'anonymous',
+        key: 'finance-entry',
+        label: 'Cobro o pago',
+      },
     ),
   )
   const [expenseOperation] = useState(() =>
     createIdempotentOperation<Omit<ExpenseInput, 'requestId'>, unknown>(
       accountingService.recordExpense,
+      { scope: storageScope ?? 'anonymous', key: 'expense', label: 'Gasto' },
     ),
   )
   const [today, setToday] = useState(() => localDay(new Date()))
@@ -345,6 +353,7 @@ export function RecordDialog({
       : kind === 'supplier_payment'
         ? 'payable'
         : null
+  const uncertain = creditKind !== null && entryOperation.isUncertain()
   const loadCredits = useCallback(
     () =>
       creditKind && occurredOn
@@ -366,6 +375,19 @@ export function RecordDialog({
   async function submit(event: FormEvent) {
     event.preventDefault()
     if (busy) return
+    if (uncertain) {
+      setBusy(true)
+      setFailure('')
+      try {
+        await entryOperation.retryPending()
+        onRecorded('Abono confirmado. Consulta el historial de cobros y pagos.')
+      } catch (error) {
+        setFailure(errorMessage(error))
+      } finally {
+        setBusy(false)
+      }
+      return
+    }
     setFailure('')
     const submitToday = localDay(new Date())
     setToday(submitToday)
@@ -481,12 +503,13 @@ export function RecordDialog({
     <Dialog
       open
       title={initialCredit ? 'Registrar abono' : 'Registrar movimiento'}
+      dismissible={!busy && !uncertain}
       onClose={() => {
-        if (!busy) onClose()
+        if (!busy && !uncertain) onClose()
       }}
     >
       <form className="accounting-form" onSubmit={submit} noValidate>
-        <fieldset disabled={busy}>
+        <fieldset disabled={busy || uncertain}>
           <div className="form-grid">
             <Select
               label="Tipo"
@@ -740,30 +763,37 @@ export function RecordDialog({
                 : '—'}
             </strong>
           </div>
-          {failure && (
-            <p role="alert" className="inline-error">
-              {failure}
-            </p>
-          )}
-          <div className="form-actions">
-            <Button
-              type="submit"
-              aria-busy={busy}
-              disabled={
+        </fieldset>
+        {failure && (
+          <p role="alert" className="inline-error">
+            {failure}
+          </p>
+        )}
+        <div className="form-actions">
+          <Button
+            type="submit"
+            aria-busy={busy}
+            disabled={
+              busy ||
+              (!uncertain &&
                 !!creditKind &&
                 (!creditData?.available ||
                   !selectedCredit ||
                   selectedCredit.balanceNio === null ||
-                  selectedCredit.balanceNio <= 0)
-              }
-            >
-              {busy ? 'Guardando…' : 'Guardar'}
-            </Button>
-            <Button type="button" variant="secondary" onClick={onClose}>
-              Cancelar
-            </Button>
-          </div>
-        </fieldset>
+                  selectedCredit.balanceNio <= 0))
+            }
+          >
+            {busy ? 'Guardando…' : uncertain ? 'Verificar guardado' : 'Guardar'}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={busy || uncertain}
+            onClick={onClose}
+          >
+            Cancelar
+          </Button>
+        </div>
       </form>
     </Dialog>
   )

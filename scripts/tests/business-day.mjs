@@ -74,6 +74,10 @@ try {
       [id, id === empty ? 0 : 10, id === unknown ? null : 0],
     )
   }
+  await db.query(
+    'insert into public.product_costs(product_id,average_cost_nio) values($1,100)',
+    [product],
+  )
   await identity(admin)
 
   const today = (
@@ -115,6 +119,17 @@ try {
   )
   await identity(operator)
   const doc = await rpc('create_document', invoice())
+  // Venta heredada anterior a la guardia de costo: sólo el dueño de la base
+  // desechable prepara el snapshot nulo que debe seguir mostrándose pendiente.
+  await db.exec('reset role')
+  await db.query(
+    'update public.document_item_costs set unit_cost_nio=null where document_id=$1',
+    [doc.id],
+  )
+  await db.query('delete from public.product_costs where product_id=$1', [
+    product,
+  ])
+  await identity(operator)
   const hidden = (await db.query('select public.get_business_day(null) result'))
     .rows[0].result
   assert.equal(hidden.report, null)

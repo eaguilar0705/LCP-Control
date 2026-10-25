@@ -27,6 +27,16 @@ import {
   pendingDocumentsRevision,
   subscribePendingDocuments,
 } from '../features/sales/pendingDocuments'
+import {
+  getPendingJournal,
+  pendingJournalRevision,
+  subscribePendingJournal,
+} from '../features/accounting/pendingJournal'
+import {
+  listPendingOperations,
+  subscribePendingOperations,
+  pendingOperationsRevision,
+} from '../lib/idempotentOperation'
 const links = [
   ['', 'Inicio', LayoutDashboard],
   ['/inventory', 'Inventario', Package],
@@ -65,7 +75,44 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
   const base = demo ? '/demo' : ''
   const storageScope = demo ? 'demo' : `user:${user?.id ?? 'anonymous'}`
   useSyncExternalStore(subscribePendingDocuments, pendingDocumentsRevision)
+  useSyncExternalStore(subscribePendingJournal, pendingJournalRevision)
+  const operationsRevision = useSyncExternalStore(
+    subscribePendingOperations,
+    pendingOperationsRevision,
+  )
   const outstanding = demo ? [] : pendingDocuments(storageScope)
+  const outstandingJournal = !demo && getPendingJournal(storageScope)
+  const outstandingOperations = demo ? [] : listPendingOperations(storageScope)
+  const [verifying, setVerifying] = useState<string | null>(null)
+  const [operationNotice, setOperationNotice] = useState<{
+    revision: number
+    message?: string
+    error?: string
+  } | null>(null)
+  const currentOperationNotice =
+    operationNotice?.revision === operationsRevision ? operationNotice : null
+  async function verifyOperation(
+    entry: (typeof outstandingOperations)[number],
+  ) {
+    if (verifying) return
+    setVerifying(entry.key)
+    setError('')
+    setOperationNotice(null)
+    try {
+      await entry.operation.retryPending()
+      setOperationNotice({
+        revision: pendingOperationsRevision(),
+        message: 'Operación confirmada. Consulta el historial.',
+      })
+    } catch (failure) {
+      setOperationNotice({
+        revision: pendingOperationsRevision(),
+        error: errorMessage(failure),
+      })
+    } finally {
+      setVerifying(null)
+    }
+  }
   const [online, setOnline] = useState(navigator.onLine)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -118,15 +165,32 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
     }
   }, [])
   useEffect(() => {
-    if (!outstanding.length) return
+    if (
+      !outstanding.length &&
+      !outstandingJournal &&
+      !outstandingOperations.length
+    )
+      return
     const warn = (event: BeforeUnloadEvent) => {
       event.preventDefault()
       event.returnValue = ''
     }
     window.addEventListener('beforeunload', warn)
     return () => window.removeEventListener('beforeunload', warn)
-  }, [outstanding.length])
+  }, [outstanding.length, outstandingJournal, outstandingOperations.length])
   async function logout() {
+    if (!demo && listPendingOperations(storageScope).length) {
+      setError(
+        'Confirma primero las operaciones pendientes antes de cerrar sesión.',
+      )
+      return
+    }
+    if (!demo && getPendingJournal(storageScope)) {
+      setError(
+        'Confirma primero el comprobante pendiente antes de cerrar sesión.',
+      )
+      return
+    }
     if (!demo && pendingDocuments(storageScope).length) {
       setError(
         'Confirma primero las emisiones pendientes antes de cerrar sesión.',
@@ -311,6 +375,48 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
                 </Link>
               ))}
             </aside>
+          )}
+          {outstandingJournal && (
+            <aside
+              className="sales-pending-banner no-print"
+              aria-label="Comprobante por confirmar"
+              role="status"
+            >
+              <strong>Hay un comprobante pendiente de confirmar.</strong>
+              <Link to={`${base}/accounting`}>Verificar comprobante</Link>
+            </aside>
+          )}
+          {outstandingOperations.length > 0 && (
+            <aside
+              className="sales-pending-banner no-print"
+              aria-label="Operaciones por confirmar"
+              role="status"
+            >
+              {outstandingOperations.map((entry) => (
+                <div key={entry.key} className="pending-operation-row">
+                  <strong>{entry.label} pendiente de confirmar.</strong>
+                  <Button
+                    variant="secondary"
+                    disabled={verifying !== null}
+                    onClick={() => void verifyOperation(entry)}
+                  >
+                    {verifying === entry.key
+                      ? 'Verificando…'
+                      : 'Verificar operación'}
+                  </Button>
+                </div>
+              ))}
+            </aside>
+          )}
+          {currentOperationNotice?.message && !outstandingOperations.length && (
+            <p role="status" className="workspace-feedback">
+              {currentOperationNotice.message}
+            </p>
+          )}
+          {currentOperationNotice?.error && (
+            <p role="alert" className="inline-error">
+              {currentOperationNotice.error}
+            </p>
           )}
           <main id="main" className="main-content">
             <PriceTiersBoundary demo={demo}>
