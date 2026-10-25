@@ -205,6 +205,7 @@ export function TrendChart({
 }
 
 interface RankedBar {
+  key?: string
   label: string
   value: number
   detail?: string
@@ -225,8 +226,8 @@ export function RankedBars({
   const max = Math.max(...bars.map((bar) => Math.abs(bar.value)), 0) || 1
   return (
     <ul className="ranked-bars" aria-label={label}>
-      {bars.map((bar) => (
-        <li key={bar.label}>
+      {bars.map((bar, index) => (
+        <li key={bar.key ?? `${index}-${bar.label}`}>
           <div className="ranked-head">
             <span title={bar.label}>{bar.label}</span>
             <strong>{format(bar.value)}</strong>

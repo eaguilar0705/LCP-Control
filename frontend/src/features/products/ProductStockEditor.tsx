@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { Minus, Plus, Package, ArrowRight } from 'lucide-react'
+import { Minus, Plus, Package, ArrowRight, ClipboardCheck } from 'lucide-react'
 import {
   Button,
   Card,
@@ -199,21 +199,34 @@ export function ProductStockEditor({
                     <option value="store">Tienda</option>
                     <option value="warehouse">Bodega</option>
                   </Select>
-                  <Select
-                    label="Cómo cambiar las cantidades"
-                    value={movementType}
-                    disabled={initial}
-                    onChange={(e) => {
-                      setType(e.target.value as MovementRequest['type'])
-                      setError('')
-                    }}
-                  >
-                    {available.map((a) => (
-                      <option key={a.type} value={a.type}>
-                        {a.label}
-                      </option>
-                    ))}
-                  </Select>
+                  {initial ? (
+                    <div className="stock-initial-count" role="status">
+                      <span>Cómo cambiar las cantidades</span>
+                      <div>
+                        <ClipboardCheck size={20} aria-hidden="true" />
+                        <strong>Registrar conteo inicial</strong>
+                      </div>
+                      <small>
+                        Indica cuántas unidades hay físicamente en{' '}
+                        {labels.location[location]}.
+                      </small>
+                    </div>
+                  ) : (
+                    <Select
+                      label="Cómo cambiar las cantidades"
+                      value={movementType}
+                      onChange={(e) => {
+                        setType(e.target.value as MovementRequest['type'])
+                        setError('')
+                      }}
+                    >
+                      {available.map((a) => (
+                        <option key={a.type} value={a.type}>
+                          {a.label}
+                        </option>
+                      ))}
+                    </Select>
+                  )}
                 </div>
 
                 {!requiresPurchase && (
@@ -269,7 +282,7 @@ export function ProductStockEditor({
                       label="Motivo del cambio de cantidad"
                       required
                       maxLength={2000}
-                      placeholder="Compra recibida, corrección de conteo…"
+                      placeholder="Conteo físico, corrección de existencias…"
                       value={note}
                       onChange={(e) => setNote(e.target.value)}
                     />

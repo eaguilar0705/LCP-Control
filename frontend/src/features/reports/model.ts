@@ -77,8 +77,28 @@ export function adjustRange(
   return next.from <= next.to ? next : { from: day, to: day }
 }
 
+/** Fecha de un acceso directo, validada sin desplazar el día de Managua. */
+export function requestedReportDay(
+  value: string | null,
+  today = localDay(new Date()),
+): string | null {
+  if (
+    !value ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(value) ||
+    value < '0001-01-01' ||
+    value > today
+  )
+    return null
+  const date = new Date(`${value}T12:00:00Z`)
+  return Number.isFinite(date.getTime()) &&
+    date.toISOString().slice(0, 10) === value
+    ? value
+    : null
+}
+
 export function presetRange(preset: Preset, today = localDay(new Date())) {
   const spans: Record<Preset, number> = {
+    today: 0,
     '7d': 6,
     '30d': 29,
     '90d': 89,
@@ -86,8 +106,9 @@ export function presetRange(preset: Preset, today = localDay(new Date())) {
   }
   return { from: addDays(today, -spans[preset]), to: today }
 }
-export type Preset = '7d' | '30d' | '90d' | '365d'
+export type Preset = 'today' | '7d' | '30d' | '90d' | '365d'
 export const presetLabels: Record<Preset, string> = {
+  today: 'Hoy',
   '7d': 'Últimos 7 días',
   '30d': 'Últimos 30 días',
   '90d': 'Últimos 90 días',

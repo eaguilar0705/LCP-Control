@@ -40,6 +40,7 @@
     "test:browser:accounting": "node scripts/tests/browser-accounting.mjs",
     "test:business-day-opening": "node scripts/tests/business-day-opening.mjs && node scripts/tests/day-contingencies.mjs",
     "test:browser:business-day": "node scripts/tests/browser-business-day-history.mjs",
+    "test:browser:daily-review": "node scripts/tests/browser-daily-review.mjs && node scripts/tests/browser-stock-controls.mjs",
     "test:contingencies": "node scripts/tests/browser-day-contingencies.mjs && node scripts/tests/browser-sale-contingencies.mjs && node scripts/tests/browser-payment-dates.mjs",
     "test:delivery": "node scripts/tests/browser-delivery-audit.mjs && node scripts/tests/browser-history-volume.mjs"
   },

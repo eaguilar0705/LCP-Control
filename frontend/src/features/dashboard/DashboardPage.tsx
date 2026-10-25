@@ -33,16 +33,9 @@ export function DashboardPage() {
     [inventoryVisible, inventoryService],
   )
   const { data, loading, error, retry } = useQuery(load)
-  if (loading) return <LoadingState />
-  if (error || !data)
-    return (
-      <ErrorState
-        message={error ?? 'No hay datos disponibles.'}
-        retry={retry}
-      />
-    )
-  const brands = new Set(data.map((item) => item.product.brand)).size
-  const balances = data.flatMap((item) => [
+  const items = data ?? []
+  const brands = new Set(items.map((item) => item.product.brand)).size
+  const balances = items.flatMap((item) => [
     item.quantities.store,
     item.quantities.warehouse,
   ])
@@ -61,7 +54,16 @@ export function DashboardPage() {
         <Reflection />
       </section>
       <BusinessDayPanel />
-      {inventoryVisible && (
+      {inventoryVisible && loading && <LoadingState />}
+      {inventoryVisible && (error || (!loading && !data)) && (
+        <Card>
+          <ErrorState
+            message={error ?? 'No hay datos disponibles.'}
+            retry={retry}
+          />
+        </Card>
+      )}
+      {inventoryVisible && data && !error && (
         <div className="stats-grid">
           {[
             ['Referencias', data.length, 'Catálogo mayorista'],
@@ -99,7 +101,7 @@ export function DashboardPage() {
             </Link>
           ))}
       </div>
-      {inventoryVisible && pending > 0 && (
+      {inventoryVisible && data && !error && pending > 0 && (
         <p className="workspace-disclaimer">{pending} saldos sin conteo.</p>
       )}
     </>

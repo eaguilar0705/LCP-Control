@@ -220,7 +220,7 @@ function DayPanel({ admin }: { admin: boolean }) {
           )}
         </div>
       )}
-      {admin && report && (
+      {admin && data && report && (
         <>
           {data?.status === 'open' &&
             (report.expectedNio < 0 || report.expectedUsd < 0) && (
@@ -240,6 +240,14 @@ function DayPanel({ admin }: { admin: boolean }) {
               </div>
             )}
           <div className="day-metrics">
+            <div className="day-net-sales">
+              <span>Venta neta del día</span>
+              <strong>
+                {report.netSalesNio == null
+                  ? 'Sin dato'
+                  : formatCurrency(report.netSalesNio, 'NIO')}
+              </strong>
+            </div>
             <div>
               <span>Facturas</span>
               <strong>{report.invoices}</strong>
@@ -257,6 +265,20 @@ function DayPanel({ admin }: { admin: boolean }) {
               <strong>{formatCurrency(report.expectedUsd, 'USD')}</strong>
             </div>
           </div>
+          <nav className="day-review-links" aria-label="Consultar el día">
+            <Link
+              className="button button-secondary"
+              to={`${base}/sales/history?day=${data.day}`}
+            >
+              Ventas del día
+            </Link>
+            <Link
+              className="button button-secondary"
+              to={`${base}/accounting?section=credits&day=${data.day}`}
+            >
+              Cobros y pagos
+            </Link>
+          </nav>
           <div className="day-payment-list">
             {(report.returnsCount ?? 0) > 0 && (
               <div>
@@ -265,8 +287,9 @@ function DayPanel({ admin }: { admin: boolean }) {
                   {report.returnedUnits ?? 0} unidades devueltas
                 </span>
                 <strong>
-                  {formatCurrency(report.returnedNio ?? 0, 'NIO')} devueltos ·
-                  Venta neta {formatCurrency(report.netSalesNio ?? 0, 'NIO')}
+                  {report.returnedNio == null
+                    ? 'Sin dato de importe'
+                    : `${formatCurrency(report.returnedNio, 'NIO')} devueltos`}
                 </strong>
               </div>
             )}

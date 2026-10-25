@@ -11,7 +11,7 @@ import {
 import { useServices } from '../../services/useServices'
 import { useQuery } from '../../lib/useQuery'
 import { errorMessage } from '../../lib/errors'
-import { adjustRange, localDay } from '../reports/model'
+import { adjustRange, localDay, requestedReportDay } from '../reports/model'
 import { accountingViews } from './accountingModel'
 import { AccountingTables, AccountCatalog } from './AccountingTables'
 import { readLedger } from './journalService'
@@ -31,16 +31,39 @@ const views = {
 export function AccountingPage() {
   const { salesService } = useServices()
   const [params] = useSearchParams()
+  const sectionQuery = params.get('section')
+  const dayQuery = params.get('day')
   const [view, setView] = useState<keyof typeof views>(() => {
-    const section = params.get('section')
-    return section && section in views
-      ? (section as keyof typeof views)
+    return sectionQuery && Object.hasOwn(views, sectionQuery)
+      ? (sectionQuery as keyof typeof views)
       : 'journal'
   })
   const [range, setRange] = useState(() => {
     const today = localDay(new Date())
+    const day = requestedReportDay(dayQuery, today)
+    if (day) return { from: day, to: day }
     return { from: today.slice(0, 7) + '-01', to: today }
   })
+  const [appliedQuery, setAppliedQuery] = useState({
+    day: dayQuery,
+    section: sectionQuery,
+  })
+  if (appliedQuery.day !== dayQuery || appliedQuery.section !== sectionQuery) {
+    setAppliedQuery({ day: dayQuery, section: sectionQuery })
+    const nextView =
+      sectionQuery && Object.hasOwn(views, sectionQuery)
+        ? (sectionQuery as keyof typeof views)
+        : 'journal'
+    if (view !== nextView) setView(nextView)
+    if (appliedQuery.day !== dayQuery) {
+      const today = localDay(new Date())
+      const day = requestedReportDay(dayQuery, today)
+      const next = day
+        ? { from: day, to: day }
+        : { from: today.slice(0, 7) + '-01', to: today }
+      if (range.from !== next.from || range.to !== next.to) setRange(next)
+    }
+  }
   const load = useCallback(async () => {
     const [ledger, business] = await Promise.all([
       readLedger(range.from, range.to),

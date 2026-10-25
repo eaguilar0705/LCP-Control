@@ -111,6 +111,7 @@ export function HomeCharts() {
             label="Productos por importe vendido"
             format={money}
             bars={products.map((product) => ({
+              key: product.productId,
               label: product.description,
               value: product.revenue,
               detail: `${product.quantity} unidades`,

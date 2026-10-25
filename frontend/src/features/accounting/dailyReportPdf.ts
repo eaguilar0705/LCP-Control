@@ -16,10 +16,10 @@ export async function downloadDailyReport(day: BusinessDay) {
       y = 22
     }
     pdf.setFont('helvetica', bold ? 'bold' : 'normal')
-    pdf.setFontSize(11)
+    pdf.setFontSize(10.5)
     pdf.text(label, 18, y)
     if (value) pdf.text(value, 198, y, { align: 'right' })
-    y += 8
+    y += 7
   }
   pdf.setTextColor(88, 25, 30)
   line(business?.name ?? 'La Casa del Perfume', '', true)
@@ -45,6 +45,22 @@ export async function downloadDailyReport(day: BusinessDay) {
   y += 4
   line('Facturas', String(r.invoices))
   line('Unidades vendidas', String(r.units))
+  line(
+    'Venta neta del día',
+    r.netSalesNio == null ? 'Sin dato' : formatCurrency(r.netSalesNio, 'NIO'),
+    true,
+  )
+  if ((r.returnsCount ?? 0) > 0) {
+    line('Notas de crédito', String(r.returnsCount))
+    line(
+      'Unidades devueltas',
+      r.returnedUnits == null ? 'Sin dato' : String(r.returnedUnits),
+    )
+    line(
+      'Devoluciones',
+      r.returnedNio == null ? 'Sin dato' : formatCurrency(r.returnedNio, 'NIO'),
+    )
+  }
   y += 4
   line('Ventas por forma de pago', '', true)
   for (const p of r.payments)
