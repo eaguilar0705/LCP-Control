@@ -18,6 +18,10 @@ export async function database() {
     alter table storage.objects enable row level security;
     grant usage on schema storage to authenticated,anon;
     grant select,insert,delete on storage.objects to authenticated;
+    grant select on storage.objects to anon;
+    create function storage.allow_only_operation(text) returns boolean language sql stable as $$
+      select coalesce(current_setting('storage.operation',true),'')=$1
+    $$;
     create function storage.foldername(text) returns text[] language sql immutable as $$ select string_to_array($1,'/') $$;
   `)
     await db.query(
