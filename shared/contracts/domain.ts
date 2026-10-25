@@ -259,6 +259,7 @@ export interface MovementRequest {
   location: InventoryLocation
   type: 'ENTRY' | 'EXIT' | 'DAMAGED' | 'ADJUSTMENT'
   quantity: number
+  expectedQuantity?: number | null
   reference?: string
   note: string
 }

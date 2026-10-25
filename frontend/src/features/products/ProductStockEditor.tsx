@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Minus, Plus, Package, ArrowRight, ClipboardCheck } from 'lucide-react'
+import { useLocation } from 'react-router-dom'
 import {
   Button,
   Card,
@@ -57,6 +58,14 @@ export function ProductStockEditor({
   onPendingChange?: (pending: boolean) => void
 }) {
   const { demo, role, storageScope = 'anonymous' } = useAccess()
+  const navigation = useLocation()
+  const requestedLocation = new URLSearchParams(navigation.search).get(
+    'countLocation',
+  )
+  const countLocation =
+    requestedLocation === 'store' || requestedLocation === 'warehouse'
+      ? requestedLocation
+      : null
   const { inventoryService } = useServices()
   const load = useCallback(
     () => inventoryService.getInventory(true),
@@ -73,7 +82,17 @@ export function ProductStockEditor({
       },
     ),
   )
-  const [location, setLocation] = useState<InventoryLocation>('store')
+  const [selection, setSelection] = useState<{
+    navigationKey: string
+    location: InventoryLocation
+  }>(() => ({
+    navigationKey: navigation.key,
+    location: countLocation ?? 'store',
+  }))
+  const location =
+    selection.navigationKey === navigation.key
+      ? selection.location
+      : (countLocation ?? selection.location)
   const [type, setType] = useState<MovementRequest['type']>('ENTRY')
   const [quantity, setQuantity] = useState('')
   const [note, setNote] = useState('')
@@ -192,7 +211,10 @@ export function ProductStockEditor({
                     label="Ubicación de las cantidades"
                     value={location}
                     onChange={(e) => {
-                      setLocation(e.target.value as InventoryLocation)
+                      setSelection({
+                        navigationKey: navigation.key,
+                        location: e.target.value as InventoryLocation,
+                      })
                       setError('')
                     }}
                   >

@@ -1012,6 +1012,9 @@ export const supabaseAdapter: DataProvider = {
         location: input.location,
         type: input.type,
         quantity: input.quantity,
+        ...(input.expectedQuantity !== undefined
+          ? { expectedQuantity: input.expectedQuantity }
+          : {}),
         reference: input.reference ?? '',
         note: input.note,
       },

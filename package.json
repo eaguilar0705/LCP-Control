@@ -22,6 +22,8 @@
     "test:browser:business-import": "node scripts/tests/browser-business-import.mjs",
     "test:browser:suppliers": "node scripts/tests/browser-supplier-autocomplete.mjs",
     "test:browser:customers": "node scripts/tests/browser-customer-autocomplete.mjs",
+    "test:cost-location-counts": "node scripts/tests/expected-inventory-count.mjs",
+    "test:browser:cost-location-counts": "node scripts/tests/browser-cost-location-counts.mjs",
     "test:browser:images": "node scripts/tests/browser-product-images.mjs",
     "test:browser:usability": "node scripts/tests/browser-inventory-usability.mjs && node scripts/tests/browser-everyday-usability.mjs",
     "lint": "eslint .",
