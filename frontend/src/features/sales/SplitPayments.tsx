@@ -1,7 +1,9 @@
+import { ArrowLeft } from 'lucide-react'
 import { Button, Input, Select } from '../../components/ui'
 import { formatCurrency } from '../../lib/format'
 import { labels, type Currency, type InvoicePayment } from '../../lib/domain'
 import { paymentsNio } from './splitPaymentModel'
+import './split-payments.css'
 export function SplitPayments({
   value,
   onChange,
@@ -23,9 +25,15 @@ export function SplitPayments({
   }
   return (
     <section className="split-payments" aria-label="Pagos divididos">
-      <div className="form-actions">
+      <div className="form-actions split-payments-heading">
         <strong>Pagos divididos</strong>
-        <Button type="button" variant="ghost" onClick={() => onChange([])}>
+        <Button
+          type="button"
+          variant="primary"
+          className="split-payment-single-button"
+          onClick={() => onChange([])}
+        >
+          <ArrowLeft size={16} aria-hidden="true" />
           Usar un solo pago
         </Button>
       </div>
