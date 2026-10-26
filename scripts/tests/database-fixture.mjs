@@ -34,7 +34,9 @@ export async function database() {
         !file.includes('harden_platform_function_grants')
       ) {
         await db.exec(
-          await readFile(`backend/supabase/migrations/${file}`, 'utf8'),
+          (
+            await readFile(`backend/supabase/migrations/${file}`, 'utf8')
+          ).replace(/\r\n/g, '\n'),
         )
       }
     }

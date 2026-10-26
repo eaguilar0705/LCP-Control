@@ -42,6 +42,36 @@
   margin-top: 28px;
   border-top: 3px solid #b99a62;
 }
+.stock-initial-count {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+  align-content: start;
+}
+.stock-initial-count > span {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+.stock-initial-count > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 50px;
+  padding: 12px 15px;
+  border: 1px solid #e6d9c4;
+  border-radius: 10px;
+  background: #faf5ea;
+  color: #775721;
+}
+.stock-initial-count svg {
+  flex-shrink: 0;
+}
+.stock-initial-count small {
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
 .product-stock-editor form,
 .product-stock-editor .form-fields,
 .product-stock-editor .form-grid,

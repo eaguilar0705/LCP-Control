@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { Minus, Plus, Package, ArrowRight } from 'lucide-react'
+import { Minus, Plus, Package, ArrowRight, ClipboardCheck } from 'lucide-react'
+import { useLocation } from 'react-router-dom'
 import {
   Button,
   Card,
@@ -57,6 +58,14 @@ export function ProductStockEditor({
   onPendingChange?: (pending: boolean) => void
 }) {
   const { demo, role, storageScope = 'anonymous' } = useAccess()
+  const navigation = useLocation()
+  const requestedLocation = new URLSearchParams(navigation.search).get(
+    'countLocation',
+  )
+  const countLocation =
+    requestedLocation === 'store' || requestedLocation === 'warehouse'
+      ? requestedLocation
+      : null
   const { inventoryService } = useServices()
   const load = useCallback(
     () => inventoryService.getInventory(true),
@@ -73,7 +82,17 @@ export function ProductStockEditor({
       },
     ),
   )
-  const [location, setLocation] = useState<InventoryLocation>('store')
+  const [selection, setSelection] = useState<{
+    navigationKey: string
+    location: InventoryLocation
+  }>(() => ({
+    navigationKey: navigation.key,
+    location: countLocation ?? 'store',
+  }))
+  const location =
+    selection.navigationKey === navigation.key
+      ? selection.location
+      : (countLocation ?? selection.location)
   const [type, setType] = useState<MovementRequest['type']>('ENTRY')
   const [quantity, setQuantity] = useState('')
   const [note, setNote] = useState('')
@@ -192,28 +211,44 @@ export function ProductStockEditor({
                     label="Ubicación de las cantidades"
                     value={location}
                     onChange={(e) => {
-                      setLocation(e.target.value as InventoryLocation)
+                      setSelection({
+                        navigationKey: navigation.key,
+                        location: e.target.value as InventoryLocation,
+                      })
                       setError('')
                     }}
                   >
                     <option value="store">Tienda</option>
                     <option value="warehouse">Bodega</option>
                   </Select>
-                  <Select
-                    label="Cómo cambiar las cantidades"
-                    value={movementType}
-                    disabled={initial}
-                    onChange={(e) => {
-                      setType(e.target.value as MovementRequest['type'])
-                      setError('')
-                    }}
-                  >
-                    {available.map((a) => (
-                      <option key={a.type} value={a.type}>
-                        {a.label}
-                      </option>
-                    ))}
-                  </Select>
+                  {initial ? (
+                    <div className="stock-initial-count" role="status">
+                      <span>Cómo cambiar las cantidades</span>
+                      <div>
+                        <ClipboardCheck size={20} aria-hidden="true" />
+                        <strong>Registrar conteo inicial</strong>
+                      </div>
+                      <small>
+                        Indica cuántas unidades hay físicamente en{' '}
+                        {labels.location[location]}.
+                      </small>
+                    </div>
+                  ) : (
+                    <Select
+                      label="Cómo cambiar las cantidades"
+                      value={movementType}
+                      onChange={(e) => {
+                        setType(e.target.value as MovementRequest['type'])
+                        setError('')
+                      }}
+                    >
+                      {available.map((a) => (
+                        <option key={a.type} value={a.type}>
+                          {a.label}
+                        </option>
+                      ))}
+                    </Select>
+                  )}
                 </div>
 
                 {!requiresPurchase && (
@@ -269,7 +304,7 @@ export function ProductStockEditor({
                       label="Motivo del cambio de cantidad"
                       required
                       maxLength={2000}
-                      placeholder="Compra recibida, corrección de conteo…"
+                      placeholder="Conteo físico, corrección de existencias…"
                       value={note}
                       onChange={(e) => setNote(e.target.value)}
                     />

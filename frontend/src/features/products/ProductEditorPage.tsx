@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import {
   Link,
   useBlocker,
+  useLocation,
   useNavigate,
   useParams,
   useSearchParams,
@@ -180,6 +181,7 @@ function ProductForm({
 }) {
   const { base, demo, role } = useAccess()
   const navigate = useNavigate()
+  const navigation = useLocation()
   const [params] = useSearchParams()
   const { productService } = useServices()
   const allTiers = usePriceTiers()
@@ -242,8 +244,20 @@ function ProductForm({
     checked && !parsed.success ? issuesByField(parsed.error.issues) : {}
   const invalid = Object.keys(fieldErrors).length
   const form = useRef<HTMLFormElement>(null)
+  const stockSection = useRef<HTMLElement>(null)
   const [confirmRemove, setConfirmRemove] = useState(false)
   const back = `${base}/inventory`
+  useEffect(() => {
+    if (navigation.hash !== '#cantidades-perfume' || !product?.id) return
+    const frame = requestAnimationFrame(() => {
+      stockSection.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+      stockSection.current?.focus({ preventScroll: true })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [navigation.hash, navigation.key, product?.id])
   useEffect(() => {
     if (!unsaved && !busy && !stockPending) return
     const warn = (event: BeforeUnloadEvent) => {
@@ -779,7 +793,7 @@ function ProductForm({
         />
       )}
       {product ? (
-        <section id="cantidades-perfume" tabIndex={-1}>
+        <section id="cantidades-perfume" tabIndex={-1} ref={stockSection}>
           <ProductStockEditor
             onPendingChange={setStockPending}
             product={product}

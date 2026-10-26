@@ -1,0 +1,36 @@
+.split-payments-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.split-payment-single-button {
+  max-width: 100%;
+  min-height: 44px;
+  padding: 10px 15px;
+  border-radius: 10px;
+  border-color: var(--color-wine, #57171c);
+  background: var(--color-wine, #57171c);
+  color: #fffaf3;
+  box-shadow: 0 2px 4px rgb(87 23 28 / 12%);
+  line-height: 1.4;
+  text-align: center;
+}
+
+.split-payment-single-button:hover {
+  background: #421015;
+  border-color: #421015;
+}
+
+.split-payment-single-button:focus-visible {
+  outline: 3px solid var(--color-gold, #c4a05a);
+  outline-offset: 3px;
+}
+
+@media (max-width: 480px) {
+  .split-payments-heading .split-payment-single-button {
+    width: 100%;
+  }
+}

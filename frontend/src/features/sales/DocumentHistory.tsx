@@ -11,7 +11,7 @@ import {
   WorkspaceEmpty,
 } from '../../components/WorkspacePresentation'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useServices } from '../../services/useServices'
 import { useAccess } from '../../app/AccessContext'
 import { useQuery } from '../../lib/useQuery'
@@ -32,7 +32,11 @@ import { DocumentPrint } from './DocumentPrint'
 import { SalesReturnDialog } from './SalesReturnDialog'
 import { downloadDocumentPdf, downloadPeriodPdf } from './pdf'
 import { matchesSearch } from '../../lib/search'
-import { adjustRange, type ReportRange } from '../reports/model'
+import {
+  adjustRange,
+  requestedReportDay,
+  type ReportRange,
+} from '../reports/model'
 import {
   historyPresetLabels,
   historyRange,
@@ -45,12 +49,30 @@ const counts = new Intl.NumberFormat('es-NI')
 export function DocumentHistory({ kind }: { kind: DocumentKind }) {
   const { salesService } = useServices()
   const { base, demo, role, storageScope } = useAccess()
+  const [params] = useSearchParams()
+  const dayQuery = params.get('day')
+  const requestedDay = requestedReportDay(dayQuery)
   const { singular, plural } = documentCopy[kind]
   const noun = (n: number) =>
     `${counts.format(n)} ${n === 1 ? singular : plural}`
   // `null`: fechas elegidas a mano, ningún atajo queda marcado.
-  const [preset, setPreset] = useState<HistoryPreset | null>('month')
-  const [range, setRange] = useState<ReportRange>(() => historyRange('month'))
+  const [preset, setPreset] = useState<HistoryPreset | null>(
+    requestedDay ? null : 'month',
+  )
+  const [range, setRange] = useState<ReportRange>(() =>
+    requestedDay
+      ? { from: requestedDay, to: requestedDay }
+      : historyRange('month'),
+  )
+  const [appliedDayQuery, setAppliedDayQuery] = useState(dayQuery)
+  if (appliedDayQuery !== dayQuery) {
+    const next = requestedDay
+      ? { from: requestedDay, to: requestedDay }
+      : historyRange('month')
+    setAppliedDayQuery(dayQuery)
+    setPreset(requestedDay ? null : 'month')
+    if (range.from !== next.from || range.to !== next.to) setRange(next)
+  }
   // La respuesta lleva el periodo que pidió: mientras llega la del periodo
   // nuevo no se muestra la lista del anterior como si fuera la actual.
   const load = useCallback(

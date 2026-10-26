@@ -135,14 +135,14 @@ try {
           exact: true,
         })
         const notes = page.getByRole('textbox', { name: /^Notas/ })
-        const clientSelect = page.getByLabel('Cliente registrado', {
-          exact: true,
-        })
         const savedClient = await one(
           'select id,name from public.customers limit 1',
         )
-        await reveal(clientSelect)
-        await clientSelect.selectOption(savedClient.id)
+        await reveal(customer)
+        await customer.fill(savedClient.name)
+        await page
+          .getByRole('option', { name: new RegExp(savedClient.name) })
+          .click()
         equal(
           await customer.inputValue(),
           savedClient.name,
@@ -153,7 +153,9 @@ try {
           true,
           'cliente registrado protegido de edición accidental',
         )
-        await clientSelect.selectOption('')
+        await page
+          .getByRole('button', { name: 'Cambiar cliente', exact: true })
+          .click()
         await customer.fill(`Cliente de uso diario ${kind} ${width}`)
         await reveal(phone)
         await phone.fill('88887777')

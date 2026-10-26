@@ -1,0 +1,47 @@
+.product-cost-count-content {
+  display: grid;
+  gap: 18px;
+}
+
+.product-cost-location-list {
+  display: grid;
+  gap: 12px;
+}
+
+.product-cost-location {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #e8ddd5;
+  border-radius: 12px;
+  background: #faf7f3;
+}
+
+.product-cost-location > div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.product-cost-location span {
+  color: #766960;
+  font-size: 12px;
+}
+
+.product-cost-location strong {
+  color: #57171c;
+  font-size: 16px;
+}
+
+.product-cost-count-content .form-actions {
+  margin: 0;
+}
+
+@media (max-width: 480px) {
+  .product-cost-location > .button {
+    width: 100%;
+  }
+}

@@ -1,4 +1,5 @@
 import { ProductPicker } from './ProductPicker'
+import { CustomerAutocomplete } from './CustomerAutocomplete'
 import { SplitPayments } from './SplitPayments'
 import { splitPaymentsValid } from './splitPaymentModel'
 import './document-workbench.css'
@@ -154,6 +155,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
   )
   const {
     data: customers,
+    loading: customersLoading,
     error: customersError,
     retry: retryCustomers,
   } = useQuery(loadCustomers)
@@ -1045,46 +1047,32 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
                 <ChevronDown size={19} aria-hidden="true" />
               </summary>
               <div className="form-grid">
-                {!demo && (
-                  <Select
-                    label="Cliente registrado"
-                    value={customerId ?? ''}
-                    onChange={(e) => {
-                      const selected = customers?.find(
-                        (c) => c.id === e.target.value,
-                      )
-                      setCustomerId(selected?.id ?? null)
-                      setCustomer(selected?.name ?? '')
-                      setPhone(selected?.phone ?? '')
-                      setTaxId(selected?.taxId ?? '')
-                      if (selected?.priceTier)
-                        setTier(selected.priceTier as PriceTier)
-                    }}
-                  >
-                    <option value="">Nuevo cliente</option>
-                    {customers
-                      ?.filter((c) => c.active)
-                      .map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name} · {c.phone}
-                        </option>
-                      ))}
-                  </Select>
-                )}
+                <CustomerAutocomplete
+                  maxLength={MAX_CUSTOMER_NAME}
+                  error={issued || !lines.length ? undefined : customerIssue}
+                  value={customer}
+                  customers={customers ?? []}
+                  loading={customersLoading}
+                  selected={!!customerId}
+                  onChange={setCustomer}
+                  onSelect={(selected) => {
+                    setCustomerId(selected.id)
+                    setCustomer(selected.name)
+                    setPhone(selected.phone ?? '')
+                    setTaxId(selected.taxId ?? '')
+                    if (selected.priceTier)
+                      setTier(selected.priceTier as PriceTier)
+                  }}
+                  onClear={() => {
+                    setCustomerId(null)
+                    setCustomer('')
+                    setPhone('')
+                    setTaxId('')
+                  }}
+                />
                 {customersError && (
                   <ErrorState message={customersError} retry={retryCustomers} />
                 )}
-                <Input
-                  label="Cliente"
-                  maxLength={MAX_CUSTOMER_NAME}
-                  // Con el formulario en blanco no se marca nada; en cuanto hay
-                  // productos, el documento necesita a quién va dirigido.
-                  error={issued || !lines.length ? undefined : customerIssue}
-                  value={customer}
-                  disabled={!!customerId}
-                  onChange={(e) => setCustomer(e.target.value)}
-                  placeholder="Nombre del cliente"
-                />
                 <Input
                   label="WhatsApp del cliente"
                   type="tel"

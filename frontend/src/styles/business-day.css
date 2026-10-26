@@ -32,9 +32,20 @@
 }
 .day-metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0.75rem;
   margin: 1rem 0;
+}
+.day-metrics > .day-net-sales {
+  border-color: #d7b3b8;
+  background: #fbf1f2;
+  color: #792d38;
+}
+.day-review-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0.75rem 0;
 }
 .day-metrics > div {
   background: #faf6f3;
@@ -116,6 +127,37 @@
   font-weight: 600;
   color: #792d38;
 }
+.day-history-date {
+  color: #756b65;
+  font-size: 0.85rem;
+  margin: 0.7rem 0;
+}
+.day-opening-shortcuts {
+  display: grid;
+  gap: 0.5rem;
+}
+.day-opening-shortcuts > .button {
+  justify-self: start;
+}
+.day-previous-closing {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem;
+  border: 1px solid #e8ddd5;
+  border-radius: 0.65rem;
+  background: #faf6f3;
+}
+.day-previous-closing > div {
+  min-width: 0;
+}
+.day-previous-closing span {
+  display: block;
+  margin-top: 0.35rem;
+  color: #756b65;
+}
 .day-history-event {
   display: grid;
   gap: 0.7rem;
@@ -184,10 +226,15 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
 }
-@media (max-width: 650px) {
+@media (max-width: 900px) {
   .day-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .day-metrics > .day-net-sales {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 650px) {
   .day-actions {
     width: 100%;
   }

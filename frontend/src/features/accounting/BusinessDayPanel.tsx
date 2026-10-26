@@ -63,6 +63,7 @@ function DayPanel({ admin }: { admin: boolean }) {
     day: BusinessDay
   } | null>(null)
   const [failure, setFailure] = useState('')
+  const [historyExpanded, setHistoryExpanded] = useState(false)
   const day = data?.day
   const revision = data?.revision
   const loadHistory = useCallback(
@@ -75,6 +76,10 @@ function DayPanel({ admin }: { admin: boolean }) {
   const history = useQuery(loadHistory)
   const historyCurrent = history.data?.day === day
   const historyEvents = historyCurrent ? (history.data?.events ?? []) : []
+  const refreshPanel = () => {
+    refresh()
+    history.refresh()
+  }
   useEffect(() => {
     const update = () => refresh()
     const visible = () => {
@@ -140,7 +145,8 @@ function DayPanel({ admin }: { admin: boolean }) {
           <Button
             variant="ghost"
             aria-label="Actualizar jornada"
-            onClick={refresh}
+            title="Actualizar jornada e historial"
+            onClick={refreshPanel}
           >
             <RefreshCw size={17} />
           </Button>
@@ -214,7 +220,7 @@ function DayPanel({ admin }: { admin: boolean }) {
           )}
         </div>
       )}
-      {admin && report && (
+      {admin && data && report && (
         <>
           {data?.status === 'open' &&
             (report.expectedNio < 0 || report.expectedUsd < 0) && (
@@ -234,6 +240,14 @@ function DayPanel({ admin }: { admin: boolean }) {
               </div>
             )}
           <div className="day-metrics">
+            <div className="day-net-sales">
+              <span>Venta neta del día</span>
+              <strong>
+                {report.netSalesNio == null
+                  ? 'Sin dato'
+                  : formatCurrency(report.netSalesNio, 'NIO')}
+              </strong>
+            </div>
             <div>
               <span>Facturas</span>
               <strong>{report.invoices}</strong>
@@ -251,6 +265,20 @@ function DayPanel({ admin }: { admin: boolean }) {
               <strong>{formatCurrency(report.expectedUsd, 'USD')}</strong>
             </div>
           </div>
+          <nav className="day-review-links" aria-label="Consultar el día">
+            <Link
+              className="button button-secondary"
+              to={`${base}/sales/history?day=${data.day}`}
+            >
+              Ventas del día
+            </Link>
+            <Link
+              className="button button-secondary"
+              to={`${base}/accounting?section=credits&day=${data.day}`}
+            >
+              Cobros y pagos
+            </Link>
+          </nav>
           <div className="day-payment-list">
             {(report.returnsCount ?? 0) > 0 && (
               <div>
@@ -259,8 +287,9 @@ function DayPanel({ admin }: { admin: boolean }) {
                   {report.returnedUnits ?? 0} unidades devueltas
                 </span>
                 <strong>
-                  {formatCurrency(report.returnedNio ?? 0, 'NIO')} devueltos ·
-                  Venta neta {formatCurrency(report.netSalesNio ?? 0, 'NIO')}
+                  {report.returnedNio == null
+                    ? 'Sin dato de importe'
+                    : `${formatCurrency(report.returnedNio, 'NIO')} devueltos`}
                 </strong>
               </div>
             )}
@@ -292,11 +321,16 @@ function DayPanel({ admin }: { admin: boolean }) {
         </>
       )}
       {admin && current && (
-        <details className="day-history">
+        <details
+          className="day-history"
+          open={historyExpanded}
+          onToggle={(event) => setHistoryExpanded(event.currentTarget.open)}
+        >
           <summary>
             Historial de cierres y reaperturas
             {historyEvents.length ? ` (${historyEvents.length})` : ''}
           </summary>
+          <p className="day-history-date">{formatDate(data.day)}</p>
           {history.error && (
             <p role="alert" className="inline-error">
               {history.error}
@@ -309,7 +343,7 @@ function DayPanel({ admin }: { admin: boolean }) {
             <p role="status">Cargando historial…</p>
           )}
           {!history.error && historyCurrent && !historyEvents.length && (
-            <p>Sin cierres registrados.</p>
+            <p>Sin cierres ni reaperturas para esta fecha.</p>
           )}
           {historyEvents.map((event) => (
             <article key={event.id} className="day-history-event">
@@ -385,7 +419,7 @@ function DayDialog({
   const { base, storageScope = 'anonymous' } = useAccess()
   const [preview, setPreview] = useState(day)
   const [nio, setNio] = useState('')
-  const [usd, setUsd] = useState('')
+  const [usd, setUsd] = useState(action === 'open' ? '0' : '')
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [checking, setChecking] = useState(false)
@@ -436,6 +470,13 @@ function DayDialog({
   // El mismo identificador permite recuperar un resultado que el servidor ya
   // guardó, incluso si otra pestaña cambió después el estado de la jornada.
   const retrying = attempt?.key === key
+  const uncertain =
+    !!attempt &&
+    getOperationReferences(storageScope).some(
+      (reference) =>
+        reference.kind === `business-day-${action}` &&
+        reference.requestId === attempt.requestId,
+    )
   async function updatePreview() {
     setChecking(true)
     setError('')
@@ -552,6 +593,54 @@ function DayDialog({
                 ? 'Efectivo inicial en caja'
                 : 'Efectivo contado al cierre'}
             </p>
+            {action === 'open' && (
+              <div className="day-opening-shortcuts">
+                {preview.openingSuggestion && (
+                  <div className="day-previous-closing">
+                    <div>
+                      <strong>
+                        Último cierre ·{' '}
+                        {formatDate(preview.openingSuggestion.day)}
+                      </strong>
+                      <span>
+                        {formatCurrency(
+                          preview.openingSuggestion.countedNio,
+                          'NIO',
+                        )}{' '}
+                        ·{' '}
+                        {formatCurrency(
+                          preview.openingSuggestion.countedUsd,
+                          'USD',
+                        )}
+                      </span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={busy || checking || uncertain}
+                      onClick={() => {
+                        const previous = preview.openingSuggestion!
+                        setNio(String(previous.countedNio))
+                        setUsd(String(previous.countedUsd))
+                      }}
+                    >
+                      Usar último cierre
+                    </Button>
+                  </div>
+                )}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={busy || checking || uncertain}
+                  onClick={() => {
+                    setNio('0')
+                    setUsd('0')
+                  }}
+                >
+                  Sin efectivo inicial
+                </Button>
+              </div>
+            )}
             <div className="day-inputs">
               <Input
                 label="Córdobas C$"

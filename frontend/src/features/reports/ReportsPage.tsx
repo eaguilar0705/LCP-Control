@@ -537,6 +537,7 @@ function CurrencyReport({
                 label="Productos por importe vendido"
                 format={money}
                 bars={products.map((product) => ({
+                  key: product.productId,
                   label: product.description,
                   value: product.revenue,
                   detail: `${whole.format(product.quantity)} unidades`,
@@ -574,6 +575,7 @@ function CurrencyReport({
                 label="Clientes por importe comprado"
                 format={money}
                 bars={clients.top.map((client) => ({
+                  key: client.id,
                   label: client.name,
                   value: client.revenue,
                   detail: `${client.count} factura(s)`,

@@ -44,6 +44,13 @@ export interface BusinessDay {
   reopenCount: number
   serverNow: string
   stateToken: string
+  openingSuggestion?: {
+    day: string
+    countedNio: number
+    countedUsd: number
+    closedAt: string
+    revision: number
+  } | null
 }
 export interface BusinessDayEvent {
   id: string

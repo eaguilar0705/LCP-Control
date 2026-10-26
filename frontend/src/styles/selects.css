@@ -13,6 +13,14 @@
   outline: 2px solid #a64051;
   outline-offset: 2px;
 }
+.field select:not(.product-select-validity):disabled {
+  appearance: none;
+  background-color: #f5f1ec;
+  border-color: #e0d8d0;
+  color: #786b65;
+  opacity: 1;
+  cursor: not-allowed;
+}
 /* The browser retains keyboard, form and assistive-technology behavior.
    Browsers without customizable selects retain their native picker. */
 @supports (appearance: base-select) {
@@ -24,6 +32,12 @@
     display: flex;
     align-items: center;
     gap: 12px;
+  }
+  .field select:not(.product-select-validity):disabled {
+    appearance: base-select;
+  }
+  .field select:not(.product-select-validity):disabled::picker-icon {
+    display: none;
   }
   .field select::picker-icon {
     color: var(--brand-red);
