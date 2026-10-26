@@ -279,6 +279,10 @@ export function StorefrontPage() {
       const p = pubMap.get(d.id)
       return (
         (filter === 'all' ||
+          (filter === 'inventory' &&
+            !!d.source_product_id &&
+            d.source_snapshot.active &&
+            !d.source_missing) ||
           (filter === 'pending' &&
             (d.status === 'pending' || d.removal_state === 'pending')) ||
           (filter === 'removals' && d.removal_state === 'pending') ||
@@ -335,9 +339,10 @@ export function StorefrontPage() {
       <div className="page-heading">
         <div>
           <span className="eyebrow">LA CASA DEL PERFUME · TIENDA ONLINE</span>
-          <h1>Tu catálogo, desde Control.</h1>
+          <h1>Tienda online</h1>
           <p className="muted">
-            Revisá novedades, prepará cada perfume y decidí qué ve el cliente.
+            Elegí perfumes del inventario, revisá su ficha y publicá los que
+            verá el cliente.
           </p>
         </div>
         <div className="sf-actions">
@@ -349,9 +354,19 @@ export function StorefrontPage() {
             <RefreshCw size={17} />
             Actualizar
           </Button>
-          <Button onClick={() => void open()}>
+          <Button variant="secondary" onClick={() => void open()}>
             <Plus size={18} />
-            Agregar perfume
+            Crear ficha independiente
+          </Button>
+          <Button
+            onClick={() => {
+              setFilter('inventory')
+              setSearch('')
+              setPage(0)
+            }}
+          >
+            <Globe size={18} />
+            Elegir del inventario
           </Button>
         </div>
       </div>
@@ -444,6 +459,7 @@ export function StorefrontPage() {
           }}
         >
           <option value="all">Todos los perfumes</option>
+          <option value="inventory">Perfumes del inventario</option>
           <option value="pending">Por revisar</option>
           <option value="removals">Bajas por decidir</option>
           <option value="visible">Visibles para clientes</option>

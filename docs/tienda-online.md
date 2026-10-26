@@ -30,12 +30,29 @@ No repetir la importación inicial ni ejecutar migraciones desde el build de Clo
 
 ## Verificación
 
+### Revisión de compra, publicación y venta del 26 de octubre de 2026
+
+La revisión adicional se preparó en `codex/revisar-tienda-online`, basada en `codex/catalogo-publicacion` e incluyendo el `main` anterior. La entrega incorpora ambas ramas en `main` para publicarlas mediante la integración Git de Cloudflare Pages.
+
+- `npm run test:storefront`: **101 comprobaciones** en PostgreSQL desechable. Las 21 nuevas usan las funciones reales de compra, emisión de factura y devolución: compra sin publicación automática, borrador privado, publicación aprobada, venta parcial, factura idempotente, venta de la última unidad, sobreventa rechazada, devolución, reposición y agotamiento entre Tienda y Bodega. También comprueban que las ventas respetan el precio público, los borradores pendientes y la ocultación manual.
+- Prueba de navegador contra esa base aislada: guardar un borrador no lo publica; aprobar muestra USD 37.50; una factura de dos unidades desde Facturación agota el perfume; el catálogo abierto cambia a **No disponible**, deshabilita Añadir y elimina el artículo de la selección sin recargar. La reposición recupera la disponibilidad.
+- Se aclaró el acceso **Elegir del inventario**. **Crear ficha independiente** conserva la opción manual y deja claro que no queda vinculada a existencias. Se alinearon fotos, precios y controles, y se revisaron el listado y el editor a 390 px y el catálogo a 320 px, sin desbordamiento horizontal.
+- Control pasa ESLint, TypeScript y compilación. El catálogo pasa sus comprobaciones de sintaxis, límites de publicación, compilación y la prueba del temporizador de actualización.
+
+El catálogo tenía una demora: una página que permanecía abierta no consultaba cambios hasta volver a la pestaña o recargar. La corrección del repositorio independiente consulta publicaciones cada 15 segundos mientras la página está visible y al enfocar o recuperar conexión. Usa peticiones sin caché y evita reconstruir tarjetas cuando no hubo cambios. La copia de trabajo está en `output/catalogo-review`; también se conserva el parche de revisión en `output/storefront-review/catalogo-actualizacion.patch`.
+
+Para reproducir la prueba visual, clonar `LCP-CONTROL-CATALOGO` en `output/catalogo-review` y ejecutar `node scripts/tests/storefront-browser-server.mjs`. Control se sirve en `http://127.0.0.1:5175`, el catálogo en `http://127.0.0.1:4180` y los controles de compra/venta de prueba en `/__qa`. El acceso de este servidor usa `qa@example.test` y cualquier contraseña ficticia. Su transporte sustituye Supabase exclusivamente dentro del servidor de prueba y nunca envía operaciones a producción. `/__qa/frame?width=390` permite revisar el diseño móvil. Cerrar el proceso descarta la base completa.
+
+Las capturas y los resultados están en `output/storefront-review`. La consulta de producción fue únicamente de lectura pública: ambos proyectos usan el mismo Supabase y devolvieron 272 publicaciones. No se alteraron inventario, ventas, publicaciones ni cuentas reales.
+
+### Verificación anterior
+
 `npm run test:storefront` ejecuta 80 comprobaciones aisladas de publicación, permisos, archivos, concurrencia editorial, disponibilidad, bajas y protección de cantidades. También se ejecutaron las pruebas de acceso al catálogo, jornada y traslados; TypeScript, ESLint de los archivos modificados y build de producción.
 
 La prueba de navegador aislada verificó guardar, publicar, copiar la foto del origen, conservar una baja, crear una referencia independiente y añadir una segunda fotografía después de guardar. El editor se revisó en escritorio y a 390 px de ancho. El 26 de octubre de 2026 se completó también la prueba autenticada con la cuenta real: reactivar LCP-0261 en Control, guardar borrador sin exponerlo, aprobar su publicación con USD 37.50, desactivarlo, comprobar la baja pendiente y aceptar su archivo. La referencia quedó nuevamente inactiva y archivada; la web volvió a 272 publicaciones visibles. No se modificaron cantidades, costos ni ventas. Se corrigió la demora del indicador del menú para actualizarlo también al cambiar de pantalla.
 
 ## Publicación
 
-Esta entrega está en `codex/catalogo-publicacion`. Para el nuevo Cloudflare Pages, seleccionar esa rama o integrarla primero en `main`. Comando `npm run build`, salida `output/dist`, Node 22, raíz del repositorio. El catálogo usa su repositorio independiente, comando `npm run check && npm run build` y salida `dist`.
+La producción de Control se publica desde `main`, integrando el módulo de `codex/catalogo-publicacion` y sus correcciones revisadas. Comando `npm run build`, salida `output/dist`, Node 22, raíz del repositorio. El catálogo usa `main` de su repositorio independiente, comando `npm run check && npm run build` y salida `dist`. La publicación de código no ejecuta migraciones ni vuelve a importar referencias.
 
 La guía completa está en `DESPLIEGUE-CLOUDFLARE.md` del repositorio privado `eaguilar0705/LCP-CONTROL-CATALOGO`. El administrador integrado no necesita un tercer proyecto de hosting.

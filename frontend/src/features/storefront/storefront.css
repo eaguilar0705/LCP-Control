@@ -12,6 +12,15 @@
   gap: 10px;
   flex-wrap: wrap;
 }
+.sf-workspace > .page-heading {
+  align-items: center;
+}
+.sf-workspace > .page-heading > div {
+  min-width: 0;
+}
+.sf-workspace > .page-heading .sf-actions {
+  justify-content: flex-end;
+}
 .sf-overview {
   display: grid;
   grid-template-columns: 1.2fr 1fr;
@@ -109,6 +118,9 @@
   gap: 18px;
 }
 .sf-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   background: #fffdf9;
   border: 1px solid #e7ddd3;
   border-radius: 14px;
@@ -131,6 +143,7 @@
   outline-offset: 3px;
 }
 .sf-photo {
+  flex-shrink: 0;
   height: 170px;
   display: flex;
   align-items: center;
@@ -156,6 +169,9 @@
   padding: 16px;
 }
 .sf-card-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
   padding: 17px;
 }
 .sf-brand {
@@ -182,7 +198,8 @@
   align-items: center;
   font-weight: 750;
   color: #57171c;
-  margin: 14px 0;
+  margin: auto 0 14px;
+  padding-top: 14px;
 }
 .sf-tags {
   display: flex;
@@ -347,8 +364,10 @@
 .sf-check input {
   width: 18px;
   height: 18px;
+  min-height: 18px;
+  padding: 0;
   flex-shrink: 0;
-  margin-top: 2px;
+  margin: 2px 0 0;
   accent-color: #8d2534;
 }
 .sf-photos {
@@ -466,6 +485,14 @@
   }
 }
 @media (max-width: 700px) {
+  .sf-workspace > .page-heading .sf-actions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+  .sf-workspace > .page-heading .sf-actions .button {
+    flex: 1 1 auto;
+    white-space: normal;
+  }
   .sf-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
