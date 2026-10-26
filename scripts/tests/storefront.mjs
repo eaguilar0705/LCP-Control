@@ -91,8 +91,11 @@ try {
     /permission|insufficient_privilege/,
   )
   equal(
-    (await db.query('select * from public.storefront_publications')).rows
-      .length,
+    (
+      await db.query(
+        'select id,content,visible from public.storefront_publications',
+      )
+    ).rows.length,
     0,
   )
   await identity(db, operator)
@@ -163,9 +166,10 @@ try {
   draft = await action('publish', draft)
   await identity(db, '', 'anon')
   let publication = (
-    await db.query('select * from public.storefront_publications where id=$1', [
-      id,
-    ])
+    await db.query(
+      'select id,content,visible from public.storefront_publications where id=$1',
+      [id],
+    )
   ).rows[0]
   equal(publication.content.price, 49.99)
   equal(Object.hasOwn(publication.content, 'source_snapshot'), false)
@@ -200,8 +204,11 @@ try {
   )
   await identity(db, operator)
   equal(
-    (await db.query('select * from public.storefront_publications')).rows
-      .length,
+    (
+      await db.query(
+        'select id,content,visible from public.storefront_publications',
+      )
+    ).rows.length,
     1,
     'non-admin signed-in visitor sees approved catalog',
   )
@@ -268,8 +275,11 @@ try {
   draft = await action('hide', draft)
   await identity(db, '', 'anon')
   equal(
-    (await db.query('select * from public.storefront_publications')).rows
-      .length,
+    (
+      await db.query(
+        'select id,content,visible from public.storefront_publications',
+      )
+    ).rows.length,
     0,
     'hide removes public record',
   )
@@ -297,7 +307,8 @@ try {
         [id],
       )
     ).rows[0].visible,
-    false,
+    true,
+    'retirement awaits approval while availability becomes unavailable',
   )
   await identity(db, admin)
   draft = await read(id)

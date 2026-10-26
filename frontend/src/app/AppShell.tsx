@@ -14,11 +14,13 @@ import {
   UserRound,
   ChartColumn,
   Calculator,
+  Globe,
 } from 'lucide-react'
 import { useAuth } from '../features/auth/AuthContext'
 import { AccessContext } from './AccessContext'
 import { Button } from '../components/ui'
 import { Brand } from '../components/Brand'
+import { StorefrontBadge } from '../features/storefront/StorefrontBadge'
 import { PriceTiersBoundary } from '../components/PriceTiersBoundary'
 import { OperationRecoveryBanner } from '../components/OperationRecoveryBanner'
 import {
@@ -48,6 +50,7 @@ const links = [
   ['/inventory', 'Inventario', Package],
   ['/sales', 'Facturación', ShoppingBag],
   ['/proformas', 'Proformas', FileText],
+  ['/storefront', 'Tienda online', Globe],
   ['/reports', 'Reportes', ChartColumn],
   ['/accounting', 'Contabilidad', Calculator],
   ['/alerts', 'Alertas', Bell],
@@ -73,6 +76,7 @@ const linkPermission: Record<string, Capability> = {
   '/accounting': 'pricing.manage',
   '/staff': 'staff.manage',
   '/settings': 'settings.manage',
+  '/storefront': 'settings.manage',
 }
 // Mismo corte que la hoja de estilos: por encima, el menú lateral es fijo.
 const DESKTOP_QUERY = '(min-width: 761px)'
@@ -295,6 +299,11 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
               >
                 <Icon size={19} />
                 {label}
+                {path === '/storefront' && (
+                  <StorefrontBadge
+                    enabled={!demo && can(role, 'settings.manage')}
+                  />
+                )}
               </NavLink>
             ))}
           </nav>

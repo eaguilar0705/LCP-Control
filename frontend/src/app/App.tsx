@@ -53,6 +53,11 @@ const ReportsPage = lazy(() =>
     default: page.ReportsPage,
   })),
 )
+const StorefrontPage = lazy(() =>
+  import('../features/storefront/StorefrontPage').then((page) => ({
+    default: page.StorefrontPage,
+  })),
+)
 const AccountingPage = lazy(() =>
   import('../features/accounting/AccountingPage').then((page) => ({
     default: page.AccountingPage,
@@ -139,6 +144,14 @@ export function App() {
       <Route path="customers" element={<ContactsPage kind="customers" />} />
       <Route path="staff" element={<StaffPage />} />
       <Route path="settings" element={<BusinessPage />} />
+      <Route
+        path="storefront"
+        element={
+          <AccessGate permission="settings.manage">
+            <StorefrontPage />
+          </AccessGate>
+        }
+      />
       <Route
         path="inventory/history"
         element={
