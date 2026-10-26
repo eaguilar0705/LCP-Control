@@ -25,6 +25,6 @@ El entorno PGlite de pruebas simula la función de Storage `allow_only_operation
 
 ## Despliegue
 
-La [guía de Cloudflare](https://github.com/eaguilar0705/LCP-CONTROL-CATALOGO/blob/main/DESPLIEGUE-CLOUDFLARE.md) contiene los pasos y variables. Se crean dos proyectos Pages: Control con salida `output/dist` y catálogo con salida `dist`. `/storefront` es el administrador integrado en Control; `/admin/` del catálogo sigue siendo compatible.
+La [guía de Cloudflare](https://github.com/eaguilar0705/LCP-CONTROL-CATALOGO/blob/main/DESPLIEGUE-CLOUDFLARE.md) contiene los pasos y variables. Se crean dos proyectos Pages: Control con salida `output/dist` y catálogo con salida `dist`. Toda la administración está en `/storefront` de Control. La antigua pantalla `/admin/` del catálogo se retiró; esas rutas responden 404.
 
 Cambiar Cloudflare o sus direcciones no mueve la base de datos. Solo hay que configurar las nuevas direcciones de retorno de Auth y las variables públicas del frontend. El despliegue de código no requiere volver a importar publicaciones.
