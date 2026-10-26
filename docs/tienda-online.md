@@ -11,7 +11,7 @@ Los administradores y superadministradores gestionan la web pública desde **Tie
 - **Ocultar cuando no esté disponible** se configura por perfume y se aplica al publicar. La reposición vuelve a mostrarlo. Ocultar o archivar manualmente lo mantiene oculto.
 - Desactivar o eliminar el origen genera una **baja pendiente**. Su ficha pasa a No disponible. **Aceptar baja** archiva y oculta; **Conservar ficha** conserva la publicación anterior sin recuperar el producto de Control.
 - Un producto independiente se administra manualmente. No crea inventario ni ventas.
-- El indicador del menú consulta revisiones al enfocar la aplicación y cada minuto mientras la pestaña esté visible. La bandeja se actualiza con su botón Actualizar y después de cada acción.
+- El indicador del menú consulta revisiones al cambiar de pantalla, al enfocar la aplicación y cada minuto mientras la pestaña esté visible. La bandeja se actualiza con su botón Actualizar y después de cada acción.
 
 ## Datos y seguridad
 
@@ -32,7 +32,7 @@ No repetir la importación inicial ni ejecutar migraciones desde el build de Clo
 
 `npm run test:storefront` ejecuta 80 comprobaciones aisladas de publicación, permisos, archivos, concurrencia editorial, disponibilidad, bajas y protección de cantidades. También se ejecutaron las pruebas de acceso al catálogo, jornada y traslados; TypeScript, ESLint de los archivos modificados y build de producción.
 
-La prueba de navegador aislada verificó guardar, publicar, copiar la foto del origen, conservar una baja, crear una referencia independiente y añadir una segunda fotografía después de guardar. El editor se revisó en escritorio y a 390 px de ancho. La revisión autenticada con la cuenta real del propietario queda pendiente de su inicio de sesión.
+La prueba de navegador aislada verificó guardar, publicar, copiar la foto del origen, conservar una baja, crear una referencia independiente y añadir una segunda fotografía después de guardar. El editor se revisó en escritorio y a 390 px de ancho. El 26 de octubre de 2026 se completó también la prueba autenticada con la cuenta real: reactivar LCP-0261 en Control, guardar borrador sin exponerlo, aprobar su publicación con USD 37.50, desactivarlo, comprobar la baja pendiente y aceptar su archivo. La referencia quedó nuevamente inactiva y archivada; la web volvió a 272 publicaciones visibles. No se modificaron cantidades, costos ni ventas. Se corrigió la demora del indicador del menú para actualizarlo también al cambiar de pantalla.
 
 ## Publicación
 

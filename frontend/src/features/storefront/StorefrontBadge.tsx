@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 export function StorefrontBadge({ enabled }: { enabled: boolean }) {
+  const { pathname } = useLocation()
   const [count, setCount] = useState(0)
   useEffect(() => {
     if (!enabled || !supabase) return
@@ -35,7 +37,7 @@ export function StorefrontBadge({ enabled }: { enabled: boolean }) {
       window.removeEventListener('focus', update)
       document.removeEventListener('visibilitychange', update)
     }
-  }, [enabled])
+  }, [enabled, pathname])
   return enabled && count > 0 ? (
     <span
       className="storefront-badge"
