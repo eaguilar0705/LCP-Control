@@ -32,7 +32,7 @@ No repetir la importación inicial ni ejecutar migraciones desde el build de Clo
 
 ### Revisión de compra, publicación y venta del 26 de octubre de 2026
 
-La revisión adicional se preparó en `codex/revisar-tienda-online`, basada en `codex/catalogo-publicacion` e incluyendo el `main` anterior. La entrega incorpora ambas ramas en `main` para publicarlas mediante la integración Git de Cloudflare Pages.
+La revisión adicional se preparó en `codex/revisar-tienda-online`, basada en `codex/catalogo-publicacion` e incluyendo el `main` anterior. La entrega integra el módulo en `main` y actualiza también `codex/catalogo-publicacion`, la rama de producción configurada actualmente en Cloudflare Pages. El alias `main.lcp-control.pages.dev` es una vista previa mientras se conserve esa configuración.
 
 - `npm run test:storefront`: **101 comprobaciones** en PostgreSQL desechable. Las 21 nuevas usan las funciones reales de compra, emisión de factura y devolución: compra sin publicación automática, borrador privado, publicación aprobada, venta parcial, factura idempotente, venta de la última unidad, sobreventa rechazada, devolución, reposición y agotamiento entre Tienda y Bodega. También comprueban que las ventas respetan el precio público, los borradores pendientes y la ocultación manual.
 - Prueba de navegador contra esa base aislada: guardar un borrador no lo publica; aprobar muestra USD 37.50; una factura de dos unidades desde Facturación agota el perfume; el catálogo abierto cambia a **No disponible**, deshabilita Añadir y elimina el artículo de la selección sin recargar. La reposición recupera la disponibilidad.
@@ -53,6 +53,6 @@ La prueba de navegador aislada verificó guardar, publicar, copiar la foto del o
 
 ## Publicación
 
-La producción de Control se publica desde `main`, integrando el módulo de `codex/catalogo-publicacion` y sus correcciones revisadas. Comando `npm run build`, salida `output/dist`, Node 22, raíz del repositorio. El catálogo usa `main` de su repositorio independiente, comando `npm run check && npm run build` y salida `dist`. La publicación de código no ejecuta migraciones ni vuelve a importar referencias.
+La producción actual de Control se publica desde `codex/catalogo-publicacion`, sincronizada con `main` en esta entrega. Comando `npm run build`, salida `output/dist`, Node 22, raíz del repositorio. Cambiar la producción a `main` exige ajustar primero la rama en Cloudflare; subir solo a `main` crea una vista previa. El catálogo usa `main` de su repositorio independiente, comando `npm run check && npm run build` y salida `dist`. La publicación de código no ejecuta migraciones ni vuelve a importar referencias.
 
 La guía completa está en `DESPLIEGUE-CLOUDFLARE.md` del repositorio privado `eaguilar0705/LCP-CONTROL-CATALOGO`. El administrador integrado no necesita un tercer proyecto de hosting.
