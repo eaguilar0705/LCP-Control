@@ -18,7 +18,7 @@
     "build": "npm run typecheck --workspace @lcp/contracts && npm run build --workspace @lcp/frontend",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test:accounting": "node --test scripts/tests/*.test.mjs",
-    "test:storefront": "node scripts/tests/storefront.mjs && node scripts/tests/storefront-inventory.mjs && node scripts/tests/storefront-sales.mjs",
+    "test:storefront": "node scripts/tests/storefront.mjs && node scripts/tests/storefront-inventory.mjs && node scripts/tests/storefront-sales.mjs && node scripts/tests/storefront-featured.mjs",
     "test:business-import": "node --test scripts/tests/business-import.test.mjs && node scripts/tests/business-import.mjs",
     "test:browser:business-import": "node scripts/tests/browser-business-import.mjs",
     "test:browser:suppliers": "node scripts/tests/browser-supplier-autocomplete.mjs",

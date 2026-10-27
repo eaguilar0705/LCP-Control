@@ -4,6 +4,8 @@ Los administradores y superadministradores gestionan la web pública desde **Tie
 
 ## Comportamiento
 
+- **Elegir del inventario** abre un selector con búsqueda por nombre, marca o código y lleva a la ficha elegida.
+- **Cambiar destacado**, en la pantalla principal, reemplaza el único perfume de portada. Solo usa fichas visibles con fotografía; no publica otras ediciones pendientes. La base serializa los cambios y limita a uno los destacados, también al publicar desde un editor anterior. La portada puede mostrar un perfume sin disponibilidad; su ficha conserva el estado real y no permite añadirlo si no está disponible.
 - Altas y cambios de nombre, presentación, marca o fotografía crean una revisión pendiente. El precio público y la descripción editorial se conservan. Se puede usar el origen o rechazar sus cambios.
 - Guardar un borrador no publica. Revisar publicación permite ver el resultado antes de aprobarlo.
 - La disponibilidad automática considera Tienda y Bodega. Cualquier existencia positiva confirmada permite anunciar Disponible; sin existencias confirmadas se muestra No disponible. Los conteos ausentes o nulos se distinguen de cero en el administrador.
@@ -25,6 +27,7 @@ Migraciones aplicadas al proyecto actual:
 
 - `20261025125859_storefront_revision_publicacion.sql`
 - `20261026053624_catalogo_integrado_disponibilidad.sql`
+- `20261027224831_destacar_un_solo_perfume.sql`
 
 No repetir la importación inicial ni ejecutar migraciones desde el build de Cloudflare.
 

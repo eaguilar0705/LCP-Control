@@ -2,6 +2,129 @@
   max-width: 1440px;
   margin: auto;
 }
+.sf-featured-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 18px;
+  margin-top: 24px;
+  background: #fffaf2;
+  border: 1px solid #e7d7ba;
+  border-radius: 16px;
+}
+.sf-featured-summary > .sf-photo {
+  width: 76px;
+  height: 88px;
+  flex: 0 0 76px;
+  border-radius: 10px;
+}
+.sf-featured-summary > div:not(.sf-photo) {
+  flex: 1;
+  min-width: 160px;
+  overflow-wrap: anywhere;
+}
+.sf-featured-summary h2 {
+  font: inherit;
+  font-weight: 650;
+  font-size: 20px;
+  margin: 4px 0;
+}
+.sf-tag.sf-featured-tag {
+  color: #7b5014;
+  background: #fff1cf;
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+}
+.sf-feature-picker {
+  max-width: 700px;
+}
+.sf-feature-options {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0;
+}
+.sf-feature-option {
+  position: relative;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #e3d9d0;
+  border-radius: 12px;
+  background: #fff;
+  color: #57171c;
+  text-align: left;
+}
+.sf-feature-option:has(input:checked) {
+  border-color: #8b2938;
+  background: #fff4f3;
+  box-shadow: inset 0 0 0 1px #8b2938;
+}
+.sf-feature-option:has(input:focus-visible) {
+  outline: 3px solid #b98b3c;
+  outline-offset: 3px;
+}
+.sf-feature-option:focus-visible {
+  outline: 3px solid #b98b3c;
+  outline-offset: 3px;
+}
+.sf-feature-option:hover {
+  border-color: #b98b3c;
+  background: #fffaf4;
+}
+.sf-feature-option .sf-photo img {
+  padding: 5px;
+}
+.sf-featured-summary .sf-photo img {
+  padding: 8px;
+}
+.sf-feature-option input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+.sf-feature-option .sf-photo {
+  width: 58px;
+  height: 70px;
+  flex: 0 0 58px;
+  border-radius: 8px;
+}
+.sf-feature-option > span {
+  display: grid;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.sf-feature-option > svg {
+  flex-shrink: 0;
+}
+.sf-feature-option small {
+  color: #756353;
+}
+.sf-feature-footer {
+  position: sticky;
+  bottom: -24px;
+  padding: 16px 0;
+  margin-top: 16px;
+  background: #fff;
+  border-top: 1px solid #eadfd6;
+  justify-content: flex-end;
+}
+@media (max-width: 540px) {
+  .sf-featured-summary > button {
+    width: 100%;
+  }
+  .sf-feature-footer > button {
+    flex: 1;
+  }
+}
 .sf-workspace .page-heading p {
   margin: 8px 0 0;
   max-width: 620px;

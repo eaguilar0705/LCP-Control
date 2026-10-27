@@ -8,6 +8,47 @@ import { admin, identity } from './database-fixture.mjs'
 // Local-only UI fixture: real SQL/RPCs, synthetic login, no production requests.
 const f = await storefrontSalesFixture()
 await f.buy(2)
+// Referencias publicadas para comprobar el selector único de portada.
+await f.action('save', {
+  name: 'Oriental de portada',
+  brand: 'Lattafa',
+  size: '100',
+  unit: 'ml',
+  price: 40,
+  gender: 'unisex',
+  category: 'arabian',
+  availability: 'available',
+  description: '',
+  featured: true,
+  images: [{ kind: 'local', path: 'images/productos/catalog-0001.webp' }],
+})
+await f.action('publish')
+const featureOther = (
+  await f.db.query('select * from storefront_drafts where id=$1', [f.other])
+).rows[0]
+const savedOther = (
+  await f.db.query('select storefront_action($1,$2,$3,$4,$5) d', [
+    'save',
+    featureOther.id,
+    featureOther.revision,
+    {
+      ...featureOther.content,
+      name: 'Segunda fragancia',
+      brand: 'Lattafa',
+      price: 50,
+      featured: false,
+      images: [{ kind: 'local', path: 'images/productos/catalog-0002.webp' }],
+    },
+    featureOther.source_version,
+  ])
+).rows[0].d
+await f.db.query('select storefront_action($1,$2,$3,$4,$5)', [
+  'publish',
+  savedOther.id,
+  savedOther.revision,
+  savedOther.content,
+  savedOther.source_version,
+])
 const user = {
   id: admin,
   email: 'qa@example.test',

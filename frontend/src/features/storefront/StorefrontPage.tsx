@@ -8,6 +8,7 @@ import {
   RefreshCw,
   Eye,
   ImagePlus,
+  Star,
   X,
 } from 'lucide-react'
 import {
@@ -69,6 +70,14 @@ export function StorefrontPage() {
     label: string
   } | null>(null)
   const [pending, setPending] = useState<PendingPhoto[]>([])
+  const [featurePicker, setFeaturePicker] = useState(false)
+  const [featureId, setFeatureId] = useState('')
+  const [featureSearch, setFeatureSearch] = useState('')
+  const [featureLimit, setFeatureLimit] = useState(24)
+  const [featureError, setFeatureError] = useState('')
+  const [inventoryPicker, setInventoryPicker] = useState(false)
+  const [inventorySearch, setInventorySearch] = useState('')
+  const [inventoryLimit, setInventoryLimit] = useState(24)
   const pendingRef = useRef(pending)
   useEffect(() => {
     pendingRef.current = pending
@@ -270,6 +279,51 @@ export function StorefrontPage() {
     })
   }
   const pubMap = new Map(publications.map((p) => [p.id, p]))
+  const featured = publications.find((p) => p.visible && p.content.featured)
+  const inventoryCandidates = drafts.filter(
+    (d) =>
+      d.source_product_id &&
+      d.source_snapshot.active &&
+      !d.source_missing &&
+      norm(
+        `${d.content.name} ${d.content.brand} ${d.source_snapshot.sku || ''}`,
+      ).includes(norm(inventorySearch)),
+  )
+  const featureCandidates = drafts.filter((d) => {
+    const p = pubMap.get(d.id)
+    return (
+      p?.visible &&
+      p.content.images.length > 0 &&
+      d.removal_state !== 'pending' &&
+      norm(
+        `${p.content.name} ${p.content.brand} ${d.source_snapshot.sku || ''}`,
+      ).includes(norm(featureSearch))
+    )
+  })
+  function chooseFeatured() {
+    setFeatureId(featured?.id || '')
+    setFeatureSearch('')
+    setFeatureLimit(24)
+    setFeatureError('')
+    setFeaturePicker(true)
+  }
+  async function saveFeatured() {
+    const draft = drafts.find((d) => d.id === featureId)
+    if (!draft || busy) return
+    setBusy(true)
+    setFeatureError('')
+    try {
+      await act('feature', draft)
+      setFeaturePicker(false)
+      setNotice('Destacado actualizado.')
+      await refresh()
+    } catch (e) {
+      setFeatureError(errorMessage(e))
+      await refresh()
+    } finally {
+      setBusy(false)
+    }
+  }
   const pendingCount = drafts.filter(
     (d) => d.status === 'pending' || d.removal_state === 'pending',
   ).length
@@ -360,16 +414,44 @@ export function StorefrontPage() {
           </Button>
           <Button
             onClick={() => {
-              setFilter('inventory')
-              setSearch('')
-              setPage(0)
+              setInventorySearch('')
+              setInventoryLimit(24)
+              setInventoryPicker(true)
             }}
+            disabled={loading}
           >
             <Globe size={18} />
             Elegir del inventario
           </Button>
         </div>
       </div>
+      {!loading && (
+        <section className="sf-featured-summary" aria-label="Destacado actual">
+          {featured && (
+            <StorefrontPhoto
+              photo={featured.content.images[0]}
+              name={featured.content.name}
+            />
+          )}
+          <div>
+            <span className="eyebrow">DESTACADO DE PORTADA</span>
+            <h2>
+              {featured ? featured.content.name : 'Sin destacado visible'}
+            </h2>
+            {featured && (
+              <span className="muted">
+                {featured.content.brand} ·{' '}
+                {Number(featured.content.size) || featured.content.size}{' '}
+                {featured.content.unit}
+              </span>
+            )}
+          </div>
+          <Button onClick={chooseFeatured}>
+            <Star size={17} />{' '}
+            {featured ? 'Cambiar destacado' : 'Elegir destacado'}
+          </Button>
+        </section>
+      )}
       <div className="sf-overview">
         <div>
           <Globe size={26} />
@@ -501,6 +583,11 @@ export function StorefrontPage() {
                         <ArrowUpRight size={18} />
                       </div>
                       <div className="sf-tags">
+                        {p?.content.featured && (
+                          <span className="sf-tag sf-featured-tag">
+                            <Star size={12} /> Destacado
+                          </span>
+                        )}
                         <span
                           className={
                             d.removal_state === 'pending' ||
@@ -857,14 +944,6 @@ export function StorefrontPage() {
                       onChange={(e) => change('description', e.target.value)}
                     />
                   </label>
-                  <label className="sf-check">
-                    <input
-                      type="checkbox"
-                      checked={editing.content.featured}
-                      onChange={(e) => change('featured', e.target.checked)}
-                    />
-                    Destacar en la selección de la casa
-                  </label>
                   <section className="sf-photos">
                     <h3>Fotografías</h3>
                     <p>Hasta 4 fotos · JPG, PNG o WebP · 5 MB cada una</p>
@@ -1087,6 +1166,153 @@ export function StorefrontPage() {
             </div>
           </>
         )}
+      </Dialog>
+      <Dialog
+        open={inventoryPicker}
+        title="Elegir del inventario"
+        onClose={() => setInventoryPicker(false)}
+        className="sf-feature-picker"
+      >
+        <Input
+          label="Buscar perfume del inventario"
+          type="search"
+          placeholder="Nombre, marca o código"
+          value={inventorySearch}
+          onChange={(e) => {
+            setInventorySearch(e.target.value)
+            setInventoryLimit(24)
+          }}
+        />
+        <div className="sf-feature-options">
+          {inventoryCandidates.slice(0, inventoryLimit).map((d) => (
+            <button
+              type="button"
+              className="sf-feature-option"
+              key={d.id}
+              onClick={() => {
+                setInventoryPicker(false)
+                void open(d.id)
+              }}
+              aria-label={`Elegir ${d.content.name}`}
+            >
+              <StorefrontPhoto
+                photo={d.content.images[0]}
+                name={d.content.name}
+              />
+              <span>
+                <small>
+                  {d.content.brand} · {d.source_snapshot.sku}
+                </small>
+                <strong>{d.content.name}</strong>
+                <small>
+                  {Number(d.content.size) || d.content.size} {d.content.unit} ·{' '}
+                  {statusNames[d.status]}
+                </small>
+              </span>
+              <ArrowUpRight size={18} />
+            </button>
+          ))}
+        </div>
+        {!inventoryCandidates.length && (
+          <p className="state">
+            No hay perfumes del inventario con esos filtros.
+          </p>
+        )}
+        {inventoryCandidates.length > inventoryLimit && (
+          <Button
+            variant="secondary"
+            onClick={() => setInventoryLimit(inventoryLimit + 24)}
+          >
+            Ver más perfumes
+          </Button>
+        )}
+      </Dialog>
+      <Dialog
+        open={featurePicker}
+        title="Elegir destacado"
+        onClose={() => {
+          if (!busy) setFeaturePicker(false)
+        }}
+        dismissible={!busy}
+        className="sf-feature-picker"
+      >
+        <Input
+          label="Buscar perfume para portada"
+          type="search"
+          placeholder="Nombre, marca o código"
+          value={featureSearch}
+          onChange={(e) => {
+            setFeatureSearch(e.target.value)
+            setFeatureLimit(24)
+          }}
+        />
+        <div
+          className="sf-feature-options"
+          role="radiogroup"
+          aria-label="Perfume destacado"
+        >
+          {featureCandidates.slice(0, featureLimit).map((d) => {
+            const p = pubMap.get(d.id)!
+            return (
+              <label className="sf-feature-option" key={d.id}>
+                <input
+                  type="radio"
+                  name="storefront-featured"
+                  value={d.id}
+                  checked={featureId === d.id}
+                  disabled={busy}
+                  onChange={() => setFeatureId(d.id)}
+                  aria-label={`${p.content.brand} ${p.content.name}`}
+                />
+                <StorefrontPhoto
+                  photo={p.content.images[0]}
+                  name={p.content.name}
+                />
+                <span>
+                  <small>{p.content.brand}</small>
+                  <strong>{p.content.name}</strong>
+                  <small>
+                    {Number(p.content.size) || p.content.size} {p.content.unit}{' '}
+                    · {d.source_snapshot.sku}
+                  </small>
+                </span>
+                <Star
+                  size={19}
+                  aria-hidden="true"
+                  fill={featureId === d.id ? 'currentColor' : 'none'}
+                />
+              </label>
+            )
+          })}
+        </div>
+        {!featureCandidates.length && (
+          <p className="state">No hay perfumes publicados con esos filtros.</p>
+        )}
+        {featureCandidates.length > featureLimit && (
+          <Button
+            variant="secondary"
+            onClick={() => setFeatureLimit(featureLimit + 24)}
+          >
+            Ver más perfumes
+          </Button>
+        )}
+        {featureError && <p role="alert">{featureError}</p>}
+        <div className="sf-feature-footer sf-actions">
+          <Button
+            variant="secondary"
+            disabled={busy}
+            onClick={() => setFeaturePicker(false)}
+          >
+            Cancelar
+          </Button>
+          <Button
+            disabled={busy || !featureId || featureId === featured?.id}
+            onClick={() => void saveFeatured()}
+          >
+            <Star size={17} />
+            {busy ? 'Guardando…' : 'Guardar destacado'}
+          </Button>
+        </div>
       </Dialog>
       <ConfirmDialog
         open={!!confirmation}
