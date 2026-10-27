@@ -182,6 +182,33 @@ try {
     1,
     'published media can be downloaded',
   )
+  await db.exec(
+    "select set_config('storage.operation','object.get_authenticated_info',false)",
+  )
+  equal(
+    (
+      await db.query(
+        "select name from storage.objects where bucket_id='storefront-media'",
+      )
+    ).rows.length,
+    1,
+    'published media metadata can be read before downloading',
+  )
+  await root()
+  await db.query(
+    "insert into storage.objects(bucket_id,name) values('storefront-media',$1)",
+    [`${admin}/${crypto.randomUUID()}.webp`],
+  )
+  await identity(db, '', 'anon')
+  equal(
+    (
+      await db.query(
+        "select name from storage.objects where bucket_id='storefront-media'",
+      )
+    ).rows.length,
+    1,
+    'unpublished media metadata remains private',
+  )
   await db.exec("select set_config('storage.operation','object.sign',false)")
   equal(
     (

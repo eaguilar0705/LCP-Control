@@ -22,6 +22,9 @@ export async function database() {
     create function storage.allow_only_operation(text) returns boolean language sql stable as $$
       select coalesce(current_setting('storage.operation',true),'')=$1
     $$;
+    create function storage.allow_any_operation(text[]) returns boolean language sql stable as $$
+      select coalesce(current_setting('storage.operation',true),'')=any($1)
+    $$;
     create function storage.foldername(text) returns text[] language sql immutable as $$ select string_to_array($1,'/') $$;
   `)
     await db.query(
