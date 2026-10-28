@@ -26,7 +26,6 @@ import {
   LoadingState,
   Select,
 } from '../../components/ui'
-import { PriceControls } from '../../components/PriceControls'
 import { ProductImage } from '../../components/ProductImage'
 import { ProductBarcode } from '../../components/ProductBarcode'
 import { useServices } from '../../services/useServices'
@@ -35,13 +34,10 @@ import {
   labels,
   type Product,
   type Currency,
-  type PriceTier,
   type Category,
   type Gender,
   type InventoryLocation,
 } from '../../lib/domain'
-import { formatCurrency } from '../../lib/format'
-import { productPrice } from '../../lib/pricing'
 import {
   emptyFilters,
   filterInventory,
@@ -59,6 +55,9 @@ import {
 import { useAccess } from '../../app/AccessContext'
 import { MovementDrafts } from './MovementDrafts'
 import { InventoryMovements } from './InventoryMovements'
+import { ProductPrices, ProductPriceValue } from './ProductPrices'
+import { inventoryPriceLists } from './inventory-price-lists'
+import './inventory-prices.css'
 import { PriceListsPanel } from '../pricing/PriceListsPanel'
 import { PurchaseHistoryPanel } from '../pricing/PurchaseHistoryPanel'
 import '../../styles/everyday-usability.css'
@@ -77,7 +76,6 @@ export function InventoryPage() {
   const { data, loading, error, retry } = useQuery(load)
   const [filters, setFilters] = useState<InventoryFilters>(emptyFilters)
   const [currency, setCurrency] = useState<Currency>('NIO')
-  const [tier, setTier] = useState<PriceTier>('emprendedor')
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<Product | null>(null)
   const activeFilterCount =
@@ -96,6 +94,14 @@ export function InventoryPage() {
     ),
     filters,
   )
+  items.sort(
+    (a, b) =>
+      a.product.brand.localeCompare(b.product.brand, 'es', {
+        sensitivity: 'base',
+      }) ||
+      a.product.name.localeCompare(b.product.name, 'es', { numeric: true }) ||
+      a.product.id.localeCompare(b.product.id),
+  )
   // El guion sólo necesita explicarse cuando aparece en pantalla.
   const uncounted = items.some(
     ({ quantities }) =>
@@ -109,6 +115,12 @@ export function InventoryPage() {
   const pages = Math.max(1, Math.ceil(items.length / perPage))
   const currentPage = Math.min(page, pages)
   const shown = items.slice((currentPage - 1) * perPage, currentPage * perPage)
+  const groups = [...new Set(shown.map((item) => item.product.brand))].map(
+    (brand) => ({
+      brand,
+      items: shown.filter((item) => item.product.brand === brand),
+    }),
+  )
   function change(next: Partial<InventoryFilters>) {
     setFilters({ ...filters, ...next })
     setPage(1)
@@ -127,10 +139,6 @@ export function InventoryPage() {
       (a === 'unknown' ? Infinity : parseFloat(a)) -
       (b === 'unknown' ? Infinity : parseFloat(b)),
   )
-  function price(product: Product) {
-    const value = productPrice(product, tier, currency)
-    return value === null ? 'Precio pendiente' : formatCurrency(value, currency)
-  }
   return (
     <>
       <WorkspaceHeading
@@ -169,12 +177,14 @@ export function InventoryPage() {
         <div className="inventory-toolbar">
           <div className="catalog-toolbar-heading">
             <h2>{data?.length ?? '—'} referencias</h2>
-            <PriceControls
-              currency={currency}
-              tier={tier}
-              onCurrency={setCurrency}
-              onTier={setTier}
-            />
+            <Select
+              label="Moneda"
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value as Currency)}
+            >
+              <option value="NIO">C$ Córdobas</option>
+              <option value="USD">US$ Dólares</option>
+            </Select>
           </div>
           <div className="inventory-primary-search">
             <div className="search-with-scan">
@@ -357,49 +367,66 @@ export function InventoryPage() {
         ) : !items.length ? (
           <EmptyState />
         ) : catalog ? (
-          <div className="catalog-grid">
-            {shown.map((item) => {
-              const p = item.product
-              return (
-                <article className="catalog-product" key={p.id}>
-                  <button
-                    className="product-photo-button"
-                    onClick={() => setSelected(p)}
-                    aria-label={`Ver ${p.name}`}
-                  >
-                    <ProductImage product={p} large />
-                  </button>
-                  <div className="catalog-product-body">
-                    <span className="product-brand">{p.brand}</span>
-                    <button
-                      className="product-title"
-                      onClick={() => setSelected(p)}
-                    >
-                      {p.name}
-                    </button>
-                    <p>
-                      {p.size === null
-                        ? 'Tamaño por confirmar'
-                        : `${p.size} ${p.unit}`}{' '}
-                      · {labels.category[p.category]}
-                    </p>
-                    <strong className="catalog-price">{price(p)}</strong>
-                    <StockByLocation item={item} />
-                    {!p.active && (
-                      <span className="record-badge">Inactivo</span>
-                    )}
-                    {manage && (
-                      <Link
-                        className="button button-secondary inventory-edit"
-                        to={`${base}/products/${p.id}/edit`}
-                      >
-                        <Pencil size={15} /> Editar
-                      </Link>
-                    )}
-                  </div>
-                </article>
-              )
-            })}
+          <div className="inventory-brand-groups">
+            {groups.map((group) => (
+              <section
+                className="inventory-brand-group"
+                key={group.brand}
+                aria-label={`Marca ${group.brand}`}
+              >
+                <h3 className="inventory-brand-heading">
+                  {group.brand}
+                  <span>
+                    {group.items.length}{' '}
+                    {group.items.length === 1 ? 'perfume' : 'perfumes'}
+                  </span>
+                </h3>
+                <div className="catalog-grid">
+                  {group.items.map((item) => {
+                    const p = item.product
+                    return (
+                      <article className="catalog-product" key={p.id}>
+                        <button
+                          className="product-photo-button"
+                          onClick={() => setSelected(p)}
+                          aria-label={`Ver ${p.name}`}
+                        >
+                          <ProductImage product={p} large />
+                        </button>
+                        <div className="catalog-product-body">
+                          <span className="product-brand">{p.brand}</span>
+                          <button
+                            className="product-title"
+                            onClick={() => setSelected(p)}
+                          >
+                            {p.name}
+                          </button>
+                          <p>
+                            {p.size === null
+                              ? 'Tamaño por confirmar'
+                              : `${p.size} ${p.unit}`}{' '}
+                            · {labels.category[p.category]}
+                          </p>
+                          <ProductPrices product={p} currency={currency} />
+                          <StockByLocation item={item} />
+                          {!p.active && (
+                            <span className="record-badge">Inactivo</span>
+                          )}
+                          {manage && (
+                            <Link
+                              className="button button-secondary inventory-edit"
+                              to={`${base}/products/${p.id}/edit`}
+                            >
+                              <Pencil size={15} /> Editar
+                            </Link>
+                          )}
+                        </div>
+                      </article>
+                    )
+                  })}
+                </div>
+              </section>
+            ))}
           </div>
         ) : (
           <>
@@ -411,7 +438,15 @@ export function InventoryPage() {
                     <th colSpan={3} className="stock-group-heading">
                       Existencias
                     </th>
-                    <th rowSpan={2}>Precio</th>
+                    {inventoryPriceLists.map((t) => (
+                      <th
+                        key={t.code}
+                        rowSpan={2}
+                        className="inventory-price-col"
+                      >
+                        {t.name}
+                      </th>
+                    ))}
                     <th rowSpan={2}>Estado</th>
                     {manage && <th rowSpan={2}>Acciones</th>}
                   </tr>
@@ -427,50 +462,69 @@ export function InventoryPage() {
                     </th>
                   </tr>
                 </thead>
-                <tbody>
-                  {shown.map((item) => (
-                    <tr key={item.product.id}>
-                      <td>
-                        <button
-                          className="identity-button"
-                          onClick={() => setSelected(item.product)}
-                        >
-                          <ProductIdentity item={item} />
-                        </button>
-                        <span className="barcode-label">
-                          Interno: {item.product.barcode}
+                {groups.map((group) => (
+                  <tbody key={group.brand}>
+                    <tr className="inventory-brand-row">
+                      <th colSpan={manage ? 10 : 9} scope="rowgroup">
+                        {group.brand}
+                        <span>
+                          {group.items.length}{' '}
+                          {group.items.length === 1 ? 'perfume' : 'perfumes'}
                         </span>
-                      </td>
-                      <td className="qty-col qty-warehouse">
-                        {item.quantities.warehouse ?? '—'}
-                      </td>
-                      <td className="qty-col qty-store">
-                        {item.quantities.store ?? '—'}
-                      </td>
-                      <td className="qty-col qty-total">
-                        {totalStock(item) ?? '—'}
-                      </td>
-                      <td>{price(item.product)}</td>
-                      <td>
-                        {item.product.active ? (
-                          <StockBadge item={item} />
-                        ) : (
-                          <span className="record-badge">Inactivo</span>
-                        )}
-                      </td>
-                      {manage && (
-                        <td>
-                          <Link
-                            className="button button-secondary"
-                            to={`${base}/products/${item.product.id}/edit`}
-                          >
-                            Editar
-                          </Link>
-                        </td>
-                      )}
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
+                    {group.items.map((item) => (
+                      <tr key={item.product.id}>
+                        <td>
+                          <button
+                            className="identity-button"
+                            onClick={() => setSelected(item.product)}
+                          >
+                            <ProductIdentity item={item} />
+                          </button>
+                          <span className="barcode-label">
+                            Interno: {item.product.barcode}
+                          </span>
+                        </td>
+                        <td className="qty-col qty-warehouse">
+                          {item.quantities.warehouse ?? '—'}
+                        </td>
+                        <td className="qty-col qty-store">
+                          {item.quantities.store ?? '—'}
+                        </td>
+                        <td className="qty-col qty-total">
+                          {totalStock(item) ?? '—'}
+                        </td>
+                        {inventoryPriceLists.map((t) => (
+                          <td key={t.code} className="inventory-price-col">
+                            <ProductPriceValue
+                              product={item.product}
+                              tier={t.code}
+                              currency={currency}
+                            />
+                          </td>
+                        ))}
+                        <td>
+                          {item.product.active ? (
+                            <StockBadge item={item} />
+                          ) : (
+                            <span className="record-badge">Inactivo</span>
+                          )}
+                        </td>
+                        {manage && (
+                          <td>
+                            <Link
+                              className="button button-secondary"
+                              to={`${base}/products/${item.product.id}/edit`}
+                            >
+                              Editar
+                            </Link>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                ))}
                 <tfoot>
                   <tr>
                     <th scope="row">
@@ -481,30 +535,45 @@ export function InventoryPage() {
                     </td>
                     <td className="qty-col qty-store">{totals.store}</td>
                     <td className="qty-col qty-total">{totals.total}</td>
-                    <td colSpan={manage ? 3 : 2} />
+                    <td colSpan={manage ? 6 : 5} />
                   </tr>
                 </tfoot>
               </table>
             </div>
             <div className="inventory-cards">
-              {shown.map((item) => (
-                <div key={item.product.id}>
-                  <ProductCard item={item} currency={currency} tier={tier} />
-                  <Button
-                    variant="ghost"
-                    onClick={() => setSelected(item.product)}
-                  >
-                    Ver ficha y código
-                  </Button>
-                  {manage && (
-                    <Link
-                      className="button button-secondary"
-                      to={`${base}/products/${item.product.id}/edit`}
-                    >
-                      Editar
-                    </Link>
-                  )}
-                </div>
+              {groups.map((group) => (
+                <section
+                  className="inventory-brand-group"
+                  key={group.brand}
+                  aria-label={`Marca ${group.brand}`}
+                >
+                  <h3 className="inventory-brand-heading">
+                    {group.brand}
+                    <span>
+                      {group.items.length}{' '}
+                      {group.items.length === 1 ? 'perfume' : 'perfumes'}
+                    </span>
+                  </h3>
+                  {group.items.map((item) => (
+                    <div key={item.product.id}>
+                      <ProductCard item={item} currency={currency} allPrices />
+                      <Button
+                        variant="ghost"
+                        onClick={() => setSelected(item.product)}
+                      >
+                        Ver ficha y código
+                      </Button>
+                      {manage && (
+                        <Link
+                          className="button button-secondary"
+                          to={`${base}/products/${item.product.id}/edit`}
+                        >
+                          Editar
+                        </Link>
+                      )}
+                    </div>
+                  ))}
+                </section>
               ))}
             </div>
           </>
@@ -542,7 +611,7 @@ export function InventoryPage() {
             <ProductImage key={selected.id} product={selected} large />
             <div>
               <p>{selected.brand}</p>
-              <h3>{price(selected)}</h3>
+              <ProductPrices product={selected} currency={currency} />
               {detail && <StockByLocation item={detail} />}
               <p>
                 {selected.size === null

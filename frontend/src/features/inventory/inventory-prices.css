@@ -1,0 +1,116 @@
+.product-prices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin: 10px 0 16px;
+  width: 100%;
+}
+.product-prices > div {
+  min-width: 0;
+  padding: 10px;
+  border-radius: 9px;
+  border: 1px solid #eae1d7;
+  background: #fbf8f3;
+}
+.product-prices dt {
+  color: #766457;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.product-prices dd {
+  margin: 4px 0 0;
+  font-size: 14px;
+  font-weight: 750;
+  color: #57171c;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+.product-prices .price-retail {
+  border-color: #e6cbd0;
+  background: #fbf0f1;
+}
+.inventory-brand-group {
+  margin: 0 0 26px;
+  min-width: 0;
+}
+.inventory-brand-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 13px 18px;
+  color: #57171c;
+  font-size: 17px;
+  font-weight: 700;
+  border-left: 4px solid #8d2534;
+  border-radius: 0 10px 10px 0;
+  background: #f7f0e8;
+}
+.inventory-brand-heading span,
+.inventory-brand-row span {
+  font: 500 11px var(--sans, sans-serif);
+  color: #806c60;
+  white-space: nowrap;
+}
+.inventory-brand-row th {
+  background: #f7f0e8;
+  color: #57171c;
+  padding: 13px 18px;
+  border-left: 4px solid #8d2534;
+  font-size: 15px;
+}
+.inventory-brand-row span {
+  margin-left: 15px;
+}
+.inventory-table .inventory-price-col {
+  white-space: nowrap;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  font-size: 12px;
+}
+.inventory-table th.inventory-price-col {
+  font-size: 10px;
+}
+.price-pending {
+  color: #927f6c;
+  font-size: 11px;
+  font-weight: 500;
+}
+.inventory-workspace .inventory-table th,
+.inventory-workspace .inventory-table td {
+  padding: 11px 9px;
+}
+.inventory-workspace .inventory-table .product-identity {
+  min-width: 170px;
+  max-width: 250px;
+}
+.inventory-mobile-card .product-prices {
+  margin-top: 14px;
+}
+@media (max-width: 540px) {
+  .product-prices dd {
+    font-size: 13px;
+  }
+  .product-prices > div {
+    padding: 9px;
+  }
+  .inventory-brand-heading {
+    font-size: 15px;
+    padding: 12px;
+  }
+}
+@media (max-width: 640px) {
+  .inventory-brand-groups .catalog-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .inventory-brand-groups .product-prices dd {
+    font-size: 15px;
+  }
+  .product-prices dt {
+    overflow-wrap: anywhere;
+  }
+}

@@ -38,6 +38,12 @@ export type Publication = {
   visible: boolean
   listed: boolean
 }
+export type CatalogLink = { code: string; name: string; token: string }
+export async function catalogLinks(): Promise<CatalogLink[]> {
+  const { data, error } = await client().rpc('storefront_catalog_links')
+  if (error) throw error
+  return data as CatalogLink[]
+}
 export const statusNames: Record<string, string> = {
   pending: 'Por revisar',
   draft: 'Borrador',

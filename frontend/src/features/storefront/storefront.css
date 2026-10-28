@@ -2,6 +2,96 @@
   max-width: 1440px;
   margin: auto;
 }
+.sf-price-lists {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  width: 100%;
+  margin: 10px 0;
+}
+.sf-price-lists > div {
+  min-width: 0;
+  background: #faf6f0;
+  border: 1px solid #e9dfd3;
+  border-radius: 7px;
+  padding: 8px;
+}
+.sf-price-lists dt {
+  font-size: 9px;
+  text-transform: uppercase;
+  color: #83705d;
+  letter-spacing: 0.03em;
+}
+.sf-price-lists dd {
+  margin: 4px 0 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #57171c;
+  overflow-wrap: anywhere;
+}
+.sf-catalog-links {
+  margin: 24px 0;
+}
+.sf-catalog-links > h2 {
+  font-size: 18px;
+  margin: 0 0 12px;
+}
+.sf-catalog-links-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.sf-catalog-links-grid article {
+  min-width: 0;
+  border: 1px solid #e6dbce;
+  border-top: 3px solid #8d2534;
+  border-radius: 12px;
+  padding: 16px;
+  background: #fffdf9;
+}
+.sf-catalog-links-grid h3 {
+  margin: 5px 0 14px;
+  font-size: 20px;
+  color: #57171c;
+}
+.sf-catalog-links-grid input {
+  width: 100%;
+  min-width: 0;
+  font-size: 11px;
+  color: #807061;
+  padding: 8px;
+  border: 1px solid #e6dbce;
+  border-radius: 6px;
+}
+.sf-catalog-links-grid .sf-actions {
+  margin-top: 12px;
+  justify-content: space-between;
+  gap: 5px;
+}
+.sf-catalog-links-grid .button {
+  font-size: 12px;
+  padding: 9px 10px;
+}
+.sf-catalog-links-grid a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #e6dbce;
+  border-radius: 8px;
+  color: #8d2534;
+}
+@media (max-width: 1100px) {
+  .sf-catalog-links-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 540px) {
+  .sf-catalog-links-grid {
+    grid-template-columns: 1fr;
+  }
+}
 .sf-featured-summary {
   display: flex;
   align-items: center;

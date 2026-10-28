@@ -7,7 +7,22 @@ import { admin, identity } from './database-fixture.mjs'
 
 // Local-only UI fixture: real SQL/RPCs, synthetic login, no production requests.
 const f = await storefrontSalesFixture()
+await f.db.exec('reset role')
+await f.db.exec(
+  "insert into price_tiers(code,name,sort_order) values('menudeo','Menudeo',4) on conflict do nothing; insert into private.storefront_catalog_links(tier_code) values('menudeo') on conflict do nothing",
+)
+await identity(f.db,admin)
 await f.buy(2)
+await f.db.exec('reset role')
+await f.db.exec(
+  "insert into product_prices(product_id,tier_code,currency,amount) select id,'menudeo',c,case when c='USD' then 30 else 1098 end from products cross join unnest(array['USD','NIO']) c on conflict do nothing; update product_prices set amount=(case tier_code when 'emprendedor' then 20 when 'vip' then 18 when 'premium' then 15 else 30 end)*(case currency when 'USD' then 1 else 36.6 end)",
+)
+await f.db.query("insert into brands(name) values('Armaf');")
+await f.db.query(
+  "update products set brand_id=(select id from brands where name='Armaf') where id=$1",
+  [f.other],
+)
+await identity(f.db,admin)
 // Referencias publicadas para comprobar el selector único de portada.
 await f.action('save', {
   name: 'Oriental de portada',

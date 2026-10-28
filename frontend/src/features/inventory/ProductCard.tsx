@@ -6,6 +6,7 @@ import { labels } from '../../lib/domain'
 import { formatCurrency } from '../../lib/format'
 import { productPrice } from '../../lib/pricing'
 import { stockStatus, totalStock } from './model'
+import { ProductPrices } from './ProductPrices'
 export function StockBadge({ item }: { item: InventoryItem }) {
   const status = stockStatus(item)
   return (
@@ -95,10 +96,12 @@ export function ProductCard({
   item,
   currency = 'NIO',
   tier = 'emprendedor',
+  allPrices = false,
 }: {
   item: InventoryItem
   currency?: Currency
   tier?: PriceTier
+  allPrices?: boolean
 }) {
   const price = productPrice(item.product, tier, currency)
   return (
@@ -112,12 +115,17 @@ export function ProductCard({
           {labels.category[item.product.category]} ·{' '}
           {labels.gender[item.product.gender]}
         </span>
-        <strong>
-          {price === null
-            ? 'Precio pendiente'
-            : formatCurrency(price, currency)}
-        </strong>
+        {!allPrices && (
+          <strong>
+            {price === null
+              ? 'Precio pendiente'
+              : formatCurrency(price, currency)}
+          </strong>
+        )}
       </div>
+      {allPrices && (
+        <ProductPrices product={item.product} currency={currency} />
+      )}
       <StockByLocation item={item} compact />
       <small className="internal-code">
         Código interno: {item.product.barcode}

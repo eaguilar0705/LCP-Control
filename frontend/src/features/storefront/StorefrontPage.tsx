@@ -33,6 +33,8 @@ import {
   price,
   statusNames,
   stockNames,
+  catalogLinks,
+  type CatalogLink,
   availabilityNames,
   type Draft,
   type Publication,
@@ -40,8 +42,14 @@ import {
   type Photo,
 } from './storefront'
 import { StorefrontPhoto } from './StorefrontPhoto'
+import { CatalogLinks } from './CatalogLinks'
+import { inventoryPriceLists } from '../inventory/inventory-price-lists'
 import './storefront.css'
 type PendingPhoto = { file: File; url: string }
+type SourcePrices = {
+  id: string
+  product_prices: { tier_code: string; currency: string; amount: number }[]
+}
 const norm = (s: string) =>
   s
     .normalize('NFD')
@@ -52,6 +60,8 @@ export function StorefrontPage() {
   const { user } = useAuth()
   const [drafts, setDrafts] = useState<Draft[]>([]),
     [publications, setPublications] = useState<Publication[]>([])
+  const [links, setLinks] = useState<CatalogLink[]>([])
+  const [sourcePrices, setSourcePrices] = useState<SourcePrices[]>([])
   const [loading, setLoading] = useState(true),
     [error, setError] = useState(''),
     [notice, setNotice] = useState('')
@@ -92,16 +102,23 @@ export function StorefrontPage() {
     }
     setError('')
     try {
-      const [d, p] = await Promise.all([
+      const [d, p, l, prices] = await Promise.all([
         rows<Draft>('storefront_drafts'),
         rows<Publication>(
           'storefront_publications',
           'id,content,visible,listed',
         ),
+        catalogLinks(),
+        rows<SourcePrices>(
+          'products',
+          'id,product_prices(tier_code,currency,amount)',
+        ),
       ])
       if (ticket !== request.current) return
       setDrafts(d)
       setPublications(p)
+      setLinks(l)
+      setSourcePrices(prices)
     } catch (e) {
       if (ticket === request.current) setError(errorMessage(e))
     } finally {
@@ -279,6 +296,32 @@ export function StorefrontPage() {
     })
   }
   const pubMap = new Map(publications.map((p) => [p.id, p]))
+  function tierPrice(draft: Draft, code: string) {
+    return draft.source_product_id
+      ? sourcePrices
+          .find((p) => p.id === draft.source_product_id)
+          ?.product_prices.find(
+            (p) => p.tier_code === code && p.currency === 'USD',
+          )?.amount || 0
+      : code === 'menudeo'
+        ? draft.content.price
+        : 0
+  }
+  function priceList(draft: Draft) {
+    return (
+      <dl
+        className="sf-price-lists"
+        aria-label="Precios de los cuatro catálogos"
+      >
+        {inventoryPriceLists.map((t) => (
+          <div key={t.code}>
+            <dt>{t.name}</dt>
+            <dd>{price(tierPrice(draft, t.code))}</dd>
+          </div>
+        ))}
+      </dl>
+    )
+  }
   const featured = publications.find((p) => p.visible && p.content.featured)
   const inventoryCandidates = drafts.filter(
     (d) =>
@@ -425,6 +468,9 @@ export function StorefrontPage() {
           </Button>
         </div>
       </div>
+      {!loading && links.length > 0 && (
+        <CatalogLinks links={links} onNotice={setNotice} />
+      )}
       {!loading && (
         <section className="sf-featured-summary" aria-label="Destacado actual">
           {featured && (
@@ -579,7 +625,7 @@ export function StorefrontPage() {
                         {d.content.unit}
                       </small>
                       <div className="sf-card-price">
-                        {price(d.content.price)}
+                        {priceList(d)}
                         <ArrowUpRight size={18} />
                       </div>
                       <div className="sf-tags">
@@ -805,7 +851,7 @@ export function StorefrontPage() {
                   <div className="sf-current">
                     <h4>Última publicación</h4>
                     <p>{original.content.name}</p>
-                    <strong>{price(original.content.price)}</strong>
+                    {priceList(editing)}
                     <p>{availabilityNames[original.content.availability]}</p>
                   </div>
                 )}
@@ -834,13 +880,22 @@ export function StorefrontPage() {
                       onChange={(e) => change('brand', e.target.value)}
                     />
                     <Input
-                      label="Precio público (USD)"
+                      label={
+                        editing.source_product_id
+                          ? 'Menudeo desde inventario (USD)'
+                          : 'Menudeo (USD)'
+                      }
                       type="number"
                       min={0}
                       max={100000}
                       step="0.01"
                       required
-                      value={editing.content.price}
+                      readOnly={!!editing.source_product_id}
+                      value={
+                        editing.source_product_id
+                          ? tierPrice(editing, 'menudeo')
+                          : editing.content.price
+                      }
                       onChange={(e) => change('price', Number(e.target.value))}
                     />
                     <Input
@@ -1136,7 +1191,7 @@ export function StorefrontPage() {
               {editing.content.unit}
             </p>
             <strong className="sf-preview-price">
-              {price(editing.content.price)}
+              {price(tierPrice(editing, 'menudeo'))}
             </strong>
             <p>{availabilityNames[effective]}</p>
             <p>{editing.content.description}</p>
