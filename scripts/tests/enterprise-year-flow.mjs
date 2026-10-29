@@ -116,10 +116,10 @@ function receiveValue(product, quantity, valueNio) {
   product.average =
     Number(
       divideHalfUp(
-        BigInt(product.value) * 10000n,
+        BigInt(product.value) * 1000n,
         BigInt(product.store + product.warehouse + quantity),
       ),
-    ) / 1e6
+    ) / 1e5
 }
 function consumeValue(product, quantity) {
   const units = product.store + product.warehouse

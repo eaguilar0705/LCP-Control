@@ -5,9 +5,13 @@ import { type CatalogLink } from './storefront'
 export function CatalogLinks({
   links,
   onNotice,
+  selected,
+  onSelect,
 }: {
   links: CatalogLink[]
   onNotice: (text: string) => void
+  selected: string
+  onSelect: (code: string) => void
 }) {
   const [copied, setCopied] = useState('')
   return (
@@ -16,6 +20,11 @@ export function CatalogLinks({
       aria-label="Enlaces de los cuatro catálogos"
     >
       <h2>Catálogos para compartir</h2>
+      {selected && (
+        <Button variant="ghost" onClick={() => onSelect('')}>
+          Ver todas las listas
+        </Button>
+      )}
       <div className="sf-catalog-links-grid">
         {links.map((link) => {
           const url = new URL(
@@ -27,7 +36,18 @@ export function CatalogLinks({
           return (
             <article key={link.code}>
               <span className="eyebrow">CATÁLOGO</span>
-              <h3>{link.name}</h3>
+              <button
+                className="sf-catalog-select"
+                aria-pressed={selected === link.code}
+                onClick={() => onSelect(link.code)}
+              >
+                <h3>{link.name}</h3>
+                <span>
+                  {selected === link.code
+                    ? 'Lista seleccionada'
+                    : 'Ver precios de esta lista'}
+                </span>
+              </button>
               <input
                 aria-label={`Enlace de ${link.name}`}
                 readOnly

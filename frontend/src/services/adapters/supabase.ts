@@ -158,6 +158,9 @@ interface ProductRow {
   inventory_balances: BalanceRow[]
 }
 interface DocumentItemRow {
+  original_unit_price?: number | string | null
+  invoice_discount?: number | string
+
   id: string
   product_id: string
   description: string
@@ -166,6 +169,10 @@ interface DocumentItemRow {
   line_total: number | string
 }
 interface DocumentRow {
+  original_total?: number | string | null
+  discount_amount?: number | string
+  invoice_discount?: number | string
+
   payments?: DocumentRecord['payments']
   exchange_rate?: number | string | null
   catalog_rate?: number | string | null
@@ -195,8 +202,8 @@ image_reference,image_path,revision,minimum_stock,active,brands(name),
 product_prices(tier_code,currency,amount),
 inventory_balances(location,quantity)`
 const documentSelect = `id,kind,number,customer_id,customer_name,customer_phone,issuer,tier_code,
-currency,total,location,valid_until,payment_method,notes,created_at,customer_tax_id,
-document_items(id,product_id,description,quantity,unit_price,line_total)`
+currency,total,original_total,discount_amount,invoice_discount,location,valid_until,payment_method,notes,created_at,customer_tax_id,
+document_items(id,product_id,description,quantity,unit_price,line_total,original_unit_price,invoice_discount)`
 // La tabla de documentos no tiene columnas de tasa de cambio ni de impuesto:
 // ambos quedan en la solicitud con la que se emitió (`request_payload`), que la
 // base valida y guarda tal cual. Sin leerlos de ahí, la factura reabierta,
@@ -395,6 +402,10 @@ function toDocument(row: DocumentRow): DocumentRecord {
     tier: row.tier_code,
     currency: row.currency,
     total: amount(row.total),
+    originalTotal:
+      row.original_total == null ? undefined : amount(row.original_total),
+    discountAmount: amount(row.discount_amount ?? 0),
+    invoiceDiscount: amount(row.invoice_discount ?? 0),
     exchangeRate: row.exchange_rate == null ? null : amount(row.exchange_rate),
     catalogRate: row.catalog_rate == null ? null : amount(row.catalog_rate),
     taxRate: row.tax_rate == null ? undefined : amount(row.tax_rate),
@@ -409,6 +420,11 @@ function toDocument(row: DocumentRow): DocumentRecord {
       description: item.description,
       quantity: item.quantity,
       unitPrice: amount(item.unit_price),
+      originalUnitPrice:
+        item.original_unit_price == null
+          ? undefined
+          : amount(item.original_unit_price),
+      invoiceDiscount: amount(item.invoice_discount ?? 0),
       lineTotal: amount(item.line_total),
     })),
   }
@@ -808,6 +824,9 @@ export const supabaseAdapter: DataProvider = {
         ...(input.expectedTotal === undefined
           ? {}
           : { expectedTotal: input.expectedTotal }),
+        ...(input.invoiceDiscount === undefined
+          ? {}
+          : { invoiceDiscount: input.invoiceDiscount }),
         items: input.items,
       },
     })

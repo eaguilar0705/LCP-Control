@@ -5,7 +5,7 @@ import { useQuery } from '../../lib/useQuery'
 import { formatCurrency, formatDate } from '../../lib/format'
 import { RecordDialog, VoidDialog } from './FinanceMovements'
 import { rowsOf, type Row } from './financeRows'
-import { useWritable } from './financeAccess'
+import { useWritable, useCanVoid } from './financeAccess'
 import { emptyLedger, type CreditAccount } from './finance'
 import type { ReportRange } from '../reports/model'
 
@@ -27,6 +27,7 @@ export function CreditWorkspace({
     return { credits, ledger, range }
   }, [financeService, range])
   const { data, error, loading, retry, refresh } = useQuery(load)
+  const canVoid = useCanVoid()
   const writable = useWritable(data?.ledger ?? emptyLedger)
   const [selected, setSelected] = useState<CreditAccount | null>(null)
   const [voiding, setVoiding] = useState<Row | null>(null)
@@ -201,7 +202,7 @@ export function CreditWorkspace({
                       'Anulado'
                     ) : r.readOnly ? (
                       'Compensado'
-                    ) : (
+                    ) : canVoid ? (
                       <Button
                         variant="ghost"
                         disabled={!writable}
@@ -209,7 +210,7 @@ export function CreditWorkspace({
                       >
                         Anular abono
                       </Button>
-                    )}
+                    ) : null}
                   </td>
                 </tr>
               ))}

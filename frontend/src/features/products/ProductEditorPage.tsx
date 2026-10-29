@@ -50,6 +50,7 @@ import {
 } from './product'
 import { formatCurrency } from '../../lib/format'
 import { PricingFields } from '../pricing/PricingFields'
+import { PriceHistory } from '../pricing/PriceHistory'
 
 function sameSavedProduct(saved: Product, submitted: ProductInput) {
   const current = productInput(saved)
@@ -781,6 +782,12 @@ function ProductForm({
           )}
         </div>
       </form>
+      {product && (
+        <PriceHistory
+          key={`${product.id}:${product.revision}`}
+          productId={product.id}
+        />
+      )}
       {costOpen && product && (
         <ProductCostDialog
           productId={product.id}

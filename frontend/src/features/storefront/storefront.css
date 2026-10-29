@@ -787,3 +787,39 @@
     transform: none;
   }
 }
+
+.sf-catalog-select {
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  padding: 8px 0;
+  color: inherit;
+  cursor: pointer;
+}
+.sf-catalog-select span {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.sf-catalog-select[aria-pressed='true'] {
+  color: #862c39;
+}
+.sf-catalog-links article:has([aria-pressed='true']) {
+  border-color: #862c39;
+  background: #fcf4f4;
+}
+
+.sf-offer-editor {
+  margin: 20px 0;
+  padding: 18px;
+  border: 1px solid #e1bdc2;
+  border-radius: 16px;
+  background: #fff9f9;
+}
+.sf-offer-editor h3 {
+  margin-top: 0;
+}
+.sf-discount-preview {
+  color: #862c39;
+  font-weight: 700;
+}

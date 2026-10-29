@@ -1,3 +1,4 @@
+import { discountedDescription, formatNetUnitPrice } from './discounts'
 import { jsPDF } from 'jspdf'
 import { businessIdentityLines } from '../../lib/business'
 import {
@@ -271,7 +272,8 @@ export function layoutDocumentPdf(
       ? `Entrega desde: ${labels.location[d.location]}`
       : null
   const notesHeight = 22 + notes.length * 9.2 + (location ? 11 : 0)
-  const totalsHeight = 12 + 26 + (equivalent ? 12 : 0)
+  const totalsHeight =
+    12 + 26 + (equivalent ? 12 : 0) + (d.discountAmount ? 12 : 0)
   const summaryHeight = Math.max(notesHeight, totalsHeight)
 
   function summary(top: number) {
@@ -281,9 +283,14 @@ export function layoutDocumentPdf(
     text(notes, left, top + 28, 8)
     if (location) text(location, left, top + 28 + notes.length * 9.2 + 2, 8)
     const x = 372
-    const y = top + 8
+    let y = top + 8
     text('Subtotal', x, y, 8.5)
-    text(money(d.total), right, y, 9, true, 'right')
+    text(money(d.originalTotal ?? d.total), right, y, 9, true, 'right')
+    if (d.discountAmount) {
+      y += 12
+      text('Descuento', x, y, 8.5)
+      text(`-${money(d.discountAmount)}`, right, y, 9, true, 'right')
+    }
     pdf
       .setFillColor(...accent)
       .roundedRect(x - 4, y + 5, right - x + 4, 22, 3, 3, 'F')
@@ -325,14 +332,21 @@ export function layoutDocumentPdf(
   const plan = planPdfRows(
     (size) =>
       d.items.map(
-        (item) => wrap(item.description, DESCRIPTION_WIDTH, size, true).length,
+        (item) =>
+          wrap(discountedDescription(item), DESCRIPTION_WIDTH, size, true)
+            .length,
       ),
     available,
   )
   const { fontSize, lineHeight, padding } = plan
   y = tableHeading(y)
   d.items.forEach((item, index) => {
-    const lines = wrap(item.description, DESCRIPTION_WIDTH, fontSize, true)
+    const lines = wrap(
+      discountedDescription(item),
+      DESCRIPTION_WIDTH,
+      fontSize,
+      true,
+    )
     const height = lines.length * lineHeight + padding
     if (y + height > CONTINUED_BOTTOM) {
       pdf.addPage()
@@ -357,7 +371,7 @@ export function layoutDocumentPdf(
     text(String(item.quantity), 69, baseline, fontSize, true, 'center')
     text(lines, COLUMNS.description + 5, baseline, fontSize, true)
     text(
-      money(item.unitPrice),
+      formatNetUnitPrice(item, d.currency).replace(/\s/g, ' '),
       COLUMNS.total - 6,
       baseline,
       fontSize,

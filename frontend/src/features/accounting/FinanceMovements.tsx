@@ -41,7 +41,7 @@ import {
   type MoneyAccount,
 } from './finance'
 import { rowsOf, type Row } from './financeRows'
-import { useWritable } from './financeAccess'
+import { useWritable, useCanVoid } from './financeAccess'
 import { accountAcceptsCurrency } from './journalModel'
 import { PaymentDateConfirmation } from './PaymentDateConfirmation'
 
@@ -65,6 +65,7 @@ export function FinanceMovements({
 }) {
   const [action, setAction] = useState<Action | null>(null)
   const [message, setMessage] = useState('')
+  const canVoid = useCanVoid()
   const writable = useWritable(data)
   const rows = rowsOf(data)
   const position = data.position
@@ -203,7 +204,7 @@ export function FinanceMovements({
                           </>
                         ) : row.readOnly ? (
                           'Compensado'
-                        ) : (
+                        ) : canVoid ? (
                           <Button
                             variant="ghost"
                             disabled={!writable}
@@ -215,7 +216,7 @@ export function FinanceMovements({
                           >
                             Anular
                           </Button>
-                        )}
+                        ) : null}
                       </td>
                     </tr>
                   ))}

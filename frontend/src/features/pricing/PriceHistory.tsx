@@ -1,5 +1,5 @@
-import { useCallback } from 'react'
-import { Card, ErrorState, LoadingState } from '../../components/ui'
+import { useCallback, useState } from 'react'
+import { Card, ErrorState, LoadingState, Select } from '../../components/ui'
 import { useServices } from '../../services/useServices'
 import { useQuery } from '../../lib/useQuery'
 import type { PriceChange } from '../../lib/domain'
@@ -30,22 +30,101 @@ function priceBasis(change: PriceChange): string | null {
  * cambio sin «antes» es el precio con el que el perfume entró al catálogo.
  */
 export function PriceHistory({ productId }: { productId: string }) {
+  const [month, setMonth] = useState('')
   const { productService } = useServices()
   const load = useCallback(
     () => productService.listPriceChanges(productId),
     [productId, productService],
   )
   const { data, error, loading, retry } = useQuery(load)
+  const monthKey = (date: string) =>
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Managua',
+      year: 'numeric',
+      month: '2-digit',
+    })
+      .format(new Date(date))
+      .slice(0, 7)
+  const months = [...new Set((data ?? []).map((c) => monthKey(c.changedAt)))]
+    .sort()
+    .reverse()
+  const selected = month || months[0]
+  const changes = (data ?? []).filter((c) => monthKey(c.changedAt) === selected)
+  const monthLabel = (key: string) =>
+    new Intl.DateTimeFormat('es-NI', {
+      timeZone: 'America/Managua',
+      month: 'long',
+      year: 'numeric',
+    }).format(new Date(`${key}-15T12:00:00Z`))
   return (
     <Card className="form-card price-history">
       <h2>Historial de precios</h2>
+      {!!months.length && (
+        <Select
+          label="Mes del historial"
+          value={selected}
+          onChange={(e) => setMonth(e.target.value)}
+        >
+          {months.map((key) => (
+            <option key={key} value={key}>
+              {monthLabel(key)}
+            </option>
+          ))}
+        </Select>
+      )}
+      {!!changes.length && (
+        <div className="price-history-month-summary">
+          {[...new Set(changes.map((c) => c.tier))].map((tier) => {
+            const rows = changes
+              .filter((c) => c.tier === tier)
+              .sort((a, b) => a.changedAt.localeCompare(b.changedAt))
+            const first = rows[0],
+              last = rows.at(-1)!
+            return (
+              <article key={tier}>
+                <h3>{priceTierLabels[tier] ?? tier}</h3>
+                {(['USD', 'NIO'] as const).map((currency) => {
+                  const before =
+                    currency === 'USD' ? first.beforeUsd : first.beforeNio
+                  const after =
+                    currency === 'USD' ? last.afterUsd : last.afterNio
+                  const difference =
+                    before === null
+                      ? null
+                      : Math.round((after - before) * 100) / 100
+                  return (
+                    <p key={currency}>
+                      {before === null
+                        ? 'Primer registro disponible'
+                        : formatCurrency(before, currency)}{' '}
+                      → <strong>{formatCurrency(after, currency)}</strong>
+                      {difference !== null && (
+                        <small className="price-history-delta">
+                          {difference > 0
+                            ? 'Subió'
+                            : difference < 0
+                              ? 'Bajó'
+                              : 'Sin cambio'}{' '}
+                          {formatCurrency(Math.abs(difference), currency)}
+                          {before! > 0 &&
+                            ` (${((Math.abs(difference!) / before!) * 100).toFixed(2)} %)`}
+                        </small>
+                      )}
+                    </p>
+                  )
+                })}
+              </article>
+            )
+          })}
+        </div>
+      )}
       {loading && <LoadingState />}
       {error && <ErrorState message={error} retry={retry} />}
       {!loading && !error && data?.length === 0 && (
         <p className="page-feedback">Sin cambios de precio todavía.</p>
       )}
       <div className="price-history-list">
-        {data?.map((change, index) => {
+        {changes.map((change, index) => {
           const basis = priceBasis(change)
           // Un precio que sale de un costo en córdobas se lee primero en
           // córdobas: es el que queda fijo cuando cambia la tasa.
@@ -99,7 +178,7 @@ export function PriceHistory({ productId }: { productId: string }) {
                 ) : (
                   change.beforeUsd === null && (
                     <span className="record-badge is-muted">
-                      Precio inicial
+                      Primer registro disponible
                     </span>
                   )
                 )}

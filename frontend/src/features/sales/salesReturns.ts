@@ -27,12 +27,33 @@ export interface InvoiceReturnDetail {
     quantity: number
     returned: number
     unitPrice: number
+    lineTotal?: number
   }[]
   returns: (SalesReturnResult & {
     date: string
     reason: string
     journalEntryId: string
   })[]
+}
+export function returnLineAmount(
+  item: InvoiceReturnDetail['items'][number],
+  quantity: number,
+) {
+  if (
+    !Number.isSafeInteger(quantity) ||
+    quantity < 0 ||
+    quantity > item.quantity - item.returned
+  )
+    return 0
+  const cents = BigInt(
+    Math.round((item.lineTotal ?? item.unitPrice * item.quantity) * 100),
+  )
+  const denominator = BigInt(item.quantity)
+  const portion = (units: number) =>
+    (2n * cents * BigInt(units) + denominator) / (2n * denominator)
+  return (
+    Number(portion(item.returned + quantity) - portion(item.returned)) / 100
+  )
 }
 async function returnsRpc<T>(
   name: string,

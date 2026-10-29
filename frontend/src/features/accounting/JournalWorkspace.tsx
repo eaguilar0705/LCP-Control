@@ -15,6 +15,7 @@ import {
   Select,
 } from '../../components/ui'
 import { AppError, errorMessage } from '../../lib/errors'
+import { useCanVoid } from './financeAccess'
 import { useAccess } from '../../app/AccessContext'
 import {
   getPendingJournal,
@@ -58,6 +59,7 @@ export function JournalWorkspace({
   data: LedgerReport
   onChanged: () => void
 }) {
+  const canVoid = useCanVoid()
   const { storageScope = 'anonymous' } = useAccess()
   useSyncExternalStore(subscribePendingJournal, pendingJournalRevision)
   const [action, setAction] = useState<Kind | null>(
@@ -184,7 +186,7 @@ export function JournalWorkspace({
                     'Anulado'
                   ) : e.kind === 'opening' ? (
                     'Registrado'
-                  ) : (
+                  ) : canVoid ? (
                     <Button
                       variant="ghost"
                       onClick={() => {
@@ -195,7 +197,7 @@ export function JournalWorkspace({
                     >
                       Anular
                     </Button>
-                  )}
+                  ) : null}
                 </td>
               </tr>
             ))}

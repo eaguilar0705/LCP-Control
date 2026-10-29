@@ -18,6 +18,7 @@ import {
 import {
   invoiceReturnDetail,
   recordSalesReturn,
+  returnLineAmount,
   type SalesReturnInput,
 } from './salesReturns'
 import {
@@ -136,7 +137,7 @@ export function SalesReturnDialog({
             Total de la nota:{' '}
             {formatCurrency(
               data.items.reduce(
-                (sum, i) => sum + (quantities[i.id] || 0) * i.unitPrice,
+                (sum, i) => sum + returnLineAmount(i, quantities[i.id] || 0),
                 0,
               ),
               document.currency,

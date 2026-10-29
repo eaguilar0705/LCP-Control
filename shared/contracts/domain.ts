@@ -97,7 +97,8 @@ export interface PricingInput {
 export interface ProductPricing extends PricingInput {
   productId: string
   /**
-   * Costo promedio vigente en córdobas (seis decimales), el de la contabilidad
+   * Costo promedio vigente en córdobas (cinco decimales; los históricos
+   * pueden conservar seis), el de la contabilidad
    * del inventario. `null` mientras no se conozca. No interviene en el precio
    * de venta: sirve para el margen y el inventario valorado.
    */
@@ -179,6 +180,8 @@ export interface CustomerRecord {
 export type DocumentKind = 'invoice' | 'proforma'
 
 export interface DocumentItemRecord {
+  originalUnitPrice?: number
+  invoiceDiscount?: number
   id: string
   productId: string
   description: string
@@ -188,6 +191,9 @@ export interface DocumentItemRecord {
 }
 
 export interface DocumentRecord {
+  originalTotal?: number
+  discountAmount?: number
+  invoiceDiscount?: number
   payments?: InvoicePayment[]
   /** NIO per unit of document currency, saved at issuance. */
   exchangeRate?: number | null
@@ -221,12 +227,14 @@ export interface DocumentRecord {
 }
 
 export interface NewDocumentItem {
+  finalUnitPrice?: number
   productId: string
   quantity: number
   expectedUnitPrice?: number
 }
 
 export interface NewDocument {
+  invoiceDiscount?: number
   payments?: InvoicePayment[]
   expectedTotal?: number
   exchangeRate?: number

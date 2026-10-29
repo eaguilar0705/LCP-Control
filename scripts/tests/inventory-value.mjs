@@ -88,7 +88,7 @@ const preview = async () =>
   (await one('select public.inventory_valuation_preview() r')).r
 try {
   await db.query(
-    "insert into public.staff_members(user_id,display_name,role) values($1,'Admin','admin'),($2,'Inventario','warehouse'),($3,'Consulta','viewer'),($4,'Caja','operator')",
+    "insert into public.staff_members(user_id,display_name,role) values($1,'Admin','superadmin'),($2,'Inventario','warehouse'),($3,'Consulta','viewer'),($4,'Caja','operator')",
     [admin, warehouse, viewer, operator],
   )
   await db.exec(
@@ -247,7 +247,7 @@ try {
             productId: product,
             location: 'store',
             quantity: 11,
-            unitPrice: 1234.567891,
+            unitPrice: 1234.57,
           },
         ],
       })

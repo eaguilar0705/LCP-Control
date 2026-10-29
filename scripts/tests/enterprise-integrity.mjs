@@ -569,13 +569,13 @@ try {
           )[0].average_cost_nio,
         )
         const landed =
-          Math.round((unit + Math.round((100 / 15) * 1e6) / 1e6) * 1e6) / 1e6
+          Math.round((unit + Math.round((100 / 15) * 1e5) / 1e5) * 1e5) / 1e5
         const expected =
           Math.round(
             ((products[index].cost * 280 + money(landed * quantity)) /
               (280 + quantity)) *
-              1e6,
-          ) / 1e6
+              1e5,
+          ) / 1e5
         eq(
           savedCost,
           expected,

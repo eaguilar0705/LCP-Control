@@ -1,3 +1,4 @@
+import { formatNetUnitPrice } from './discounts'
 import { ProductPicker } from './ProductPicker'
 import { CustomerAutocomplete } from './CustomerAutocomplete'
 import { SplitPayments } from './SplitPayments'
@@ -24,6 +25,7 @@ import {
   Button,
   Card,
   ConfirmDialog,
+  Dialog,
   Input,
   Select,
   ErrorState,
@@ -60,6 +62,9 @@ import {
   draftStorageKey,
   draftTotal,
   draftLinePrice,
+  discountValue,
+  draftAmounts,
+  type DraftDiscount,
   isoDate,
   type DocumentDraft,
   type DraftLine,
@@ -83,7 +88,12 @@ const MAX_CUSTOMER_NAME = 160
 const MAX_DOCUMENT_ITEMS = 100
 const DAY_ONLY = /^\d{4}-\d{2}-\d{2}$/
 function formattedDraftTotal(draft: DocumentDraft) {
-  const total = draftTotal(draft.lines, draft.tier, draft.currency)
+  const total = draftTotal(
+    draft.lines,
+    draft.tier,
+    draft.currency,
+    draft.discount,
+  )
   return total === null ? 'Sin precio' : formatCurrency(total, draft.currency)
 }
 
@@ -136,6 +146,11 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
     loading: draftsLoading,
     retry: retryDrafts,
   } = useWorkspaceDrafts(draftStorageKey(kind), documentDraftSchema)
+  const proformaDrafts = useWorkspaceDrafts(
+    draftStorageKey('proforma'),
+    documentDraftSchema,
+  )
+  const [proformaPicker, setProformaPicker] = useState(false)
   const [currency, setCurrency] = useState<Currency>(
     restored?.draft.currency ?? 'NIO',
   )
@@ -177,6 +192,14 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
   const [validUntil, setValidUntil] = useState(
     restored?.draft.validUntil ?? defaultValidUntil(),
   )
+  const [discount, setDiscount] = useState<DraftDiscount | undefined>(
+    restored?.draft.discount,
+  )
+  const [discountEditor, setDiscountEditor] = useState<{
+    productId: string | null
+    text: string
+  } | null>(null)
+  const [discountError, setDiscountError] = useState('')
   const [notes, setNotes] = useState(restored?.draft.notes ?? '')
   const [lines, setLines] = useState<DraftLine[]>(() =>
     structuredClone(restored?.draft.lines ?? []),
@@ -258,6 +281,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
     location,
     validUntil,
     notes,
+    discount,
     lines,
   })
   const hasContent = !!(
@@ -333,7 +357,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
       line.quantity > 0 &&
       line.quantity <= 9999,
   )
-  const total = valid ? draftTotal(lines, tier, currency) : null
+  const total = valid ? draftTotal(lines, tier, currency, discount) : null
   const validExchange =
     currency === 'NIO' ||
     (exchangeRate !== null &&
@@ -356,6 +380,12 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
     const item = data?.find((entry) => entry.product.id === line.productId)
     if (!item || !item.product.active || !item.product.prices)
       return 'Este producto ya no está disponible. Retíralo del documento.'
+    if (
+      line.discount?.tier === tier &&
+      line.discount.currency === currency &&
+      line.discount.amount > line.prices[tier]?.[currency]
+    )
+      return 'El descuento supera el precio actual. Revisa el precio final del perfume.'
     if (
       draftLinePrice(line, tier, currency) === null ||
       productPrice(item.product, tier, currency) === null
@@ -417,6 +447,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
           location,
           validUntil,
           notes,
+          discount,
           createdAt: current?.createdAt ?? new Date().toISOString(),
           lines,
         }
@@ -478,6 +509,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
     const result = documentDraftSchema.safeParse({
       ...stamp,
       kind,
+      discount,
       customer,
       customerId,
       phone,
@@ -621,10 +653,14 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
       validUntil: kind === 'proforma' ? validUntil : null,
       notes,
       expectedTotal: total ?? undefined,
+      invoiceDiscount: discountValue(discount, tier, currency),
       items: lines.map((line) => ({
         productId: line.productId,
         quantity: line.quantity,
         expectedUnitPrice: line.prices[tier][currency],
+        ...(line.discount?.tier === tier && line.discount.currency === currency
+          ? { finalUnitPrice: line.discount.amount }
+          : {}),
       })),
     }
     rememberDocument(scope, {
@@ -739,6 +775,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
     setLocation(item.location)
     setValidUntil(item.validUntil || defaultValidUntil())
     setNotes(item.notes)
+    setDiscount(item.discount)
     let pricesChanged = false
     const refreshedLines = item.lines.map((line) => {
       const product = data?.find(
@@ -776,6 +813,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
         location: item.location,
         validUntil: item.validUntil || defaultValidUntil(),
         notes: item.notes,
+        discount: item.discount,
         lines: pricesChanged ? item.lines : refreshedLines,
       }),
     )
@@ -798,6 +836,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
     setTaxId('')
     setExchangeText(null)
     setNotes('')
+    setDiscount(undefined)
     setLines([])
     setValidUntil(defaultValidUntil())
     setMessage('')
@@ -933,6 +972,18 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
           >
             Ver ejemplo en carta
           </a>
+        )}
+        {kind === 'invoice' && (
+          <Button
+            variant="secondary"
+            disabled={busy || savingDraft || !!pendingIssue}
+            onClick={() => {
+              proformaDrafts.retry()
+              setProformaPicker(true)
+            }}
+          >
+            Facturar proforma guardada
+          </Button>
         )}
         <Button
           variant="secondary"
@@ -1276,8 +1327,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
                     <div>
                       <strong>{item.description}</strong>
                       <span>
-                        {formatCurrency(item.unitPrice, issued.currency)} por
-                        unidad
+                        {formatNetUnitPrice(item, issued.currency)} por unidad
                       </span>
                     </div>
                     <span>{item.quantity} uds.</span>
@@ -1301,6 +1351,26 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
                           ? 'Sin precio en esta lista'
                           : `${formatCurrency(draftLinePrice(line, tier, currency)!, currency)} por unidad`}
                       </span>
+                      <Button
+                        className="line-discount"
+                        variant="ghost"
+                        disabled={busy || !!pendingIssue}
+                        onClick={() => {
+                          setDiscountError('')
+                          setDiscountEditor({
+                            productId: line.productId,
+                            text: String(
+                              draftLinePrice(line, tier, currency) ?? '',
+                            ),
+                          })
+                        }}
+                      >
+                        Descuento
+                        {line.discount?.tier === tier &&
+                        line.discount.currency === currency
+                          ? ` ${(100 * (1 - line.discount.amount / line.prices[tier][currency])).toFixed(2)} %`
+                          : ''}
+                      </Button>
                     </div>
                     <div className="invoice-line-quantity">
                       <Input
@@ -1345,11 +1415,9 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
                       line.quantity <= 9999 &&
                       draftLinePrice(line, tier, currency) !== null
                         ? formatCurrency(
-                            (Math.round(
-                              draftLinePrice(line, tier, currency)! * 100,
-                            ) *
-                              line.quantity) /
-                              100,
+                            draftAmounts(lines, tier, currency, discount).get(
+                              line.productId,
+                            ) ?? 0,
                             currency,
                           )
                         : draftLinePrice(line, tier, currency) === null
@@ -1361,6 +1429,57 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
               )}
             </div>
             <div className="document-checkout">
+              {!issued && (
+                <Button
+                  variant="secondary"
+                  disabled={busy || !!pendingIssue || !lines.length}
+                  onClick={() => {
+                    setDiscountError('')
+                    setDiscountEditor({
+                      productId: null,
+                      text: total === null ? '' : String(total),
+                    })
+                  }}
+                >
+                  Descuento sobre el total
+                  {discountValue(discount, tier, currency) > 0
+                    ? ` · ${formatCurrency(discountValue(discount, tier, currency), currency)}`
+                    : ''}
+                </Button>
+              )}
+              {discountValue(discount, tier, currency) > 0 && !issued && (
+                <Button
+                  variant="ghost"
+                  disabled={busy || !!pendingIssue}
+                  onClick={() => setDiscount(undefined)}
+                >
+                  Quitar descuento total
+                </Button>
+              )}
+              {total === null && valid && lines.length > 0 && (
+                <p role="alert" className="field-error">
+                  Revisa los precios y descuentos antes de emitir.
+                </p>
+              )}
+              {!!shareable?.discountAmount && (
+                <p className="invoice-discount-summary">
+                  Precio de lista:{' '}
+                  {formatCurrency(shareable.originalTotal!, shareable.currency)}{' '}
+                  · Descuento:{' '}
+                  <strong>
+                    {formatCurrency(
+                      shareable.discountAmount,
+                      shareable.currency,
+                    )}{' '}
+                    (
+                    {(
+                      (100 * shareable.discountAmount) /
+                      shareable.originalTotal!
+                    ).toFixed(2)}{' '}
+                    %)
+                  </strong>
+                </p>
+              )}
               <div className="invoice-total">
                 <span>Total de la {copy.singular}</span>
                 <strong>
@@ -1556,6 +1675,163 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
           )}
         </fieldset>
       </div>
+      {discountEditor && (
+        <Dialog
+          open
+          title={
+            discountEditor.productId
+              ? 'Descuento del perfume'
+              : 'Descuento sobre el total'
+          }
+          onClose={() => setDiscountEditor(null)}
+        >
+          <form
+            onSubmit={(event) => {
+              event.preventDefault()
+              const amount = Number(discountEditor.text)
+              const line = lines.find(
+                (l) => l.productId === discountEditor.productId,
+              )
+              const base = line
+                ? line.prices[tier][currency]
+                : draftTotal(lines, tier, currency)
+              if (
+                discountEditor.text.trim() === '' ||
+                !Number.isFinite(amount) ||
+                amount <= 0 ||
+                Math.abs(amount * 100 - Math.round(amount * 100)) > 0.000001 ||
+                base === null ||
+                amount > base
+              ) {
+                setDiscountError(
+                  'Escribe un precio mayor que cero, con dos decimales como máximo y sin superar el importe original.',
+                )
+                return
+              }
+              if (line) {
+                setLines(
+                  lines.map((l) =>
+                    l.productId === line.productId
+                      ? {
+                          ...l,
+                          discount:
+                            amount === base
+                              ? undefined
+                              : { tier, currency, amount },
+                        }
+                      : l,
+                  ),
+                )
+              } else {
+                setDiscount({
+                  tier,
+                  currency,
+                  amount: Math.round((base - amount) * 100) / 100,
+                })
+              }
+              setDiscountEditor(null)
+            }}
+          >
+            <Input
+              label={
+                discountEditor.productId
+                  ? `Precio final por unidad (${currency})`
+                  : `Total a cobrar (${currency})`
+              }
+              type="number"
+              min={0.01}
+              step={0.01}
+              value={discountEditor.text}
+              error={discountError || undefined}
+              onChange={(e) => {
+                setDiscountError('')
+                setDiscountEditor({ ...discountEditor, text: e.target.value })
+              }}
+            />
+            {(() => {
+              const line = lines.find(
+                (l) => l.productId === discountEditor.productId,
+              )
+              const base = line
+                ? line.prices[tier][currency]
+                : draftTotal(lines, tier, currency)
+              const amount = Number(discountEditor.text)
+              return base && amount > 0 && amount <= base ? (
+                <p>
+                  Descuento:{' '}
+                  <strong>
+                    {((100 * (base - amount)) / base).toFixed(2)} %
+                  </strong>{' '}
+                  · {formatCurrency(base - amount, currency)}
+                </p>
+              ) : null
+            })()}
+            <div className="form-actions">
+              <Button type="submit">Aplicar descuento</Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setDiscountEditor(null)}
+              >
+                Cancelar
+              </Button>
+            </div>
+          </form>
+        </Dialog>
+      )}
+      {proformaPicker && (
+        <Dialog
+          open
+          title="Proformas guardadas"
+          onClose={() => setProformaPicker(false)}
+        >
+          {proformaDrafts.loading ? (
+            <LoadingState />
+          ) : proformaDrafts.error ? (
+            <ErrorState
+              message={proformaDrafts.error}
+              retry={proformaDrafts.retry}
+            />
+          ) : (
+            <div className="saved-drafts">
+              {proformaDrafts.items
+                .filter((item) => item.kind === 'proforma')
+                .map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      const id = crypto.randomUUID()
+                      requestReplace({
+                        draft: {
+                          ...structuredClone(item),
+                          id,
+                          kind: 'invoice',
+                          reference: `FAC-B${id.slice(0, 6).toUpperCase()}`,
+                          createdAt: new Date().toISOString(),
+                          payment: 'pending',
+                          payments: undefined,
+                          location: 'store',
+                        },
+                      })
+                      setProformaPicker(false)
+                    }}
+                  >
+                    <strong>
+                      {item.reference} · {item.customer || 'Sin cliente'}
+                    </strong>
+                    <span>
+                      {formattedDraftTotal(item)} · {formatDate(item.createdAt)}{' '}
+                      · Preparar factura
+                    </span>
+                  </button>
+                ))}
+              {!proformaDrafts.items.some(
+                (item) => item.kind === 'proforma',
+              ) && <p>No tienes proformas guardadas.</p>}
+            </div>
+          )}
+        </Dialog>
+      )}
       {confirmDiscard && (
         <ConfirmDialog
           open

@@ -1,3 +1,4 @@
+import { discountedDescription, formatNetUnitPrice } from './discounts'
 import { Brand } from '../../components/Brand'
 import { businessIdentityLines } from '../../lib/business'
 import {
@@ -118,9 +119,11 @@ export function DocumentPrint({ document: d }: { document: DocumentRecord }) {
             <tr key={item.id}>
               <td className="letter-line">{index + 1}</td>
               <td className="letter-quantity">{item.quantity}</td>
-              <td className="letter-description">{item.description}</td>
+              <td className="letter-description">
+                {discountedDescription(item)}
+              </td>
               <td className="letter-money">
-                {formatCurrency(item.unitPrice, d.currency)}
+                {formatNetUnitPrice(item, d.currency)}
               </td>
               <td className="letter-money">
                 {formatCurrency(item.lineTotal, d.currency)}
@@ -156,8 +159,14 @@ export function DocumentPrint({ document: d }: { document: DocumentRecord }) {
         <div className="letter-totals">
           <p>
             <span>Subtotal</span>
-            <b>{formatCurrency(d.total, d.currency)}</b>
+            <b>{formatCurrency(d.originalTotal ?? d.total, d.currency)}</b>
           </p>
+          {!!d.discountAmount && (
+            <p>
+              <span>Descuento</span>
+              <b>−{formatCurrency(d.discountAmount, d.currency)}</b>
+            </p>
+          )}
           <p className="letter-grand-total">
             <span>TOTAL {d.currency}</span>
             <b>{formatCurrency(d.total, d.currency)}</b>

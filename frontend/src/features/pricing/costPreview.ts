@@ -110,9 +110,9 @@ export function previewPurchase({
       !Number.isFinite(unitPrice) ||
       unitPrice < 0 ||
       unitPrice > MAX_AMOUNT ||
-      !hasDecimals(unitPrice, 6)
+      !hasDecimals(unitPrice, 2)
     )
-      problem = 'Escribe el costo por unidad (hasta seis decimales).'
+      problem = 'Escribe el costo por unidad (hasta dos decimales).'
     if (line.productId) seen.add(line.productId)
     return { line, quantity, unitPrice, problem }
   })

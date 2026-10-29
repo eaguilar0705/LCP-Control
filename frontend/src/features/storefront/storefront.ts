@@ -39,6 +39,17 @@ export type Publication = {
   listed: boolean
 }
 export type CatalogLink = { code: string; name: string; token: string }
+export type StorefrontOffer = {
+  draft_id: string
+  tier_code: string
+  final_price: number | null
+  revision: number
+}
+export async function readOffers(): Promise<StorefrontOffer[]> {
+  const { data, error } = await client().rpc('storefront_offers')
+  if (error) throw error
+  return data as StorefrontOffer[]
+}
 export async function catalogLinks(): Promise<CatalogLink[]> {
   const { data, error } = await client().rpc('storefront_catalog_links')
   if (error) throw error

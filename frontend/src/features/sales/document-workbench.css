@@ -400,3 +400,21 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.document-workbench .line-discount {
+  align-self: flex-start;
+  padding: 4px 8px;
+  min-height: 30px;
+  font-size: 0.76rem;
+  color: #862c39;
+  background: #fcf0f2;
+  border: 1px solid #ead1d6;
+  border-radius: 8px;
+}
+.invoice-discount-summary {
+  font-size: 0.8rem;
+  color: #775c57;
+  line-height: 1.5;
+  margin: 8px 0;
+  overflow-wrap: anywhere;
+}

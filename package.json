@@ -17,6 +17,7 @@
     "check": "npm run lint && npm run build",
     "build": "npm run typecheck --workspace @lcp/contracts && npm run build --workspace @lcp/frontend",
     "typecheck": "npm run typecheck --workspaces --if-present",
+    "test:discounts": "node --test scripts/tests/discount-model.test.mjs && node scripts/tests/discounts-and-history.mjs",
     "test:accounting": "node --test scripts/tests/*.test.mjs",
     "test:storefront": "node scripts/tests/storefront.mjs && node scripts/tests/storefront-inventory.mjs && node scripts/tests/storefront-sales.mjs && node scripts/tests/storefront-featured.mjs && node scripts/tests/storefront-catalogs.mjs",
     "test:business-import": "node --test scripts/tests/business-import.test.mjs && node scripts/tests/business-import.mjs",

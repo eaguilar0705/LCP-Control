@@ -49,7 +49,7 @@ const blankLine = (productId = ''): PurchaseLineDraft => ({
   unitPrice: '',
 })
 const round2 = (value: number) => Math.round(value * 100) / 100
-const round6 = (value: number) => Math.round(value * 1e6) / 1e6
+const round5 = (value: number) => Math.round(value * 1e5) / 1e5
 
 /**
  * Registrar una compra: uno o varios perfumes con su costo por unidad y el
@@ -285,7 +285,7 @@ export function PurchaseDialog({
           productId: line.productId,
           location: lines[index].location,
           quantity: line.quantity,
-          unitPrice: round6(line.unitPrice),
+          unitPrice: round5(line.unitPrice),
         })),
       })
       onRecorded(
@@ -438,7 +438,7 @@ export function PurchaseDialog({
                 type="number"
                 inputMode="decimal"
                 min={0.000001}
-                step={0.000001}
+                step={0.00001}
                 value={rateText}
                 error={
                   checked && validRate(currency, rateText) === null
@@ -606,7 +606,7 @@ function PurchaseLine({
           type="number"
           inputMode="decimal"
           min={0}
-          step={0.000001}
+          step={0.01}
           value={line.unitPrice}
           onChange={(event) => onChange({ unitPrice: event.target.value })}
         />
@@ -711,8 +711,8 @@ export function OpeningCostDialog({
     !Number.isFinite(unit) ||
     unit < 0 ||
     unit > 1_000_000_000 ||
-    !hasDecimals(unit, 6)
-      ? 'Escribe el costo por unidad (hasta seis decimales).'
+    !hasDecimals(unit, 2)
+      ? 'Escribe el costo por unidad (hasta dos decimales).'
       : null
   const noteProblem =
     note.trim().length < 3
@@ -730,7 +730,7 @@ export function OpeningCostDialog({
     try {
       await operation.execute({
         productId: item.product.id,
-        unitCost: round6(unit),
+        unitCost: round5(unit),
         currency,
         exchangeRate: rate,
         note: note.trim(),
@@ -762,7 +762,7 @@ export function OpeningCostDialog({
             type="number"
             inputMode="decimal"
             min={0}
-            step={0.000001}
+            step={0.01}
             value={unitText}
             error={checked ? (unitProblem ?? undefined) : undefined}
             onChange={(event) => setUnitText(event.target.value)}
@@ -781,7 +781,7 @@ export function OpeningCostDialog({
               type="number"
               inputMode="decimal"
               min={0.000001}
-              step={0.000001}
+              step={0.00001}
               value={rateText}
               error={
                 checked && rate === null

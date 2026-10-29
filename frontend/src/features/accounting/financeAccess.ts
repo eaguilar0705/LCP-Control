@@ -7,3 +7,7 @@ export function useWritable(ledger: FinanceLedger) {
   const { demo, role } = useAccess()
   return !demo && can(role, 'finance.read') && ledger.available
 }
+export function useCanVoid() {
+  const { demo, role } = useAccess()
+  return !demo && can(role, 'operation.void')
+}

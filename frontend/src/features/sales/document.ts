@@ -9,7 +9,13 @@ import type {
 } from '../../lib/domain'
 const money = z.number().finite().min(0).max(10000000)
 const pair = z.object({ NIO: money, USD: money })
+const discountSchema = z.object({
+  tier: z.string(),
+  currency: z.enum(['NIO', 'USD']),
+  amount: money,
+})
 export const draftLineSchema = z.object({
+  discount: discountSchema.optional(),
   productId: z.string(),
   name: z.string(),
   barcode: z.string(),
@@ -20,6 +26,7 @@ export const draftLineSchema = z.object({
 // One schema, one discriminating field. A draft always knows whether it is an
 // invoice or a proforma, so a proforma can never be reopened as an invoice.
 export const documentDraftSchema = z.object({
+  discount: discountSchema.optional(),
   id: z.string(),
   kind: z.enum(['invoice', 'proforma']),
   reference: z.string(),
@@ -60,18 +67,34 @@ export const documentDraftSchema = z.object({
 })
 export type DocumentDraft = z.infer<typeof documentDraftSchema>
 export type DraftLine = z.infer<typeof draftLineSchema>
+export type DraftDiscount = z.infer<typeof discountSchema>
+export function discountValue(
+  discount: DraftDiscount | undefined,
+  tier: PriceTier,
+  currency: Currency,
+) {
+  return discount?.tier === tier && discount.currency === currency
+    ? discount.amount
+    : 0
+}
 export function draftLinePrice(
   line: DraftLine,
   tier: PriceTier,
   currency: Currency,
 ): number | null {
   const value = line.prices[tier]?.[currency]
-  return value != null && Number.isFinite(value) && value > 0 ? value : null
+  if (value == null || !Number.isFinite(value) || value <= 0) return null
+  if (line.discount?.tier === tier && line.discount.currency === currency) {
+    const final = line.discount.amount
+    return final > 0 && final <= value ? final : null
+  }
+  return value
 }
 export function draftTotal(
   lines: DraftLine[],
   tier: PriceTier,
   currency: Currency,
+  discount?: DraftDiscount,
 ) {
   if (lines.some((line) => draftLinePrice(line, tier, currency) === null))
     return null
@@ -82,7 +105,56 @@ export function draftTotal(
   )
   if (!Number.isSafeInteger(total))
     throw new Error('El importe es demasiado grande.')
-  return total / 100
+  const reduction = Math.round(discountValue(discount, tier, currency) * 100)
+  if (reduction < 0 || (reduction > 0 && reduction >= total)) return null
+  if (
+    reduction > 0 &&
+    [...draftAmounts(lines, tier, currency, discount).values()].some(
+      (value) => value <= 0,
+    )
+  )
+    return null
+  return (total - reduction) / 100
+}
+/** Reparto acumulado al centavo, en el mismo orden estable que PostgreSQL. */
+export function draftAmounts(
+  lines: DraftLine[],
+  tier: PriceTier,
+  currency: Currency,
+  discount?: DraftDiscount,
+) {
+  if (
+    lines.some(
+      (line) =>
+        !Number.isInteger(line.quantity) ||
+        line.quantity < 1 ||
+        line.quantity > 9999,
+    )
+  )
+    return new Map<string, number>()
+  const subtotal = draftTotal(lines, tier, currency)
+  if (subtotal === null || subtotal <= 0) return new Map<string, number>()
+  const reduction = Math.round(discountValue(discount, tier, currency) * 100)
+  let cumulative = 0,
+    allocated = 0
+  const result = new Map<string, number>()
+  for (const line of [...lines].sort((a, b) =>
+    a.productId.localeCompare(b.productId),
+  )) {
+    const cents = lineCents(
+      draftLinePrice(line, tier, currency)!,
+      line.quantity,
+    )
+    cumulative += cents
+    const denominator = BigInt(Math.round(subtotal * 100))
+    const next = Number(
+      (2n * BigInt(reduction) * BigInt(cumulative) + denominator) /
+        (2n * denominator),
+    )
+    result.set(line.productId, (cents - next + allocated) / 100)
+    allocated = next
+  }
+  return result
 }
 export function draftStorageKey(kind: DocumentKind) {
   return `lcp.drafts.${kind}.v2`
@@ -110,7 +182,12 @@ export function draftPreview(
   /** Tasa vigente del catálogo, para imprimir el equivalente del borrador. */
   catalogRate?: number | null,
 ): DocumentRecord {
-  const total = draftTotal(draft.lines, draft.tier, draft.currency)
+  const total = draftTotal(
+    draft.lines,
+    draft.tier,
+    draft.currency,
+    draft.discount,
+  )
   if (total === null)
     throw new Error('Hay perfumes sin precio en la lista seleccionada.')
   return {
@@ -128,6 +205,26 @@ export function draftPreview(
     currency: draft.currency,
     exchangeRate: draft.currency === 'NIO' ? 1 : draft.exchangeRate,
     total,
+    originalTotal:
+      draft.lines.reduce(
+        (sum, line) =>
+          sum +
+          lineCents(line.prices[draft.tier][draft.currency], line.quantity),
+        0,
+      ) / 100,
+    discountAmount:
+      Math.round(
+        (draft.lines.reduce(
+          (sum, line) =>
+            sum +
+            lineCents(line.prices[draft.tier][draft.currency], line.quantity),
+          0,
+        ) /
+          100 -
+          total) *
+          100,
+      ) / 100,
+    invoiceDiscount: discountValue(draft.discount, draft.tier, draft.currency),
     location: draft.kind === 'invoice' ? draft.location : null,
     validUntil: draft.kind === 'proforma' ? draft.validUntil || null : null,
     paymentMethod: draft.kind === 'invoice' ? draft.payment : null,
@@ -139,9 +236,14 @@ export function draftPreview(
       productId: line.productId,
       description: `${line.name} · ${line.size}`,
       quantity: line.quantity,
-      unitPrice: line.prices[draft.tier][draft.currency],
-      lineTotal:
-        lineCents(line.prices[draft.tier][draft.currency], line.quantity) / 100,
+      originalUnitPrice: line.prices[draft.tier][draft.currency],
+      unitPrice: draftLinePrice(line, draft.tier, draft.currency)!,
+      lineTotal: draftAmounts(
+        draft.lines,
+        draft.tier,
+        draft.currency,
+        draft.discount,
+      ).get(line.productId)!,
     })),
   }
 }

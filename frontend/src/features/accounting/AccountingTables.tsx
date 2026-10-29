@@ -10,7 +10,7 @@ import {
 import type { FinanceLedger } from './finance'
 import { RecordDialog, VoidDialog } from './FinanceMovements'
 import { rowsOf, type Row } from './financeRows'
-import { useWritable } from './financeAccess'
+import { useWritable, useCanVoid } from './financeAccess'
 
 const amount = (value: number | null, negative = false) => {
   if (value === null) return 'Pendiente'
@@ -103,6 +103,7 @@ export function AccountingTables({
   const [reviewing, setReviewing] = useState(false)
   const [voiding, setVoiding] = useState<Row | null>(null)
   const [message, setMessage] = useState('')
+  const canVoid = useCanVoid()
   const writable = useWritable(ledger)
   const records = rowsOf(ledger)
   const title = accountingViews[view]
@@ -363,7 +364,7 @@ export function AccountingTables({
                           'Anulado'
                         ) : row.readOnly ? (
                           'Compensado'
-                        ) : (
+                        ) : canVoid ? (
                           <Button
                             variant="secondary"
                             disabled={!writable}
@@ -374,7 +375,7 @@ export function AccountingTables({
                           >
                             Anular
                           </Button>
-                        )}
+                        ) : null}
                       </td>
                     </tr>
                   ))}

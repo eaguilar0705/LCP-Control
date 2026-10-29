@@ -20,6 +20,7 @@ export type Capability =
   | 'supplier.manage'
   | 'supplier.delete'
   | 'document.delete'
+  | 'operation.void'
   | 'staff.manage'
   | 'settings.manage'
 const common: Capability[] = [
@@ -47,6 +48,7 @@ const permissions: Record<UserRole, readonly Capability[]> = {
     'customer.delete',
     'supplier.delete',
     'document.delete',
+    'operation.void',
     'staff.manage',
     'settings.manage',
   ],
@@ -63,7 +65,6 @@ const permissions: Record<UserRole, readonly Capability[]> = {
     'supplier.manage',
     'customer.delete',
     'supplier.delete',
-    'document.delete',
     'staff.manage',
     'settings.manage',
   ],

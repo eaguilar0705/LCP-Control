@@ -123,9 +123,8 @@ function divideHalfUp(numerator: bigint, denominator: bigint): bigint {
 function fromCents(cents: bigint): number {
   return Number(cents < 1n ? 1n : cents) / 100
 }
-const MICROS = 1_000_000n
 function fromMicros(micros: bigint): number {
-  return Number(micros) / 1e6
+  return Number(micros) / 1e5
 }
 /**
  * Precio de venta: el costo más el porcentaje, al centavo y nunca cero. El
@@ -166,11 +165,11 @@ export function subtractPrices(minuend: number, subtrahend: number): number {
 
 // --- Costo promedio ponderado ----------------------------------------------
 //
-// Las mismas cuentas que `record_shipment`, con seis decimales y redondeo a la
+// Las mismas cuentas que `record_shipment`, con cinco decimales y redondeo a la
 // mitad hacia arriba, para enseñar el promedio y los precios nuevos antes de
 // guardar una compra.
 
-/** Envío por unidad del pedido: round(envío / unidades, 6). */
+/** Envío por unidad del pedido: round(envío / unidades, 5). */
 export function shippingPerUnit(shipping: number, unitCount: number): number {
   const cents = units(shipping, 2)
   if (
@@ -180,28 +179,28 @@ export function shippingPerUnit(shipping: number, unitCount: number): number {
     unitCount < 1
   )
     return NaN
-  return fromMicros(divideHalfUp(cents * 10000n, BigInt(unitCount)))
+  return fromMicros(divideHalfUp(cents * 1000n, BigInt(unitCount)))
 }
 /**
  * Costo puesto en bodega en córdobas: (precio del proveedor + envío por unidad)
- * × tasa del pedido, con seis decimales.
+ * × tasa del pedido, con cinco decimales.
  */
 export function landedUnitCost(
   unitPrice: number,
   perUnitShipping: number,
   rate: number,
 ): number {
-  const price = units(unitPrice, 6)
-  const shipping = units(perUnitShipping, 6)
+  const price = units(unitPrice, 5)
+  const shipping = units(perUnitShipping, 5)
   const micros = units(rate, 6)
   if (price === null || shipping === null || micros === null) return NaN
   if (price < 0n || shipping < 0n || micros <= 0n) return NaN
-  return fromMicros(divideHalfUp((price + shipping) * micros, MICROS))
+  return fromMicros(divideHalfUp((price + shipping) * micros, 1_000_000n))
 }
 /**
  * Promedio ponderado de las existencias (tienda y bodega) y lo que entra:
  * (existentes × promedio + entrantes × costo) / (existentes + entrantes), con
- * seis decimales. Sin existencias, el promedio es el costo de lo que entra.
+ * cinco decimales. Sin existencias, el promedio es el costo de lo que entra.
  * `null` cuando hay existencias sin costo conocido: no hay base contra la cual
  * promediar y la base de datos rechazaría la compra.
  */
@@ -218,11 +217,11 @@ export function weightedAverageCost(
     incomingUnits < 1
   )
     return null
-  const incoming = units(incomingUnitCost, 6)
+  const incoming = units(incomingUnitCost, 5)
   if (incoming === null || incoming < 0n) return null
   if (existingUnits === 0) return fromMicros(incoming)
   if (existingAverage === null) return null
-  const current = units(existingAverage, 6)
+  const current = units(existingAverage, 5)
   if (current === null || current < 0n) return null
   return fromMicros(
     divideHalfUp(
@@ -330,7 +329,7 @@ export function computedTiers(pricing: PricingInput | null | undefined) {
     (tier) => tierStatus(pricing, tier) === 'computed',
   ).length
 }
-/** El costo promedio con sus seis decimales, sin ceros de sobra. */
+/** El costo promedio mostrado con dos decimales. */
 export function exactCost(value: number): string {
-  return value.toFixed(6).replace(/\.?0+$/, '')
+  return value.toFixed(2)
 }

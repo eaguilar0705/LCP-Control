@@ -8,6 +8,7 @@ import {
   Select,
   LoadingState,
 } from '../../components/ui'
+import { useCanVoid } from '../accounting/financeAccess'
 import { useAccess } from '../../app/AccessContext'
 import { useServices } from '../../services/useServices'
 import { useQuery } from '../../lib/useQuery'
@@ -51,6 +52,7 @@ function PurchaseHistory({
   onClose: () => void
   onChanged: () => void
 }) {
+  const canVoid = useCanVoid()
   const { inventoryService, productService, settingsService } = useServices()
   const [cursor, setCursor] = useState<PurchaseHistoryRecord>()
   const [previous, setPrevious] = useState<
@@ -253,7 +255,7 @@ function PurchaseHistory({
                       <>
                         {row.correction_problem ? (
                           <p role="note">{row.correction_problem}</p>
-                        ) : (
+                        ) : canVoid ? (
                           <div className="form-actions">
                             <Button
                               variant="secondary"
@@ -268,7 +270,7 @@ function PurchaseHistory({
                               Anular compra
                             </Button>
                           </div>
-                        )}
+                        ) : null}
                       </>
                     )}
                   </div>

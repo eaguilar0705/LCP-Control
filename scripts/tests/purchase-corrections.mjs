@@ -225,12 +225,12 @@ try {
       await identity(db, id, role)
       await rejected(
         () => call('record_shipment', buy()),
-        /permission|privilege|denied/i,
+        /permission|privilege|denied|SuperAdmin/i,
         'Compra sin permiso',
       )
       await rejected(
         () => call('correct_purchase', correct(crypto.randomUUID())),
-        /permission|privilege|denied/i,
+        /permission|privilege|denied|SuperAdmin/i,
         'Corrección sin permiso',
       )
     }
@@ -297,13 +297,13 @@ try {
             productId: product,
             location: 'store',
             quantity: 3,
-            unitPrice: 111.123456,
+            unitPrice: 111.12,
           },
           {
             productId: other,
             location: 'warehouse',
             quantity: 2,
-            unitPrice: 43.123456,
+            unitPrice: 43.12,
           },
         ],
       })
@@ -313,10 +313,10 @@ try {
       )
       equal(
         value[0].value,
-        '3421.62',
+        '3421.60',
         'Costo total compra coincide con cabecera redondeada',
       )
-      equal(balance(await ledger(), '1130'), 3421.62)
+      equal(balance(await ledger(), '1130'), 3421.6)
       equal((await snapshot())['public.product_prices'], prices)
       const correction = correct(id)
       await rejected(
@@ -991,7 +991,7 @@ try {
               productId: product,
               location: index % 3 === 0 ? 'store' : 'warehouse',
               quantity: (index % 7) + 1,
-              unitPrice: 111.123456,
+              unitPrice: 111.12,
             },
           ],
         })
@@ -1009,7 +1009,13 @@ try {
           const book = await ledger()
           equal(balance(book, '1130'), 3000)
           equal(
-            book.accounts.reduce((sum, row) => sum + row.debit - row.credit, 0),
+            book.accounts.reduce(
+              (sum, row) =>
+                sum +
+                Math.round(row.debit * 100) -
+                Math.round(row.credit * 100),
+              0,
+            ),
             0,
           )
         }
