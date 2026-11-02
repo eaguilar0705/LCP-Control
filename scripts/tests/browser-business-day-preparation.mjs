@@ -165,6 +165,10 @@ try {
       await dialog
         .getByRole('button', { name: 'Actualizar jornada', exact: true })
         .click()
+      await page.waitForFunction(
+        (input) => input.value === '1200',
+        await dialog.getByLabel('Córdobas C$', { exact: true }).elementHandle(),
+      )
       eq(
         await dialog.getByLabel('Córdobas C$', { exact: true }).inputValue(),
         '1200',
