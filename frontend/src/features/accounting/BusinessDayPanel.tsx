@@ -6,6 +6,7 @@ import {
   FileDown,
   RefreshCw,
   RotateCcw,
+  Pencil,
 } from 'lucide-react'
 import { useAccess } from '../../app/AccessContext'
 import { Button, Card, Dialog, Input } from '../../components/ui'
@@ -27,11 +28,12 @@ import {
 } from './businessDay'
 import '../../styles/business-day.css'
 
-type DayAction = 'open' | 'close' | 'reopen'
+type DayAction = 'open' | 'close' | 'reopen' | 'correct'
 const actionTitle: Record<DayAction, string> = {
   open: 'Abrir tienda',
   close: 'Cerrar tienda',
   reopen: 'Reabrir jornada',
+  correct: 'Editar efectivo inicial',
 }
 const cashFormat = new Intl.NumberFormat('es-NI', {
   minimumFractionDigits: 2,
@@ -158,9 +160,15 @@ function DayPanel({ admin }: { admin: boolean }) {
               <Button onClick={() => begin('open')}>Abrir tienda</Button>
             )}
           {admin && current && data?.status === 'open' && (
-            <Button variant="secondary" onClick={() => begin('close')}>
-              Cerrar tienda
-            </Button>
+            <>
+              <Button variant="secondary" onClick={() => begin('correct')}>
+                <Pencil size={17} />
+                Editar efectivo inicial
+              </Button>
+              <Button variant="secondary" onClick={() => begin('close')}>
+                Cerrar tienda
+              </Button>
+            </>
           )}
           {admin &&
             current &&
@@ -239,6 +247,18 @@ function DayPanel({ admin }: { admin: boolean }) {
                 </Link>
               </div>
             )}
+          <div
+            className="day-payment-list"
+            aria-label="Efectivo inicial de la jornada"
+          >
+            <div>
+              <span>Efectivo inicial</span>
+              <strong>
+                {formatCurrency(data.openingNio ?? 0, 'NIO')} ·{' '}
+                {formatCurrency(data.openingUsd ?? 0, 'USD')}
+              </strong>
+            </div>
+          </div>
           <div className="day-metrics">
             <div className="day-net-sales">
               <span>Venta neta del día</span>
@@ -327,7 +347,7 @@ function DayPanel({ admin }: { admin: boolean }) {
           onToggle={(event) => setHistoryExpanded(event.currentTarget.open)}
         >
           <summary>
-            Historial de cierres y reaperturas
+            Historial de la jornada
             {historyEvents.length ? ` (${historyEvents.length})` : ''}
           </summary>
           <p className="day-history-date">{formatDate(data.day)}</p>
@@ -343,20 +363,52 @@ function DayPanel({ admin }: { admin: boolean }) {
             <p role="status">Cargando historial…</p>
           )}
           {!history.error && historyCurrent && !historyEvents.length && (
-            <p>Sin cierres ni reaperturas para esta fecha.</p>
+            <p>Sin cambios registrados para esta fecha.</p>
           )}
           {historyEvents.map((event) => (
             <article key={event.id} className="day-history-event">
               <div>
                 <strong>
-                  {event.event === 'close' ? 'Cierre' : 'Reapertura'} · revisión{' '}
-                  {event.revision}
+                  {event.event === 'close'
+                    ? 'Cierre'
+                    : event.event === 'correct'
+                      ? 'Corrección de apertura'
+                      : 'Reapertura'}{' '}
+                  · revisión {event.revision}
                 </strong>
                 <span>
                   {timestamp(event.createdAt)} · {event.actorName}
                 </span>
                 {event.reason && <p>{event.reason}</p>}
               </div>
+              {event.openingCorrection && (
+                <div className="day-history-totals">
+                  <span>
+                    Antes:{' '}
+                    {formatCurrency(
+                      event.openingCorrection.before.openingNio,
+                      'NIO',
+                    )}{' '}
+                    ·{' '}
+                    {formatCurrency(
+                      event.openingCorrection.before.openingUsd,
+                      'USD',
+                    )}
+                  </span>
+                  <span>
+                    Corregido:{' '}
+                    {formatCurrency(
+                      event.openingCorrection.after.openingNio,
+                      'NIO',
+                    )}{' '}
+                    ·{' '}
+                    {formatCurrency(
+                      event.openingCorrection.after.openingUsd,
+                      'USD',
+                    )}
+                  </span>
+                </div>
+              )}
               {event.report && (
                 <div className="day-history-totals">
                   <span>
@@ -418,8 +470,16 @@ function DayDialog({
 }) {
   const { base, storageScope = 'anonymous' } = useAccess()
   const [preview, setPreview] = useState(day)
-  const [nio, setNio] = useState('')
-  const [usd, setUsd] = useState(action === 'open' ? '0' : '')
+  const [nio, setNio] = useState(
+    action === 'correct' ? String(day.openingNio ?? 0) : '',
+  )
+  const [usd, setUsd] = useState(
+    action === 'correct'
+      ? String(day.openingUsd ?? 0)
+      : action === 'open'
+        ? '0'
+        : '',
+  )
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [checking, setChecking] = useState(false)
@@ -436,15 +496,22 @@ function DayDialog({
     Math.round((Number(usd) - (preview.report?.expectedUsd ?? 0)) * 100) / 100
   const discrepancy = hasAmounts && (differenceNio !== 0 || differenceUsd !== 0)
   const reasonRequired =
-    action === 'reopen' || (action === 'close' && (historical || discrepancy))
-  const minReason = action === 'reopen' || historical ? 10 : 1
+    action === 'correct' ||
+    action === 'reopen' ||
+    (action === 'close' && (historical || discrepancy))
+  const minReason =
+    action === 'correct' || action === 'reopen' || historical ? 10 : 1
   const changed =
     !!latest &&
     (action === 'open'
       ? latest.today !== preview.day || latest.status !== 'not_opened'
-      : latest.day !== preview.day ||
-        latest.stateToken !== preview.stateToken ||
-        latest.revision !== preview.revision)
+      : action === 'correct'
+        ? latest.day !== preview.day ||
+          latest.status !== 'open' ||
+          latest.revision !== preview.revision
+        : latest.day !== preview.day ||
+          latest.stateToken !== preview.stateToken ||
+          latest.revision !== preview.revision)
   const payload =
     action === 'open'
       ? {
@@ -452,20 +519,28 @@ function DayDialog({
           openingNio: Number(nio),
           openingUsd: Number(usd),
         }
-      : action === 'reopen'
+      : action === 'correct'
         ? {
             day: preview.day,
+            openingNio: Number(nio),
+            openingUsd: Number(usd),
             reason: note.trim(),
             expectedRevision: preview.revision,
           }
-        : {
-            day: preview.day,
-            countedNio: Number(nio),
-            countedUsd: Number(usd),
-            note: note.trim(),
-            expectedRevision: preview.revision,
-            expectedStateToken: preview.stateToken,
-          }
+        : action === 'reopen'
+          ? {
+              day: preview.day,
+              reason: note.trim(),
+              expectedRevision: preview.revision,
+            }
+          : {
+              day: preview.day,
+              countedNio: Number(nio),
+              countedUsd: Number(usd),
+              note: note.trim(),
+              expectedRevision: preview.revision,
+              expectedStateToken: preview.stateToken,
+            }
   const key = JSON.stringify(payload)
   // El mismo identificador permite recuperar un resultado que el servidor ya
   // guardó, incluso si otra pestaña cambió después el estado de la jornada.
@@ -485,6 +560,10 @@ function DayDialog({
         p_day: action === 'open' ? null : preview.day,
       })
       setPreview(fresh)
+      if (action === 'correct') {
+        setNio(String(fresh.openingNio ?? 0))
+        setUsd(String(fresh.openingUsd ?? 0))
+      }
       setAttempt(null)
       onRefresh()
     } catch (e) {
@@ -589,7 +668,7 @@ function DayDialog({
         {action !== 'reopen' ? (
           <>
             <p>
-              {action === 'open'
+              {action === 'open' || action === 'correct'
                 ? 'Efectivo inicial en caja'
                 : 'Efectivo contado al cierre'}
             </p>
@@ -669,6 +748,32 @@ function DayDialog({
         ) : (
           <p>Se conservan la apertura, las ventas y el cierre anterior.</p>
         )}
+        {action === 'correct' && (
+          <div
+            className="day-count-preview"
+            aria-label="Corrección del efectivo de apertura"
+          >
+            <div>
+              <span>Moneda</span>
+              <strong>C$</strong>
+              <strong>US$</strong>
+            </div>
+            <div>
+              <span>Apertura anterior</span>
+              <strong>{cashFormat.format(preview.openingNio ?? 0)}</strong>
+              <strong>{cashFormat.format(preview.openingUsd ?? 0)}</strong>
+            </div>
+            <div>
+              <span>Apertura corregida</span>
+              <strong>
+                {nio === '' ? '—' : cashFormat.format(Number(nio))}
+              </strong>
+              <strong>
+                {usd === '' ? '—' : cashFormat.format(Number(usd))}
+              </strong>
+            </div>
+          </div>
+        )}
         {action === 'close' && preview.report && (
           <>
             <div className="day-count-preview" aria-label="Resumen del cierre">
@@ -714,9 +819,11 @@ function DayDialog({
         {action !== 'open' && (
           <Input
             label={
-              action === 'reopen'
-                ? 'Motivo de reapertura'
-                : 'Observación / motivo de diferencia'
+              action === 'correct'
+                ? 'Motivo de la corrección'
+                : action === 'reopen'
+                  ? 'Motivo de reapertura'
+                  : 'Observación / motivo de diferencia'
             }
             value={note}
             required={reasonRequired}
@@ -769,16 +876,25 @@ function DayDialog({
           </Button>
           <Button
             disabled={
-              busy || checking || (!retrying && (changed || !canConfirm))
+              busy ||
+              checking ||
+              (!retrying &&
+                (changed ||
+                  !canConfirm ||
+                  (action === 'correct' &&
+                    Number(nio) === preview.openingNio &&
+                    Number(usd) === preview.openingUsd)))
             }
           >
             {busy
               ? 'Guardando…'
               : action === 'open'
                 ? 'Confirmar apertura'
-                : action === 'reopen'
-                  ? 'Confirmar reapertura'
-                  : 'Confirmar cierre'}
+                : action === 'correct'
+                  ? 'Guardar corrección'
+                  : action === 'reopen'
+                    ? 'Confirmar reapertura'
+                    : 'Confirmar cierre'}
           </Button>
         </div>
       </form>

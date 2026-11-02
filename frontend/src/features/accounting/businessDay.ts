@@ -55,7 +55,7 @@ export interface BusinessDay {
 export interface BusinessDayEvent {
   id: string
   day: string
-  event: 'close' | 'reopen'
+  event: 'close' | 'reopen' | 'correct'
   revision: number
   createdAt: string
   actorId: string
@@ -63,6 +63,10 @@ export interface BusinessDayEvent {
   reason: string
   requestId: string
   report: DailyReport | null
+  openingCorrection?: {
+    before: { openingNio: number; openingUsd: number }
+    after: { openingNio: number; openingUsd: number }
+  } | null
 }
 async function callDayRpc(name: string, args: Record<string, unknown>) {
   if (!supabase)
