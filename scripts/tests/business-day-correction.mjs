@@ -162,6 +162,10 @@ try {
   eq(entry.openingCorrection, {
     before: { openingNio: 1000, openingUsd: 20 },
     after: { openingNio: 1500, openingUsd: 15 },
+    openingNio: 1500,
+    openingUsd: 15,
+    openedAt: corrected.openedAt,
+    closedAt: null,
   })
   eq(entry.reason, correction.reason)
   eq(entry.actorId, admin)
@@ -253,9 +257,9 @@ try {
     call('correct_business_day', {
       ...correction,
       requestId: crypto.randomUUID(),
-      expectedRevision: closed.revision,
+      expectedRevision: closed.revision - 1,
     }),
-    /cerrada/,
+    /cambió/,
   )
   eq(
     await call('correct_business_day', correction),

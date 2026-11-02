@@ -268,8 +268,8 @@ try {
         await panel
           .getByRole('button', { name: 'Editar efectivo inicial', exact: true })
           .count(),
-        0,
-        'un cierre se conserva',
+        1,
+        'se puede corregir la apertura sin reabrir la jornada',
       )
       eq(errors, [])
       eq(fixture.failures, [])

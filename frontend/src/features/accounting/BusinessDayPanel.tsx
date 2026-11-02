@@ -28,12 +28,13 @@ import {
 } from './businessDay'
 import '../../styles/business-day.css'
 
-type DayAction = 'open' | 'close' | 'reopen' | 'correct'
+type DayAction = 'open' | 'close' | 'reopen' | 'correct' | 'prepare'
 const actionTitle: Record<DayAction, string> = {
   open: 'Abrir tienda',
   close: 'Cerrar tienda',
   reopen: 'Reabrir jornada',
   correct: 'Editar efectivo inicial',
+  prepare: 'Preparar efectivo inicial',
 }
 const cashFormat = new Intl.NumberFormat('es-NI', {
   minimumFractionDigits: 2,
@@ -68,15 +69,24 @@ function DayPanel({ admin }: { admin: boolean }) {
   const [historyExpanded, setHistoryExpanded] = useState(false)
   const day = data?.day
   const revision = data?.revision
+  const preparationRevision = data?.openingDraft?.revision
   const loadHistory = useCallback(
     () =>
       admin && day && revision !== undefined
-        ? getBusinessDayHistory(day).then((events) => ({ day, events }))
+        ? getBusinessDayHistory(day).then((events) => ({
+            day,
+            events,
+            revision,
+            preparationRevision,
+          }))
         : Promise.resolve(null),
-    [admin, day, revision],
+    [admin, day, revision, preparationRevision],
   )
   const history = useQuery(loadHistory)
-  const historyCurrent = history.data?.day === day
+  const historyCurrent =
+    history.data?.day === day &&
+    history.data?.revision === revision &&
+    history.data?.preparationRevision === preparationRevision
   const historyEvents = historyCurrent ? (history.data?.events ?? []) : []
   const refreshPanel = () => {
     refresh()
@@ -159,16 +169,24 @@ function DayPanel({ admin }: { admin: boolean }) {
             !data.openDay && (
               <Button onClick={() => begin('open')}>Abrir tienda</Button>
             )}
-          {admin && current && data?.status === 'open' && (
-            <>
-              <Button variant="secondary" onClick={() => begin('correct')}>
+          {admin &&
+            current &&
+            data &&
+            (data.status !== 'not_opened' || data.day === data.today) && (
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  begin(data.status === 'not_opened' ? 'prepare' : 'correct')
+                }
+              >
                 <Pencil size={17} />
                 Editar efectivo inicial
               </Button>
-              <Button variant="secondary" onClick={() => begin('close')}>
-                Cerrar tienda
-              </Button>
-            </>
+            )}
+          {admin && current && data?.status === 'open' && (
+            <Button variant="secondary" onClick={() => begin('close')}>
+              Cerrar tienda
+            </Button>
           )}
           {admin &&
             current &&
@@ -228,6 +246,18 @@ function DayPanel({ admin }: { admin: boolean }) {
           )}
         </div>
       )}
+      {admin &&
+        current &&
+        data?.status === 'not_opened' &&
+        data.openingDraft && (
+          <div className="day-opening-shortcuts">
+            <strong>Efectivo preparado</strong>
+            <span>
+              {formatCurrency(data.openingDraft.openingNio, 'NIO')} ·{' '}
+              {formatCurrency(data.openingDraft.openingUsd, 'USD')}
+            </span>
+          </div>
+        )}
       {admin && data && report && (
         <>
           {data?.status === 'open' &&
@@ -373,7 +403,9 @@ function DayPanel({ admin }: { admin: boolean }) {
                     ? 'Cierre'
                     : event.event === 'correct'
                       ? 'Corrección de apertura'
-                      : 'Reapertura'}{' '}
+                      : event.event === 'prepare'
+                        ? 'Preparación de apertura'
+                        : 'Reapertura'}{' '}
                   · revisión {event.revision}
                 </strong>
                 <span>
@@ -381,6 +413,15 @@ function DayPanel({ admin }: { admin: boolean }) {
                 </span>
                 {event.reason && <p>{event.reason}</p>}
               </div>
+              {event.openingPreparation && !event.openingCorrection && (
+                <div className="day-history-totals">
+                  <span>
+                    {formatCurrency(event.openingPreparation.openingNio, 'NIO')}{' '}
+                    ·{' '}
+                    {formatCurrency(event.openingPreparation.openingUsd, 'USD')}
+                  </span>
+                </div>
+              )}
               {event.openingCorrection && (
                 <div className="day-history-totals">
                   <span>
@@ -443,7 +484,7 @@ function DayPanel({ admin }: { admin: boolean }) {
           onClose={() => setAction(null)}
           onSaved={() => {
             setAction(null)
-            setDate('')
+            setDate(action.day.day === action.day.today ? '' : action.day.day)
             refresh()
             history.refresh()
           }}
@@ -471,13 +512,17 @@ function DayDialog({
   const { base, storageScope = 'anonymous' } = useAccess()
   const [preview, setPreview] = useState(day)
   const [nio, setNio] = useState(
-    action === 'correct' ? String(day.openingNio ?? 0) : '',
+    action === 'correct'
+      ? String(day.openingNio ?? 0)
+      : action === 'prepare' || (action === 'open' && day.openingDraft)
+        ? String(day.openingDraft?.openingNio ?? 0)
+        : '',
   )
   const [usd, setUsd] = useState(
     action === 'correct'
       ? String(day.openingUsd ?? 0)
-      : action === 'open'
-        ? '0'
+      : action === 'open' || action === 'prepare'
+        ? String(day.openingDraft?.openingUsd ?? 0)
         : '',
   )
   const [note, setNote] = useState('')
@@ -503,11 +548,15 @@ function DayDialog({
     action === 'correct' || action === 'reopen' || historical ? 10 : 1
   const changed =
     !!latest &&
-    (action === 'open'
-      ? latest.today !== preview.day || latest.status !== 'not_opened'
+    (action === 'open' || action === 'prepare'
+      ? latest.today !== preview.day ||
+        latest.status !== 'not_opened' ||
+        (latest.openingDraft?.revision ?? 0) !==
+          (preview.openingDraft?.revision ?? 0) ||
+        (action === 'open' && latest.openDay !== preview.openDay)
       : action === 'correct'
         ? latest.day !== preview.day ||
-          latest.status !== 'open' ||
+          latest.status !== preview.status ||
           latest.revision !== preview.revision
         : latest.day !== preview.day ||
           latest.stateToken !== preview.stateToken ||
@@ -518,29 +567,37 @@ function DayDialog({
           expectedDay: preview.day,
           openingNio: Number(nio),
           openingUsd: Number(usd),
+          expectedOpeningDraftRevision: preview.openingDraft?.revision ?? 0,
         }
-      : action === 'correct'
+      : action === 'prepare'
         ? {
             day: preview.day,
             openingNio: Number(nio),
             openingUsd: Number(usd),
-            reason: note.trim(),
-            expectedRevision: preview.revision,
+            expectedPreparationRevision: preview.openingDraft?.revision ?? 0,
           }
-        : action === 'reopen'
+        : action === 'correct'
           ? {
               day: preview.day,
+              openingNio: Number(nio),
+              openingUsd: Number(usd),
               reason: note.trim(),
               expectedRevision: preview.revision,
             }
-          : {
-              day: preview.day,
-              countedNio: Number(nio),
-              countedUsd: Number(usd),
-              note: note.trim(),
-              expectedRevision: preview.revision,
-              expectedStateToken: preview.stateToken,
-            }
+          : action === 'reopen'
+            ? {
+                day: preview.day,
+                reason: note.trim(),
+                expectedRevision: preview.revision,
+              }
+            : {
+                day: preview.day,
+                countedNio: Number(nio),
+                countedUsd: Number(usd),
+                note: note.trim(),
+                expectedRevision: preview.revision,
+                expectedStateToken: preview.stateToken,
+              }
   const key = JSON.stringify(payload)
   // El mismo identificador permite recuperar un resultado que el servidor ya
   // guardó, incluso si otra pestaña cambió después el estado de la jornada.
@@ -563,6 +620,15 @@ function DayDialog({
       if (action === 'correct') {
         setNio(String(fresh.openingNio ?? 0))
         setUsd(String(fresh.openingUsd ?? 0))
+      } else if (action === 'prepare' || action === 'open') {
+        setNio(
+          fresh.openingDraft
+            ? String(fresh.openingDraft.openingNio)
+            : action === 'prepare'
+              ? '0'
+              : '',
+        )
+        setUsd(String(fresh.openingDraft?.openingUsd ?? 0))
       }
       setAttempt(null)
       onRefresh()
@@ -629,10 +695,14 @@ function DayDialog({
   }
   const canConfirm =
     action === 'open'
-      ? preview.status === 'not_opened' && !preview.openDay
-      : action === 'reopen'
-        ? preview.status === 'closed' && !historical && !preview.openDay
-        : preview.status === 'open'
+      ? preview.status === 'not_opened' && !historical && !preview.openDay
+      : action === 'prepare'
+        ? preview.status === 'not_opened' && !historical
+        : action === 'correct'
+          ? preview.status === 'open' || preview.status === 'closed'
+          : action === 'reopen'
+            ? preview.status === 'closed' && !historical && !preview.openDay
+            : preview.status === 'open'
   return (
     <Dialog
       open
@@ -668,11 +738,11 @@ function DayDialog({
         {action !== 'reopen' ? (
           <>
             <p>
-              {action === 'open' || action === 'correct'
+              {action === 'open' || action === 'correct' || action === 'prepare'
                 ? 'Efectivo inicial en caja'
                 : 'Efectivo contado al cierre'}
             </p>
-            {action === 'open' && (
+            {(action === 'open' || action === 'prepare') && (
               <div className="day-opening-shortcuts">
                 {preview.openingSuggestion && (
                   <div className="day-previous-closing">
@@ -816,7 +886,13 @@ function DayDialog({
             )}
           </>
         )}
-        {action !== 'open' && (
+        {action === 'correct' && preview.status === 'closed' && (
+          <p className="day-notice">
+            Se conserva el efectivo contado al cierre y se recalcula la
+            diferencia de caja. La jornada seguirá cerrada.
+          </p>
+        )}
+        {action !== 'open' && action !== 'prepare' && (
           <Input
             label={
               action === 'correct'
@@ -883,18 +959,24 @@ function DayDialog({
                   !canConfirm ||
                   (action === 'correct' &&
                     Number(nio) === preview.openingNio &&
-                    Number(usd) === preview.openingUsd)))
+                    Number(usd) === preview.openingUsd) ||
+                  (action === 'prepare' &&
+                    !!preview.openingDraft &&
+                    Number(nio) === preview.openingDraft.openingNio &&
+                    Number(usd) === preview.openingDraft.openingUsd)))
             }
           >
             {busy
               ? 'Guardando…'
               : action === 'open'
                 ? 'Confirmar apertura'
-                : action === 'correct'
-                  ? 'Guardar corrección'
-                  : action === 'reopen'
-                    ? 'Confirmar reapertura'
-                    : 'Confirmar cierre'}
+                : action === 'prepare'
+                  ? 'Guardar efectivo inicial'
+                  : action === 'correct'
+                    ? 'Guardar corrección'
+                    : action === 'reopen'
+                      ? 'Confirmar reapertura'
+                      : 'Confirmar cierre'}
           </Button>
         </div>
       </form>

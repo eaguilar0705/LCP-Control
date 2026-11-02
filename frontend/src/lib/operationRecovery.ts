@@ -20,6 +20,7 @@ export const operationLabels = {
   'business-day-close': 'Cierre',
   'business-day-reopen': 'Reapertura',
   'business-day-correct': 'Corrección de apertura',
+  'business-day-prepare': 'Efectivo preparado',
 } as const
 export type OperationKind = keyof typeof operationLabels
 export interface OperationReference {
