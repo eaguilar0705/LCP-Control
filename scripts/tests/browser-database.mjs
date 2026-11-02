@@ -90,6 +90,8 @@ export async function browserDatabase(page) {
     'product_prices',
     'price_tiers',
     'business_days',
+    'storefront_drafts',
+    'storefront_publications',
   ])
   await page.route('**/*.supabase.co/**', async (route) => {
     const req = route.request(),
@@ -145,7 +147,7 @@ export async function browserDatabase(page) {
         return send(isSet ? result : result[0])
       }
       const table = url.pathname.split('/').at(-1)
-      if (req.method() !== 'GET' || !tables.has(table))
+      if (!['GET', 'HEAD'].includes(req.method()) || !tables.has(table))
         throw new Error(`Unhandled ${req.method()} ${url.pathname}`)
       let extra = ''
       if (table === 'products')
@@ -160,6 +162,21 @@ export async function browserDatabase(page) {
         values = []
       for (const [key, value] of url.searchParams) {
         if (['select', 'order', 'limit', 'offset'].includes(key)) continue
+        if (
+          key === 'or' &&
+          /^\([a-z_]+\.eq\.[\w-]+(?:,[a-z_]+\.eq\.[\w-]+)*\)$/.test(value)
+        ) {
+          const alternatives = value
+            .slice(1, -1)
+            .split(',')
+            .map((part) => {
+              const [column, , literal] = part.split('.')
+              values.push(literal)
+              return `t.${column}=$${values.length}`
+            })
+          conditions.push(`(${alternatives.join(' or ')})`)
+          continue
+        }
         if (!/^[a-z_]+$/.test(key))
           throw new Error('Unhandled query key: ' + key)
         const dot = value.indexOf('.'),

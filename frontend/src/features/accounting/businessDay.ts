@@ -44,6 +44,15 @@ export interface BusinessDay {
   reopenCount: number
   serverNow: string
   stateToken: string
+  openingDraft?: {
+    id: string
+    day: string
+    revision: number
+    openingNio: number
+    openingUsd: number
+    actorName: string
+    createdAt: string
+  } | null
   openingSuggestion?: {
     day: string
     countedNio: number
@@ -55,7 +64,7 @@ export interface BusinessDay {
 export interface BusinessDayEvent {
   id: string
   day: string
-  event: 'close' | 'reopen'
+  event: 'close' | 'reopen' | 'correct' | 'prepare'
   revision: number
   createdAt: string
   actorId: string
@@ -63,6 +72,11 @@ export interface BusinessDayEvent {
   reason: string
   requestId: string
   report: DailyReport | null
+  openingPreparation?: { openingNio: number; openingUsd: number } | null
+  openingCorrection?: {
+    before: { openingNio: number; openingUsd: number }
+    after: { openingNio: number; openingUsd: number }
+  } | null
 }
 async function callDayRpc(name: string, args: Record<string, unknown>) {
   if (!supabase)

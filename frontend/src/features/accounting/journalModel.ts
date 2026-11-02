@@ -24,6 +24,19 @@ export interface JournalRecord {
   exchange_rate: number
   voided_at: string | null
   void_reason: string | null
+  revision?: number
+}
+export interface JournalDetailRecord extends JournalRecord {
+  lines: JournalDetailLine[]
+  openingAccounts?: { code: string; name: string; bucket: string }[]
+  openingHistory?: {
+    id: string
+    revision: number
+    actorName: string
+    createdAt: string
+    before: JournalDetailRecord
+    after: JournalDetailRecord
+  }[]
 }
 export interface JournalDetailLine {
   account: string

@@ -4,7 +4,7 @@ import {
   useSyncExternalStore,
   type FormEvent,
 } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, Pencil } from 'lucide-react'
 import {
   Button,
   Card,
@@ -70,6 +70,7 @@ export function JournalWorkspace({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [detailId, setDetailId] = useState<string | null>(null)
+  const [editingOpening, setEditingOpening] = useState(false)
   const [pageState, setPageState] = useState<{
     source: LedgerReport
     offset: number
@@ -116,6 +117,31 @@ export function JournalWorkspace({
         <h2>Comprobantes</h2>
       </div>
       <div className="journal-actions">
+        {data.startOn && (
+          <Button
+            variant="secondary"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true)
+              setError('')
+              try {
+                const id = await journalRpc<string>(
+                  'get_opening_journal_id',
+                  {},
+                )
+                setEditingOpening(true)
+                setDetailId(id)
+              } catch (failure) {
+                setError(errorMessage(failure))
+              } finally {
+                setBusy(false)
+              }
+            }}
+          >
+            <Pencil size={16} />
+            Editar saldos iniciales
+          </Button>
+        )}
         {(Object.keys(journalKinds) as Kind[])
           .filter(
             (k) =>
@@ -139,6 +165,11 @@ export function JournalWorkspace({
           </Button>
         )}
       </div>
+      {error && !voidId && (
+        <p role="alert" className="inline-error">
+          {error}
+        </p>
+      )}
       {history.error && (
         <ErrorState
           message={history.error}
@@ -167,7 +198,13 @@ export function JournalWorkspace({
             {entries.map((e) => (
               <tr key={e.id}>
                 <td>
-                  <Button variant="ghost" onClick={() => setDetailId(e.id)}>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setEditingOpening(false)
+                      setDetailId(e.id)
+                    }}
+                  >
                     {journalNumber(e)}
                   </Button>
                 </td>
@@ -297,6 +334,8 @@ export function JournalWorkspace({
               import('./journalModel').AutomaticJournalRecord | undefined
           }
           onClose={() => setDetailId(null)}
+          onChanged={onChanged}
+          startEditing={editingOpening}
         />
       )}
       {voidId && (

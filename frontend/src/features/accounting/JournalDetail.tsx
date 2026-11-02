@@ -4,33 +4,37 @@ import { useQuery } from '../../lib/useQuery'
 import { errorMessage } from '../../lib/errors'
 import { formatCurrency, formatDate } from '../../lib/format'
 import { journalRpc } from './journalService'
-import {
-  journalNumber,
-  type AutomaticJournalRecord,
-  type JournalDetailLine,
-  type JournalRecord,
-} from './journalModel'
+import { journalNumber, type AutomaticJournalRecord } from './journalModel'
 import { useServices } from '../../services/useServices'
-interface Detail extends JournalRecord {
-  lines: JournalDetailLine[]
-}
+import { useAccess } from '../../app/AccessContext'
+import { OpeningJournalEditor } from './OpeningJournalEditor'
+import type { JournalDetailRecord } from './journalModel'
 export function JournalDetail({
   id,
   entry,
   onClose,
+  onChanged,
+  startEditing = false,
 }: {
   id: string
   entry?: AutomaticJournalRecord
   onClose: () => void
+  onChanged?: () => void
+  startEditing?: boolean
 }) {
   const load = useCallback(
     () =>
       entry
-        ? Promise.resolve(entry)
-        : journalRpc<Detail>('get_journal_entry', { p_id: id }),
+        ? Promise.resolve<JournalDetailRecord>(entry)
+        : journalRpc<JournalDetailRecord>('get_journal_entry', { p_id: id }),
     [id, entry],
   )
-  const { data, error, loading, retry } = useQuery(load)
+  const { data: current, error, loading, retry, refresh } = useQuery(load)
+  const [snapshot, setSnapshot] = useState<JournalDetailRecord | null>(null)
+  const data = snapshot ?? current
+  const [editing, setEditing] = useState(startEditing)
+  const [pendingEdit, setPendingEdit] = useState(false)
+  const { role, demo } = useAccess()
   const { salesService } = useServices()
   const [failure, setFailure] = useState(''),
     [busy, setBusy] = useState(false)
@@ -71,6 +75,7 @@ export function JournalDetail({
         `Fecha: ${formatDate(data.occurred_on)}`,
         `Referencia: ${data.reference || '—'}`,
         `Moneda: ${data.currency} · Tipo de cambio: ${data.exchange_rate}`,
+        ...(data.kind === 'opening' ? [`Revisión: ${data.revision ?? 0}`] : []),
         data.description,
         ...(warning ? [warning] : []),
         ...(data.voided_at ? [`ANULADO: ${data.void_reason}`] : []),
@@ -126,20 +131,53 @@ export function JournalDetail({
   return (
     <Dialog
       open
-      title={data ? `Comprobante ${journalNumber(data)}` : 'Comprobante'}
-      onClose={onClose}
+      title={
+        editing
+          ? `Editar apertura ${data ? journalNumber(data) : ''}`
+          : data
+            ? `Comprobante ${journalNumber(data)}`
+            : 'Comprobante'
+      }
+      dismissible={!pendingEdit}
+      onClose={() => {
+        if (!pendingEdit) onClose()
+      }}
       className="journal-dialog"
     >
       {loading ? (
         <LoadingState />
       ) : error || !data ? (
         <ErrorState message={error ?? 'Sin datos.'} retry={retry} />
+      ) : editing ? (
+        <OpeningJournalEditor
+          entry={data}
+          onPending={setPendingEdit}
+          onCancel={() => {
+            setEditing(false)
+            refresh()
+          }}
+          onSaved={() => {
+            setEditing(false)
+            refresh()
+            onChanged?.()
+          }}
+        />
       ) : (
         <>
           <p>
             {formatDate(data.occurred_on)} · {data.description}
           </p>
           <p>{data.reference}</p>
+          {snapshot && (
+            <div className="day-notice">
+              <strong>
+                Versión del historial · revisión {snapshot.revision ?? 0}
+              </strong>
+              <Button variant="secondary" onClick={() => setSnapshot(null)}>
+                Volver a la versión actual
+              </Button>
+            </div>
+          )}
           {warning && <p role="status">{warning}</p>}
           {data.voided_at && <p>ANULADO · {data.void_reason}</p>}
           <div className="accounting-table-scroll">
@@ -173,9 +211,61 @@ export function JournalDetail({
               {failure}
             </p>
           )}
-          <Button disabled={busy} onClick={() => void download()}>
-            {busy ? 'Generando…' : 'Descargar PDF'}
-          </Button>
+          <div className="form-actions">
+            {!snapshot &&
+              data.kind === 'opening' &&
+              !data.voided_at &&
+              !demo &&
+              (role === 'admin' || role === 'superadmin') && (
+                <Button onClick={() => setEditing(true)}>
+                  Editar apertura
+                </Button>
+              )}
+            <Button
+              variant="secondary"
+              disabled={busy}
+              onClick={() => void download()}
+            >
+              {busy ? 'Generando…' : 'Descargar PDF'}
+            </Button>
+          </div>
+          {!!current?.openingHistory?.length && (
+            <details className="day-history">
+              <summary>
+                Historial de ediciones ({current.openingHistory.length})
+              </summary>
+              {current.openingHistory.map((change) => (
+                <article className="day-history-event" key={change.id}>
+                  <div>
+                    <strong>Edición · revisión {change.revision}</strong>
+                    <span>
+                      {new Intl.DateTimeFormat('es-NI', {
+                        dateStyle: 'short',
+                        timeStyle: 'short',
+                        timeZone: 'America/Managua',
+                      }).format(new Date(change.createdAt))}{' '}
+                      · {change.actorName}
+                    </span>
+                  </div>
+                  <div className="form-actions">
+                    <Button
+                      variant="secondary"
+                      onClick={() => setSnapshot(change.before)}
+                    >
+                      Ver versión anterior · revisión{' '}
+                      {change.before.revision ?? 0}
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      onClick={() => setSnapshot(change.after)}
+                    >
+                      Ver versión guardada · revisión {change.revision}
+                    </Button>
+                  </div>
+                </article>
+              ))}
+            </details>
+          )}
         </>
       )}
     </Dialog>

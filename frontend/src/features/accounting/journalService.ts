@@ -55,7 +55,7 @@ export async function journalRpc<T>(
   if (!supabase)
     throw new AppError('configuration', 'No hay conexión con la tienda.')
   const confirmationMessage =
-    name === 'record_journal_entry'
+    name === 'record_journal_entry' || name === 'correct_opening_journal'
       ? 'No pudimos confirmar si el comprobante se guardó. Usa «Verificar guardado» para recuperar el resultado sin duplicarlo.'
       : 'No pudimos conectar con la información contable. Inténtalo de nuevo.'
   const { data, error, status } = await supabase.rpc(name, args)
@@ -94,8 +94,10 @@ export async function journalRpc<T>(
   }
   if (data === null || data === undefined)
     throw new AppError(
-      name === 'record_journal_entry' ? 'network' : 'unexpected',
-      name === 'record_journal_entry'
+      name === 'record_journal_entry' || name === 'correct_opening_journal'
+        ? 'network'
+        : 'unexpected',
+      name === 'record_journal_entry' || name === 'correct_opening_journal'
         ? confirmationMessage
         : 'No se recibió el detalle contable. Inténtalo de nuevo.',
     )

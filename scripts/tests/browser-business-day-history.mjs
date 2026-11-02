@@ -137,7 +137,7 @@ try {
       const details = panel.locator('.day-history')
       await details.locator('summary').click()
       await details
-        .getByText('Sin cierres ni reaperturas para esta fecha.', {
+        .getByText('Sin cambios registrados para esta fecha.', {
           exact: true,
         })
         .waitFor()
@@ -228,7 +228,7 @@ try {
         .getByRole('button', { name: 'Volver a hoy', exact: true })
         .click()
       await details
-        .getByText('Sin cierres ni reaperturas para esta fecha.', {
+        .getByText('Sin cambios registrados para esta fecha.', {
           exact: true,
         })
         .waitFor({ state: 'attached' })
