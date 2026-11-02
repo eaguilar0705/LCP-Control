@@ -10,6 +10,7 @@ import {
 import { formatCurrency, formatDate } from '../../lib/format'
 import { equivalentAmount, priceTierLabels } from '../../lib/pricing'
 import { printDensity } from './printDensity'
+import { shippingLabel } from './shipping'
 
 /**
  * Factura o proforma en tamaño carta/A4. La densidad se ajusta sola al número
@@ -159,12 +160,23 @@ export function DocumentPrint({ document: d }: { document: DocumentRecord }) {
         <div className="letter-totals">
           <p>
             <span>Subtotal</span>
-            <b>{formatCurrency(d.originalTotal ?? d.total, d.currency)}</b>
+            <b>
+              {formatCurrency(
+                d.originalTotal ?? d.total - (d.shippingAmount ?? 0),
+                d.currency,
+              )}
+            </b>
           </p>
           {!!d.discountAmount && (
             <p>
               <span>Descuento</span>
               <b>−{formatCurrency(d.discountAmount, d.currency)}</b>
+            </p>
+          )}
+          {(d.shippingMethod || !!d.shippingAmount) && (
+            <p>
+              <span>{shippingLabel(d)}</span>
+              <b>{formatCurrency(d.shippingAmount ?? 0, d.currency)}</b>
             </p>
           )}
           <p className="letter-grand-total">

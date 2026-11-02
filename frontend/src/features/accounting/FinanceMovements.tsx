@@ -474,6 +474,8 @@ export function RecordDialog({
           exchangeRate: roundRate(rate),
           reference: reference.trim(),
           account: shownAccount as MoneyAccount,
+          bankLedgerAccount:
+            shownAccount === 'banco' ? bankAccount || null : null,
         })
         onRecorded('Gasto registrado.')
       } else {

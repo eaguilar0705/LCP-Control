@@ -49,7 +49,9 @@ import type {
   PriceTier,
   NewDocument,
   InvoicePayment,
+  ShippingMethod,
 } from '../../lib/domain'
+import { shippingMethodLabels } from './shipping'
 import {
   equivalentAmount,
   priceTierLabels,
@@ -93,6 +95,7 @@ function formattedDraftTotal(draft: DocumentDraft) {
     draft.tier,
     draft.currency,
     draft.discount,
+    draft.shippingAmount,
   )
   return total === null ? 'Sin precio' : formatCurrency(total, draft.currency)
 }
@@ -195,6 +198,12 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
   const [discount, setDiscount] = useState<DraftDiscount | undefined>(
     restored?.draft.discount,
   )
+  const [shippingMethod, setShippingMethod] = useState<ShippingMethod | ''>(
+    restored?.draft.shippingMethod ?? '',
+  )
+  const [shippingText, setShippingText] = useState(
+    String(restored?.draft.shippingAmount ?? 0),
+  )
   const [discountEditor, setDiscountEditor] = useState<{
     productId: string | null
     text: string
@@ -282,6 +291,8 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
     validUntil,
     notes,
     discount,
+    shippingMethod,
+    shippingText,
     lines,
   })
   const hasContent = !!(
@@ -290,6 +301,8 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
     phone ||
     taxId ||
     notes ||
+    shippingMethod ||
+    Number(shippingText) ||
     lines.length ||
     payments.length
   )
@@ -357,13 +370,32 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
       line.quantity > 0 &&
       line.quantity <= 9999,
   )
-  const total = valid ? draftTotal(lines, tier, currency, discount) : null
+  const shippingAmount = Number(shippingText)
+  const shippingIssue =
+    shippingText.trim() === '' ||
+    !Number.isFinite(shippingAmount) ||
+    shippingAmount < 0 ||
+    shippingAmount > 10000000 ||
+    Math.abs(shippingAmount * 100 - Math.round(shippingAmount * 100)) > 0.000001
+      ? 'Escribe un costo de envío de 0 a 10,000,000, con dos decimales como máximo.'
+      : shippingAmount > 0 && !shippingMethod
+        ? 'Selecciona el tipo de envío.'
+        : undefined
+  const productTotal = valid
+    ? draftTotal(lines, tier, currency, discount)
+    : null
+  const total =
+    valid && !shippingIssue
+      ? draftTotal(lines, tier, currency, discount, shippingAmount)
+      : null
   const validExchange =
     currency === 'NIO' ||
     (exchangeRate !== null &&
       Number.isFinite(exchangeRate) &&
       exchangeRate > 0 &&
       exchangeRate <= 1000000)
+  const exchangeIssue =
+    (kind === 'invoice' || shippingAmount > 0) && !validExchange
   const paymentRate = currency === 'NIO' ? 1 : (exchangeRate ?? 0)
   const splitValid = splitPaymentsValid(payments, total, currency, paymentRate)
   /**
@@ -428,7 +460,12 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
         : validUntil < isoDate(new Date())
           ? 'La vigencia no puede ser anterior a hoy.'
           : undefined
-  const dataIssues = !!(customerIssue || phoneIssue || validityIssue)
+  const dataIssues = !!(
+    customerIssue ||
+    phoneIssue ||
+    validityIssue ||
+    shippingIssue
+  )
   const draft: DocumentDraft | null =
     lines.length && valid && total !== null
       ? {
@@ -448,6 +485,8 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
           validUntil,
           notes,
           discount,
+          shippingMethod: shippingMethod || null,
+          shippingAmount,
           createdAt: current?.createdAt ?? new Date().toISOString(),
           lines,
         }
@@ -510,6 +549,8 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
       ...stamp,
       kind,
       discount,
+      shippingMethod: shippingMethod || null,
+      shippingAmount,
       customer,
       customerId,
       phone,
@@ -626,7 +667,8 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
           total === null ||
           shortages > 0 ||
           dataIssues ||
-          (kind === 'invoice' && (!validExchange || !splitValid)))) ||
+          exchangeIssue ||
+          (kind === 'invoice' && !splitValid))) ||
       busy ||
       issued ||
       demo
@@ -654,6 +696,8 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
       notes,
       expectedTotal: total ?? undefined,
       invoiceDiscount: discountValue(discount, tier, currency),
+      shippingMethod: shippingMethod || null,
+      shippingAmount,
       items: lines.map((line) => ({
         productId: line.productId,
         quantity: line.quantity,
@@ -776,6 +820,8 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
     setValidUntil(item.validUntil || defaultValidUntil())
     setNotes(item.notes)
     setDiscount(item.discount)
+    setShippingMethod(item.shippingMethod ?? '')
+    setShippingText(String(item.shippingAmount ?? 0))
     let pricesChanged = false
     const refreshedLines = item.lines.map((line) => {
       const product = data?.find(
@@ -814,6 +860,8 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
         validUntil: item.validUntil || defaultValidUntil(),
         notes: item.notes,
         discount: item.discount,
+        shippingMethod: item.shippingMethod ?? '',
+        shippingText: String(item.shippingAmount ?? 0),
         lines: pricesChanged ? item.lines : refreshedLines,
       }),
     )
@@ -837,6 +885,8 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
     setExchangeText(null)
     setNotes('')
     setDiscount(undefined)
+    setShippingMethod('')
+    setShippingText('0')
     setLines([])
     setValidUntil(defaultValidUntil())
     setMessage('')
@@ -929,7 +979,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
       !priceReviewRequired &&
       shortages === 0 &&
       !dataIssues &&
-      (kind !== 'invoice' || validExchange) &&
+      !exchangeIssue &&
       (kind !== 'invoice' || splitValid) &&
       (kind !== 'invoice' ||
         !businessDay ||
@@ -1089,7 +1139,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
                   </span>
                   {!issued &&
                     lines.length > 0 &&
-                    (dataIssues || (kind === 'invoice' && !validExchange)) && (
+                    (dataIssues || exchangeIssue) && (
                       <small className="document-customer-warning">
                         Completar datos
                       </small>
@@ -1141,6 +1191,37 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
                   value={taxId}
                   onChange={(e) => setTaxId(e.target.value)}
                 />
+                <Select
+                  label="Tipo de envío"
+                  value={shippingMethod}
+                  onChange={(event) => {
+                    const method = event.target.value as ShippingMethod | ''
+                    setShippingMethod(method)
+                    if (!method) setShippingText('0')
+                  }}
+                >
+                  <option value="">Sin envío</option>
+                  {Object.entries(shippingMethodLabels).map(
+                    ([method, label]) => (
+                      <option key={method} value={method}>
+                        {label}
+                      </option>
+                    ),
+                  )}
+                </Select>
+                {!!shippingMethod && (
+                  <Input
+                    label={`Cobro por envío (${currency === 'NIO' ? 'C$' : 'US$'})`}
+                    type="number"
+                    inputMode="decimal"
+                    min={0}
+                    max={10000000}
+                    step={0.01}
+                    value={shippingText}
+                    error={issued ? undefined : shippingIssue}
+                    onChange={(event) => setShippingText(event.target.value)}
+                  />
+                )}
                 {kind === 'invoice' ? (
                   <>
                     {!payments.length && (
@@ -1231,8 +1312,10 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
                     step="0.000001"
                     value={exchangeField}
                     error={
-                      kind === 'invoice' && !validExchange
-                        ? 'Registra el tipo de cambio para contabilizar esta venta.'
+                      exchangeIssue
+                        ? kind === 'proforma'
+                          ? 'Registra el tipo de cambio para el envío.'
+                          : 'Registra el tipo de cambio para contabilizar esta venta.'
                         : undefined
                     }
                     onChange={(event) => setExchangeText(event.target.value)}
@@ -1262,6 +1345,12 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
               tier={tier}
               onCurrency={(value) => {
                 setIssued(null)
+                if (value !== currency && Number(shippingText) !== 0) {
+                  setShippingText('0')
+                  setMessage(
+                    'Moneda cambiada. Revisa y registra el costo de envío en la nueva moneda.',
+                  )
+                }
                 setCurrency(value)
               }}
               onTier={(value) => {
@@ -1437,7 +1526,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
                     setDiscountError('')
                     setDiscountEditor({
                       productId: null,
-                      text: total === null ? '' : String(total),
+                      text: productTotal === null ? '' : String(productTotal),
                     })
                   }}
                 >
@@ -1456,11 +1545,14 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
                   Quitar descuento total
                 </Button>
               )}
-              {total === null && valid && lines.length > 0 && (
-                <p role="alert" className="field-error">
-                  Revisa los precios y descuentos antes de emitir.
-                </p>
-              )}
+              {total === null &&
+                valid &&
+                !shippingIssue &&
+                lines.length > 0 && (
+                  <p role="alert" className="field-error">
+                    Revisa los precios y descuentos antes de emitir.
+                  </p>
+                )}
               {!!shareable?.discountAmount && (
                 <p className="invoice-discount-summary">
                   Precio de lista:{' '}
@@ -1480,6 +1572,17 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
                   </strong>
                 </p>
               )}
+              {!!shareable?.shippingMethod && (
+                <p className="invoice-discount-summary">
+                  Envío · {shippingMethodLabels[shareable.shippingMethod]}:{' '}
+                  <strong>
+                    {formatCurrency(
+                      shareable.shippingAmount ?? 0,
+                      shareable.currency,
+                    )}
+                  </strong>
+                </p>
+              )}
               <div className="invoice-total">
                 <span>Total de la {copy.singular}</span>
                 <strong>
@@ -1487,7 +1590,9 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
                     ? formatCurrency(issued.total, issued.currency)
                     : total === null
                       ? valid
-                        ? 'Revisar precios'
+                        ? shippingIssue
+                          ? 'Revisar envío'
+                          : 'Revisar precios'
                         : 'Revisar cantidades'
                       : formatCurrency(total, currency)}
                 </strong>
@@ -1522,23 +1627,21 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
                     : `No se puede emitir: ${shortages} renglones necesitan revisión, mira los avisos bajo sus cantidades.`}
                 </p>
               )}
-              {!issued &&
-                lines.length > 0 &&
-                (dataIssues || (kind === 'invoice' && !validExchange)) && (
-                  <div
-                    className="document-data-issue inline-error no-print"
-                    role="status"
+              {!issued && lines.length > 0 && (dataIssues || exchangeIssue) && (
+                <div
+                  className="document-data-issue inline-error no-print"
+                  role="status"
+                >
+                  <span>{`No se puede emitir: revisa los datos marcados en «Datos de la ${copy.singular}».`}</span>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => goToSection('document-customer')}
                   >
-                    <span>{`No se puede emitir: revisa los datos marcados en «Datos de la ${copy.singular}».`}</span>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => goToSection('document-customer')}
-                    >
-                      Revisar datos
-                    </Button>
-                  </div>
-                )}
+                    Revisar datos
+                  </Button>
+                </div>
+              )}
               <div className="form-actions no-print">
                 <Button
                   onClick={issue}
@@ -1736,7 +1839,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
               label={
                 discountEditor.productId
                   ? `Precio final por unidad (${currency})`
-                  : `Total a cobrar (${currency})`
+                  : `Total de productos a cobrar (${currency})`
               }
               type="number"
               min={0.01}

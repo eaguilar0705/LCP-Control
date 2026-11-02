@@ -247,6 +247,9 @@ export function digestFromPayload(
   }
   const ledgerTotals = (row: Record<string, unknown>): LedgerTotals => ({
     revenueNio: number(row.revenueNio),
+    shippingNio: row.shippingNio === undefined ? 0 : number(row.shippingNio),
+    shippingExpenseNio:
+      row.shippingExpenseNio === undefined ? 0 : number(row.shippingExpenseNio),
     salesTaxNio: number(row.salesTaxNio),
     costOfSalesNio: number(row.costOfSalesNio),
     missingCostUnits: number(row.missingCostUnits),

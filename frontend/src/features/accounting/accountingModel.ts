@@ -142,6 +142,13 @@ export const chartOfAccounts: ChartAccount[] = [
     nature: 'credit',
     parent: '4000',
   },
+  {
+    code: '4120',
+    description: 'Cobros por envío',
+    kind: 'account',
+    nature: 'credit',
+    parent: '4000',
+  },
   { code: '5000', description: 'Egresos', kind: 'group', nature: 'debit' },
   {
     code: '5120',
@@ -238,7 +245,7 @@ function positionValue(
 }
 
 type Summary = ReturnType<typeof accountingSummary>
-type ResultCode = '4110' | '5120' | '5130' | '5140' | '5150' | '6000'
+type ResultCode = '4110' | '4120' | '5120' | '5130' | '5140' | '5150' | '6000'
 function reliable(report: ReportData) {
   return (
     report.accounting.available &&
@@ -276,6 +283,8 @@ function resultAmount(
   if (!reliable(report)) return null
   if (code === '4110')
     return summary.missingRevenueLines ? null : summary.revenueNio
+  if (code === '4120')
+    return summary.missingRevenueLines ? null : summary.shippingNio
   if (code === '5120')
     return summary.missingCostUnits ? null : summary.costOfSalesNio
   if (code === '5150')
@@ -339,6 +348,7 @@ export function buildAccountingModel({
   const needsEarlierResult = report.range.from > accumulatedFrom
   const resultCodes: ResultCode[] = [
     '4110',
+    '4120',
     '5120',
     '5130',
     '5140',
@@ -506,12 +516,16 @@ export function buildAccountingModel({
       accumulatedNio: null,
     },
     incomeLine('4110'),
+    incomeLine('4120'),
     {
       code: '',
       description: 'Total ingresos',
       kind: 'subtotal',
-      periodNio: periodResult['4110'],
-      accumulatedNio: cumulativeResult['4110'],
+      periodNio: total([periodResult['4110'], periodResult['4120']]),
+      accumulatedNio: total([
+        cumulativeResult['4110'],
+        cumulativeResult['4120'],
+      ]),
     },
     {
       code: '5000',

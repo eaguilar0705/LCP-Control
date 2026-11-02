@@ -23,6 +23,7 @@ export type {
   ExchangeRate,
   CustomerRecord,
   DocumentKind,
+  ShippingMethod,
   DocumentItemRecord,
   DocumentRecord,
   InvoicePayment,

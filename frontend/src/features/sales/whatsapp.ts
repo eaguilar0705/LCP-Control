@@ -2,6 +2,7 @@ import { formatCurrency, formatDate } from '../../lib/format'
 import { documentCopy, labels } from '../../lib/domain'
 import { priceTierLabels } from '../../lib/pricing'
 import type { DocumentRecord } from '../../lib/domain'
+import { shippingLabel } from './shipping'
 
 const NICARAGUA_CODE = '505'
 const LOCAL_LENGTH = 8
@@ -63,6 +64,11 @@ export function whatsappMessage(document: DocumentRecord): string {
       ),
     ),
     '',
+    ...(document.shippingMethod || document.shippingAmount
+      ? [
+          `${shippingLabel(document)}: ${formatCurrency(document.shippingAmount ?? 0, document.currency)}`,
+        ]
+      : []),
     `*Total: ${formatCurrency(document.total, document.currency)}*`,
   )
   if (document.notes.trim()) parts.push('', `Nota: ${document.notes.trim()}`)

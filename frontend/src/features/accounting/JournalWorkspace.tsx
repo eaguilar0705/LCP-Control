@@ -62,7 +62,7 @@ export function JournalWorkspace({
   const canVoid = useCanVoid()
   const { storageScope = 'anonymous' } = useAccess()
   useSyncExternalStore(subscribePendingJournal, pendingJournalRevision)
-  const [action, setAction] = useState<Kind | null>(
+  const [action, setAction] = useState<Kind | 'shipping' | null>(
     () => getPendingJournal(storageScope)?.kind ?? null,
   )
   const [voidId, setVoidId] = useState<string | null>(null)
@@ -132,6 +132,12 @@ export function JournalWorkspace({
               {journalKinds[kind]}
             </Button>
           ))}
+        {data.startOn && (
+          <Button variant="secondary" onClick={() => setAction('shipping')}>
+            <Plus size={16} />
+            Pago de envío
+          </Button>
+        )}
       </div>
       {history.error && (
         <ErrorState
@@ -273,7 +279,8 @@ export function JournalWorkspace({
       )}
       {action && (
         <JournalDialog
-          kind={action}
+          kind={action === 'shipping' ? 'expense' : action}
+          shipping={action === 'shipping'}
           data={data}
           onClose={() => setAction(null)}
           onSaved={() => {
@@ -324,11 +331,13 @@ export function JournalWorkspace({
 }
 function JournalDialog({
   kind,
+  shipping = false,
   data,
   onClose,
   onSaved,
 }: {
   kind: Kind
+  shipping?: boolean
   data: LedgerReport
   onClose: () => void
   onSaved: () => void
@@ -337,7 +346,9 @@ function JournalDialog({
   const [restored] = useState(() => getPendingJournal(storageScope))
   const [pending, setPending] = useState<JournalSubmission | null>(restored)
   const [date, setDate] = useState(restored?.occurredOn ?? localDay(new Date()))
-  const [description, setDescription] = useState(restored?.description ?? '')
+  const [description, setDescription] = useState(
+    restored?.description ?? (shipping ? 'Pago de envío a cliente' : ''),
+  )
   const [reference, setReference] = useState(restored?.reference ?? '')
   const [currency, setCurrency] = useState<'NIO' | 'USD'>(
     restored?.currency ?? 'NIO',
@@ -354,7 +365,9 @@ function JournalDialog({
   const [amount, setAmount] = useState(
     restored ? String(restored.gross ?? restored.lines[0]?.debit ?? '') : '',
   )
-  const [origin, setOrigin] = useState(restored?.lines.at(-1)?.account ?? '')
+  const [origin, setOrigin] = useState(
+    restored?.lines.at(-1)?.account ?? (shipping ? '1110-001' : ''),
+  )
   const [destination, setDestination] = useState(
     restored?.bankAccount ?? restored?.lines[0]?.account ?? '',
   )
@@ -374,7 +387,10 @@ function JournalDialog({
       : '',
   )
   const simple =
-    kind === 'transfer' || kind === 'deposit' || kind === 'card_settlement'
+    shipping ||
+    kind === 'transfer' ||
+    kind === 'deposit' ||
+    kind === 'card_settlement'
   const accounts = data.accounts.filter(
     (a) =>
       a.postable &&
@@ -383,6 +399,9 @@ function JournalDialog({
       (kind === 'opening' || accountAcceptsCurrency(a.code, currency)),
   )
   const bankAccounts = accounts.filter((a) => a.code.startsWith('1120-'))
+  const shippingPaymentAccounts = accounts.filter(
+    (a) => a.code.startsWith('1110-') || a.code.startsWith('1120-'),
+  )
   let settlement: ReturnType<typeof cardSettlement> | null = null
   let settlementError = ''
   try {
@@ -402,28 +421,33 @@ function JournalDialog({
     settlementError = e instanceof Error ? e.message : errorMessage(e)
   }
   const activeLines: Line[] = simple
-    ? kind === 'card_settlement'
-      ? settlement
-        ? [
-            { account: destination, debit: settlement.net, credit: 0 },
-            { account: '5140-001', debit: settlement.commission, credit: 0 },
-            { account: '1340', debit: settlement.withholding, credit: 0 },
-            { account: '1142', debit: 0, credit: Number(amount) },
-          ].filter((l) => l.debit || l.credit)
-        : []
-      : [
-          { account: destination, debit: Number(amount), credit: 0 },
-          {
-            account:
-              kind === 'deposit'
-                ? currency === 'NIO'
-                  ? '1110-001'
-                  : '1110-002'
-                : origin,
-            debit: 0,
-            credit: Number(amount),
-          },
+    ? shipping
+      ? [
+          { account: '5130-011', debit: Number(amount), credit: 0 },
+          { account: origin, debit: 0, credit: Number(amount) },
         ]
+      : kind === 'card_settlement'
+        ? settlement
+          ? [
+              { account: destination, debit: settlement.net, credit: 0 },
+              { account: '5140-001', debit: settlement.commission, credit: 0 },
+              { account: '1340', debit: settlement.withholding, credit: 0 },
+              { account: '1142', debit: 0, credit: Number(amount) },
+            ].filter((l) => l.debit || l.credit)
+          : []
+        : [
+            { account: destination, debit: Number(amount), credit: 0 },
+            {
+              account:
+                kind === 'deposit'
+                  ? currency === 'NIO'
+                    ? '1110-001'
+                    : '1110-002'
+                  : origin,
+              debit: 0,
+              credit: Number(amount),
+            },
+          ]
     : lines
   const exchangeRate = currency === 'NIO' ? 1 : Number(rate)
   const {
@@ -443,6 +467,7 @@ function JournalDialog({
   const valid =
     balanced &&
     activeLines.every((l) => accounts.some((a) => a.code === l.account)) &&
+    (!shipping || shippingPaymentAccounts.some((a) => a.code === origin)) &&
     (!simple || activeLines[0].account !== activeLines.at(-1)?.account)
   function update(index: number, key: keyof Line, value: string) {
     setError('')
@@ -532,7 +557,7 @@ function JournalDialog({
   return (
     <Dialog
       open
-      title={journalKinds[kind]}
+      title={shipping ? 'Pago de envío' : journalKinds[kind]}
       className="journal-dialog"
       dismissible={!busy && !pending}
       onClose={() => {
@@ -629,6 +654,21 @@ function JournalDialog({
           {simple ? (
             <>
               <div className="journal-fields">
+                {shipping && (
+                  <Select
+                    label="Pagado desde"
+                    required
+                    value={origin}
+                    onChange={(e) => setOrigin(e.target.value)}
+                  >
+                    <option value="">Seleccionar caja o banco</option>
+                    {shippingPaymentAccounts.map((a) => (
+                      <option key={a.code} value={a.code}>
+                        {a.name}
+                      </option>
+                    ))}
+                  </Select>
+                )}
                 {kind === 'transfer' && (
                   <Select
                     label="Banco de origen"
@@ -644,23 +684,25 @@ function JournalDialog({
                     ))}
                   </Select>
                 )}
-                <Select
-                  label={
-                    kind === 'card_settlement'
-                      ? 'Banco que acredita'
-                      : 'Banco de destino'
-                  }
-                  required
-                  value={destination}
-                  onChange={(e) => setDestination(e.target.value)}
-                >
-                  <option value="">Seleccionar</option>
-                  {bankAccounts.map((a) => (
-                    <option key={a.code} value={a.code}>
-                      {a.name}
-                    </option>
-                  ))}
-                </Select>
+                {!shipping && (
+                  <Select
+                    label={
+                      kind === 'card_settlement'
+                        ? 'Banco que acredita'
+                        : 'Banco de destino'
+                    }
+                    required
+                    value={destination}
+                    onChange={(e) => setDestination(e.target.value)}
+                  >
+                    <option value="">Seleccionar</option>
+                    {bankAccounts.map((a) => (
+                      <option key={a.code} value={a.code}>
+                        {a.name}
+                      </option>
+                    ))}
+                  </Select>
+                )}
                 <Input
                   label={
                     kind === 'card_settlement'

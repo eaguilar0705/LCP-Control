@@ -145,6 +145,8 @@ function toExpense(row: AccountingRow): ExpenseRecord {
     requestId: row.request_id as string,
     incurredOn: row.incurred_on as string,
     category: row.category as ExpenseInput['category'],
+    account: (row.account ?? 'caja') as ExpenseInput['account'],
+    bankLedgerAccount: (row.bank_ledger_account as string | null) ?? null,
     description: row.description as string,
     amount: numeric(row.amount),
     currency: row.currency as ExpenseInput['currency'],
@@ -324,7 +326,7 @@ export function createAccountingAdapter(
             client()
               .from('expense_records')
               .select(
-                'id,request_id,incurred_on,category,description,amount,currency,exchange_rate,reference,account,created_at,voided_at,void_reason',
+                'id,request_id,incurred_on,category,description,amount,currency,exchange_rate,reference,account,bank_ledger_account,created_at,voided_at,void_reason',
                 { count: 'exact' },
               )
               .gte('incurred_on', from)
@@ -485,7 +487,7 @@ export function createAccountingAdapter(
           client()
             .from('expense_records')
             .select(
-              'id,request_id,incurred_on,category,description,amount,currency,exchange_rate,reference,created_at,voided_at,void_reason',
+              'id,request_id,incurred_on,category,description,amount,currency,exchange_rate,reference,account,bank_ledger_account,created_at,voided_at,void_reason',
               { count: 'exact' },
             )
             .gte('incurred_on', window.from)
@@ -522,6 +524,23 @@ export function createAccountingAdapter(
                 .range(start, end),
             )
           : Promise.resolve({ rows: [] as AccountingRow[], truncated: false }),
+        lines
+          ? readReportPages<AccountingRow>((start, end) =>
+              client()
+                .from('journal_lines')
+                .select(
+                  'entry_id,line_no,debit_nio,credit_nio,journal_entries!inner(occurred_on,voided_at)',
+                  { count: 'exact' },
+                )
+                .eq('account', '5130-011')
+                .is('journal_entries.voided_at', null)
+                .gte('journal_entries.occurred_on', window.from)
+                .lte('journal_entries.occurred_on', window.to)
+                .order('entry_id')
+                .order('line_no')
+                .range(start, end),
+            )
+          : Promise.resolve({ rows: [] as AccountingRow[], truncated: false }),
       ])
       const failures = results.filter((result) => result.status === 'rejected')
       // A missing table must not hide a simultaneous permission or network error.
@@ -530,11 +549,17 @@ export function createAccountingAdapter(
       )
       if (unexpected) throw errorToApp(unexpected.reason)
       if (failures.length) return structuredClone(emptyAccounting)
-      const [costs, shipments, expenses, saleCosts, movementCosts] =
-        results.map((result) => {
-          if (result.status === 'rejected') throw result.reason
-          return result.value
-        })
+      const [
+        costs,
+        shipments,
+        expenses,
+        saleCosts,
+        movementCosts,
+        shippingExpenses,
+      ] = results.map((result) => {
+        if (result.status === 'rejected') throw result.reason
+        return result.value
+      })
       return {
         available: true,
         costs: costs.rows.map((row) => ({
@@ -546,6 +571,11 @@ export function createAccountingAdapter(
         })),
         shipments: shipments.rows.map(toShipment),
         expenses: expenses.rows.map(toExpense),
+        shippingExpenses: shippingExpenses.rows.map((row) => ({
+          incurredOn: (row.journal_entries as { occurred_on: string })
+            .occurred_on,
+          amountNio: numeric(row.debit_nio) - numeric(row.credit_nio),
+        })),
         saleCosts: saleCosts.rows.map((row) => ({
           documentId: row.document_id as string,
           productId: row.product_id as string,
@@ -564,9 +594,14 @@ export function createAccountingAdapter(
           totalCostNio: nullableNumeric(row.total_cost_nio),
           createdAt: row.created_at as string,
         })),
-        truncated: [costs, shipments, expenses, saleCosts, movementCosts].some(
-          (result) => result.truncated,
-        ),
+        truncated: [
+          costs,
+          shipments,
+          expenses,
+          saleCosts,
+          movementCosts,
+          shippingExpenses,
+        ].some((result) => result.truncated),
       }
     },
   }

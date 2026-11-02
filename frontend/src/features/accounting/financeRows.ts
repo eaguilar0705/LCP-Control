@@ -72,7 +72,10 @@ export function rowsOf(
       ? `Pago de préstamo · ${expenseLabel(expense.category)}`
       : (expenseLabel(expense.category) ?? 'Gasto'),
     detail: expense.description,
-    account: moneyAccounts[expense.account] ?? expense.account,
+    account:
+      (expense.bankLedgerAccount && bankNames[expense.bankLedgerAccount]) ||
+      moneyAccounts[expense.account] ||
+      expense.account,
     amountNio: toNio(expense),
     sign: -1,
     voidReason: expense.voidedAt ? (expense.voidReason ?? '') : null,

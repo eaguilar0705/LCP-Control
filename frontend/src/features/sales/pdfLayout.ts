@@ -9,6 +9,7 @@ import {
 } from '../../lib/domain'
 import { formatCurrency, formatDate } from '../../lib/format'
 import { equivalentAmount, priceTierLabels } from '../../lib/pricing'
+import { shippingLabel } from './shipping'
 
 /**
  * PDF de factura/proforma en carta. Coordenadas en puntos (612 × 792).
@@ -273,7 +274,11 @@ export function layoutDocumentPdf(
       : null
   const notesHeight = 22 + notes.length * 9.2 + (location ? 11 : 0)
   const totalsHeight =
-    12 + 26 + (equivalent ? 12 : 0) + (d.discountAmount ? 12 : 0)
+    12 +
+    26 +
+    (equivalent ? 12 : 0) +
+    (d.discountAmount ? 12 : 0) +
+    (d.shippingMethod || d.shippingAmount ? 12 : 0)
   const summaryHeight = Math.max(notesHeight, totalsHeight)
 
   function summary(top: number) {
@@ -285,11 +290,23 @@ export function layoutDocumentPdf(
     const x = 372
     let y = top + 8
     text('Subtotal', x, y, 8.5)
-    text(money(d.originalTotal ?? d.total), right, y, 9, true, 'right')
+    text(
+      money(d.originalTotal ?? d.total - (d.shippingAmount ?? 0)),
+      right,
+      y,
+      9,
+      true,
+      'right',
+    )
     if (d.discountAmount) {
       y += 12
       text('Descuento', x, y, 8.5)
       text(`-${money(d.discountAmount)}`, right, y, 9, true, 'right')
+    }
+    if (d.shippingMethod || d.shippingAmount) {
+      y += 12
+      text(shippingLabel(d), x, y, 8.5)
+      text(money(d.shippingAmount ?? 0), right, y, 9, true, 'right')
     }
     pdf
       .setFillColor(...accent)

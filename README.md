@@ -12,6 +12,8 @@ En **Inventario → Listas de precios**, administración puede crear listas con 
 
 En Registrar compra, el campo Proveedor sugiere los proveedores activos guardados al buscar por nombre, teléfono o RUC. Se puede elegir con el ratón o con las flechas y Enter; también admite un nombre escrito libremente sin crear otro contacto.
 
+En Facturación y Proformas se puede indicar envío por Moto, CargoTrans o Buses y cuánto se cobra al cliente. El envío aparece desglosado y se suma al total cobrado; Contabilidad lo reconoce separado de la venta de perfumes. El pago posterior al transportista se registra desde **Comprobantes → Pago de envío**. Ver [uso y activación de envíos](docs/envios-a-clientes.md).
+
 ## Instalar y ejecutar
 
 Requiere Node.js 22.12 o superior y npm. Ejecutar desde la raíz:

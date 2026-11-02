@@ -63,6 +63,7 @@ export type ExpenseCategory =
   | 'mobiliario'
   | 'viatico'
   | 'marketing'
+  | 'envios'
 
 export interface ExpenseInput {
   requestId: string
@@ -75,6 +76,7 @@ export interface ExpenseInput {
   reference: string
   /** De dónde salió el dinero. */
   account?: 'caja' | 'banco'
+  bankLedgerAccount?: string | null
 }
 
 export interface ShipmentLine extends ShipmentLineInput {
@@ -130,6 +132,8 @@ export interface AccountingSource {
   shipments: ShipmentRecord[]
   expenses: ExpenseRecord[]
   saleCosts: SaleCostSnapshot[]
+  /** Egresos manuales de envío; no incluye filas de expense_records. */
+  shippingExpenses?: { incurredOn: string; amountNio: number }[]
   movementCosts?: {
     movementId: string
     productId: string
@@ -150,6 +154,10 @@ export interface AccountingSource {
  */
 export interface LedgerTotals {
   revenueNio: number
+  /** Cobros por envío al cliente, separados del margen de los perfumes. */
+  shippingNio?: number
+  /** Gasto de envío registrado en comprobantes manuales, sin duplicar gastos. */
+  shippingExpenseNio?: number
   salesTaxNio: number
   costOfSalesNio: number
   missingCostUnits: number

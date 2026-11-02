@@ -8,6 +8,10 @@ import type {
   PriceTier,
 } from '../../lib/domain'
 const money = z.number().finite().min(0).max(10000000)
+const shippingMoney = money.refine(
+  (value) => Math.abs(value * 100 - Math.round(value * 100)) <= 0.000001,
+  'El envío admite dos decimales como máximo.',
+)
 const pair = z.object({ NIO: money, USD: money })
 const discountSchema = z.object({
   tier: z.string(),
@@ -25,46 +29,56 @@ export const draftLineSchema = z.object({
 })
 // One schema, one discriminating field. A draft always knows whether it is an
 // invoice or a proforma, so a proforma can never be reopened as an invoice.
-export const documentDraftSchema = z.object({
-  discount: discountSchema.optional(),
-  id: z.string(),
-  kind: z.enum(['invoice', 'proforma']),
-  reference: z.string(),
-  customer: z.string().max(200),
-  customerId: z.string().nullable().default(null),
-  phone: z.string().max(40).default(''),
-  // 80 es el tope que acepta la base al emitir; un borrador con más caracteres
-  // se guardaría sin problema y fallaría recién al emitir el documento.
-  taxId: z.string().max(80),
-  currency: z.enum(['NIO', 'USD']),
-  // Borradores guardados antes de quitar el IVA: se leen y se ignoran.
-  taxRate: z.number().finite().min(0).max(100).optional(),
-  exchangeRate: z
-    .number()
-    .finite()
-    .positive()
-    .max(1000000)
-    .nullable()
-    .optional(),
-  tier: z.string().min(1).max(100),
-  payment: z.enum(['pending', ...paymentMethods]),
-  payments: z
-    .array(
-      z.object({
-        method: z.enum(paymentMethods),
-        currency: z.enum(['NIO', 'USD']),
-        amount: money,
-        exchangeRate: z.number().finite().positive().max(1000000),
-      }),
-    )
-    .max(10)
-    .optional(),
-  location: z.enum(['warehouse', 'store']),
-  validUntil: z.string().max(10).default(''),
-  notes: z.string().max(1500),
-  createdAt: z.string(),
-  lines: z.array(draftLineSchema).min(1),
-})
+export const documentDraftSchema = z
+  .object({
+    shippingMethod: z
+      .enum(['moto', 'cargotrans', 'buses'])
+      .nullable()
+      .optional(),
+    shippingAmount: shippingMoney.optional(),
+    discount: discountSchema.optional(),
+    id: z.string(),
+    kind: z.enum(['invoice', 'proforma']),
+    reference: z.string(),
+    customer: z.string().max(200),
+    customerId: z.string().nullable().default(null),
+    phone: z.string().max(40).default(''),
+    // 80 es el tope que acepta la base al emitir; un borrador con más caracteres
+    // se guardaría sin problema y fallaría recién al emitir el documento.
+    taxId: z.string().max(80),
+    currency: z.enum(['NIO', 'USD']),
+    // Borradores guardados antes de quitar el IVA: se leen y se ignoran.
+    taxRate: z.number().finite().min(0).max(100).optional(),
+    exchangeRate: z
+      .number()
+      .finite()
+      .positive()
+      .max(1000000)
+      .nullable()
+      .optional(),
+    tier: z.string().min(1).max(100),
+    payment: z.enum(['pending', ...paymentMethods]),
+    payments: z
+      .array(
+        z.object({
+          method: z.enum(paymentMethods),
+          currency: z.enum(['NIO', 'USD']),
+          amount: money,
+          exchangeRate: z.number().finite().positive().max(1000000),
+        }),
+      )
+      .max(10)
+      .optional(),
+    location: z.enum(['warehouse', 'store']),
+    validUntil: z.string().max(10).default(''),
+    notes: z.string().max(1500),
+    createdAt: z.string(),
+    lines: z.array(draftLineSchema).min(1),
+  })
+  .refine((draft) => !draft.shippingAmount || !!draft.shippingMethod, {
+    path: ['shippingMethod'],
+    message: 'Selecciona el tipo de envío.',
+  })
 export type DocumentDraft = z.infer<typeof documentDraftSchema>
 export type DraftLine = z.infer<typeof draftLineSchema>
 export type DraftDiscount = z.infer<typeof discountSchema>
@@ -95,7 +109,9 @@ export function draftTotal(
   tier: PriceTier,
   currency: Currency,
   discount?: DraftDiscount,
+  shippingAmount = 0,
 ) {
+  if (!shippingMoney.safeParse(shippingAmount).success) return null
   if (lines.some((line) => draftLinePrice(line, tier, currency) === null))
     return null
   const total = lines.reduce(
@@ -114,7 +130,7 @@ export function draftTotal(
     )
   )
     return null
-  return (total - reduction) / 100
+  return (total - reduction + Math.round(shippingAmount * 100)) / 100
 }
 /** Reparto acumulado al centavo, en el mismo orden estable que PostgreSQL. */
 export function draftAmounts(
@@ -187,10 +203,20 @@ export function draftPreview(
     draft.tier,
     draft.currency,
     draft.discount,
+    draft.shippingAmount,
   )
   if (total === null)
     throw new Error('Hay perfumes sin precio en la lista seleccionada.')
   return {
+    shippingMethod: draft.shippingMethod ?? null,
+    shippingAmount: draft.shippingAmount ?? 0,
+    shippingNio:
+      draft.currency === 'NIO'
+        ? (draft.shippingAmount ?? 0)
+        : draft.exchangeRate != null
+          ? Math.round((draft.shippingAmount ?? 0) * draft.exchangeRate * 100) /
+            100
+          : undefined,
     catalogRate: catalogRate ?? null,
     id: draft.id,
     previewKind: 'draft',
@@ -221,7 +247,7 @@ export function draftPreview(
           0,
         ) /
           100 -
-          total) *
+          (total - (draft.shippingAmount ?? 0))) *
           100,
       ) / 100,
     invoiceDiscount: discountValue(draft.discount, draft.tier, draft.currency),

@@ -178,6 +178,7 @@ export interface CustomerRecord {
 // Facturas descuentan inventario; las proformas sólo cotizan. El tipo nunca se
 // deduce del contenido: viaja explícito desde la pantalla hasta PostgreSQL.
 export type DocumentKind = 'invoice' | 'proforma'
+export type ShippingMethod = 'moto' | 'cargotrans' | 'buses'
 
 export interface DocumentItemRecord {
   originalUnitPrice?: number
@@ -191,6 +192,11 @@ export interface DocumentItemRecord {
 }
 
 export interface DocumentRecord {
+  shippingMethod?: ShippingMethod | null
+  /** Importe cobrado por envío, en la moneda del documento. */
+  shippingAmount?: number
+  /** Importe del envío convertido a córdobas al emitir. */
+  shippingNio?: number | null
   originalTotal?: number
   discountAmount?: number
   invoiceDiscount?: number
@@ -234,6 +240,8 @@ export interface NewDocumentItem {
 }
 
 export interface NewDocument {
+  shippingMethod?: ShippingMethod | null
+  shippingAmount?: number
   invoiceDiscount?: number
   payments?: InvoicePayment[]
   expectedTotal?: number

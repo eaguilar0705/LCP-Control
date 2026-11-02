@@ -87,6 +87,7 @@ export const expenseCategories = {
   mobiliario: { account: 'ventas', label: 'Muebles y equipos electrónicos' },
   viatico: { account: 'ventas', label: 'Viático' },
   marketing: { account: 'ventas', label: 'Marketing y publicidad' },
+  envios: { account: 'ventas', label: 'Envíos a clientes' },
 } as const satisfies Record<
   ExpenseCategory,
   { account: ExpenseAccount; label: string }
@@ -124,6 +125,7 @@ interface ProductMargin {
 }
 interface AccountingSummary {
   revenueNio: number
+  shippingNio: number
   salesTaxNio: number
   costOfSalesNio: number
   grossProfitNio: number | null
@@ -203,6 +205,8 @@ export function expensesInRange(
 }
 const emptyLedger: LedgerPeriod = {
   revenueNio: 0,
+  shippingNio: 0,
+  shippingExpenseNio: 0,
   salesTaxNio: 0,
   costOfSalesNio: 0,
   missingCostUnits: 0,
@@ -243,9 +247,22 @@ function ledgerPeriod(source: ReportSource, range: ReportRange): LedgerPeriod {
   const snapshot = snapshotIndex(accounting)
   const products = new Map<string, LedgerProduct>()
   const tiers = new Map<PriceTier, LedgerTier>()
+  result.shippingExpenseNio = roundMoney(
+    (accounting.shippingExpenses ?? [])
+      .filter((row) => datedInRange(row.incurredOn, range))
+      .reduce((sum, row) => sum + row.amountNio, 0),
+  )
   for (const document of inRange(source.documents, range).filter(
     (row) => row.kind === 'invoice',
   )) {
+    const shipping = document.shippingAmount ?? 0
+    if (known(document.shippingNio))
+      result.shippingNio = (result.shippingNio ?? 0) + document.shippingNio
+    else if (shipping > 0) {
+      if (document.currency === 'NIO')
+        result.shippingNio = (result.shippingNio ?? 0) + shipping
+      else result.missingRevenueLines++
+    }
     const tier = tiers.get(document.tier) ?? {
       tier: document.tier,
       netRevenueNio: 0,
@@ -313,6 +330,7 @@ function ledgerPeriod(source: ReportSource, range: ReportRange): LedgerPeriod {
       )
   }
   result.revenueNio = roundMoney(result.revenueNio)
+  result.shippingNio = roundMoney(result.shippingNio ?? 0)
   result.salesTaxNio = roundMoney(result.salesTaxNio)
   result.costOfSalesNio = roundMoney(result.costOfSalesNio)
   result.inventoryWriteOffNio = roundMoney(result.inventoryWriteOffNio)
@@ -362,6 +380,8 @@ export function ledgerDigest(
     void tiers
     const active =
       totals.soldUnits > 0 ||
+      (totals.shippingNio ?? 0) !== 0 ||
+      (totals.shippingExpenseNio ?? 0) !== 0 ||
       totals.missingRevenueLines > 0 ||
       totals.inventoryWriteOffNio !== 0 ||
       totals.missingWriteOffUnits > 0
@@ -393,10 +413,11 @@ function composeAccounting(
   const accounting = input.accounting ?? emptyAccounting
   const result: AccountingSummary = {
     revenueNio: ledger.revenueNio,
+    shippingNio: ledger.shippingNio ?? 0,
     salesTaxNio: ledger.salesTaxNio,
     costOfSalesNio: ledger.costOfSalesNio,
     grossProfitNio: null,
-    expensesNio: 0,
+    expensesNio: ledger.shippingExpenseNio ?? 0,
     loanPaymentsNio: 0,
     inventoryWriteOffNio: ledger.inventoryWriteOffNio,
     missingWriteOffUnits: ledger.missingWriteOffUnits,
@@ -426,6 +447,10 @@ function composeAccounting(
   }
   const groups = new Map<ExpenseCategory, number>()
   const accounts = new Map<ExpenseAccount, number>()
+  if (ledger.shippingExpenseNio) {
+    groups.set('envios', ledger.shippingExpenseNio)
+    accounts.set('ventas', ledger.shippingExpenseNio)
+  }
   for (const row of expensesInRange(input, range).filter(
     (entry) => !entry.voidedAt,
   )) {
@@ -465,6 +490,7 @@ function composeAccounting(
   const grossComplete =
     reliable && !result.missingCostUnits && !result.missingRevenueLines
   result.revenueNio = roundMoney(result.revenueNio)
+  result.shippingNio = roundMoney(result.shippingNio)
   result.salesTaxNio = roundMoney(result.salesTaxNio)
   result.costOfSalesNio = roundMoney(result.costOfSalesNio)
   result.expensesNio = roundMoney(result.expensesNio)
@@ -484,7 +510,8 @@ function composeAccounting(
         result.revenueNio -
           result.costOfSalesNio -
           result.expensesNio -
-          result.inventoryWriteOffNio,
+          result.inventoryWriteOffNio +
+          result.shippingNio,
       )
     : null
   result.coverage = result.soldUnits

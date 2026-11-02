@@ -76,6 +76,7 @@ export function accountingSheets(
         ['Ventas netas (parte documentada)', result.revenueNio],
         ['Costo de ventas conocido', result.costOfSalesNio],
         ['Utilidad bruta', result.grossProfitNio],
+        ['Cobros por envío', result.shippingNio],
         ['Gastos reconocidos (los que restan)', result.expensesNio],
         ...expenseAccountOrder.map((account): [string, number | null] => [
           `   ${expenseAccounts[account].label}${expenseAccounts[account].effect === 'result' ? '' : ' (no resta)'}`,
@@ -313,6 +314,7 @@ export function accountingSheets(
       columns: [
         { header: 'Mes', width: 13 },
         { header: 'Venta neta NIO conocida', format: 'money', width: 25 },
+        { header: 'Cobros por envío NIO', format: 'money', width: 24 },
         { header: 'Costo de ventas NIO conocido', format: 'money', width: 29 },
         { header: 'Gastos NIO', format: 'money', width: 20 },
         {
@@ -325,6 +327,7 @@ export function accountingSheets(
       rows: accountingByMonth(source, range).map(({ month, totals }) => [
         month,
         totals.revenueNio,
+        totals.shippingNio,
         totals.costOfSalesNio,
         totals.expensesNio,
         totals.inventoryWriteOffNio,

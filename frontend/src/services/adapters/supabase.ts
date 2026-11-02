@@ -169,6 +169,9 @@ interface DocumentItemRow {
   line_total: number | string
 }
 interface DocumentRow {
+  shipping_method?: DocumentRecord['shippingMethod']
+  shipping_amount?: number | string
+  shipping_nio?: number | string | null
   original_total?: number | string | null
   discount_amount?: number | string
   invoice_discount?: number | string
@@ -209,7 +212,7 @@ document_items(id,product_id,description,quantity,unit_price,line_total,original
 // base valida y guarda tal cual. Sin leerlos de ahí, la factura reabierta,
 // impresa o compartida perdía el «Impuesto incluido» y el tipo de cambio.
 const documentAccountingColumns =
-  ',exchange_rate:request_payload->exchangeRate,tax_rate:request_payload->taxRate,catalog_rate,payments:request_payload->payments'
+  ',exchange_rate:request_payload->exchangeRate,tax_rate:request_payload->taxRate,catalog_rate,payments:request_payload->payments,shipping_method,shipping_amount,shipping_nio'
 function missingDocumentColumns(error: { code?: string } | null) {
   return error?.code === '42703' || error?.code === 'PGRST204'
 }
@@ -386,6 +389,9 @@ function toItem(row: ProductRow): InventoryItem {
 }
 function toDocument(row: DocumentRow): DocumentRecord {
   return {
+    shippingMethod: row.shipping_method ?? null,
+    shippingAmount: amount(row.shipping_amount ?? 0),
+    shippingNio: row.shipping_nio == null ? null : amount(row.shipping_nio),
     payments: row.payments?.map((payment) => ({
       ...payment,
       amount: amount(payment.amount),
@@ -800,6 +806,20 @@ export const supabaseAdapter: DataProvider = {
     return data as string
   },
   async createDocument(input: NewDocument) {
+    // Verificar el soporte antes de emitir: versiones anteriores de la función
+    // aceptan campos desconocidos y podrían omitir el cobro del envío.
+    if (input.shippingMethod || (input.shippingAmount ?? 0) > 0) {
+      const { error } = await client()
+        .from('documents')
+        .select('shipping_method,shipping_amount,shipping_nio')
+        .limit(0)
+      if (missingDocumentColumns(error))
+        throw new AppError(
+          'configuration',
+          'Falta aplicar la actualización de cobros por envío en Supabase antes de emitir este documento.',
+        )
+      if (error) fail(error)
+    }
     // requestId makes the call idempotent: a retry returns the same document
     // instead of issuing a second one or discounting stock twice.
     const { data, error } = await client().rpc('create_document', {
@@ -817,6 +837,12 @@ export const supabaseAdapter: DataProvider = {
         location: input.location ?? null,
         paymentMethod: input.paymentMethod ?? null,
         ...(input.payments?.length ? { payments: input.payments } : {}),
+        ...(input.shippingMethod || (input.shippingAmount ?? 0) > 0
+          ? {
+              shippingMethod: input.shippingMethod ?? null,
+              shippingAmount: input.shippingAmount ?? 0,
+            }
+          : {}),
         // Una fecha borrada llega como '': la base la recibe como nula y
         // responde «Revisa la vigencia» en lugar de un error de conversión.
         validUntil: input.validUntil || null,
@@ -834,6 +860,16 @@ export const supabaseAdapter: DataProvider = {
     // La respuesta trae el documento sin la solicitud: la tasa y el impuesto
     // son los que se acaban de enviar y la base aceptó.
     const row = data as unknown as DocumentRow
+    if (
+      (input.shippingMethod || (input.shippingAmount ?? 0) > 0) &&
+      (row.shipping_method !== input.shippingMethod ||
+        row.shipping_amount == null ||
+        amount(row.shipping_amount) !== (input.shippingAmount ?? 0))
+    )
+      throw new AppError(
+        'unexpected',
+        'La respuesta no confirma el envío del documento. Reintenta la misma operación para recuperar su resultado.',
+      )
     return toDocument({
       ...row,
       exchange_rate: row.exchange_rate ?? input.exchangeRate ?? null,
@@ -943,6 +979,9 @@ export const supabaseAdapter: DataProvider = {
         createdAt: row.created_at,
         currency: row.currency,
         total: amount(row.total),
+        shippingAmount: amount(row.shipping_amount ?? 0),
+        shippingNio:
+          row.shipping_nio == null ? undefined : amount(row.shipping_nio),
         exchangeRate:
           row.exchange_rate == null ? null : amount(row.exchange_rate),
         taxRate: row.tax_rate == null ? undefined : amount(row.tax_rate),

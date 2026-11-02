@@ -32,6 +32,8 @@ export interface ReportDocument {
   createdAt: string
   currency: Currency
   total: number
+  shippingAmount?: number
+  shippingNio?: number | null
   tier: PriceTier
   paymentMethod: PaymentMethod | 'pending' | null
   location: InventoryLocation | null

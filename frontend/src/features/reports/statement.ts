@@ -54,6 +54,12 @@ export function incomeStatement(summary: AccountingSummary): StatementRow[] {
       kind: 'subtotal',
     },
     {
+      key: 'shipping',
+      label: 'Cobros por envío',
+      amount: summary.shippingNio,
+      kind: 'line',
+    },
+    {
       key: 'operating',
       label: 'Gastos de operación',
       amount: null,

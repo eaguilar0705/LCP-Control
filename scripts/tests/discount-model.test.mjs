@@ -68,6 +68,78 @@ test('los descuentos del perfume y del total se conservan en el borrador', () =>
 })
 test('cambiar de moneda no convierte un descuento USD en córdobas', () =>
   assert.equal(draftTotal(lines, 'vip', 'NIO', discount), 4070))
+test('el envío se suma después del descuento sin repartirse entre perfumes', () => {
+  const draft = documentDraftSchema.parse({
+    id: 'shipping-draft',
+    kind: 'invoice',
+    reference: 'FAC-B1',
+    customer: 'Cliente',
+    taxId: '',
+    currency: 'USD',
+    exchangeRate: 37,
+    tier: 'vip',
+    payment: 'cash',
+    location: 'store',
+    notes: '',
+    createdAt: '2026-11-02T12:00:00Z',
+    lines,
+    discount,
+    shippingMethod: 'cargotrans',
+    shippingAmount: 15.5,
+  })
+  const preview = draftPreview(draft, { name: 'La Casa del Perfume' }, 37)
+  assert.equal(draftTotal(lines, 'vip', 'USD', discount, 15.5), 115.49)
+  assert.equal(preview.total, 115.49)
+  assert.equal(preview.originalTotal, 110)
+  assert.equal(preview.discountAmount, 10.01)
+  assert.equal(preview.shippingAmount, 15.5)
+  assert.equal(preview.shippingNio, 573.5)
+  assert.equal(preview.shippingMethod, 'cargotrans')
+  assert.equal(
+    Math.round(
+      preview.items.reduce((sum, item) => sum + item.lineTotal, 0) * 100,
+    ),
+    9999,
+  )
+  assert.deepEqual(
+    new Map(preview.items.map((item) => [item.productId, item.lineTotal])),
+    draftAmounts(lines, 'vip', 'USD', discount),
+  )
+  const legacy = { ...draft }
+  delete legacy.shippingMethod
+  delete legacy.shippingAmount
+  const oldPreview = draftPreview(documentDraftSchema.parse(legacy), {
+    name: 'Negocio',
+  })
+  assert.equal(oldPreview.shippingAmount, 0)
+  assert.equal(oldPreview.total, 99.99)
+  assert.equal(
+    documentDraftSchema.safeParse({ ...draft, shippingMethod: null }).success,
+    false,
+  )
+  assert.equal(
+    documentDraftSchema.safeParse({ ...draft, shippingMethod: 'otro' }).success,
+    false,
+  )
+  assert.equal(
+    documentDraftSchema.safeParse({ ...draft, shippingAmount: 0 }).success,
+    true,
+  )
+})
+test('un envío inválido nunca permite calcular un total cobrable', () => {
+  for (const shippingAmount of [-1, 0.001, 10000000.01, NaN, Infinity])
+    assert.equal(
+      draftTotal(lines, 'vip', 'USD', discount, shippingAmount),
+      null,
+    )
+  assert.equal(draftTotal(lines, 'vip', 'USD', discount, 0), 99.99)
+  assert.equal(draftTotal(lines, 'vip', 'USD', discount, 0.01), 100)
+  // El envío tampoco permite un descuento que deje los productos sin importe.
+  assert.equal(
+    draftTotal(lines, 'vip', 'USD', { ...discount, amount: 104 }, 50),
+    null,
+  )
+})
 test('un descuento superior al precio o al subtotal bloquea la emisión', () => {
   assert.equal(
     draftTotal(lines, 'vip', 'USD', { ...discount, amount: 104 }),
