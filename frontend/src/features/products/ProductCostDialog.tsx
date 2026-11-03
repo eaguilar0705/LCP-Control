@@ -60,7 +60,8 @@ function CostLoader({
   onClose: () => void
   onRecorded: (message: string) => void
 }) {
-  const { base, storageScope = 'anonymous' } = useAccess()
+  const { base, role, storageScope = 'anonymous' } = useAccess()
+  const canCount = can(role, 'inventory.adjust')
   const navigate = useNavigate()
   const { inventoryService, productService, settingsService } = useServices()
   const [operation] = useState(() =>
@@ -108,7 +109,7 @@ function CostLoader({
   }
 
   function openCountEditor() {
-    if (locked) return
+    if (locked || !canCount) return
     const missing = (['store', 'warehouse'] as const).find(
       (location) => item?.quantities[location] === null,
     )
@@ -123,7 +124,7 @@ function CostLoader({
   }
 
   async function registerEmpty(location: InventoryLocation | null) {
-    if (busy) return
+    if (busy || !canCount) return
     const target = location ?? pendingLocation
     if (!target) return
     if (!uncertain && item?.quantities[target] !== null) {
@@ -176,7 +177,11 @@ function CostLoader({
             <p>Reactiva y guarda el perfume antes de registrar su costo.</p>
           ) : (
             <div className="product-cost-count-content">
-              <p>Si está vacía, registra 0 para continuar.</p>
+              <p>
+                {canCount
+                  ? 'Si está vacía, registra 0 para continuar.'
+                  : 'Solicita al Superadmin que registre el conteo de Tienda y Bodega antes de continuar, aunque sea 0.'}
+              </p>
               <div className="product-cost-location-list">
                 {(['store', 'warehouse'] as const).map((location) => {
                   const quantity = item.quantities[location]
@@ -190,7 +195,7 @@ function CostLoader({
                             : `${quantity} ${quantity === 1 ? 'unidad' : 'unidades'}`}
                         </strong>
                       </div>
-                      {quantity === null && (
+                      {quantity === null && canCount && (
                         <Button
                           type="button"
                           variant="secondary"
@@ -221,7 +226,7 @@ function CostLoader({
                   >
                     Verificar guardado
                   </Button>
-                ) : (
+                ) : canCount ? (
                   <Button
                     type="button"
                     disabled={locked}
@@ -229,7 +234,7 @@ function CostLoader({
                   >
                     Registrar conteo
                   </Button>
-                )}
+                ) : null}
                 {failure && !uncertain && (
                   <Button
                     type="button"

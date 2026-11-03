@@ -1495,12 +1495,12 @@ try {
       /tarjetas pendientes/,
       'no liquidar dos veces tarjetas',
     )
-    await identity(db, warehouse)
     for (const [type, change, debit, credit] of [
       ['DAMAGED', -1, '5150', '1130'],
       ['EXIT', -1, '5150', '1130'],
       ['ADJUSTMENT', 1, '1130', '4190'],
     ]) {
+      await identity(db, type === 'ADJUSTMENT' ? admin : warehouse)
       const product =
         products[
           (dayIndex * 19 + (type === 'DAMAGED' ? 0 : type === 'EXIT' ? 1 : 2)) %

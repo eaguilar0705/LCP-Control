@@ -80,7 +80,7 @@ export function InventoryTransfers({
       }
       if (available == null || item.quantities[to] == null) {
         setError(
-          'Registra primero el conteo inicial en Bodega y Tienda, aunque sea cero. Solicítalo al administrador.',
+          'Solicita al Superadmin que registre el conteo inicial en Bodega y Tienda, aunque sea cero.',
         )
         return
       }

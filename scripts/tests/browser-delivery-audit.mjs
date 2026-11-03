@@ -393,7 +393,7 @@ try {
         .getByLabel('Motivo del cambio de cantidad', { exact: true })
         .fill('Conteo físico auditado de veinte unidades')
       await stock
-        .getByRole('button', { name: 'Guardar cantidades', exact: true })
+        .getByRole('button', { name: 'Guardar ajuste', exact: true })
         .click()
       await stock.locator('p[role="status"]').waitFor()
       equal(

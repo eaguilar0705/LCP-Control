@@ -24,6 +24,13 @@ const actions: {
   capability: Capability
 }[] = [
   {
+    type: 'ADJUSTMENT',
+    label: 'Ajustar existencias',
+    title: 'Ajuste de inventario',
+    done: 'Ajuste registrado',
+    capability: 'inventory.adjust',
+  },
+  {
     type: 'ENTRY',
     label: 'Entrada',
     title: 'Entrada de inventario',
@@ -43,13 +50,6 @@ const actions: {
     title: 'Producto dañado',
     done: 'Producto dañado registrado',
     capability: 'inventory.create_damage',
-  },
-  {
-    type: 'ADJUSTMENT',
-    label: 'Ajuste',
-    title: 'Ajuste de inventario',
-    done: 'Ajuste registrado',
-    capability: 'inventory.adjust',
   },
 ]
 
@@ -141,7 +141,7 @@ export function InventoryMovements({
     }
     if (quantity == null && action.type !== 'ADJUSTMENT') {
       setError(
-        'Registra primero el conteo inicial mediante Ajuste. Solicítalo al administrador.',
+        'Solicita al Superadmin que registre el conteo inicial mediante Ajustar existencias.',
       )
       return
     }
@@ -166,6 +166,9 @@ export function InventoryMovements({
         location,
         type: action.type,
         quantity: nextQuantity,
+        ...(action.type === 'ADJUSTMENT'
+          ? { expectedQuantity: quantity ?? null }
+          : {}),
         note,
       })
       setMessage(`${action.done}. Inventario actualizado.`)
@@ -188,7 +191,7 @@ export function InventoryMovements({
           .map((entry) => (
             <Button
               key={entry.type}
-              variant="secondary"
+              variant={entry.type === 'ADJUSTMENT' ? 'primary' : 'secondary'}
               disabled={!items.length || busy || uncertain}
               onClick={() => {
                 operation.reset()
@@ -204,6 +207,13 @@ export function InventoryMovements({
             </Button>
           ))}
       </div>
+      {can(role, 'inventory.adjust') && (
+        <p className="muted">
+          Ajustar existencias permite corregir el conteo físico en Tienda o
+          Bodega. Escribe el total que contaste, aunque sea mayor o menor al
+          registrado.
+        </p>
+      )}
 
       {message && (
         <p role="status" className="page-feedback">
@@ -225,7 +235,7 @@ export function InventoryMovements({
               <p>
                 Solicita que registren la compra con su costo y cuenta de pago.
                 Para mover unidades que ya tienes, usa Traslados; para el conteo
-                físico, usa Ajuste.
+                físico, solicita un ajuste al Superadmin.
               </p>
               <Button
                 type="button"
@@ -237,6 +247,13 @@ export function InventoryMovements({
             </div>
           ) : (
             <form onSubmit={submit} className="movement-form">
+              {action.type === 'ADJUSTMENT' && (
+                <p>
+                  Indica cuántas unidades hay físicamente en la ubicación
+                  elegida. El total reemplazará las existencias registradas y
+                  quedará en el historial con su motivo.
+                </p>
+              )}
               <fieldset disabled={busy || uncertain} className="form-fields">
                 <ProductSelect
                   label="Producto del movimiento"
@@ -275,6 +292,17 @@ export function InventoryMovements({
                   value={quantityText}
                   onChange={(event) => setQuantityText(event.target.value)}
                 />
+                {action.type === 'ADJUSTMENT' && item && (
+                  <p role="status">
+                    {labels.location[location]}: {quantity ?? 'Sin conteo'} →{' '}
+                    {quantityText.trim() !== '' &&
+                    Number.isInteger(Number(quantityText)) &&
+                    Number(quantityText) >= 0 &&
+                    Number(quantityText) <= 1000000
+                      ? `${Number(quantityText)} unidades al guardar`
+                      : 'Indica el conteo total'}
+                  </p>
+                )}
                 <Input
                   label="Motivo"
                   name="note"
@@ -284,6 +312,19 @@ export function InventoryMovements({
                   onChange={(event) => setNoteText(event.target.value)}
                 />
               </fieldset>
+              {error && !uncertain && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={busy}
+                  onClick={() => {
+                    setError('')
+                    onRecorded()
+                  }}
+                >
+                  Actualizar existencias
+                </Button>
+              )}
               {error && (
                 <p role="alert" className="inline-error">
                   {error}
@@ -298,7 +339,9 @@ export function InventoryMovements({
                       : action.type === 'ENTRY' &&
                           can(role, 'product.edit_cost')
                         ? 'Continuar con la compra'
-                        : 'Confirmar movimiento'}
+                        : action.type === 'ADJUSTMENT'
+                          ? 'Guardar ajuste'
+                          : 'Confirmar movimiento'}
                 </Button>
                 <Button
                   type="button"

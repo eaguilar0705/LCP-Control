@@ -1,4 +1,4 @@
-import { AlertCircle, Coins } from 'lucide-react'
+import { AlertCircle, ClipboardCheck, Coins } from 'lucide-react'
 import { ProductCostDialog } from './ProductCostDialog'
 import { TransientImage } from '../../components/TransientImage'
 import { ScanButton } from '../scanner/ScanButton'
@@ -408,6 +408,23 @@ function ProductForm({
           </p>
         </div>
         <div className="form-actions">
+          {product && (demo || can(role, 'inventory.adjust')) && (
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={busy || stockPending || !product.active}
+              onClick={() =>
+                navigate({
+                  pathname: navigation.pathname,
+                  search: navigation.search,
+                  hash: '#cantidades-perfume',
+                })
+              }
+            >
+              <ClipboardCheck size={18} />
+              Ajustar existencias
+            </Button>
+          )}
           {product && (demo || can(role, 'product.edit_cost')) && (
             <Button
               type="button"

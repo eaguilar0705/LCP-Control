@@ -65,6 +65,7 @@ export function InventoryPage() {
   const { base, demo, role } = useAccess()
   const { state } = useLocation()
   const manage = can(role, 'product.manage') || demo
+  const adjust = can(role, 'inventory.adjust')
   const [catalog, setCatalog] = useState(true)
   const [status, setStatus] = useState('active')
   const [filtersOpen, setFiltersOpen] = useState(false)
@@ -343,7 +344,9 @@ export function InventoryPage() {
             <div className="filter-note">
               <span>
                 {uncounted
-                  ? '— indica que el conteo aún no está registrado. Puedes registrarlo desde Editar.'
+                  ? adjust
+                    ? '— indica que el conteo aún no está registrado. Regístralo desde Ajustar existencias.'
+                    : '— indica que el conteo aún no está registrado. Solicítalo al Superadmin.'
                   : ''}
               </span>
               <Button
@@ -418,6 +421,14 @@ export function InventoryPage() {
                               to={`${base}/products/${p.id}/edit`}
                             >
                               <Pencil size={15} /> Editar
+                            </Link>
+                          )}
+                          {adjust && p.active && (
+                            <Link
+                              className="button button-secondary inventory-edit"
+                              to={`${base}/products/${p.id}/edit#cantidades-perfume`}
+                            >
+                              Ajustar existencias
                             </Link>
                           )}
                         </div>
@@ -519,6 +530,14 @@ export function InventoryPage() {
                             >
                               Editar
                             </Link>
+                            {adjust && item.product.active && (
+                              <Link
+                                className="button button-secondary"
+                                to={`${base}/products/${item.product.id}/edit#cantidades-perfume`}
+                              >
+                                Ajustar existencias
+                              </Link>
+                            )}
                           </td>
                         )}
                       </tr>
@@ -569,6 +588,14 @@ export function InventoryPage() {
                           to={`${base}/products/${item.product.id}/edit`}
                         >
                           Editar
+                        </Link>
+                      )}
+                      {adjust && item.product.active && (
+                        <Link
+                          className="button button-secondary"
+                          to={`${base}/products/${item.product.id}/edit#cantidades-perfume`}
+                        >
+                          Ajustar existencias
                         </Link>
                       )}
                     </div>
@@ -648,6 +675,14 @@ export function InventoryPage() {
               to={`${base}/products/${selected.id}/edit`}
             >
               Editar perfume
+            </Link>
+          )}
+          {adjust && selected.active && (
+            <Link
+              className="button button-secondary"
+              to={`${base}/products/${selected.id}/edit#cantidades-perfume`}
+            >
+              Ajustar existencias
             </Link>
           )}
         </Dialog>

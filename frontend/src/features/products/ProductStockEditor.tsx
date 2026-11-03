@@ -28,19 +28,19 @@ const actions: {
   permission: Capability
 }[] = [
   {
+    type: 'ADJUSTMENT',
+    label: 'Ajustar existencias (conteo físico)',
+    permission: 'inventory.adjust',
+  },
+  {
     type: 'ENTRY',
-    label: 'Agregar unidades',
+    label: 'Registrar compra',
     permission: 'inventory.create_entry',
   },
   {
     type: 'EXIT',
     label: 'Descontar unidades',
     permission: 'inventory.create_exit',
-  },
-  {
-    type: 'ADJUSTMENT',
-    label: 'Registrar conteo total',
-    permission: 'inventory.adjust',
   },
 ]
 
@@ -93,7 +93,20 @@ export function ProductStockEditor({
     selection.navigationKey === navigation.key
       ? selection.location
       : (countLocation ?? selection.location)
-  const [type, setType] = useState<MovementRequest['type']>('ENTRY')
+  const canAdjust = can(role, 'inventory.adjust') || demo
+  const [typeSelection, setTypeSelection] = useState<{
+    navigationKey: string
+    type: MovementRequest['type']
+  }>(() => ({
+    navigationKey: navigation.key,
+    type: canAdjust ? 'ADJUSTMENT' : 'ENTRY',
+  }))
+  const type =
+    typeSelection.navigationKey === navigation.key
+      ? typeSelection.type
+      : canAdjust
+        ? 'ADJUSTMENT'
+        : 'ENTRY'
   const [quantity, setQuantity] = useState('')
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
@@ -106,6 +119,7 @@ export function ProductStockEditor({
   const item = data?.find((i) => i.product.id === product.id)
   const before = item?.quantities[location] ?? null
   const initial = before === null
+  const countBlocked = initial && !canAdjust
   const movementType = initial ? 'ADJUSTMENT' : type
   const requiresPurchase = movementType === 'ENTRY' && !!onPurchase
   const action = actions.find((a) => a.type === movementType)!
@@ -151,6 +165,9 @@ export function ProductStockEditor({
           location,
           type: movementType,
           quantity: amount,
+          ...(movementType === 'ADJUSTMENT'
+            ? { expectedQuantity: before }
+            : {}),
           note: note.trim(),
         })
       operation.reset()
@@ -176,6 +193,13 @@ export function ProductStockEditor({
         </div>
         <Package size={25} />
       </div>
+      {canAdjust && (
+        <p className="muted">
+          Ajusta las existencias al total que contaste físicamente, aunque sea
+          mayor o menor al registrado. Para unidades compradas, elige Registrar
+          compra.
+        </p>
+      )}
 
       {loading ? (
         <LoadingState />
@@ -229,8 +253,9 @@ export function ProductStockEditor({
                         <strong>Registrar conteo inicial</strong>
                       </div>
                       <small>
-                        Indica cuántas unidades hay físicamente en{' '}
-                        {labels.location[location]}.
+                        {countBlocked
+                          ? 'Solicita a un SuperAdmin que registre el conteo inicial de esta ubicación.'
+                          : `Indica cuántas unidades hay físicamente en ${labels.location[location]}.`}
                       </small>
                     </div>
                   ) : (
@@ -238,7 +263,10 @@ export function ProductStockEditor({
                       label="Cómo cambiar las cantidades"
                       value={movementType}
                       onChange={(e) => {
-                        setType(e.target.value as MovementRequest['type'])
+                        setTypeSelection({
+                          navigationKey: navigation.key,
+                          type: e.target.value as MovementRequest['type'],
+                        })
                         setError('')
                       }}
                     >
@@ -251,8 +279,16 @@ export function ProductStockEditor({
                   )}
                 </div>
 
-                {!requiresPurchase && (
+                {!requiresPurchase && !countBlocked && (
                   <>
+                    {movementType === 'ADJUSTMENT' && (
+                      <p className="muted">
+                        Escribe el total de unidades que hay en{' '}
+                        {labels.location[location]}, incluido cero. El ajuste
+                        reemplaza la cantidad registrada y conserva el motivo en
+                        el historial.
+                      </p>
+                    )}
                     <div className="stock-adjustment-row">
                       <div className="quantity-stepper">
                         <Button
@@ -316,33 +352,50 @@ export function ProductStockEditor({
                   {error}
                 </p>
               )}
-              <div className="form-actions">
-                {requiresPurchase ? (
-                  <Button
-                    type="button"
-                    disabled={locked || demo || purchaseDisabled}
-                    title={
-                      purchaseDisabled
-                        ? 'Guarda los datos del perfume antes de registrar una compra.'
-                        : undefined
-                    }
-                    onClick={() => onPurchase?.(location)}
-                  >
-                    Registrar compra
-                  </Button>
-                ) : (
-                  <Button
-                    type="submit"
-                    disabled={locked || demo || !can(role, action.permission)}
-                  >
-                    {busy
-                      ? 'Guardando cantidades…'
-                      : uncertain
-                        ? 'Verificar guardado'
-                        : 'Guardar cantidades'}
-                  </Button>
-                )}
-              </div>
+              {!countBlocked && (
+                <div className="form-actions">
+                  {error && !uncertain && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={locked}
+                      onClick={() => {
+                        setError('')
+                        retry()
+                      }}
+                    >
+                      Actualizar existencias
+                    </Button>
+                  )}
+                  {requiresPurchase ? (
+                    <Button
+                      type="button"
+                      disabled={locked || demo || purchaseDisabled}
+                      title={
+                        purchaseDisabled
+                          ? 'Guarda los datos del perfume antes de registrar una compra.'
+                          : undefined
+                      }
+                      onClick={() => onPurchase?.(location)}
+                    >
+                      Registrar compra
+                    </Button>
+                  ) : (
+                    <Button
+                      type="submit"
+                      disabled={locked || demo || !can(role, action.permission)}
+                    >
+                      {busy
+                        ? 'Guardando cantidades…'
+                        : uncertain
+                          ? 'Verificar guardado'
+                          : movementType === 'ADJUSTMENT'
+                            ? 'Guardar ajuste'
+                            : 'Guardar cantidades'}
+                    </Button>
+                  )}
+                </div>
+              )}
             </form>
           )}
         </>

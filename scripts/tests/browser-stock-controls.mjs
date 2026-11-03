@@ -135,7 +135,7 @@ try {
         .getByLabel('Conteo total del perfume', { exact: true })
         .fill('4')
       await editor
-        .getByRole('button', { name: 'Guardar cantidades', exact: true })
+        .getByRole('button', { name: 'Guardar ajuste', exact: true })
         .click()
       equal(await quantity(), null, 'Un conteo sin motivo no llega a la base')
       await editor
@@ -147,7 +147,7 @@ try {
         fullPage: true,
       })
       await editor
-        .getByRole('button', { name: 'Guardar cantidades', exact: true })
+        .getByRole('button', { name: 'Guardar ajuste', exact: true })
         .click()
       await editor
         .getByText(

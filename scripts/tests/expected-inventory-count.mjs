@@ -44,7 +44,7 @@ const cost = async (n) =>
   ).rows[0]?.average_cost_nio ?? null
 try {
   await db.query(
-    "insert into public.staff_members(user_id,display_name,role) values($1,'Admin','admin'),($2,'Caja','operator'),($3,'Consulta','viewer')",
+    "insert into public.staff_members(user_id,display_name,role) values($1,'Admin','superadmin'),($2,'Caja','operator'),($3,'Consulta','viewer')",
     [admin, operator, viewer],
   )
   await db.exec(
