@@ -108,7 +108,7 @@ export function ProductStockEditor({
         ? 'ADJUSTMENT'
         : 'ENTRY'
   const [quantity, setQuantity] = useState('')
-  const [note, setNote] = useState('')
+  const [note, setNote] = useState(canAdjust ? 'Conteo físico' : '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
@@ -172,7 +172,7 @@ export function ProductStockEditor({
         })
       operation.reset()
       setQuantity('')
-      setNote('')
+      setNote(movementType === 'ADJUSTMENT' ? 'Conteo físico' : '')
       setMessage(
         `Cantidad guardada en ${labels.location[location]}. El movimiento quedó en el historial.`,
       )
@@ -193,13 +193,6 @@ export function ProductStockEditor({
         </div>
         <Package size={25} />
       </div>
-      {canAdjust && (
-        <p className="muted">
-          Ajusta las existencias al total que contaste físicamente, aunque sea
-          mayor o menor al registrado. Para unidades compradas, elige Registrar
-          compra.
-        </p>
-      )}
 
       {loading ? (
         <LoadingState />
@@ -263,9 +256,15 @@ export function ProductStockEditor({
                       label="Cómo cambiar las cantidades"
                       value={movementType}
                       onChange={(e) => {
+                        const nextType = e.target
+                          .value as MovementRequest['type']
+                        if (!note || note === 'Conteo físico')
+                          setNote(
+                            nextType === 'ADJUSTMENT' ? 'Conteo físico' : '',
+                          )
                         setTypeSelection({
                           navigationKey: navigation.key,
-                          type: e.target.value as MovementRequest['type'],
+                          type: nextType,
                         })
                         setError('')
                       }}
@@ -283,10 +282,7 @@ export function ProductStockEditor({
                   <>
                     {movementType === 'ADJUSTMENT' && (
                       <p className="muted">
-                        Escribe el total de unidades que hay en{' '}
-                        {labels.location[location]}, incluido cero. El ajuste
-                        reemplaza la cantidad registrada y conserva el motivo en
-                        el historial.
+                        Escribe el total contado, no la diferencia.
                       </p>
                     )}
                     <div className="stock-adjustment-row">

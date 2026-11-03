@@ -6,7 +6,11 @@ import { browserDatabase } from './browser-database.mjs'
 import { admin, identity } from './database-fixture.mjs'
 
 const base = process.env.LCP_TEST_BASE_URL ?? 'http://127.0.0.1:5207'
-assert.ok(['127.0.0.1', 'localhost', '[::1]'].includes(new URL(base).hostname))
+assert.ok(
+  ['127.0.0.1', 'localhost', '[::1]', 'lcp-control.pages.dev'].includes(
+    new URL(base).hostname,
+  ),
+)
 const output = process.env.LCP_TEST_OUTPUT ?? 'output/inventory-adjustments'
 await mkdir(output, { recursive: true })
 const server = process.env.LCP_TEST_BASE_URL
@@ -152,6 +156,11 @@ try {
         .getByLabel('Ubicación', { exact: true })
         .selectOption('store')
       await dialog.getByLabel('Conteo total', { exact: true }).fill('25')
+      equal(
+        await dialog.getByLabel('Motivo', { exact: true }).inputValue(),
+        'Conteo físico',
+        'el ajuste ya trae un motivo editable',
+      )
       const generalNote = `Conteo físico general ${width}`
       await dialog.getByLabel('Motivo', { exact: true }).fill(generalNote)
       await page.screenshot({
@@ -197,6 +206,11 @@ try {
         .getByRole('link', { name: 'Ajustar existencias', exact: true })
         .click()
       await action.waitFor()
+      equal(
+        await noteField.inputValue(),
+        'Conteo físico',
+        'el editor evita volver a escribir el motivo del conteo',
+      )
       equal(
         await action.inputValue(),
         'ADJUSTMENT',

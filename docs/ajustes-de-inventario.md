@@ -7,7 +7,7 @@ El dueño necesita corregir las cantidades que encuentra al contar los perfumes,
 1. En **Inventario**, pulsa **Ajustar existencias**, o usa el enlace del perfume para abrir directamente sus cantidades. También está disponible arriba de **Editar perfume**.
 2. Elige **Tienda** o **Bodega**.
 3. Escribe el **total físico** de esa ubicación. Por ejemplo, si el sistema muestra 10 y contaste 13, escribe 13; si contaste 8, escribe 8. Puedes guardar 0.
-4. Revisa las cantidades antes y después, escribe el motivo y pulsa **Guardar ajuste**.
+4. Revisa las cantidades antes y después y pulsa **Guardar ajuste**. El motivo ya trae **Conteo físico**; se puede cambiar cuando haga falta una aclaración.
 
 El cambio conserva fecha, usuario, motivo y cantidades anteriores y finales en el historial de movimientos. Se mantiene el costo promedio y el tratamiento contable existente de sobrantes y faltantes. El conteo inicial puede conservar el costo pendiente; para modificar un conteo ya registrado se necesita el costo del perfume. Si falta, el sistema indica completarlo desde **Costo de inventario** y conserva las cantidades anteriores.
 

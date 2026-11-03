@@ -1,6 +1,6 @@
 # Envíos a clientes
 
-En Facturación y Proformas, **Tipo de envío** permite elegir **Moto**, **CargoTrans** o **Buses**. El campo **Cobro por envío** indica lo que paga el cliente, en la moneda del documento. No aplica una tarifa automática. También se puede indicar un envío gratuito, con importe cero, o elegir **Sin envío**.
+En Facturación y Proformas, la sección **Envío** aparece junto al total, sin desplegar los datos del cliente. **Tipo de envío** permite elegir **Moto**, **CargoTrans** o **Buses**. El campo **Cobro por envío** indica lo que paga el cliente, en la moneda del documento. No aplica una tarifa automática. También se puede indicar un envío gratuito, con importe cero, o elegir **Sin envío**. Se pide solamente tipo e importe; no una dirección de entrega.
 
 El envío se suma después de los descuentos de los productos. La factura, la vista previa, el PDF y el mensaje para WhatsApp muestran el tipo, el importe y el total. El borrador conserva esos datos; cambiar de moneda reinicia el importe para que una cantidad en córdobas no se interprete como dólares.
 

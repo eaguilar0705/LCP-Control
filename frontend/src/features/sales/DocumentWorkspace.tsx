@@ -1191,37 +1191,6 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
                   value={taxId}
                   onChange={(e) => setTaxId(e.target.value)}
                 />
-                <Select
-                  label="Tipo de envío"
-                  value={shippingMethod}
-                  onChange={(event) => {
-                    const method = event.target.value as ShippingMethod | ''
-                    setShippingMethod(method)
-                    if (!method) setShippingText('0')
-                  }}
-                >
-                  <option value="">Sin envío</option>
-                  {Object.entries(shippingMethodLabels).map(
-                    ([method, label]) => (
-                      <option key={method} value={method}>
-                        {label}
-                      </option>
-                    ),
-                  )}
-                </Select>
-                {!!shippingMethod && (
-                  <Input
-                    label={`Cobro por envío (${currency === 'NIO' ? 'C$' : 'US$'})`}
-                    type="number"
-                    inputMode="decimal"
-                    min={0}
-                    max={10000000}
-                    step={0.01}
-                    value={shippingText}
-                    error={issued ? undefined : shippingIssue}
-                    onChange={(event) => setShippingText(event.target.value)}
-                  />
-                )}
                 {kind === 'invoice' ? (
                   <>
                     {!payments.length && (
@@ -1544,6 +1513,45 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
                 >
                   Quitar descuento total
                 </Button>
+              )}
+              {!issued && (
+                <fieldset
+                  className="document-shipping-fields"
+                  disabled={busy || !!pendingIssue}
+                >
+                  <legend>Envío</legend>
+                  <Select
+                    label="Tipo de envío"
+                    value={shippingMethod}
+                    onChange={(event) => {
+                      const method = event.target.value as ShippingMethod | ''
+                      setShippingMethod(method)
+                      if (!method) setShippingText('0')
+                    }}
+                  >
+                    <option value="">Sin envío</option>
+                    {Object.entries(shippingMethodLabels).map(
+                      ([method, label]) => (
+                        <option key={method} value={method}>
+                          {label}
+                        </option>
+                      ),
+                    )}
+                  </Select>
+                  {!!shippingMethod && (
+                    <Input
+                      label={`Cobro por envío (${currency === 'NIO' ? 'C$' : 'US$'})`}
+                      type="number"
+                      inputMode="decimal"
+                      min={0}
+                      max={10000000}
+                      step={0.01}
+                      value={shippingText}
+                      error={shippingIssue}
+                      onChange={(event) => setShippingText(event.target.value)}
+                    />
+                  )}
+                </fieldset>
               )}
               {total === null &&
                 valid &&

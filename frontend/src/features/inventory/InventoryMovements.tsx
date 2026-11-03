@@ -198,7 +198,7 @@ export function InventoryMovements({
                 setAction(entry)
                 setProductId(items.length === 1 ? items[0].product.id : '')
                 setQuantityText('')
-                setNoteText('')
+                setNoteText(entry.type === 'ADJUSTMENT' ? 'Conteo físico' : '')
                 setError('')
                 setMessage('')
               }}
@@ -207,13 +207,6 @@ export function InventoryMovements({
             </Button>
           ))}
       </div>
-      {can(role, 'inventory.adjust') && (
-        <p className="muted">
-          Ajustar existencias permite corregir el conteo físico en Tienda o
-          Bodega. Escribe el total que contaste, aunque sea mayor o menor al
-          registrado.
-        </p>
-      )}
 
       {message && (
         <p role="status" className="page-feedback">
@@ -248,11 +241,7 @@ export function InventoryMovements({
           ) : (
             <form onSubmit={submit} className="movement-form">
               {action.type === 'ADJUSTMENT' && (
-                <p>
-                  Indica cuántas unidades hay físicamente en la ubicación
-                  elegida. El total reemplazará las existencias registradas y
-                  quedará en el historial con su motivo.
-                </p>
+                <p>Escribe el total contado, no la diferencia.</p>
               )}
               <fieldset disabled={busy || uncertain} className="form-fields">
                 <ProductSelect

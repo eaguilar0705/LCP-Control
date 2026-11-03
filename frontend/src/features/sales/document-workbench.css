@@ -418,3 +418,27 @@
   margin: 8px 0;
   overflow-wrap: anywhere;
 }
+.document-shipping-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+  min-width: 0;
+  margin: 0.7rem 0;
+  padding: 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+}
+.document-shipping-fields legend {
+  padding: 0 0.4rem;
+  color: var(--wine, #792d38);
+  font-weight: 600;
+}
+.document-shipping-fields > .field {
+  min-width: 0;
+}
+@media (max-width: 600px) {
+  .document-shipping-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

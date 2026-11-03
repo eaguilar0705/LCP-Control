@@ -6,7 +6,11 @@ import { chromium } from 'playwright'
 import { browserDatabase } from './browser-database.mjs'
 
 const base = process.env.LCP_TEST_BASE_URL ?? 'http://127.0.0.1:5194'
-assert.ok(['127.0.0.1', 'localhost', '[::1]'].includes(new URL(base).hostname))
+assert.ok(
+  ['127.0.0.1', 'localhost', '[::1]', 'lcp-control.pages.dev'].includes(
+    new URL(base).hostname,
+  ),
+)
 const output = 'output/shipping-review'
 await mkdir(output, { recursive: true })
 const server = process.env.LCP_TEST_BASE_URL
@@ -101,6 +105,12 @@ try {
       await page.goto(base + '/login')
       await login()
       await navigate('/sales', 'Facturación')
+      await page.getByLabel('Tipo de envío', { exact: true }).waitFor()
+      equal(
+        await page.getByLabel('Tipo de envío', { exact: true }).isVisible(),
+        true,
+        'envío junto al total sin desplegar datos del cliente',
+      )
       await openCustomer()
       await page
         .getByLabel('Cliente', { exact: true })
