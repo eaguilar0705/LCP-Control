@@ -169,6 +169,11 @@ interface DocumentItemRow {
   line_total: number | string
 }
 interface DocumentRow {
+  corrected_terms?: {
+    exchangeRate: number
+    taxRate: number
+    payments: DocumentRecord['payments']
+  } | null
   shipping_method?: DocumentRecord['shippingMethod']
   shipping_amount?: number | string
   shipping_nio?: number | string | null
@@ -212,7 +217,7 @@ document_items(id,product_id,description,quantity,unit_price,line_total,original
 // base valida y guarda tal cual. Sin leerlos de ahí, la factura reabierta,
 // impresa o compartida perdía el «Impuesto incluido» y el tipo de cambio.
 const documentAccountingColumns =
-  ',exchange_rate:request_payload->exchangeRate,tax_rate:request_payload->taxRate,catalog_rate,payments:request_payload->payments,shipping_method,shipping_amount,shipping_nio'
+  ',exchange_rate:request_payload->exchangeRate,tax_rate:request_payload->taxRate,catalog_rate,payments:request_payload->payments,shipping_method,shipping_amount,shipping_nio,corrected_terms'
 function missingDocumentColumns(error: { code?: string } | null) {
   return error?.code === '42703' || error?.code === 'PGRST204'
 }
@@ -392,11 +397,13 @@ function toDocument(row: DocumentRow): DocumentRecord {
     shippingMethod: row.shipping_method ?? null,
     shippingAmount: amount(row.shipping_amount ?? 0),
     shippingNio: row.shipping_nio == null ? null : amount(row.shipping_nio),
-    payments: row.payments?.map((payment) => ({
-      ...payment,
-      amount: amount(payment.amount),
-      exchangeRate: amount(payment.exchangeRate),
-    })),
+    payments: (row.corrected_terms?.payments ?? row.payments)?.map(
+      (payment) => ({
+        ...payment,
+        amount: amount(payment.amount),
+        exchangeRate: amount(payment.exchangeRate),
+      }),
+    ),
     id: row.id,
     kind: row.kind,
     number: row.number,
@@ -412,9 +419,17 @@ function toDocument(row: DocumentRow): DocumentRecord {
       row.original_total == null ? undefined : amount(row.original_total),
     discountAmount: amount(row.discount_amount ?? 0),
     invoiceDiscount: amount(row.invoice_discount ?? 0),
-    exchangeRate: row.exchange_rate == null ? null : amount(row.exchange_rate),
+    exchangeRate: row.corrected_terms
+      ? amount(row.corrected_terms.exchangeRate)
+      : row.exchange_rate == null
+        ? null
+        : amount(row.exchange_rate),
     catalogRate: row.catalog_rate == null ? null : amount(row.catalog_rate),
-    taxRate: row.tax_rate == null ? undefined : amount(row.tax_rate),
+    taxRate: row.corrected_terms
+      ? amount(row.corrected_terms.taxRate)
+      : row.tax_rate == null
+        ? undefined
+        : amount(row.tax_rate),
     location: row.location,
     validUntil: row.valid_until,
     paymentMethod: row.payment_method,

@@ -22,6 +22,8 @@
     "test:shipping": "node --test scripts/tests/shipping-accounting.test.mjs && node scripts/tests/shipping-accounting.mjs",
     "test:browser:shipping": "node scripts/tests/browser-shipping.mjs",
     "test:opening-journal": "node scripts/tests/opening-journal-correction.mjs",
+    "test:invoice-corrections": "node scripts/tests/invoice-corrections.mjs",
+    "test:browser:invoice-corrections": "node scripts/tests/browser-invoice-corrections.mjs",
     "test:browser:opening-journal": "node scripts/tests/browser-opening-journal-correction.mjs",
     "test:storefront": "node scripts/tests/storefront.mjs && node scripts/tests/storefront-inventory.mjs && node scripts/tests/storefront-sales.mjs && node scripts/tests/storefront-featured.mjs && node scripts/tests/storefront-catalogs.mjs",
     "test:business-import": "node --test scripts/tests/business-import.test.mjs && node scripts/tests/business-import.mjs",

@@ -77,7 +77,9 @@ export function OperationRecoveryBanner({
             const history =
               reference.kind === 'proforma'
                 ? '/proformas/history'
-                : ['invoice', 'sales-return'].includes(reference.kind)
+                : ['invoice', 'invoice-correction', 'sales-return'].includes(
+                      reference.kind,
+                    )
                   ? '/sales/history'
                   : ['inventory-movement', 'inventory-transfer'].includes(
                         reference.kind,

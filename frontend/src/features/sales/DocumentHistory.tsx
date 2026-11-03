@@ -5,6 +5,7 @@ import {
   ArrowUpRight,
   Trash2,
   CalendarRange,
+  Pencil,
 } from 'lucide-react'
 import {
   WorkspaceHeading,
@@ -30,6 +31,7 @@ import { documentCopy } from '../../lib/domain'
 import type { DocumentKind, DocumentRecord } from '../../lib/domain'
 import { DocumentPrint } from './DocumentPrint'
 import { SalesReturnDialog } from './SalesReturnDialog'
+import { InvoiceEditDialog } from './InvoiceEditDialog'
 import { downloadDocumentPdf, downloadPeriodPdf } from './pdf'
 import { matchesSearch } from '../../lib/search'
 import {
@@ -106,6 +108,7 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
   const [downloading, setDownloading] = useState(false)
   const [removing, setRemoving] = useState<DocumentRecord | null>(null)
   const [returning, setReturning] = useState<DocumentRecord | null>(null)
+  const [editing, setEditing] = useState<DocumentRecord | null>(null)
   const [reason, setReason] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [removeError, setRemoveError] = useState('')
@@ -188,6 +191,7 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
   }
   // Sólo facturas: las proformas no mueven inventario ni contabilidad.
   const removable = kind === 'invoice' && !demo && can(role, 'document.delete')
+  const editable = kind === 'invoice' && !demo && role === 'superadmin'
   function askRemove(record: DocumentRecord) {
     setReason('')
     setRemoveError('')
@@ -336,6 +340,17 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
               <Button variant="secondary" onClick={() => setSelected(d)}>
                 Ver documento <ArrowUpRight size={16} />
               </Button>
+              {editable && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  aria-label={`Editar factura ${d.number}`}
+                  onClick={() => setEditing(d)}
+                >
+                  <Pencil size={16} />
+                  Editar factura
+                </Button>
+              )}
               {removable && (
                 <Button
                   type="button"
@@ -423,6 +438,16 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
                 Devolución / nota de crédito
               </Button>
             )}
+            {editable && (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setEditing(selected)}
+              >
+                <Pencil size={16} />
+                Editar factura
+              </Button>
+            )}
             {removable && (
               <Button
                 type="button"
@@ -444,6 +469,18 @@ export function DocumentHistory({ kind }: { kind: DocumentKind }) {
           </div>
         )}
         {failure && <ErrorState message={failure} />}
+        {editing && (
+          <InvoiceEditDialog
+            document={editing}
+            onClose={() => setEditing(null)}
+            onSaved={(record) => {
+              setEditing(null)
+              setSelected(record)
+              setNotice(`${record.number} actualizada.`)
+              retry()
+            }}
+          />
+        )}
         {returning && (
           <SalesReturnDialog
             document={returning}

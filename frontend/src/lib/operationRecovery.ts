@@ -2,6 +2,7 @@ import { AppError } from './errors'
 
 export const operationLabels = {
   invoice: 'Factura',
+  'invoice-correction': 'Edición de factura',
   proforma: 'Proforma',
   'sales-return': 'Devolución',
   purchase: 'Compra',

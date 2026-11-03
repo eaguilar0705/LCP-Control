@@ -405,7 +405,9 @@ function DayPanel({ admin }: { admin: boolean }) {
                       ? 'Corrección de apertura'
                       : event.event === 'prepare'
                         ? 'Preparación de apertura'
-                        : 'Reapertura'}{' '}
+                        : event.event === 'invoice_corrected'
+                          ? 'Corrección de factura'
+                          : 'Reapertura'}{' '}
                   · revisión {event.revision}
                 </strong>
                 <span>
