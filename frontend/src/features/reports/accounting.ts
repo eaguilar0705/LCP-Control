@@ -510,8 +510,7 @@ function composeAccounting(
         result.revenueNio -
           result.costOfSalesNio -
           result.expensesNio -
-          result.inventoryWriteOffNio +
-          result.shippingNio,
+          result.inventoryWriteOffNio,
       )
     : null
   result.coverage = result.soldUnits

@@ -215,7 +215,7 @@ try {
     'venta de perfumes conserva importe neto',
   )
   eq(
-    balance(afterCash, '4120') - balance(beforeCash, '4120'),
+    balance(afterCash, '2117') - balance(beforeCash, '2117'),
     -5000,
     'el cobro por envío tiene cuenta propia',
   )
@@ -371,7 +371,7 @@ try {
     'split asigna el resto al banco',
   )
   eq(
-    balance(afterSplit, '4120') - balance(beforeSplit, '4120'),
+    balance(afterSplit, '2117') - balance(beforeSplit, '2117'),
     -5000,
     'split reconoce envío una sola vez',
   )
@@ -442,7 +442,7 @@ try {
     'split ajusta centavo contra productos más envío congelados',
   )
   eq(
-    balance(await ledger(), '4120') - balance(beforeUsd, '4120'),
+    balance(await ledger(), '2117') - balance(beforeUsd, '2117'),
     -37,
     'asiento conserva conversión original del envío',
   )
@@ -476,8 +476,8 @@ try {
     'devolución completa devuelve productos y conserva envío',
   )
   eq(
-    balance(await ledger(), '4120'),
-    balance(beforeReturn, '4120'),
+    balance(await ledger(), '2117'),
+    balance(beforeReturn, '2117'),
     'devolución no revierte cobro de envío',
   )
   eq(
@@ -566,8 +566,8 @@ try {
     'pago posterior sale de caja',
   )
   eq(
-    balance(await ledger(), '4120'),
-    balance(beforeExpense, '4120'),
+    balance(await ledger(), '2117'),
+    balance(beforeExpense, '2117'),
     'gasto no modifica cobro facturado',
   )
   const beforeBankExpense = await ledger()
@@ -714,7 +714,7 @@ try {
   eq(
     vouchers
       .find((row) => row.kind === 'sales')
-      .lines.find((row) => row.account === '4120').credit,
+      .lines.find((row) => row.account === '2117').credit,
     allShipping,
     'comprobante automático incluye cuenta de envío',
   )

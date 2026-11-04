@@ -106,7 +106,7 @@ function source() {
   }
 }
 
-test('shipping collection and carrier payment affect net income without inflating perfume margins', () => {
+test('shipping collected is a liability; only store-funded shipping expenses reduce income', () => {
   const input = source()
   const summary = accountingSummary(input, range)
   assert.equal(summary.revenueNio, 1000)
@@ -115,19 +115,19 @@ test('shipping collection and carrier payment affect net income without inflatin
   assert.equal(summary.grossProfitNio, 600)
   assert.equal(summary.products[0].profitNio, 600)
   assert.equal(summary.expensesNio, 30)
-  assert.equal(summary.netProfitNio, 620)
+  assert.equal(summary.netProfitNio, 570)
   assert.equal(
     summary.expenseByAccount.find((row) => row.account === 'ventas').amountNio,
     30,
   )
   assert.equal(
-    incomeStatement(summary).find((row) => row.key === 'shipping').amount,
-    50,
+    incomeStatement(summary).some((row) => row.key === 'shipping'),
+    false,
   )
   const sheets = accountingSheets(input, range, 'Tienda')
   assert.equal(
-    sheets[0].rows.find(([label]) => label === 'Cobros por envío')[1],
-    50,
+    sheets[0].rows.some(([label]) => label === 'Cobros por envío'),
+    false,
   )
   const months = sheets.find((sheet) => sheet.name === 'Evolución mensual')
   assert.equal(months.rows[0].length, months.columns.length)
@@ -136,7 +136,7 @@ test('shipping collection and carrier payment affect net income without inflatin
   assert.equal(digest.shippingNio, 50)
   assert.equal(digest.months[0].shippingNio, 50)
   input.accounting.expenses[0].voidedAt = '2026-11-04T18:00:00Z'
-  assert.equal(accountingSummary(input, range).netProfitNio, 650)
+  assert.equal(accountingSummary(input, range).netProfitNio, 600)
 })
 
 test('foreign shipping uses the frozen converted amount; missing conversion leaves profit pending', () => {
@@ -169,12 +169,12 @@ test('manual shipping payments join recorded expenses exactly once and respect t
     summary.expenseGroups.find((row) => row.category === 'envios').amountNio,
     35,
   )
-  assert.equal(summary.netProfitNio, 615)
+  assert.equal(summary.netProfitNio, 565)
   const digest = ledgerDigest(input, range)
   assert.equal(digest.shippingExpenseNio, 5)
   assert.equal(digest.months[0].shippingExpenseNio, 5)
   const report = digestFromSource(input, range)
-  assert.equal(accountingSummary(report, range).netProfitNio, 615)
+  assert.equal(accountingSummary(report, range).netProfitNio, 565)
   input.documents = []
   input.accounting.saleCosts = []
   assert.equal(ledgerDigest(input, range).months[0].shippingExpenseNio, 5)
@@ -189,7 +189,7 @@ test('database digest preserves shipping by month and accepts older digests with
     ledger: generated.ledger,
   }
   const decoded = digestFromPayload(payload, generated)
-  assert.equal(accountingSummary(decoded, range).netProfitNio, 620)
+  assert.equal(accountingSummary(decoded, range).netProfitNio, 570)
   assert.equal(decoded.ledger.shippingNio, 50)
   assert.equal(decoded.ledger.months[0].shippingNio, 50)
   assert.equal(decoded.ledger.shippingExpenseNio, 0)
@@ -240,7 +240,7 @@ test('carrier expense reduces its payment account and keeps the selected bank in
   )
 })
 
-test('journal statements show separate shipping income and carrier expense with unchanged gross perfume margin', () => {
+test('journal statements keep shipping payable outside income and preserve store shipping expense', () => {
   const account = (code, bucket, nature, debit, credit) => ({
     code,
     name: code,
@@ -264,7 +264,7 @@ test('journal statements show separate shipping income and carrier expense with 
         account('1120-003', 'asset', 'debit', 1050, 30),
         account('1130', 'asset', 'debit', 0, 400),
         account('4110', 'revenue', 'credit', 0, 1000),
-        account('4120', 'revenue', 'credit', 0, 50),
+        account('2117', 'liability', 'credit', 0, 50),
         account('5120', 'cost', 'debit', 400, 0),
         account('5130-011', 'expense', 'debit', 30, 0),
       ],
@@ -275,8 +275,15 @@ test('journal statements show separate shipping income and carrier expense with 
     model.income.find((row) => row.description === 'Utilidad bruta').periodNio,
     600,
   )
-  assert.equal(model.income.at(-1).periodNio, 620)
-  assert.equal(model.income.find((row) => row.code === '4120').periodNio, 50)
+  assert.equal(model.income.at(-1).periodNio, 570)
+  assert.equal(
+    model.income.some((row) => row.code === '2117'),
+    false,
+  )
+  assert.equal(
+    model.balance.right.find((row) => row.code === '2117').amount,
+    50,
+  )
   assert.equal(
     model.income.find((row) => row.code === '5130-011').periodNio,
     30,

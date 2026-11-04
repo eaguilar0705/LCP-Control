@@ -142,13 +142,6 @@ export const chartOfAccounts: ChartAccount[] = [
     nature: 'credit',
     parent: '4000',
   },
-  {
-    code: '4120',
-    description: 'Cobros por envío',
-    kind: 'account',
-    nature: 'credit',
-    parent: '4000',
-  },
   { code: '5000', description: 'Egresos', kind: 'group', nature: 'debit' },
   {
     code: '5120',
@@ -245,7 +238,7 @@ function positionValue(
 }
 
 type Summary = ReturnType<typeof accountingSummary>
-type ResultCode = '4110' | '4120' | '5120' | '5130' | '5140' | '5150' | '6000'
+type ResultCode = '4110' | '5120' | '5130' | '5140' | '5150' | '6000'
 function reliable(report: ReportData) {
   return (
     report.accounting.available &&
@@ -283,8 +276,6 @@ function resultAmount(
   if (!reliable(report)) return null
   if (code === '4110')
     return summary.missingRevenueLines ? null : summary.revenueNio
-  if (code === '4120')
-    return summary.missingRevenueLines ? null : summary.shippingNio
   if (code === '5120')
     return summary.missingCostUnits ? null : summary.costOfSalesNio
   if (code === '5150')
@@ -348,7 +339,6 @@ export function buildAccountingModel({
   const needsEarlierResult = report.range.from > accumulatedFrom
   const resultCodes: ResultCode[] = [
     '4110',
-    '4120',
     '5120',
     '5130',
     '5140',
@@ -379,6 +369,18 @@ export function buildAccountingModel({
     cumulative.salesTaxNio !== 0 ||
     (opening?.salesTaxNio ?? 0) !== 0
   const catalog = chartOfAccounts.map((row) => ({ ...row }))
+  const hasShipping =
+    period.shippingNio !== 0 ||
+    cumulative.shippingNio !== 0 ||
+    (opening?.shippingNio ?? 0) !== 0
+  if (hasShipping)
+    catalog.splice(catalog.findIndex((row) => row.code === '2113') + 1, 0, {
+      code: '2117',
+      description: 'Envíos por pagar',
+      kind: 'account',
+      nature: 'credit',
+      parent: '2100',
+    })
   if (hasSalesTax)
     catalog.splice(catalog.findIndex((row) => row.code === '2113') + 1, 0, {
       ...salesTaxAccount,
@@ -465,6 +467,20 @@ export function buildAccountingModel({
               : null,
           closingNio: null,
         }
+      // Este resumen operativo no contiene los pagos ni los ajustes manuales
+      // de 2117: el saldo completo se consulta en el mayor contable real.
+      if (account.code === '2117')
+        return {
+          code: account.code,
+          description: account.description,
+          openingNio: null,
+          debitNio: null,
+          creditNio:
+            reliable(report) && !period.missingRevenueLines
+              ? period.shippingNio
+              : null,
+          closingNio: null,
+        }
       const code = account.code as ResultCode
       return {
         code,
@@ -516,16 +532,12 @@ export function buildAccountingModel({
       accumulatedNio: null,
     },
     incomeLine('4110'),
-    incomeLine('4120'),
     {
       code: '',
       description: 'Total ingresos',
       kind: 'subtotal',
-      periodNio: total([periodResult['4110'], periodResult['4120']]),
-      accumulatedNio: total([
-        cumulativeResult['4110'],
-        cumulativeResult['4120'],
-      ]),
+      periodNio: periodResult['4110'],
+      accumulatedNio: cumulativeResult['4110'],
     },
     {
       code: '5000',
@@ -584,7 +596,8 @@ export function buildAccountingModel({
   const receivables = positionValue(ledger, 'cobrar')
   const suppliers = positionValue(ledger, 'proveedores')
   const loans = positionValue(ledger, 'prestamos')
-  const liabilities = hasSalesTax ? null : total([suppliers, loans])
+  const liabilities =
+    hasSalesTax || hasShipping ? null : total([suppliers, loans])
   const balance = {
     left: [
       row('1000', 'Activo', 'heading', null),
@@ -613,6 +626,7 @@ export function buildAccountingModel({
       ...(hasSalesTax
         ? [row('2116', 'Impuesto sobre ventas por conciliar', 'line', null)]
         : []),
+      ...(hasShipping ? [row('2117', 'Envíos por pagar', 'line', null)] : []),
       row('', 'Total pasivo', 'subtotal', liabilities),
       row('3000', 'Capital', 'heading', null),
       row(

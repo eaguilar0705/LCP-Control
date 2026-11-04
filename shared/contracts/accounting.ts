@@ -154,7 +154,7 @@ export interface AccountingSource {
  */
 export interface LedgerTotals {
   revenueNio: number
-  /** Cobros por envío al cliente, separados del margen de los perfumes. */
+  /** Envíos facturados: fondos de terceros, acumulados como pasivo en 2117. */
   shippingNio?: number
   /** Gasto de envío registrado en comprobantes manuales, sin duplicar gastos. */
   shippingExpenseNio?: number

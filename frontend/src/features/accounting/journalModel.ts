@@ -8,6 +8,7 @@ export interface LedgerAccount {
     'asset' | 'liability' | 'equity' | 'revenue' | 'cost' | 'expense' | 'tax'
   nature: 'debit' | 'credit'
   postable: boolean
+  active?: boolean
   opening: number
   debit: number
   credit: number
@@ -308,13 +309,15 @@ export function journalModel(
     businessName,
     range: { from: data.from, to: data.to },
     accumulatedFrom: data.startOn ?? data.from,
-    catalog: data.accounts.map((a) => ({
-      code: a.code,
-      description: a.name,
-      kind: a.postable ? 'account' : 'group',
-      nature: a.nature,
-      parent: a.parent ?? undefined,
-    })),
+    catalog: data.accounts
+      .filter((a) => a.active !== false)
+      .map((a) => ({
+        code: a.code,
+        description: a.name,
+        kind: a.postable ? 'account' : 'group',
+        nature: a.nature,
+        parent: a.parent ?? undefined,
+      })),
     trial: accounts.map((a) => ({
       code: a.code,
       description: a.name,

@@ -218,7 +218,7 @@ try {
         await get('select public.ledger_report($1,$1) r', [fixture.today])
       ).r
       equal(
-        Number(ledger.accounts.find((row) => row.code === '4120').credit),
+        Number(ledger.accounts.find((row) => row.code === '2117').credit),
         80,
         'ingreso separado envío',
       )
@@ -263,14 +263,26 @@ try {
       equal(text.includes('446.00'), true, 'PDF conserva total')
       await navigate('/accounting', 'Contabilidad')
       await page
-        .getByRole('button', { name: 'Pago de envío', exact: true })
+        .getByRole('button', { name: 'Comprobante de egreso', exact: true })
+        .waitFor()
+      equal(
+        await page
+          .getByRole('button', { name: 'Pago de envío', exact: true })
+          .count(),
+        0,
+        'no se prepara automáticamente un gasto de envío',
+      )
+      await page
+        .getByRole('button', { name: 'Comprobante de egreso', exact: true })
         .click()
       const dialog = page.getByRole('dialog')
       await dialog.waitFor()
+      await dialog.getByLabel('Cuenta 1', { exact: true }).selectOption('2117')
       await dialog
-        .getByLabel('Pagado desde', { exact: true })
+        .getByLabel('Cuenta 2', { exact: true })
         .selectOption('1120-001')
-      await dialog.getByLabel('Importe', { exact: true }).fill('70')
+      await dialog.getByLabel('Debe', { exact: true }).nth(0).fill('70')
+      await dialog.getByLabel('Haber', { exact: true }).nth(1).fill('70')
       await dialog
         .getByLabel('Concepto', { exact: true })
         .fill('Pago CargoTrans ' + document.number)
@@ -287,8 +299,18 @@ try {
       ).r
       equal(
         Number(after.accounts.find((row) => row.code === '5130-011').debit),
-        70,
-        'gasto transportista separado',
+        0,
+        'el pago de la deuda no genera gasto',
+      )
+      equal(
+        Number(after.accounts.find((row) => row.code === '2117').closing),
+        -10,
+        'queda la diferencia por aplicar manualmente',
+      )
+      equal(
+        Number(after.accounts.find((row) => row.code === '4190-001').credit),
+        0,
+        'no hay ingreso automático por gestión',
       )
       equal(
         Number(after.accounts.find((row) => row.code === '1120-001').credit),
@@ -301,8 +323,56 @@ try {
       equal(digest.ledger.shippingNio, 80, 'reportes incluyen cobro del envío')
       equal(
         digest.ledger.shippingExpenseNio,
-        70,
-        'reportes incluyen pago del transportista',
+        0,
+        'pago contra pasivo no figura como gasto',
+      )
+      await page
+        .getByRole('button', { name: 'Comprobante de ajuste', exact: true })
+        .click()
+      await dialog.getByLabel('Cuenta 1', { exact: true }).selectOption('2117')
+      await dialog
+        .getByLabel('Cuenta 2', { exact: true })
+        .selectOption('4190-001')
+      await dialog.getByLabel('Debe', { exact: true }).nth(0).fill('10')
+      await dialog.getByLabel('Haber', { exact: true }).nth(1).fill('10')
+      await dialog
+        .getByLabel('Concepto', { exact: true })
+        .fill('Gestión de envíos registrada manualmente')
+      await dialog
+        .getByRole('button', { name: 'Guardar comprobante', exact: true })
+        .click()
+      await dialog.waitFor({ state: 'hidden' })
+      const managed = (
+        await get('select public.ledger_report($1,$1) r', [fixture.today])
+      ).r
+      equal(
+        Number(managed.accounts.find((row) => row.code === '2117').closing),
+        0,
+        'ajuste manual liquida la diferencia',
+      )
+      equal(
+        Number(managed.accounts.find((row) => row.code === '4190-001').credit),
+        10,
+        'gestión ingresada manualmente',
+      )
+      await page
+        .getByRole('button', { name: 'Catálogo de cuentas', exact: true })
+        .click()
+      await page
+        .getByRole('heading', { name: 'Catálogo de cuentas', exact: true })
+        .waitFor()
+      const catalog = page.locator('table.accounting-catalog')
+      equal(
+        await catalog.getByText('4120', { exact: true }).count(),
+        0,
+        'cuenta anterior retirada del catálogo',
+      )
+      equal(await catalog.getByText('2117', { exact: true }).count(), 1)
+      equal(await catalog.getByText('4190-001', { exact: true }).count(), 1)
+      equal(
+        await catalog.getByText('5130-011', { exact: true }).count(),
+        1,
+        'se conserva el gasto que solicitó Miguel',
       )
       equal(errors, [], 'navegador sin errores')
       equal(fixture.failures, [], 'API aislada sin errores')

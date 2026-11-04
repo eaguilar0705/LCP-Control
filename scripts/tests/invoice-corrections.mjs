@@ -278,7 +278,7 @@ try {
   eq(d.items.length, 2)
   eq(d.number, invoice.number)
   eq((await ledger()).accounts.find((a) => a.code === '1120-001').closing, 1260)
-  eq((await ledger()).accounts.find((a) => a.code === '4120').closing, -80)
+  eq((await ledger()).accounts.find((a) => a.code === '2117').closing, -80)
   const stableState = {
     stock1: await stock(p1),
     stock2: await stock(p2),
