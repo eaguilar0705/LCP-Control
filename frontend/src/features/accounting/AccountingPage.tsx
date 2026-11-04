@@ -16,7 +16,8 @@ import { accountingViews } from './accountingModel'
 import { AccountingTables, AccountCatalog } from './AccountingTables'
 import { readLedger } from './journalService'
 import { journalModel } from './journalModel'
-import { JournalWorkspace, AccountEditor } from './JournalWorkspace'
+import { JournalWorkspace } from './JournalWorkspace'
+import { LedgerAccountsManager } from './LedgerAccountsManager'
 import { emptyLedger } from './finance'
 import { CreditWorkspace } from './CreditWorkspace'
 import { InventoryValuation } from './InventoryValuation'
@@ -174,13 +175,14 @@ export function AccountingPage() {
         <CreditWorkspace
           range={range}
           bankAccounts={data.ledger.accounts.filter(
-            (a) => a.code.startsWith('1120-') && a.postable,
+            (a) =>
+              a.code.startsWith('1120-') && a.postable && a.active !== false,
           )}
           onChanged={refresh}
         />
       ) : view === 'catalog' ? (
         <>
-          <AccountEditor data={data.ledger} onSaved={refresh} />
+          <LedgerAccountsManager onSaved={refresh} />
           <AccountCatalog accounts={model.catalog} />
         </>
       ) : (

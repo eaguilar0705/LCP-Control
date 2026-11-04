@@ -75,23 +75,25 @@ export function OperationRecoveryBanner({
               'price-list-prices',
             ].includes(reference.kind)
             const history =
-              reference.kind === 'proforma'
-                ? '/proformas/history'
-                : ['invoice', 'invoice-correction', 'sales-return'].includes(
-                      reference.kind,
-                    )
-                  ? '/sales/history'
-                  : ['inventory-movement', 'inventory-transfer'].includes(
+              reference.kind === 'ledger-account-change'
+                ? '/accounting?section=catalog'
+                : reference.kind === 'proforma'
+                  ? '/proformas/history'
+                  : ['invoice', 'invoice-correction', 'sales-return'].includes(
                         reference.kind,
                       )
-                    ? '/inventory/history'
-                    : inventoryModule
-                      ? '/inventory'
-                      : reference.kind === 'business-import'
-                        ? '/settings'
-                        : reference.kind.startsWith('business-day-')
-                          ? '/'
-                          : '/accounting'
+                    ? '/sales/history'
+                    : ['inventory-movement', 'inventory-transfer'].includes(
+                          reference.kind,
+                        )
+                      ? '/inventory/history'
+                      : inventoryModule
+                        ? '/inventory'
+                        : reference.kind === 'business-import'
+                          ? '/settings'
+                          : reference.kind.startsWith('business-day-')
+                            ? '/'
+                            : '/accounting'
             return (
               <div className="pending-operation-row" key={key}>
                 <div>

@@ -3,6 +3,7 @@ import { AppError } from './errors'
 export const operationLabels = {
   invoice: 'Factura',
   'invoice-correction': 'Edición de factura',
+  'ledger-account-change': 'Cuenta contable',
   proforma: 'Proforma',
   'sales-return': 'Devolución',
   purchase: 'Compra',
