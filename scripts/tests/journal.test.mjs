@@ -63,6 +63,30 @@ test('trial balance and balance sheet reconcile with real equity, cash, card com
   assert.equal(m.balance.left.at(-1).amount, 6255)
   assert.equal(m.balance.right.at(-1).amount, 6255)
 })
+test('la numeración editada llega a estados y Excel sin cambiar los cálculos ni las contrapartidas', () => {
+  const original = fixture()
+  const changed = structuredClone(original)
+  for (const a of changed.accounts)
+    a.displayCode =
+      a.code === '4110' ? '4118' : a.code === '1110-001' ? '1110-101' : a.code
+  const before = journalModel(original, 'Tienda')
+  const after = journalModel(changed, 'Tienda')
+  assert.equal(after.trial.find((a) => a.code === '1110-101').closingNio, 900)
+  assert.equal(after.income.find((a) => a.code === '4118').periodNio, 2000)
+  assert.equal(
+    after.income.find((a) => a.description === 'Utilidad bruta').periodNio,
+    1400,
+  )
+  assert.deepEqual(after.trialTotals, before.trialTotals)
+  assert.equal(
+    after.balance.left.at(-1).amount,
+    before.balance.left.at(-1).amount,
+  )
+  assert.ok(
+    JSON.stringify(accountingWorkbookSheets(after)).includes('1110-101'),
+  )
+})
+
 test('missing opening or historical cost never presents an invented balanced statement', () => {
   for (const change of [
     { startOn: null },

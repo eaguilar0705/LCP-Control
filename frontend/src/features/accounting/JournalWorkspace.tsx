@@ -782,7 +782,7 @@ function JournalDialog({
                       <option value="">Seleccionar cuenta</option>
                       {accounts.map((a) => (
                         <option key={a.code} value={a.code}>
-                          {a.code} · {a.name}
+                          {a.displayCode ?? a.code} · {a.name}
                         </option>
                       ))}
                     </Select>

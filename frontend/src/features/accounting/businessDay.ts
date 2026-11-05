@@ -64,7 +64,14 @@ export interface BusinessDay {
 export interface BusinessDayEvent {
   id: string
   day: string
-  event: 'close' | 'reopen' | 'correct' | 'prepare' | 'invoice_corrected'
+  event:
+    | 'close'
+    | 'reopen'
+    | 'correct'
+    | 'prepare'
+    | 'invoice_corrected'
+    | 'closing_corrected'
+    | 'cash_movement'
   revision: number
   createdAt: string
   actorId: string

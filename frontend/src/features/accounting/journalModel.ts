@@ -2,6 +2,8 @@ import type { AccountingModel, IncomeRow, BalanceRow } from './accountingModel'
 
 export interface LedgerAccount {
   code: string
+  displayCode?: string
+  displayParent?: string
   name: string
   parent: string | null
   bucket:
@@ -29,7 +31,12 @@ export interface JournalRecord {
 }
 export interface JournalDetailRecord extends JournalRecord {
   lines: JournalDetailLine[]
-  openingAccounts?: { code: string; name: string; bucket: string }[]
+  openingAccounts?: {
+    code: string
+    displayCode?: string
+    name: string
+    bucket: string
+  }[]
   openingHistory?: {
     id: string
     revision: number
@@ -41,6 +48,7 @@ export interface JournalDetailRecord extends JournalRecord {
 }
 export interface JournalDetailLine {
   account: string
+  displayAccount?: string
   name: string
   debit: number | null
   credit: number | null
@@ -258,7 +266,7 @@ export function journalModel(
     })
     for (const a of accounts.filter((a) => a.bucket === bucket))
       income.push({
-        code: a.code,
+        code: a.displayCode ?? a.code,
         description: a.name,
         kind: 'line',
         negative: bucket !== 'revenue',
@@ -293,7 +301,7 @@ export function journalModel(
     accounts
       .filter((a) => a.bucket === bucket)
       .map((a) => ({
-        code: a.code,
+        code: a.displayCode ?? a.code,
         description: a.name,
         kind: 'line',
         amount: accountAmount(a, a.closing * (bucket === 'asset' ? 1 : -1)),
@@ -312,14 +320,14 @@ export function journalModel(
     catalog: data.accounts
       .filter((a) => a.active !== false)
       .map((a) => ({
-        code: a.code,
+        code: a.displayCode ?? a.code,
         description: a.name,
         kind: a.postable ? 'account' : 'group',
         nature: a.nature,
-        parent: a.parent ?? undefined,
+        parent: a.displayParent ?? a.parent ?? undefined,
       })),
     trial: accounts.map((a) => ({
-      code: a.code,
+      code: a.displayCode ?? a.code,
       description: a.name,
       openingNio: accountAmount(
         a,
@@ -353,7 +361,13 @@ export function journalModel(
     income,
     balance: {
       left: [
-        { code: '1000', description: 'Activo', kind: 'heading', amount: null },
+        {
+          code:
+            data.accounts.find((a) => a.code === '1000')?.displayCode ?? '1000',
+          description: 'Activo',
+          kind: 'heading',
+          amount: null,
+        },
         ...balanceRows('asset'),
         {
           code: '',
@@ -363,7 +377,13 @@ export function journalModel(
         },
       ],
       right: [
-        { code: '2000', description: 'Pasivo', kind: 'heading', amount: null },
+        {
+          code:
+            data.accounts.find((a) => a.code === '2000')?.displayCode ?? '2000',
+          description: 'Pasivo',
+          kind: 'heading',
+          amount: null,
+        },
         ...balanceRows('liability'),
         {
           code: '',
@@ -371,7 +391,13 @@ export function journalModel(
           kind: 'subtotal',
           amount: known(liabilities),
         },
-        { code: '3000', description: 'Capital', kind: 'heading', amount: null },
+        {
+          code:
+            data.accounts.find((a) => a.code === '3000')?.displayCode ?? '3000',
+          description: 'Capital',
+          kind: 'heading',
+          amount: null,
+        },
         ...balanceRows('equity'),
         {
           code: '',

@@ -22,6 +22,7 @@ export const operationLabels = {
   'business-day-close': 'Cierre',
   'business-day-reopen': 'Reapertura',
   'business-day-correct': 'Corrección de apertura',
+  'business-day-correct_closing': 'Corrección de cierre',
   'business-day-prepare': 'Efectivo preparado',
   'opening-journal-correction': 'Edición de apertura contable',
 } as const

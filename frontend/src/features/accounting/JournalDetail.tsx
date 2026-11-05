@@ -92,7 +92,7 @@ export function JournalDetail({
       y += 8
       for (const row of data.lines) {
         const names = pdf.splitTextToSize(
-          `${row.account} · ${row.name}`,
+          `${row.displayAccount ?? row.account} · ${row.name}`,
           105,
         ) as string[]
         const height = names.length * 5 + 5
@@ -193,7 +193,7 @@ export function JournalDetail({
                 {data.lines.map((l, i) => (
                   <tr key={i}>
                     <th scope="row">
-                      {l.account} · {l.name}
+                      {l.displayAccount ?? l.account} · {l.name}
                     </th>
                     <td data-label={`Debe ${data.currency}`}>
                       {amount(l.debit, data.currency)}

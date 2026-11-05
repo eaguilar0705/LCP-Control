@@ -184,7 +184,7 @@ export function OpeningJournalEditor({
                   .filter((a) => a.code !== '1130' || line.account === '1130')
                   .map((a) => (
                     <option key={a.code} value={a.code}>
-                      {a.code} · {a.name}
+                      {a.displayCode ?? a.code} · {a.name}
                     </option>
                   ))}
               </Select>

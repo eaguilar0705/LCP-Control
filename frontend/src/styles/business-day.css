@@ -73,6 +73,8 @@
   border-bottom: 1px solid #eee4df;
 }
 .day-closing {
+  display: grid;
+  gap: 0.4rem;
   margin-top: 1rem;
   padding: 1rem;
   background: #faf6f3;

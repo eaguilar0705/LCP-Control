@@ -27,14 +27,17 @@ import {
   type BusinessDayEvent,
 } from './businessDay'
 import '../../styles/business-day.css'
+import { CashMovementDialog } from './CashMovementDialog'
 
-type DayAction = 'open' | 'close' | 'reopen' | 'correct' | 'prepare'
+type DayAction =
+  'open' | 'close' | 'reopen' | 'correct' | 'prepare' | 'correct_closing'
 const actionTitle: Record<DayAction, string> = {
   open: 'Abrir tienda',
   close: 'Cerrar tienda',
   reopen: 'Reabrir jornada',
   correct: 'Editar efectivo inicial',
   prepare: 'Preparar efectivo inicial',
+  correct_closing: 'Editar conteo del cierre',
 }
 const cashFormat = new Intl.NumberFormat('es-NI', {
   minimumFractionDigits: 2,
@@ -66,6 +69,7 @@ function DayPanel({ admin }: { admin: boolean }) {
     day: BusinessDay
   } | null>(null)
   const [failure, setFailure] = useState('')
+  const [cashDay, setCashDay] = useState<BusinessDay | null>(null)
   const [historyExpanded, setHistoryExpanded] = useState(false)
   const day = data?.day
   const revision = data?.revision
@@ -183,6 +187,22 @@ function DayPanel({ admin }: { admin: boolean }) {
                 Editar efectivo inicial
               </Button>
             )}
+          {admin && current && data && data.status !== 'not_opened' && (
+            <Button
+              variant="secondary"
+              onClick={() => setCashDay(structuredClone(data))}
+            >
+              Registrar movimiento de caja
+            </Button>
+          )}
+          {admin && current && data?.status === 'closed' && (
+            <Button
+              variant="secondary"
+              onClick={() => begin('correct_closing')}
+            >
+              <Pencil size={17} /> Editar conteo del cierre
+            </Button>
+          )}
           {admin && current && data?.status === 'open' && (
             <Button variant="secondary" onClick={() => begin('close')}>
               Cerrar tienda
@@ -324,6 +344,12 @@ function DayPanel({ admin }: { admin: boolean }) {
             </Link>
             <Link
               className="button button-secondary"
+              to={`${base}/accounting?section=journal&day=${data.day}`}
+            >
+              Movimientos contables del día
+            </Link>
+            <Link
+              className="button button-secondary"
               to={`${base}/accounting?section=credits&day=${data.day}`}
             >
               Cobros y pagos
@@ -355,6 +381,10 @@ function DayPanel({ admin }: { admin: boolean }) {
           </div>
           {data?.status === 'closed' && (
             <div className="day-closing">
+              <span>
+                Contado: {formatCurrency(report.countedNio ?? 0, 'NIO')} ·{' '}
+                {formatCurrency(report.countedUsd ?? 0, 'USD')}
+              </span>
               <strong>
                 Diferencia de caja:{' '}
                 {report.differenceNio == null
@@ -403,11 +433,15 @@ function DayPanel({ admin }: { admin: boolean }) {
                     ? 'Cierre'
                     : event.event === 'correct'
                       ? 'Corrección de apertura'
-                      : event.event === 'prepare'
-                        ? 'Preparación de apertura'
-                        : event.event === 'invoice_corrected'
-                          ? 'Corrección de factura'
-                          : 'Reapertura'}{' '}
+                      : event.event === 'closing_corrected'
+                        ? 'Corrección de cierre'
+                        : event.event === 'cash_movement'
+                          ? 'Movimiento de caja'
+                          : event.event === 'prepare'
+                            ? 'Preparación de apertura'
+                            : event.event === 'invoice_corrected'
+                              ? 'Corrección de factura'
+                              : 'Reapertura'}{' '}
                   · revisión {event.revision}
                 </strong>
                 <span>
@@ -477,6 +511,16 @@ function DayPanel({ admin }: { admin: boolean }) {
           ))}
         </details>
       )}
+      {cashDay && (
+        <CashMovementDialog
+          day={cashDay}
+          onClose={() => setCashDay(null)}
+          onSaved={() => {
+            setCashDay(null)
+            refreshPanel()
+          }}
+        />
+      )}
       {action && (
         <DayDialog
           action={action.kind}
@@ -514,18 +558,22 @@ function DayDialog({
   const { base, storageScope = 'anonymous' } = useAccess()
   const [preview, setPreview] = useState(day)
   const [nio, setNio] = useState(
-    action === 'correct'
-      ? String(day.openingNio ?? 0)
-      : action === 'prepare' || (action === 'open' && day.openingDraft)
-        ? String(day.openingDraft?.openingNio ?? 0)
-        : '',
+    action === 'correct_closing'
+      ? String(day.report?.countedNio ?? 0)
+      : action === 'correct'
+        ? String(day.openingNio ?? 0)
+        : action === 'prepare' || (action === 'open' && day.openingDraft)
+          ? String(day.openingDraft?.openingNio ?? 0)
+          : '',
   )
   const [usd, setUsd] = useState(
-    action === 'correct'
-      ? String(day.openingUsd ?? 0)
-      : action === 'open' || action === 'prepare'
-        ? String(day.openingDraft?.openingUsd ?? 0)
-        : '',
+    action === 'correct_closing'
+      ? String(day.report?.countedUsd ?? 0)
+      : action === 'correct'
+        ? String(day.openingUsd ?? 0)
+        : action === 'open' || action === 'prepare'
+          ? String(day.openingDraft?.openingUsd ?? 0)
+          : '',
   )
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
@@ -619,7 +667,10 @@ function DayDialog({
         p_day: action === 'open' ? null : preview.day,
       })
       setPreview(fresh)
-      if (action === 'correct') {
+      if (action === 'correct_closing') {
+        setNio(String(fresh.report?.countedNio ?? 0))
+        setUsd(String(fresh.report?.countedUsd ?? 0))
+      } else if (action === 'correct') {
         setNio(String(fresh.openingNio ?? 0))
         setUsd(String(fresh.openingUsd ?? 0))
       } else if (action === 'prepare' || action === 'open') {
@@ -704,14 +755,17 @@ function DayDialog({
           ? preview.status === 'open' || preview.status === 'closed'
           : action === 'reopen'
             ? preview.status === 'closed' && !historical && !preview.openDay
-            : preview.status === 'open'
+            : action === 'correct_closing'
+              ? preview.status === 'closed'
+              : preview.status === 'open'
   return (
     <Dialog
       open
       className="day-dialog"
+      dismissible={!busy && !checking && !uncertain}
       title={actionTitle[action]}
       onClose={() => {
-        if (!busy && !checking) onClose()
+        if (!busy && !checking && !uncertain) onClose()
       }}
     >
       <form onSubmit={submit} className="day-form">
@@ -802,7 +856,7 @@ function DayDialog({
                 required
                 value={nio}
                 onChange={(e) => setNio(e.target.value)}
-                disabled={busy || checking}
+                disabled={busy || checking || uncertain}
               />
               <Input
                 label="Dólares US$"
@@ -813,7 +867,7 @@ function DayDialog({
                 required
                 value={usd}
                 onChange={(e) => setUsd(e.target.value)}
-                disabled={busy || checking}
+                disabled={busy || checking || uncertain}
               />
             </div>
           </>
@@ -846,48 +900,63 @@ function DayDialog({
             </div>
           </div>
         )}
-        {action === 'close' && preview.report && (
-          <>
-            <div className="day-count-preview" aria-label="Resumen del cierre">
-              <div>
-                <span>Moneda</span>
-                <strong>C$</strong>
-                <strong>US$</strong>
+        {(action === 'close' || action === 'correct_closing') &&
+          preview.report && (
+            <>
+              <div
+                className="day-count-preview"
+                aria-label="Resumen del cierre"
+              >
+                <div>
+                  <span>Moneda</span>
+                  <strong>C$</strong>
+                  <strong>US$</strong>
+                </div>
+                <div>
+                  <span>Esperado</span>
+                  <strong>
+                    {cashFormat.format(preview.report.expectedNio)}
+                  </strong>
+                  <strong>
+                    {cashFormat.format(preview.report.expectedUsd)}
+                  </strong>
+                </div>
+                <div>
+                  <span>Contado</span>
+                  <strong>
+                    {nio === '' ? 'Pendiente' : cashFormat.format(Number(nio))}
+                  </strong>
+                  <strong>
+                    {usd === '' ? 'Pendiente' : cashFormat.format(Number(usd))}
+                  </strong>
+                </div>
+                <div className={discrepancy ? 'day-count-difference' : ''}>
+                  <span>Diferencia</span>
+                  <strong>
+                    {nio === ''
+                      ? 'Pendiente'
+                      : cashFormat.format(differenceNio)}
+                  </strong>
+                  <strong>
+                    {usd === ''
+                      ? 'Pendiente'
+                      : cashFormat.format(differenceUsd)}
+                  </strong>
+                </div>
               </div>
-              <div>
-                <span>Esperado</span>
-                <strong>{cashFormat.format(preview.report.expectedNio)}</strong>
-                <strong>{cashFormat.format(preview.report.expectedUsd)}</strong>
-              </div>
-              <div>
-                <span>Contado</span>
-                <strong>
-                  {nio === '' ? 'Pendiente' : cashFormat.format(Number(nio))}
-                </strong>
-                <strong>
-                  {usd === '' ? 'Pendiente' : cashFormat.format(Number(usd))}
-                </strong>
-              </div>
-              <div className={discrepancy ? 'day-count-difference' : ''}>
-                <span>Diferencia</span>
-                <strong>
-                  {nio === '' ? 'Pendiente' : cashFormat.format(differenceNio)}
-                </strong>
-                <strong>
-                  {usd === '' ? 'Pendiente' : cashFormat.format(differenceUsd)}
-                </strong>
-              </div>
-            </div>
-            <p>
-              El cierre guarda el reporte y detiene las ventas de esta jornada.
-            </p>
-            {historical && (
-              <p className="day-notice">
-                Cierre de una jornada anterior. Indica por qué quedó pendiente.
+              <p>
+                El conteo registra el efectivo físico; no cambia los saldos
+                contables. Registra gastos, retiros o depósitos en «Registrar
+                movimiento de caja».
               </p>
-            )}
-          </>
-        )}
+              {historical && action === 'close' && (
+                <p className="day-notice">
+                  Cierre de una jornada anterior. Indica por qué quedó
+                  pendiente.
+                </p>
+              )}
+            </>
+          )}
         {action === 'correct' && preview.status === 'closed' && (
           <p className="day-notice">
             Se conserva el efectivo contado al cierre y se recalcula la
@@ -908,7 +977,7 @@ function DayDialog({
             minLength={reasonRequired ? minReason : undefined}
             maxLength={1000}
             onChange={(e) => setNote(e.target.value)}
-            disabled={busy || checking}
+            disabled={busy || checking || uncertain}
           />
         )}
         {changed && (
@@ -921,12 +990,12 @@ function DayDialog({
             <Button
               type="button"
               variant="secondary"
-              disabled={busy || checking}
+              disabled={busy || checking || uncertain}
               onClick={() => void updatePreview()}
             >
               {checking
                 ? 'Actualizando…'
-                : action === 'close'
+                : action === 'close' || action === 'correct_closing'
                   ? 'Actualizar importes del cierre'
                   : 'Actualizar jornada'}
             </Button>
@@ -947,7 +1016,7 @@ function DayDialog({
           <Button
             type="button"
             variant="secondary"
-            disabled={busy || checking}
+            disabled={busy || checking || uncertain}
             onClick={onClose}
           >
             Cancelar
@@ -959,6 +1028,9 @@ function DayDialog({
               (!retrying &&
                 (changed ||
                   !canConfirm ||
+                  (action === 'correct_closing' &&
+                    Number(nio) === preview.report?.countedNio &&
+                    Number(usd) === preview.report?.countedUsd) ||
                   (action === 'correct' &&
                     Number(nio) === preview.openingNio &&
                     Number(usd) === preview.openingUsd) ||
@@ -974,7 +1046,7 @@ function DayDialog({
                 ? 'Confirmar apertura'
                 : action === 'prepare'
                   ? 'Guardar efectivo inicial'
-                  : action === 'correct'
+                  : action === 'correct' || action === 'correct_closing'
                     ? 'Guardar corrección'
                     : action === 'reopen'
                       ? 'Confirmar reapertura'

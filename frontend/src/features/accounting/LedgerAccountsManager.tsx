@@ -18,6 +18,9 @@ import './ledger-accounts.css'
 
 interface ManagedAccount {
   code: string
+  display_code?: string | null
+  displayCode?: string
+  displayParent?: string
   name: string
   parent: string | null
   bucket: string
@@ -31,6 +34,7 @@ interface AccountChange {
   action: 'create' | 'rename' | 'activate' | 'deactivate'
   code: string
   name?: string
+  newCode?: string
   parent?: string
   expectedRevision?: number
 }
@@ -102,7 +106,7 @@ function AccountsDialog({
   const visible = accounts.filter(
     (a) =>
       (status === 'all' || a.active === (status === 'active')) &&
-      matchesSearch(`${a.code} ${a.name}`, query),
+      matchesSearch(`${a.displayCode ?? a.code} ${a.name}`, query),
   )
   function edit(account: ManagedAccount | 'create') {
     setForm(account)
@@ -110,7 +114,7 @@ function AccountsDialog({
     setFailure('')
     setNotice('')
     setStale(false)
-    setCode(account === 'create' ? '' : account.code)
+    setCode(account === 'create' ? '' : (account.displayCode ?? account.code))
     setName(account === 'create' ? '' : account.name)
     setParent(account === 'create' ? '' : (account.parent ?? ''))
   }
@@ -130,12 +134,12 @@ function AccountsDialog({
         ? await operation.retryPending()
         : await operation.execute(input!)
       setNotice(
-        `${result.code} · ${result.active ? 'Cuenta guardada.' : 'Cuenta desactivada.'}`,
+        `${result.display_code ?? result.code} · ${result.active ? 'Cuenta guardada.' : 'Cuenta desactivada.'}`,
       )
       setForm(null)
       setConfirm(null)
       setStatus(result.active ? 'active' : 'inactive')
-      setQuery(result.code)
+      setQuery(result.display_code ?? result.code)
       retry()
       onSaved()
     } catch (e) {
@@ -155,6 +159,7 @@ function AccountsDialog({
         : {
             action: 'rename',
             code: form.code,
+            newCode: code.trim(),
             name: name.trim(),
             expectedRevision: form.revision,
           },
@@ -186,13 +191,12 @@ function AccountsDialog({
               <h3>
                 {form === 'create'
                   ? 'Agregar cuenta'
-                  : `Renombrar ${form.code}`}
+                  : `Editar ${form.displayCode ?? form.code}`}
               </h3>
               <fieldset disabled={disabled} className="ledger-account-fields">
                 <Input
                   label="Código"
                   required
-                  readOnly={form !== 'create'}
                   pattern="[1-6][0-9]{3}(-[0-9]{3}){0,3}"
                   maxLength={16}
                   value={code}
@@ -217,13 +221,14 @@ function AccountsDialog({
                       .filter((a) => a.active)
                       .map((a) => (
                         <option key={a.code} value={a.code}>
-                          {a.code} · {a.name}
+                          {a.displayCode ?? a.code} · {a.name}
                         </option>
                       ))}
                   </Select>
                 ) : (
                   <p className="muted">
-                    Cuenta mayor: {parent || 'Cuenta principal'}
+                    Cuenta mayor:{' '}
+                    {(form.displayParent ?? parent) || 'Cuenta principal'}
                   </p>
                 )}
               </fieldset>
@@ -242,7 +247,10 @@ function AccountsDialog({
                 </Button>
                 <Button
                   disabled={
-                    disabled || (form !== 'create' && name.trim() === form.name)
+                    disabled ||
+                    (form !== 'create' &&
+                      name.trim() === form.name &&
+                      code.trim() === (form.displayCode ?? form.code))
                   }
                 >
                   {busy ? 'Guardando…' : 'Guardar cuenta'}
@@ -252,8 +260,8 @@ function AccountsDialog({
           ) : confirm ? (
             <div className="day-form">
               <h3>
-                {confirm.active ? 'Desactivar' : 'Reactivar'} {confirm.code} ·{' '}
-                {confirm.name}
+                {confirm.active ? 'Desactivar' : 'Reactivar'}{' '}
+                {confirm.displayCode ?? confirm.code} · {confirm.name}
               </h3>
               <p>
                 {confirm.active
@@ -332,11 +340,13 @@ function AccountsDialog({
                   >
                     <div>
                       <strong>
-                        {a.code} · {a.name}
+                        {a.displayCode ?? a.code} · {a.name}
                       </strong>
                       <small>
                         {a.active ? 'Activa' : 'Inactiva'}
-                        {a.parent ? ` · Mayor: ${a.parent}` : ''}
+                        {a.parent
+                          ? ` · Mayor: ${a.displayParent ?? a.parent}`
+                          : ''}
                       </small>
                       {a.restriction && (
                         <small className="muted">{a.restriction}</small>
@@ -346,10 +356,10 @@ function AccountsDialog({
                       <Button
                         variant="secondary"
                         onClick={() => edit(a)}
-                        aria-label={`Renombrar cuenta ${a.code}`}
+                        aria-label={`Editar cuenta ${a.displayCode ?? a.code}`}
                       >
                         <Pencil size={15} />
-                        Renombrar
+                        Editar
                       </Button>
                       <Button
                         variant="ghost"

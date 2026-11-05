@@ -137,13 +137,13 @@ try {
         'alta única',
       )
       await row
-        .getByRole('button', { name: 'Renombrar cuenta 5130-900', exact: true })
+        .getByRole('button', { name: 'Editar cuenta 5130-900', exact: true })
         .click()
       eq(
         await dialog
           .getByLabel('Código', { exact: true })
           .getAttribute('readonly'),
-        '',
+        null,
       )
       await dialog
         .getByLabel('Nombre de la cuenta', { exact: true })
@@ -273,7 +273,7 @@ try {
       if (width === 1440) {
         await row
           .getByRole('button', {
-            name: 'Renombrar cuenta 5130-900',
+            name: 'Editar cuenta 5130-900',
             exact: true,
           })
           .click()
