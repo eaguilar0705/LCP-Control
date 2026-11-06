@@ -36,6 +36,14 @@ Para un perfume nuevo, antes de contabilizar deben confirmarse las existencias p
 
 ## Activación y verificación
 
+### Integración con la clasificación contable
+
+La actualización contable incorporada del remoto agrega **Compras por clasificar** y edición de recepciones ya contabilizadas. **Pendiente de revisión**, en la recepción de Bodega, conserva las unidades fuera de las existencias vendibles. Su confirmación sigue exigiendo caja, banco o proveedores.
+
+La opción **Pendiente de clasificar**, disponible en las compras directas de administración, corresponde a otra etapa: la mercadería ya fue recibida y su valor reconocido contra la cuenta temporal 2190; todavía falta distribuir la contrapartida definitiva. No sustituye la recepción pendiente de Bodega. El historial de recepción conserva los importes originales; los costos y pagos vigentes, con sus revisiones, se consultan desde **Inventario → Compras**.
+
+La prueba de integración cubre ambos recorridos y una corrección posterior, conservando el bloqueo inicial y sin duplicar unidades ni asientos.
+
 Aplicar después de las migraciones anteriores:
 
 `backend/supabase/migrations/20261106210000_recepciones_pendientes_de_contabilizar.sql`

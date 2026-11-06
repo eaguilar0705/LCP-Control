@@ -8,6 +8,8 @@ import { journalNumber, type AutomaticJournalRecord } from './journalModel'
 import { useServices } from '../../services/useServices'
 import { useAccess } from '../../app/AccessContext'
 import { OpeningJournalEditor } from './OpeningJournalEditor'
+import { MultiCurrencyJournal } from './MultiCurrencyJournal'
+import { ReceiptEditor } from '../pricing/ReceiptEditor'
 import type { JournalDetailRecord } from './journalModel'
 export function JournalDetail({
   id,
@@ -34,6 +36,7 @@ export function JournalDetail({
   const data = snapshot ?? current
   const [editing, setEditing] = useState(startEditing)
   const [pendingEdit, setPendingEdit] = useState(false)
+  const [editingReceipt, setEditingReceipt] = useState(false)
   const { role, demo } = useAccess()
   const { salesService } = useServices()
   const [failure, setFailure] = useState(''),
@@ -44,6 +47,17 @@ export function JournalDetail({
     !data || data.lines.some((line) => line[key] === null)
       ? null
       : data.lines.reduce((sum, line) => sum + (line[key] ?? 0), 0)
+  const mixed =
+    data?.lines.some(
+      (l) =>
+        l.currency &&
+        (l.currency !== data.currency ||
+          l.exchange_rate !== data.exchange_rate),
+    ) ?? false
+  const history = [
+    ...(current?.openingHistory ?? []),
+    ...(current?.editHistory ?? []),
+  ]
   const warning = entry?.missingSales
     ? `Detalle contable pendiente en ${entry.missingSales} factura(s). Los importes del día están pendientes.`
     : entry?.missingCosts
@@ -74,8 +88,10 @@ export function JournalDetail({
       for (const text of [
         `Fecha: ${formatDate(data.occurred_on)}`,
         `Referencia: ${data.reference || '—'}`,
-        `Moneda: ${data.currency} · Tipo de cambio: ${data.exchange_rate}`,
-        ...(data.kind === 'opening' ? [`Revisión: ${data.revision ?? 0}`] : []),
+        mixed
+          ? 'Moneda y tipo de cambio por renglón · Totales en córdobas'
+          : `Moneda: ${data.currency} · Tipo de cambio: ${data.exchange_rate}`,
+        ...(data.revision !== undefined ? [`Revisión: ${data.revision}`] : []),
         data.description,
         ...(warning ? [warning] : []),
         ...(data.voided_at ? [`ANULADO: ${data.void_reason}`] : []),
@@ -92,7 +108,7 @@ export function JournalDetail({
       y += 8
       for (const row of data.lines) {
         const names = pdf.splitTextToSize(
-          `${row.displayAccount ?? row.account} · ${row.name}`,
+          `${row.displayAccount ?? row.account} · ${row.name}${mixed ? `\n${row.currency ?? data.currency} · tasa ${row.exchange_rate ?? data.exchange_rate} · ${formatCurrency((row.debit_nio ?? 0) || (row.credit_nio ?? 0), 'NIO')}` : ''}`,
           105,
         ) as string[]
         const height = names.length * 5 + 5
@@ -101,10 +117,10 @@ export function JournalDetail({
           y = 22
         }
         pdf.text(names, 18, y)
-        pdf.text(amount(row.debit, data.currency), 154, y, {
+        pdf.text(amount(row.debit, row.currency ?? data.currency), 154, y, {
           align: 'right',
         })
-        pdf.text(amount(row.credit, data.currency), 198, y, {
+        pdf.text(amount(row.credit, row.currency ?? data.currency), 198, y, {
           align: 'right',
         })
         y += height
@@ -115,12 +131,32 @@ export function JournalDetail({
       }
       pdf.setFont('helvetica', 'bold')
       pdf.text('Totales', 18, y)
-      pdf.text(amount(total('debit'), data.currency), 154, y, {
-        align: 'right',
-      })
-      pdf.text(amount(total('credit'), data.currency), 198, y, {
-        align: 'right',
-      })
+      pdf.text(
+        amount(
+          mixed
+            ? data.lines.reduce((s, l) => s + (l.debit_nio ?? 0), 0)
+            : total('debit'),
+          mixed ? 'NIO' : data.currency,
+        ),
+        154,
+        y,
+        {
+          align: 'right',
+        },
+      )
+      pdf.text(
+        amount(
+          mixed
+            ? data.lines.reduce((s, l) => s + (l.credit_nio ?? 0), 0)
+            : total('credit'),
+          mixed ? 'NIO' : data.currency,
+        ),
+        198,
+        y,
+        {
+          align: 'right',
+        },
+      )
       pdf.save(`comprobante-${journalNumber(data)}.pdf`)
     } catch (e) {
       setFailure(errorMessage(e))
@@ -133,7 +169,7 @@ export function JournalDetail({
       open
       title={
         editing
-          ? `Editar apertura ${data ? journalNumber(data) : ''}`
+          ? `Editar ${data?.kind === 'opening' ? 'apertura' : 'comprobante'} ${data ? journalNumber(data) : ''}`
           : data
             ? `Comprobante ${journalNumber(data)}`
             : 'Comprobante'
@@ -148,6 +184,18 @@ export function JournalDetail({
         <LoadingState />
       ) : error || !data ? (
         <ErrorState message={error ?? 'Sin datos.'} retry={retry} />
+      ) : editing && data.kind !== 'opening' ? (
+        <MultiCurrencyJournal
+          entry={data}
+          accounts={data.editingAccounts ?? []}
+          onPending={setPendingEdit}
+          onCancel={() => setEditing(false)}
+          onSaved={() => {
+            setEditing(false)
+            refresh()
+            onChanged?.()
+          }}
+        />
       ) : editing ? (
         <OpeningJournalEditor
           entry={data}
@@ -185,8 +233,8 @@ export function JournalDetail({
               <thead>
                 <tr>
                   <th>Cuenta</th>
-                  <th>Debe {data.currency}</th>
-                  <th>Haber {data.currency}</th>
+                  <th>Debe {mixed ? '' : data.currency}</th>
+                  <th>Haber {mixed ? '' : data.currency}</th>
                 </tr>
               </thead>
               <tbody>
@@ -194,16 +242,50 @@ export function JournalDetail({
                   <tr key={i}>
                     <th scope="row">
                       {l.displayAccount ?? l.account} · {l.name}
+                      {mixed && (
+                        <small className="mixed-detail-rate">
+                          {l.currency ?? data.currency} · tasa{' '}
+                          {l.exchange_rate ?? data.exchange_rate} ·{' '}
+                          {formatCurrency(
+                            (l.debit_nio ?? 0) || (l.credit_nio ?? 0),
+                            'NIO',
+                          )}
+                        </small>
+                      )}
                     </th>
-                    <td data-label={`Debe ${data.currency}`}>
-                      {amount(l.debit, data.currency)}
+                    <td data-label={`Debe ${l.currency ?? data.currency}`}>
+                      {amount(l.debit, l.currency ?? data.currency)}
                     </td>
-                    <td data-label={`Haber ${data.currency}`}>
-                      {amount(l.credit, data.currency)}
+                    <td data-label={`Haber ${l.currency ?? data.currency}`}>
+                      {amount(l.credit, l.currency ?? data.currency)}
                     </td>
                   </tr>
                 ))}
               </tbody>
+              <tfoot>
+                <tr>
+                  <th>Totales {mixed ? 'C$' : data.currency}</th>
+                  <td>
+                    {amount(
+                      mixed
+                        ? data.lines.reduce((s, l) => s + (l.debit_nio ?? 0), 0)
+                        : total('debit'),
+                      mixed ? 'NIO' : data.currency,
+                    )}
+                  </td>
+                  <td>
+                    {amount(
+                      mixed
+                        ? data.lines.reduce(
+                            (s, l) => s + (l.credit_nio ?? 0),
+                            0,
+                          )
+                        : total('credit'),
+                      mixed ? 'NIO' : data.currency,
+                    )}
+                  </td>
+                </tr>
+              </tfoot>
             </table>
           </div>
           {failure && (
@@ -212,13 +294,22 @@ export function JournalDetail({
             </p>
           )}
           <div className="form-actions">
+            {!snapshot && data.sourceReceiptId && role === 'superadmin' && (
+              <Button onClick={() => setEditingReceipt(true)}>
+                Editar recepción
+              </Button>
+            )}
             {!snapshot &&
-              data.kind === 'opening' &&
+              !data.receiptCorrection &&
+              !entry &&
               !data.voided_at &&
               !demo &&
-              (role === 'admin' || role === 'superadmin') && (
+              (role === 'superadmin' ||
+                (data.kind === 'opening' && role === 'admin')) && (
                 <Button onClick={() => setEditing(true)}>
-                  Editar apertura
+                  {data.kind === 'opening'
+                    ? 'Editar apertura'
+                    : 'Editar comprobante'}
                 </Button>
               )}
             <Button
@@ -229,12 +320,10 @@ export function JournalDetail({
               {busy ? 'Generando…' : 'Descargar PDF'}
             </Button>
           </div>
-          {!!current?.openingHistory?.length && (
+          {!!history.length && (
             <details className="day-history">
-              <summary>
-                Historial de ediciones ({current.openingHistory.length})
-              </summary>
-              {current.openingHistory.map((change) => (
+              <summary>Historial de ediciones ({history.length})</summary>
+              {history.map((change) => (
                 <article className="day-history-event" key={change.id}>
                   <div>
                     <strong>Edición · revisión {change.revision}</strong>
@@ -267,6 +356,17 @@ export function JournalDetail({
             </details>
           )}
         </>
+      )}
+      {editingReceipt && data?.sourceReceiptId && (
+        <ReceiptEditor
+          id={data.sourceReceiptId}
+          onClose={() => setEditingReceipt(false)}
+          onSaved={() => {
+            setEditingReceipt(false)
+            refresh()
+            onChanged?.()
+          }}
+        />
       )}
     </Dialog>
   )

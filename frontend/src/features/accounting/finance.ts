@@ -59,6 +59,7 @@ export const financeAccounts = {
 export const shipmentPayments = {
   ...moneyAccounts,
   credito: 'Crédito del proveedor',
+  pending: 'Pendiente de clasificar',
 } as const satisfies Record<ShipmentPayment, string>
 
 export const financeKinds = {
@@ -189,7 +190,7 @@ export function financePosition(source: FinanceSource): FinancePosition {
   }
   for (const row of source.shipments) {
     if (row.account === 'credito') payables += row.amountNio
-    else cash[row.account] -= row.amountNio
+    else if (row.account !== 'pending') cash[row.account] -= row.amountNio
   }
   for (const row of source.expenses) {
     if (row.voided) continue
@@ -299,6 +300,7 @@ export function financeTurnovers(
     }
   }
   for (const row of source.shipments) {
+    if (row.account === 'pending') continue
     const account = row.account === 'credito' ? 'proveedores' : row.account
     if (row.amountNio < 0) debit(account, -row.amountNio)
     else credit(account, row.amountNio)

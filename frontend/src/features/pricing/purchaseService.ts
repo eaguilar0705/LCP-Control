@@ -22,6 +22,8 @@ export const purchaseConfirmation = (treatment: PurchasePaymentTreatment) =>
       : 'Confirmo que el proveedor devolvió los pagos a la misma caja o cuenta bancaria.'
 
 export interface PurchaseHistoryRecord {
+  revision?: number
+  classification_entry_id?: string | null
   id: string
   request_id: string
   incurred_on: string
@@ -30,7 +32,7 @@ export interface PurchaseHistoryRecord {
   reference: string
   note: string
   currency: Currency
-  account: 'caja' | 'banco' | 'credito'
+  account: 'caja' | 'banco' | 'credito' | 'pending'
   bank_ledger_account: string | null
   exchange_rate: number
   shipping_amount: number

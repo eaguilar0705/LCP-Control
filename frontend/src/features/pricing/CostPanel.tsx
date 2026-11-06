@@ -147,7 +147,7 @@ export function PurchaseDialog({
     correcting?.agency ?? reviewingReceipt?.agency ?? '',
   )
   const [payment, setPayment] = useState<ShipmentPayment | ''>(
-    correcting?.account ?? (reviewingReceipt ? '' : 'caja'),
+    correcting?.account ?? (reviewingReceipt ? '' : 'pending'),
   )
   const [currency, setCurrency] = useState<Currency>(
     correcting?.currency ?? reviewingReceipt?.currency ?? 'NIO',
@@ -240,7 +240,11 @@ export function PurchaseDialog({
   const [today, setToday] = useState(() => localDay(new Date()))
   const dateKey = `${payment}:${incurredOn}`
   const pastPayment =
-    !!payment && payment !== 'credito' && !!incurredOn && incurredOn < today
+    !!payment &&
+    payment !== 'credito' &&
+    payment !== 'pending' &&
+    !!incurredOn &&
+    incurredOn < today
   const dateProblem =
     !incurredOn || incurredOn > today
       ? 'Elige una fecha que no sea futura.'
@@ -276,7 +280,7 @@ export function PurchaseDialog({
     const submitToday = localDay(new Date())
     setToday(submitToday)
     if (!preview.ready || !incurredOn || incurredOn > submitToday) return
-    if (!payment) {
+    if (!payment || (reviewingReceipt && payment === 'pending')) {
       setFailure(
         'Selecciona cómo se pagó la compra o si quedó a crédito del proveedor.',
       )
@@ -303,6 +307,7 @@ export function PurchaseDialog({
     }
     if (
       payment !== 'credito' &&
+      payment !== 'pending' &&
       incurredOn < submitToday &&
       confirmedPaymentDate !== dateKey
     ) {
@@ -485,13 +490,13 @@ export function PurchaseDialog({
               {reviewingReceipt && (
                 <option value="">Seleccionar pago o crédito</option>
               )}
-              {(Object.keys(shipmentPayments) as ShipmentPayment[]).map(
-                (id) => (
+              {(Object.keys(shipmentPayments) as ShipmentPayment[])
+                .filter((id) => !reviewingReceipt || id !== 'pending')
+                .map((id) => (
                   <option key={id} value={id}>
                     {shipmentPayments[id]}
                   </option>
-                ),
-              )}
+                ))}
             </Select>
             <Select
               label="Moneda de la compra"

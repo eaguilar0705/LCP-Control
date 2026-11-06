@@ -208,7 +208,7 @@ function ReceiptWorkspace({
                     </p>
                     {receipt.posting && (
                       <p>
-                        Compra contabilizada el{' '}
+                        Compra original contabilizada el{' '}
                         {formatDate(receipt.posting.incurredOn)}:{' '}
                         {formatCurrency(
                           receipt.posting.goodsAmount +
@@ -228,7 +228,7 @@ function ReceiptWorkspace({
                       </p>
                     )}
                     <p className="muted">
-                      El costo y pago definitivos se consultan en Inventario →
+                      El costo y pago vigentes se consultan en Inventario →
                       Compras.
                     </p>
                   </div>

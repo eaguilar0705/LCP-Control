@@ -6,7 +6,7 @@ export type MoneyAccount = 'caja' | 'banco'
 export type FinanceAccount =
   'caja' | 'banco' | 'cobrar' | 'prestamos' | 'proveedores'
 
-export type ShipmentPayment = 'caja' | 'banco' | 'credito'
+export type ShipmentPayment = 'caja' | 'banco' | 'credito' | 'pending'
 
 export type FinanceKind =
   | 'opening'

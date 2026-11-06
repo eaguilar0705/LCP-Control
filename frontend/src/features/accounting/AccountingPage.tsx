@@ -17,6 +17,7 @@ import { AccountingTables, AccountCatalog } from './AccountingTables'
 import { readLedger } from './journalService'
 import { journalModel } from './journalModel'
 import { JournalWorkspace } from './JournalWorkspace'
+import { PurchaseClassification } from './PurchaseClassification'
 import { LedgerAccountsManager } from './LedgerAccountsManager'
 import { emptyLedger } from './finance'
 import { CreditWorkspace } from './CreditWorkspace'
@@ -176,7 +177,10 @@ export function AccountingPage() {
       ) : loading || !data || !model || !current ? (
         <LoadingState />
       ) : view === 'journal' ? (
-        <JournalWorkspace data={data.ledger} onChanged={refresh} />
+        <>
+          <PurchaseClassification data={data.ledger} onChanged={refresh} />
+          <JournalWorkspace data={data.ledger} onChanged={refresh} />
+        </>
       ) : view === 'credits' ? (
         <CreditWorkspace
           range={range}

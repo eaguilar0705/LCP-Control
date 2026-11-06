@@ -31,6 +31,22 @@ export interface JournalRecord {
 }
 export interface JournalDetailRecord extends JournalRecord {
   lines: JournalDetailLine[]
+  sourceReceiptId?: string | null
+  receiptCorrection?: boolean
+  editingAccounts?: {
+    code: string
+    displayCode?: string
+    name: string
+    bucket: string
+  }[]
+  editHistory?: {
+    id: string
+    revision: number
+    actorName: string
+    createdAt: string
+    before: JournalDetailRecord
+    after: JournalDetailRecord
+  }[]
   openingAccounts?: {
     code: string
     displayCode?: string
@@ -54,6 +70,8 @@ export interface JournalDetailLine {
   credit: number | null
   debit_nio: number | null
   credit_nio: number | null
+  currency?: 'NIO' | 'USD'
+  exchange_rate?: number
 }
 export interface AutomaticJournalRecord extends JournalRecord {
   automatic: true
@@ -104,6 +122,63 @@ export interface JournalLine {
   account: string
   debit: number
   credit: number
+  currency?: 'NIO' | 'USD'
+  exchangeRate?: number
+}
+
+export function accountCurrency(code: string): 'NIO' | 'USD' | null {
+  if (['1110-002', '1120-002', '1120-004', '1120-006'].includes(code))
+    return 'USD'
+  if (['1110-001', '1120-001', '1120-003', '1120-005'].includes(code))
+    return 'NIO'
+  return null
+}
+
+export function mixedJournalTotals(lines: JournalLine[]) {
+  const debitNio = round(
+    lines.reduce(
+      (s, l) =>
+        s +
+        convertedAmount(
+          l.debit,
+          l.currency === 'USD' ? (l.exchangeRate ?? NaN) : 1,
+        ),
+      0,
+    ),
+  )
+  const creditNio = round(
+    lines.reduce(
+      (s, l) =>
+        s +
+        convertedAmount(
+          l.credit,
+          l.currency === 'USD' ? (l.exchangeRate ?? NaN) : 1,
+        ),
+      0,
+    ),
+  )
+  const valid =
+    lines.length >= 2 &&
+    lines.length <= 100 &&
+    lines.every(
+      (l) =>
+        !!l.account &&
+        (l.currency === 'NIO' || l.currency === 'USD') &&
+        (accountCurrency(l.account) === null ||
+          accountCurrency(l.account) === l.currency) &&
+        (l.currency !== 'USD' ||
+          (Number.isFinite(l.exchangeRate) &&
+            l.exchangeRate! > 0 &&
+            l.exchangeRate! <= 1000)) &&
+        [l.debit, l.credit].every(
+          (n) =>
+            Number.isFinite(n) && n >= 0 && n <= 100000000 && n === round(n),
+        ) &&
+        ((l.debit > 0 && l.credit === 0) || (l.credit > 0 && l.debit === 0)),
+    ) &&
+    debitNio > 0 &&
+    debitNio === creditNio
+  return { debitNio, creditNio, difference: round(debitNio - creditNio), valid }
 }
 
 /** Moneda de las cajas y bancos estándar; las cuentas nuevas no la declaran. */

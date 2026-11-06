@@ -61,8 +61,10 @@
     "test:browser:cash-corrections": "node scripts/tests/browser-cash-and-account-corrections.mjs",
     "test:rounded-pricing": "node scripts/tests/rounded-pricing.mjs",
     "test:browser:rounded-pricing": "node scripts/tests/browser-rounded-pricing.mjs",
-    "test:inventory-receipts": "node scripts/tests/inventory-receipts.mjs",
-    "test:browser:inventory-receipts": "node scripts/tests/browser-inventory-receipts.mjs"
+    "test:inventory-receipts": "node scripts/tests/inventory-receipts.mjs && node scripts/tests/inventory-receipts-integration.mjs",
+    "test:browser:inventory-receipts": "node scripts/tests/browser-inventory-receipts.mjs",
+    "test:purchase-accounting": "node scripts/tests/purchase-classification.mjs",
+    "test:browser:purchase-accounting": "node scripts/tests/browser-purchase-classification.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",

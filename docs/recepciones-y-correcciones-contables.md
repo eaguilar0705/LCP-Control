@@ -1,0 +1,35 @@
+# Recepciones y correcciones contables
+
+La recepción de mercancía y la clasificación de su pago son operaciones vinculadas. Los datos históricos existentes conservan su tratamiento.
+
+## Trabajo diario
+
+1. En Inventario, registrar la compra con sus perfumes, unidades, costos, proveedor, fecha y referencia. La opción inicial es **Pendiente de clasificar**.
+2. La recepción actualiza cantidades, costo promedio y valor de inventario. Su contrapartida es **2190 · Compras por clasificar**. No descuenta caja ni bancos.
+3. En **Contabilidad → Comprobantes → Recepciones de inventario**, abrir **Clasificar compra**. El primer renglón cancela la cuenta temporal. Completar caja, bancos y/o proveedores; se pueden agregar ingresos o gastos de diferencia cambiaria expresamente.
+4. Para pagos existentes, usar **Vincular pagos ya registrados**. El renglón de Proveedores debe cubrir esos abonos, pues ya descontaron el dinero. No volver a acreditar el banco por el mismo pago. Las fechas deben conservar la secuencia de la recepción, clasificación y abonos; los anticipos se registran con su cuenta contable correspondiente.
+5. Revisar y confirmar. Se conserva el vínculo con la recepción y no se vuelve a ingresar mercancía. Los nuevos abonos se registran desde **Cobros y pagos** y respetan el crédito efectivamente clasificado.
+
+## Monedas y borradores
+
+En un comprobante manual, **Usar córdobas y dólares en el comprobante** permite usar una moneda y tasa por renglón. Las cajas y bancos estándar conservan su moneda. El cuadre usa los equivalentes NIO, sin sumar dólares y córdobas como si fueran iguales.
+
+La tasa del comprobante no modifica la tasa comercial ni los precios del catálogo. Una diferencia cambiaria requiere una clasificación explícita del contador; no se crea una ganancia automática comparando con la tasa de ventas.
+
+**Guardar borrador** admite renglones incompletos sin afectar saldos. Se retoma desde **Borradores contables**. Al contabilizarlo se retira del listado en la misma transacción. La revisión evita que dos pestañas contabilicen el mismo borrador.
+
+## Correcciones del SuperAdmin
+
+- **Editar clasificación / Editar comprobante:** conserva identificador, número, autor original y versiones anteriores. Permite corregir fecha, concepto, referencia, cuentas, importes, monedas y tasas, incluso en una jornada cerrada. No permite dejar un asiento descuadrado ni quitar el crédito que respalda abonos reales.
+- **Dejar pendiente de clasificar:** conserva el comprobante anulado y permite volver a clasificar. Con abonos existentes, se debe corregir la clasificación o resolver antes sus vinculaciones.
+- **Editar recepción completa / Editar recepción:** modifica proveedor, referencia, fecha, productos, cantidades, ubicaciones, costos y envío mediante una revisión vinculada. La compra original no desaparece. Solo se aplica la diferencia de unidades a las existencias actuales.
+- En una recepción con operaciones posteriores, el contador revisa el **valor final del inventario** de cada perfume. La diferencia del costo de compra se distribuye entre inventario restante y la cuenta de costo/gasto elegida. No se recalculan a ciegas los costos congelados de facturas anteriores. La corrección se registra en la jornada actual; requiere abrirla. Si cambia el importe de una compra pendiente/clasificada, la cuenta temporal refleja la diferencia y la recepción vuelve a requerir revisión de su clasificación.
+- **Editar abono**, en Cobros y pagos, conserva el registro y permite corregir fecha, tipo de abono, documento vinculado, moneda, tasa, cuenta, importe y referencia. Se valida el reemplazo excluyendo el abono anterior en una sola transacción. Los abonos vinculados desde una clasificación se desvinculan allí antes de reasignarlos.
+
+La edición de un asiento generado por una corrección de recepción lleva a la recepción de origen: así se corrigen conjuntamente el libro contable y el valor del inventario. La edición no modifica automáticamente los precios de venta ni las facturas emitidas. Toda corrección conserva actor, revisión y fecha.
+
+## Validación
+
+`npm run test:purchase-accounting` prueba recepciones, clasificación, créditos parciales, pagos, ambas monedas, correcciones posteriores, informes, borradores, permisos, revisiones, recuperación e idempotencia en PostgreSQL desechable.
+
+`npm run test:browser:purchase-accounting` usa las migraciones y RPC reales en esa base desechable con transporte interceptado, en escritorio, tableta y móvil. Incluye pérdida de respuesta de guardado, revisión del PDF y control de desbordamiento. No crea pruebas en producción.

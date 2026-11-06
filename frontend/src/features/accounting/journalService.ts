@@ -60,6 +60,11 @@ export async function journalRpc<T>(
     'record_inventory_receipt',
     'post_inventory_receipt',
     'cancel_inventory_receipt',
+    'correct_journal_entry',
+    'classify_purchase',
+    'revise_purchase_receipt',
+    'correct_finance_entry',
+    'save_accounting_draft',
   ].includes(name)
   const confirmationMessage = isWrite
     ? name.includes('inventory_receipt')
