@@ -118,7 +118,7 @@ export function PurchaseDialog({
   const [supplier, setSupplier] = useState(correcting?.supplier ?? '')
   const [reference, setReference] = useState(correcting?.reference ?? '')
   const [payment, setPayment] = useState<ShipmentPayment>(
-    correcting?.account ?? 'caja',
+    correcting?.account ?? 'pending',
   )
   const [currency, setCurrency] = useState<Currency>(
     correcting?.currency ?? 'NIO',
@@ -198,7 +198,10 @@ export function PurchaseDialog({
   const [today, setToday] = useState(() => localDay(new Date()))
   const dateKey = `${payment}:${incurredOn}`
   const pastPayment =
-    payment !== 'credito' && !!incurredOn && incurredOn < today
+    payment !== 'credito' &&
+    payment !== 'pending' &&
+    !!incurredOn &&
+    incurredOn < today
   const dateProblem =
     !incurredOn || incurredOn > today
       ? 'Elige una fecha que no sea futura.'
@@ -253,6 +256,7 @@ export function PurchaseDialog({
     }
     if (
       payment !== 'credito' &&
+      payment !== 'pending' &&
       incurredOn < submitToday &&
       confirmedPaymentDate !== dateKey
     ) {
@@ -390,7 +394,7 @@ export function PurchaseDialog({
               onChange={(event) => setReference(event.target.value)}
             />
             <Select
-              label="Pago"
+              label="Clasificación de la compra"
               value={payment}
               onChange={(event) =>
                 setPayment(event.target.value as ShipmentPayment)

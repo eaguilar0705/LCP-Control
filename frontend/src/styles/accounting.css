@@ -737,3 +737,149 @@
   color: #681e25;
   overflow-wrap: anywhere;
 }
+
+.mixed-journal-form {
+  display: grid;
+  gap: 1.25rem;
+  min-width: 0;
+}
+.mixed-journal-form fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  display: grid;
+  gap: 1.25rem;
+}
+.mixed-journal-lines {
+  display: grid;
+  gap: 0.9rem;
+  min-width: 0;
+}
+.mixed-journal-line {
+  display: grid;
+  grid-template-columns:
+    minmax(200px, 2fr) 80px minmax(110px, 1fr) repeat(2, minmax(110px, 1fr))
+    40px;
+  gap: 0.65rem;
+  align-items: end;
+  border: 1px solid var(--border, #e5dad1);
+  border-radius: 14px;
+  padding: 1rem;
+  min-width: 0;
+  background: var(--surface, #fff);
+}
+.mixed-journal-line > * {
+  min-width: 0;
+}
+.mixed-rate {
+  font-size: 0.8rem;
+  align-self: center;
+}
+.mixed-equivalent {
+  grid-column: 1 / -1;
+  font-size: 0.82rem;
+  color: var(--wine, #872a38);
+}
+.mixed-detail-rate {
+  display: block;
+  margin-top: 0.3rem;
+  font-weight: 400;
+}
+@media (max-width: 1000px) {
+  .mixed-journal-line {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .mixed-journal-line > :first-child {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 420px) {
+  .mixed-journal-line {
+    padding: 0.75rem;
+    gap: 0.6rem;
+  }
+  .mixed-journal-line input,
+  .mixed-journal-line select {
+    width: 100%;
+  }
+}
+
+.classification-receipts {
+  display: grid;
+  gap: 0.75rem;
+}
+.classification-receipts article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid #e5dad1;
+  border-radius: 12px;
+}
+.classification-receipts p {
+  margin: 0.35rem 0 0;
+}
+.classification-payment {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin: 0.8rem 0;
+}
+@media (max-width: 640px) {
+  .classification-receipts article {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .purchase-classification .section-heading {
+    align-items: stretch;
+  }
+}
+
+.receipt-edit-line {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 2fr) minmax(0, 1fr) minmax(80px, 0.6fr)
+    minmax(100px, 0.8fr) 40px;
+  gap: 0.7rem;
+  align-items: end;
+}
+.receipt-value-review {
+  border: 1px solid #e5dad1;
+  border-radius: 12px;
+  padding: 1rem;
+  min-width: 0;
+}
+@media (max-width: 800px) {
+  .receipt-edit-line {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .receipt-edit-line > :first-child {
+    grid-column: 1/-1;
+  }
+}
+
+.dialog.journal-dialog:has(.mixed-journal-form) {
+  width: min(72rem, calc(100vw - 2rem));
+}
+.mixed-journal-line input {
+  width: 100%;
+  max-width: 100%;
+}
+
+.dialog:has(.mixed-journal-form) > .section-heading {
+  position: sticky;
+  top: -25px;
+  background: #fff;
+  z-index: 4;
+  padding-block: 1rem;
+  margin-top: -1rem;
+}
+.mixed-journal-form > .form-actions {
+  position: sticky;
+  bottom: -25px;
+  z-index: 3;
+  background: #fff;
+  padding-block: 0.9rem;
+  border-top: 1px solid #eee5de;
+}

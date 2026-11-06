@@ -1,6 +1,8 @@
 import { useCallback, useState } from 'react'
 import { Button, Card, ErrorState, LoadingState } from '../../components/ui'
 import { useServices } from '../../services/useServices'
+import { useAccess } from '../../app/AccessContext'
+import { FinancePaymentEditor } from './FinancePaymentEditor'
 import { useQuery } from '../../lib/useQuery'
 import { formatCurrency, formatDate } from '../../lib/format'
 import { RecordDialog, VoidDialog } from './FinanceMovements'
@@ -19,6 +21,8 @@ export function CreditWorkspace({
   onChanged: () => void
 }) {
   const { financeService } = useServices()
+  const { role } = useAccess()
+  const [editingPayment, setEditingPayment] = useState<string>()
   const load = useCallback(async () => {
     const [credits, ledger] = await Promise.all([
       financeService.getCredits(range.to),
@@ -198,6 +202,16 @@ export function CreditWorkspace({
                     {formatCurrency(r.amountNio, 'NIO')}
                   </td>
                   <td className="credit-action">
+                    {role === 'superadmin' &&
+                      !r.readOnly &&
+                      r.voidReason === null && (
+                        <Button
+                          variant="secondary"
+                          onClick={() => setEditingPayment(r.id)}
+                        >
+                          Editar abono
+                        </Button>
+                      )}
                     {r.voidReason !== null ? (
                       'Anulado'
                     ) : r.readOnly ? (
@@ -219,6 +233,16 @@ export function CreditWorkspace({
         </div>
         {!payments.length && <p>Sin abonos en este período.</p>}
       </Card>
+      {editingPayment && (
+        <FinancePaymentEditor
+          id={editingPayment}
+          onClose={() => setEditingPayment(undefined)}
+          onSaved={() => {
+            setEditingPayment(undefined)
+            changed()
+          }}
+        />
+      )}
       {selected && (
         <RecordDialog
           initialCredit={selected}

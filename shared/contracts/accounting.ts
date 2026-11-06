@@ -30,7 +30,7 @@ export interface ShipmentInput {
   shippingAmount: number
   lines: ShipmentLineInput[]
   /** Con qué se pagó: caja, banco o a crédito del proveedor. */
-  account?: 'caja' | 'banco' | 'credito'
+  account?: 'caja' | 'banco' | 'credito' | 'pending'
   bankLedgerAccount?: string | null
 }
 
@@ -96,7 +96,7 @@ export interface ShipmentRecord extends Omit<ShipmentInput, 'lines'> {
   goodsAmount: number
   shippingPerUnit: number
   lines: ShipmentLine[]
-  eventKind?: 'purchase' | 'cancellation'
+  eventKind?: 'purchase' | 'cancellation' | 'correction'
   goodsNio?: number
   shippingNio?: number
 }

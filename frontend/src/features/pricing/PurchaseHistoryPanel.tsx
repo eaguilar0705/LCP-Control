@@ -27,6 +27,7 @@ import {
   type PurchaseHistoryRecord,
 } from './purchaseService'
 import './purchase-history.css'
+import { ReceiptEditor } from './ReceiptEditor'
 
 export function PurchaseHistoryPanel({ onChanged }: { onChanged: () => void }) {
   const { role, demo } = useAccess()
@@ -53,6 +54,8 @@ function PurchaseHistory({
   onChanged: () => void
 }) {
   const canVoid = useCanVoid()
+  const { role } = useAccess()
+  const [editingReceipt, setEditingReceipt] = useState(false)
   const { inventoryService, productService, settingsService } = useServices()
   const [cursor, setCursor] = useState<PurchaseHistoryRecord>()
   const [previous, setPrevious] = useState<
@@ -83,6 +86,17 @@ function PurchaseHistory({
     retry()
     onChanged()
   }
+  if (editingReceipt && selected)
+    return (
+      <ReceiptEditor
+        id={selected.id}
+        onClose={() => setEditingReceipt(false)}
+        onSaved={() => {
+          setEditingReceipt(false)
+          saved('Recepción corregida.')
+        }}
+      />
+    )
   if (action === 'new' && data)
     return (
       <PurchaseDialog
@@ -159,11 +173,13 @@ function PurchaseHistory({
                     )}
                   </strong>
                   <p>
-                    {row.account === 'banco'
-                      ? purchaseBankName(row.bank_ledger_account)
-                      : row.account === 'credito'
-                        ? 'Crédito del proveedor'
-                        : 'Caja'}
+                    {row.account === 'pending'
+                      ? 'Pendiente de clasificar en Contabilidad'
+                      : row.account === 'banco'
+                        ? purchaseBankName(row.bank_ledger_account)
+                        : row.account === 'credito'
+                          ? 'Crédito del proveedor'
+                          : 'Caja'}
                   </p>
                 </div>
                 <Button
@@ -217,6 +233,14 @@ function PurchaseHistory({
                       )}
                       {row.note ? ` · ${row.note}` : ''}
                     </p>
+                    {!row.correction && role === 'superadmin' && (
+                      <Button
+                        variant="secondary"
+                        onClick={() => setEditingReceipt(true)}
+                      >
+                        Editar recepción completa
+                      </Button>
+                    )}
                     {row.correction ? (
                       <div className="purchase-correction-record">
                         <strong>
@@ -255,7 +279,9 @@ function PurchaseHistory({
                       <>
                         {row.correction_problem ? (
                           <p role="note">{row.correction_problem}</p>
-                        ) : canVoid ? (
+                        ) : canVoid &&
+                          !row.revision &&
+                          !row.classification_entry_id ? (
                           <div className="form-actions">
                             <Button
                               variant="secondary"

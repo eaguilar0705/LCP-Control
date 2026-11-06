@@ -60,7 +60,9 @@
     "test:cash-corrections": "node scripts/tests/cash-and-account-corrections.mjs",
     "test:browser:cash-corrections": "node scripts/tests/browser-cash-and-account-corrections.mjs",
     "test:rounded-pricing": "node scripts/tests/rounded-pricing.mjs",
-    "test:browser:rounded-pricing": "node scripts/tests/browser-rounded-pricing.mjs"
+    "test:browser:rounded-pricing": "node scripts/tests/browser-rounded-pricing.mjs",
+    "test:purchase-accounting": "node scripts/tests/purchase-classification.mjs",
+    "test:browser:purchase-accounting": "node scripts/tests/browser-purchase-classification.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",

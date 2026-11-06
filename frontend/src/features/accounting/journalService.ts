@@ -54,10 +54,17 @@ export async function journalRpc<T>(
 ): Promise<T> {
   if (!supabase)
     throw new AppError('configuration', 'No hay conexión con la tienda.')
-  const confirmationMessage =
-    name === 'record_journal_entry' || name === 'correct_opening_journal'
-      ? 'No pudimos confirmar si el comprobante se guardó. Usa «Verificar guardado» para recuperar el resultado sin duplicarlo.'
-      : 'No pudimos conectar con la información contable. Inténtalo de nuevo.'
+  const confirmationMessage = [
+    'record_journal_entry',
+    'correct_opening_journal',
+    'correct_journal_entry',
+    'classify_purchase',
+    'revise_purchase_receipt',
+    'correct_finance_entry',
+    'save_accounting_draft',
+  ].includes(name)
+    ? 'No pudimos confirmar si el comprobante se guardó. Usa «Verificar guardado» para recuperar el resultado sin duplicarlo.'
+    : 'No pudimos conectar con la información contable. Inténtalo de nuevo.'
   const { data, error, status } = await supabase.rpc(name, args)
   if (error) {
     // Un corte de red o un error del servidor no confirma que PostgreSQL haya
@@ -94,10 +101,26 @@ export async function journalRpc<T>(
   }
   if (data === null || data === undefined)
     throw new AppError(
-      name === 'record_journal_entry' || name === 'correct_opening_journal'
+      [
+        'record_journal_entry',
+        'correct_opening_journal',
+        'correct_journal_entry',
+        'classify_purchase',
+        'revise_purchase_receipt',
+        'correct_finance_entry',
+        'save_accounting_draft',
+      ].includes(name)
         ? 'network'
         : 'unexpected',
-      name === 'record_journal_entry' || name === 'correct_opening_journal'
+      [
+        'record_journal_entry',
+        'correct_opening_journal',
+        'correct_journal_entry',
+        'classify_purchase',
+        'revise_purchase_receipt',
+        'correct_finance_entry',
+        'save_accounting_draft',
+      ].includes(name)
         ? confirmationMessage
         : 'No se recibió el detalle contable. Inténtalo de nuevo.',
     )

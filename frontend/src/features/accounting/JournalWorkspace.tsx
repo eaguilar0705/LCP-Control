@@ -39,6 +39,8 @@ import { journalRpc, readJournalPage } from './journalService'
 import { useQuery } from '../../lib/useQuery'
 import { getOperationReferences } from '../../lib/operationRecovery'
 import { JournalDetail } from './JournalDetail'
+import { MultiCurrencyJournal } from './MultiCurrencyJournal'
+import { AccountingDrafts } from './AccountingDrafts'
 
 const journalKinds = {
   opening: 'Saldos iniciales',
@@ -117,6 +119,7 @@ export function JournalWorkspace({
         <h2>Comprobantes</h2>
       </div>
       <div className="journal-actions">
+        <AccountingDrafts data={data} onChanged={onChanged} />
         {data.startOn && (
           <Button
             variant="secondary"
@@ -373,6 +376,8 @@ function JournalDialog({
   onSaved: () => void
 }) {
   const { storageScope = 'anonymous' } = useAccess()
+  const [mixed, setMixed] = useState(false)
+  const [mixedPending, setMixedPending] = useState(false)
   const [restored] = useState(() => getPendingJournal(storageScope))
   const [pending, setPending] = useState<JournalSubmission | null>(restored)
   const [date, setDate] = useState(restored?.occurredOn ?? localDay(new Date()))
@@ -569,6 +574,32 @@ function JournalDialog({
       setBusy(false)
     }
   }
+  if (mixed)
+    return (
+      <Dialog
+        open
+        title={journalKinds[kind]}
+        className="journal-dialog"
+        dismissible={!mixedPending}
+        onClose={() => {
+          if (!mixedPending) onClose()
+        }}
+      >
+        <MultiCurrencyJournal
+          kind={kind}
+          accounts={data.accounts.filter(
+            (a) => a.postable && a.active !== false,
+          )}
+          initialReference={reference}
+          initialDescription={description}
+          initialDate={date}
+          initialLines={lines.map((l) => ({ ...l, currency, exchangeRate }))}
+          onPending={setMixedPending}
+          onSaved={onSaved}
+          onCancel={() => setMixed(false)}
+        />
+      </Dialog>
+    )
   return (
     <Dialog
       open
@@ -596,6 +627,15 @@ function JournalDialog({
           className="journal-entry-fields"
           disabled={busy || pending !== null}
         >
+          {kind !== 'opening' && kind !== 'card_settlement' && (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setMixed(true)}
+            >
+              Usar córdobas y dólares en el comprobante
+            </Button>
+          )}
           <div className="journal-fields">
             <Input
               label="Fecha"
