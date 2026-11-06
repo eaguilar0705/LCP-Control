@@ -127,16 +127,31 @@ function fromMicros(micros: bigint): number {
   return Number(micros) / 1e5
 }
 /**
- * Precio de venta: el costo más el porcentaje, al centavo y nunca cero. El
- * costo conserva sus seis decimales: sólo se redondea el precio final.
- * 16.281061 con 25 % → 20.35. `NaN` si alguno de los dos no es válido.
+ * Precio de venta calculado: primero se aplica el porcentaje a la compra sin
+ * redondeos intermedios, se expresa en USD y se sube al dólar entero superior.
+ * El precio NIO sale de ese mismo dólar. Un valor ya entero no sube de nuevo.
  */
-export function markupPrice(cost: number, percent: number): number {
-  const micros = units(cost, 6)
-  const hundredths = units(percent, 2)
-  if (micros === null || hundredths === null || micros < 0n || hundredths < 0n)
-    return NaN
-  return fromCents(divideHalfUp(micros * (10000n + hundredths), 100_000_000n))
+export function roundedMarkupPrices(
+  cost: number,
+  currency: Currency,
+  percent: number,
+  rate: number | null | undefined,
+): Record<Currency, number> {
+  const purchase = units(cost, 6)
+  const markup = units(percent, 2)
+  const exchange = rate == null ? null : units(rate, 6)
+  if (
+    purchase === null ||
+    purchase <= 0n ||
+    markup === null ||
+    markup < 0n ||
+    (currency === 'NIO' && (exchange === null || exchange <= 0n))
+  )
+    return { USD: NaN, NIO: NaN }
+  const numerator = purchase * (10000n + markup)
+  const denominator = currency === 'USD' ? 10_000_000_000n : 10000n * exchange!
+  const usd = Number((numerator + denominator - 1n) / denominator)
+  return { USD: usd, NIO: convertPrice(usd, 'USD', 'NIO', rate) }
 }
 /**
  * El mismo precio en otra moneda con la tasa (córdobas por dólar), al centavo.
@@ -282,9 +297,9 @@ export function tierQuote(
   const percent = pricing!.markups[tier]!
   const cost = pricing!.purchasePrice!
   const currency = pricing!.purchaseCurrency
-  const price = markupPrice(cost, percent)
+  const prices = roundedMarkupPrices(cost, currency, percent, rate)
+  const price = prices[currency]
   if (Number.isNaN(price)) return null
-  const other: Currency = currency === 'NIO' ? 'USD' : 'NIO'
   return {
     tier,
     currency,
@@ -292,10 +307,7 @@ export function tierQuote(
     percent,
     profit: subtractPrices(price, cost),
     price,
-    prices: {
-      [currency]: price,
-      [other]: convertPrice(price, currency, other, rate),
-    } as Record<Currency, number>,
+    prices,
   }
 }
 export type TierPrices = Record<PriceTier, Record<Currency, number>>

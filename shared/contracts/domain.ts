@@ -79,7 +79,12 @@ export interface PriceChange {
 }
 
 export type PriceChangeCause =
-  'purchase' | 'opening_cost' | 'invoice_deleted' | 'migration' | 'cost'
+  | 'purchase'
+  | 'opening_cost'
+  | 'invoice_deleted'
+  | 'migration'
+  | 'cost'
+  | 'rounding'
 
 /**
  * Precio de compra del perfume y cuánto se le gana en cada lista sobre él. Una

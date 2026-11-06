@@ -329,6 +329,9 @@ try {
       await navigate(`/products/${productId}/edit`)
       const stock = page.locator('.product-stock-editor')
       await stock
+        .getByLabel('Cómo cambiar las cantidades', { exact: true })
+        .selectOption('ENTRY')
+      await stock
         .getByRole('button', { name: 'Registrar compra', exact: true })
         .click()
       dialog = page.getByRole('dialog')
@@ -551,6 +554,13 @@ try {
       ])
       await page
         .getByRole('button', { name: 'Actualizar precios', exact: true })
+        .click()
+      await page
+        .getByRole('dialog', {
+          name: 'Actualizar precios del documento',
+          exact: true,
+        })
+        .getByRole('button', { name: 'Aplicar precios actuales', exact: true })
         .click()
       await page
         .getByRole('status')

@@ -58,7 +58,9 @@
     "test:contingencies": "node scripts/tests/browser-day-contingencies.mjs && node scripts/tests/browser-sale-contingencies.mjs && node scripts/tests/browser-payment-dates.mjs",
     "test:delivery": "node scripts/tests/browser-delivery-audit.mjs && node scripts/tests/browser-history-volume.mjs",
     "test:cash-corrections": "node scripts/tests/cash-and-account-corrections.mjs",
-    "test:browser:cash-corrections": "node scripts/tests/browser-cash-and-account-corrections.mjs"
+    "test:browser:cash-corrections": "node scripts/tests/browser-cash-and-account-corrections.mjs",
+    "test:rounded-pricing": "node scripts/tests/rounded-pricing.mjs",
+    "test:browser:rounded-pricing": "node scripts/tests/browser-rounded-pricing.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",

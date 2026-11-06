@@ -442,3 +442,18 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+.price-review-changes {
+  display: grid;
+  gap: 0.75rem;
+  max-height: 40vh;
+  overflow: auto;
+}
+.price-review-changes p {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.75rem;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 0.65rem;
+  overflow-wrap: anywhere;
+}

@@ -12,6 +12,7 @@ const causeLabels: Record<NonNullable<PriceChange['cause']>, string> = {
   invoice_deleted: 'Factura eliminada',
   migration: 'Cambio a precios por costo promedio',
   cost: 'Cambio del costo promedio',
+  rounding: 'Redondeo al dólar superior',
 }
 /** Cómo se calculó el precio de la lista, en una línea. */
 function priceBasis(change: PriceChange): string | null {

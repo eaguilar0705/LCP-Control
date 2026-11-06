@@ -229,6 +229,10 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
   const [issued, setIssued] = useState<DocumentRecord | null>(null)
   const [message, setMessage] = useState('')
   const [priceReviewRequired, setPriceReviewRequired] = useState(false)
+  const [priceUpdate, setPriceUpdate] = useState<{
+    lines: DraftLine[]
+    unavailable: boolean
+  } | null>(null)
   const [failure, setFailure] = useState(
     restored
       ? 'Hay una emisión pendiente de confirmar. Reintenta la misma operación para recuperar el documento sin duplicarlo.'
@@ -640,14 +644,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
         }
       })
       if (!mounted.current) return
-      setLines(updated)
-      setPriceReviewRequired(unavailable)
-      setMessage(
-        unavailable
-          ? 'Hay productos que ya no están disponibles. Retíralos y vuelve a actualizar los precios.'
-          : 'Precios actualizados. Revisa el total antes de emitir.',
-      )
-      retry()
+      setPriceUpdate({ lines: updated, unavailable })
     } catch (error) {
       if (mounted.current) setFailure(errorMessage(error))
     } finally {
@@ -823,11 +820,14 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
     setShippingMethod(item.shippingMethod ?? '')
     setShippingText(String(item.shippingAmount ?? 0))
     let pricesChanged = false
-    const refreshedLines = item.lines.map((line) => {
+    item.lines.forEach((line) => {
       const product = data?.find(
         (entry) => entry.product.id === line.productId,
       )?.product
-      if (!product?.active || !product.prices) return structuredClone(line)
+      if (!product?.active || !product.prices) {
+        pricesChanged = true
+        return
+      }
       const prices = structuredClone(product.prices)
       if (
         Object.keys(priceTierLabels).some((key) => {
@@ -839,9 +839,11 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
         })
       )
         pricesChanged = true
-      return { ...line, prices }
     })
-    setLines(refreshedLines)
+    // Abrir un borrador no autoriza a sustituir lo que se había cotizado.
+    // El cambio a los precios vigentes se muestra y se confirma por separado.
+    setLines(structuredClone(item.lines))
+    setPriceReviewRequired(pricesChanged)
     setSavedSnapshot(
       JSON.stringify({
         customerId: item.customerId,
@@ -862,13 +864,13 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
         discount: item.discount,
         shippingMethod: item.shippingMethod ?? '',
         shippingText: String(item.shippingAmount ?? 0),
-        lines: pricesChanged ? item.lines : refreshedLines,
+        lines: item.lines,
       }),
     )
     setFailure('')
     setMessage(
       pricesChanged
-        ? 'Borrador abierto con los precios actuales del catálogo. Revisa el total antes de emitir y guarda los cambios.'
+        ? 'El borrador conserva sus precios guardados. Hay cambios en el catálogo: revisa «Actualizar precios» antes de emitir.'
         : 'Borrador abierto. Guarda los cambios al terminar.',
     )
   }
@@ -1957,6 +1959,70 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
           <p>
             ¿Eliminar el borrador <strong>{current?.reference}</strong>? No
             afecta al inventario ni a los documentos emitidos.
+          </p>
+        </ConfirmDialog>
+      )}
+      {priceUpdate && (
+        <ConfirmDialog
+          open
+          title="Actualizar precios del documento"
+          confirmLabel="Aplicar precios actuales"
+          onCancel={() => setPriceUpdate(null)}
+          onConfirm={() => {
+            setLines(priceUpdate.lines)
+            setPriceReviewRequired(priceUpdate.unavailable)
+            setMessage(
+              priceUpdate.unavailable
+                ? 'Hay productos que ya no están disponibles. Retíralos y vuelve a actualizar los precios.'
+                : 'Precios actualizados. Revisa el total antes de emitir.',
+            )
+            setPriceUpdate(null)
+            retry()
+          }}
+        >
+          <p>
+            {priceTierLabels[tier]} · {currency}
+          </p>
+          <div className="price-review-changes">
+            {priceUpdate.lines.map((line) => {
+              const previous = lines.find((l) => l.productId === line.productId)
+              const before = previous?.prices[tier]?.[currency]
+              const after = line.prices[tier]?.[currency]
+              if (before === after) return null
+              return (
+                <p key={line.productId}>
+                  <strong>{line.name}</strong>
+                  <span>
+                    {before == null
+                      ? 'Sin precio'
+                      : formatCurrency(before, currency)}{' '}
+                    →{' '}
+                    {after == null
+                      ? 'Sin precio'
+                      : formatCurrency(after, currency)}{' '}
+                    por unidad
+                  </span>
+                </p>
+              )
+            })}
+          </div>
+          <p>
+            Total de productos:{' '}
+            {draftTotal(lines, tier, currency) === null
+              ? 'Pendiente'
+              : formatCurrency(
+                  draftTotal(lines, tier, currency)!,
+                  currency,
+                )}{' '}
+            →{' '}
+            <strong>
+              {draftTotal(priceUpdate.lines, tier, currency) === null
+                ? 'Pendiente'
+                : formatCurrency(
+                    draftTotal(priceUpdate.lines, tier, currency)!,
+                    currency,
+                  )}
+            </strong>
           </p>
         </ConfirmDialog>
       )}
