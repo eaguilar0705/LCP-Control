@@ -7,7 +7,10 @@ import {
   ErrorState,
   Input,
   LoadingState,
+  Select,
 } from '../../components/ui'
+import type { Currency } from '../../lib/domain'
+import { validStatementRate } from './statementCurrency'
 import { useServices } from '../../services/useServices'
 import { useQuery } from '../../lib/useQuery'
 import { errorMessage } from '../../lib/errors'
@@ -33,7 +36,8 @@ const views = {
   ...accountingViews,
 }
 export function AccountingPage() {
-  const { salesService } = useServices()
+  const { salesService, settingsService } = useServices()
+  const [reportCurrency, setReportCurrency] = useState<Currency>('NIO')
   const [params] = useSearchParams()
   const sectionQuery = params.get('section')
   const dayQuery = params.get('day')
@@ -69,12 +73,17 @@ export function AccountingPage() {
     }
   }
   const load = useCallback(async () => {
-    const [ledger, business] = await Promise.all([
+    const [ledger, business, rate] = await Promise.all([
       readLedger(range.from, range.to),
       salesService.getBusiness(),
+      settingsService.getExchangeRate(),
     ])
-    return { ledger, name: business?.name ?? 'La Casa del Perfume' }
-  }, [range, salesService])
+    return {
+      ledger,
+      name: business?.name ?? 'La Casa del Perfume',
+      exchangeRate: rate?.usdToNio ?? null,
+    }
+  }, [range, salesService, settingsService])
   const { data, error, loading, retry, refresh } = useQuery(load)
   const model = useMemo(
     () => (data ? journalModel(data.ledger, data.name) : null),
@@ -82,6 +91,10 @@ export function AccountingPage() {
   )
   const current =
     data?.ledger.from === range.from && data.ledger.to === range.to
+  const canConvert = validStatementRate(data?.exchangeRate)
+  const currency = canConvert ? reportCurrency : 'NIO'
+  const isStatement =
+    view === 'trial' || view === 'income' || view === 'balance'
   const [exporting, setExporting] = useState(false),
     [failure, setFailure] = useState('')
   async function download() {
@@ -90,7 +103,10 @@ export function AccountingPage() {
     setFailure('')
     try {
       const { accountingWorkbook } = await import('./accountingWorkbook')
-      accountingWorkbook(model)
+      accountingWorkbook(model, {
+        currency: isStatement ? currency : 'NIO',
+        exchangeRate: data?.exchangeRate,
+      })
     } catch (e) {
       setFailure(errorMessage(e))
     } finally {
@@ -152,6 +168,18 @@ export function AccountingPage() {
                 }
               }}
             />
+            {isStatement && (
+              <Select
+                label="Moneda del reporte"
+                value={currency}
+                onChange={(e) => setReportCurrency(e.target.value as Currency)}
+              >
+                <option value="NIO">C$ Córdobas</option>
+                <option value="USD" disabled={!canConvert}>
+                  US$ Dólares equivalentes
+                </option>
+              </Select>
+            )}
             <div className="period-export">
               <Button
                 variant="secondary"
@@ -163,6 +191,11 @@ export function AccountingPage() {
               </Button>
             </div>
           </div>
+          {isStatement && data && !canConvert && (
+            <p role="status" className="inline-error">
+              Configura el tipo de cambio para consultar en dólares.
+            </p>
+          )}
           {failure && (
             <p role="alert" className="inline-error">
               {failure}
@@ -202,6 +235,8 @@ export function AccountingPage() {
           ledger={emptyLedger}
           onChanged={refresh}
           readOnly
+          currency={currency}
+          exchangeRate={data.exchangeRate}
         />
       )}
     </>

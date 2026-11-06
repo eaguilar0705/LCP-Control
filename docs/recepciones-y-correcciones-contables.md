@@ -26,6 +26,10 @@ Las compras y recepciones muestran el total en su moneda original y su equivalen
 
 El equivalente USD se muestra con dos decimales y nunca se usa para recalcular el importe original. El costo de compra no se redondea al dólar entero, como sí ocurre con ciertos precios de venta. Una compra USD ya registrada conserva su tasa histórica; **Usar tipo de cambio actual** permite elegir expresamente la vigente al corregirla.
 
+En **Contabilidad → Balanza de comprobación / Estado de resultado / Estado de situación financiera**, **Moneda del reporte** permite consultar los mismos saldos en NIO o su equivalente USD con la tasa vigente de Negocio. El encabezado y el Excel indican la moneda y la tasa utilizada. La exportación conserva los valores numéricos sin redondeo intermedio; su presentación usa dos decimales.
+
+La consulta USD no revaloriza existencias ni sustituye costos históricos de ventas. Por ejemplo, C$59,063.46 equivalen a US$1,596.31 con tasa 37. Si una cuenta externa usa otro costo de origen, cambiar la moneda del reporte no corrige esa diferencia: se debe conciliar el detalle y registrar la corrección correspondiente. Sin una tasa válida se mantiene disponible el reporte NIO y se indica que falta configurar el cambio.
+
 En un comprobante manual, **Usar córdobas y dólares en el comprobante** permite usar una moneda y tasa por renglón. Las cajas y bancos estándar conservan su moneda. El cuadre usa los equivalentes NIO, sin sumar dólares y córdobas como si fueran iguales.
 
 La tasa del comprobante no modifica la tasa comercial ni los precios del catálogo. Una diferencia cambiaria requiere una clasificación explícita del contador; no se crea una ganancia automática comparando con la tasa de ventas.
@@ -47,3 +51,5 @@ La edición de un asiento generado por una corrección de recepción lleva a la 
 `npm run test:purchase-accounting` prueba recepciones, clasificación, créditos parciales, pagos, ambas monedas, correcciones posteriores, informes, borradores, permisos, revisiones, recuperación e idempotencia en PostgreSQL desechable.
 
 `npm run test:browser:purchase-accounting` usa las migraciones y RPC reales en esa base desechable con transporte interceptado, en escritorio, tableta y móvil. Incluye pérdida de respuesta de guardado, revisión del PDF y control de desbordamiento. No crea pruebas en producción.
+
+`node --test scripts/tests/statement-currency.test.mjs` y `node scripts/tests/browser-statement-currency.mjs` verifican la conversión de los tres estados y del Excel, cambios de tasa, ausencia de tasa y conservación de los asientos, en escritorio y móvil con datos aislados.

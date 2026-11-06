@@ -1,17 +1,23 @@
 import { buildWorkbook, type CellValue, type Sheet } from '../../lib/xlsx'
 import { download } from '../reports/export'
 import { accountingViews, type AccountingModel } from './accountingModel'
-
-const numeric = (value: number | null): CellValue =>
-  value === null ? 'Pendiente' : value
-const signed = (value: number | null, negative = false): CellValue =>
-  value === null ? 'Pendiente' : negative ? -value : value
+import { statementCurrency, type StatementCurrency } from './statementCurrency'
 
 /** Las mismas cuatro vistas de pantalla, sin anexos ni cifras de ejemplo. */
-export function accountingWorkbookSheets(model: AccountingModel): Sheet[] {
+export function accountingWorkbookSheets(
+  model: AccountingModel,
+  options: StatementCurrency = {},
+): Sheet[] {
+  const display = statementCurrency(options)
+  const numeric = (value: number | null): CellValue => {
+    const converted = display.convert(value)
+    return converted === null ? 'Pendiente' : converted
+  }
+  const signed = (value: number | null, negative = false): CellValue =>
+    numeric(value === null ? null : negative ? -value : value)
   const notes = [
     model.businessName,
-    `Del ${model.range.from} al ${model.range.to}. Importes en NIO.`,
+    `Del ${model.range.from} al ${model.range.to}. Importes en ${display.label}.`,
     'Pendiente indica información insuficiente; no equivale a cero. Revisa los avisos de este estado.',
   ]
   return [
@@ -87,7 +93,7 @@ export function accountingWorkbookSheets(model: AccountingModel): Sheet[] {
       name: accountingViews.balance,
       notes: [
         model.businessName,
-        `Al ${model.range.to}. Importes en NIO.`,
+        `Al ${model.range.to}. Importes en ${display.label}.`,
         `Resultado acumulado desde ${model.accumulatedFrom}.`,
         'Pendiente indica información insuficiente; no equivale a cero. Revisa los avisos de este estado.',
         ...model.warningsByView.balance,
@@ -95,11 +101,11 @@ export function accountingWorkbookSheets(model: AccountingModel): Sheet[] {
       columns: [
         { header: 'Código', width: 12 },
         { header: 'Activo', width: 55 },
-        { header: 'Saldo NIO', width: 23, format: 'money' },
+        { header: `Saldo ${display.currency}`, width: 23, format: 'money' },
         { header: '', width: 4 },
         { header: 'Código', width: 12 },
         { header: 'Pasivo y capital', width: 65 },
-        { header: 'Saldo NIO', width: 23, format: 'money' },
+        { header: `Saldo ${display.currency}`, width: 23, format: 'money' },
       ],
       rows: Array.from(
         {
@@ -126,9 +132,12 @@ export function accountingWorkbookSheets(model: AccountingModel): Sheet[] {
   ]
 }
 
-export function accountingWorkbook(model: AccountingModel) {
+export function accountingWorkbook(
+  model: AccountingModel,
+  options: StatementCurrency = {},
+) {
   download(
-    buildWorkbook(accountingWorkbookSheets(model)),
-    `contabilidad-${model.range.from}-a-${model.range.to}.xlsx`,
+    buildWorkbook(accountingWorkbookSheets(model, options)),
+    `contabilidad-${model.range.from}-a-${model.range.to}${options.currency === 'USD' ? '-USD' : ''}.xlsx`,
   )
 }

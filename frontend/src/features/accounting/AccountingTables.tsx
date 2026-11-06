@@ -11,17 +11,7 @@ import type { FinanceLedger } from './finance'
 import { RecordDialog, VoidDialog } from './FinanceMovements'
 import { rowsOf, type Row } from './financeRows'
 import { useWritable, useCanVoid } from './financeAccess'
-
-const amount = (value: number | null, negative = false) => {
-  if (value === null) return 'Pendiente'
-  if (negative) {
-    const effect = -value
-    const formatted = formatCurrency(Math.abs(effect), 'NIO')
-    return effect < 0 ? `(${formatted})` : formatted
-  }
-  const formatted = formatCurrency(value, 'NIO')
-  return formatted
-}
+import { statementCurrency, type StatementCurrency } from './statementCurrency'
 
 function ScrollTable({
   title,
@@ -92,13 +82,26 @@ export function AccountingTables({
   ledger,
   onChanged,
   readOnly = false,
+  currency = 'NIO',
+  exchangeRate,
 }: {
   view: 'trial' | 'income' | 'balance'
   model: AccountingModel
   ledger: FinanceLedger
   onChanged: () => void
   readOnly?: boolean
-}) {
+} & StatementCurrency) {
+  const display = statementCurrency({ currency, exchangeRate })
+  const amount = (value: number | null, negative = false) => {
+    const converted = display.convert(value)
+    if (converted === null) return 'Pendiente'
+    if (negative) {
+      const effect = -converted
+      const formatted = formatCurrency(Math.abs(effect), currency)
+      return effect < 0 ? `(${formatted})` : formatted
+    }
+    return formatCurrency(converted, currency)
+  }
   const [recording, setRecording] = useState(false)
   const [reviewing, setReviewing] = useState(false)
   const [voiding, setVoiding] = useState<Row | null>(null)
@@ -142,7 +145,7 @@ export function AccountingTables({
               {view === 'balance'
                 ? `Al ${formatDate(model.range.to)}`
                 : `Del ${formatDate(model.range.from)} al ${formatDate(model.range.to)}`}{' '}
-              · C$
+              · {display.label}
             </p>
           </div>
           {view === 'trial' && !readOnly && (
