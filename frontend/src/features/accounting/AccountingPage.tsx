@@ -21,12 +21,14 @@ import { LedgerAccountsManager } from './LedgerAccountsManager'
 import { emptyLedger } from './finance'
 import { CreditWorkspace } from './CreditWorkspace'
 import { InventoryValuation } from './InventoryValuation'
+import { InventoryReceiptsPanel } from '../inventory/InventoryReceiptsPanel'
 import '../../styles/accounting.css'
 import '../../styles/business-day.css'
 
 const views = {
   journal: 'Comprobantes',
   credits: 'Cobros y pagos',
+  receipts: 'Recepciones pendientes',
   ...accountingViews,
 }
 export function AccountingPage() {
@@ -115,57 +117,61 @@ export function AccountingPage() {
           </button>
         ))}
       </nav>
-      <Card className="report-filters">
-        <div className="filter-grid">
-          <Input
-            label="Desde"
-            type="date"
-            value={range.from}
-            max={range.to}
-            onChange={(e) => {
-              if (e.target.value) {
-                const day =
-                  e.target.value > localDay(new Date())
-                    ? localDay(new Date())
-                    : e.target.value
-                setRange((current) => adjustRange(current, 'from', day))
-              }
-            }}
-          />
-          <Input
-            label="Hasta"
-            type="date"
-            value={range.to}
-            min={range.from}
-            max={localDay(new Date())}
-            onChange={(e) => {
-              if (e.target.value) {
-                const day =
-                  e.target.value > localDay(new Date())
-                    ? localDay(new Date())
-                    : e.target.value
-                setRange((current) => adjustRange(current, 'to', day))
-              }
-            }}
-          />
-          <div className="period-export">
-            <Button
-              variant="secondary"
-              disabled={!model || !current || exporting}
-              onClick={() => void download()}
-            >
-              <FileSpreadsheet size={17} />
-              {exporting ? 'Generando…' : 'Descargar Excel'}
-            </Button>
+      {view !== 'receipts' && (
+        <Card className="report-filters">
+          <div className="filter-grid">
+            <Input
+              label="Desde"
+              type="date"
+              value={range.from}
+              max={range.to}
+              onChange={(e) => {
+                if (e.target.value) {
+                  const day =
+                    e.target.value > localDay(new Date())
+                      ? localDay(new Date())
+                      : e.target.value
+                  setRange((current) => adjustRange(current, 'from', day))
+                }
+              }}
+            />
+            <Input
+              label="Hasta"
+              type="date"
+              value={range.to}
+              min={range.from}
+              max={localDay(new Date())}
+              onChange={(e) => {
+                if (e.target.value) {
+                  const day =
+                    e.target.value > localDay(new Date())
+                      ? localDay(new Date())
+                      : e.target.value
+                  setRange((current) => adjustRange(current, 'to', day))
+                }
+              }}
+            />
+            <div className="period-export">
+              <Button
+                variant="secondary"
+                disabled={!model || !current || exporting}
+                onClick={() => void download()}
+              >
+                <FileSpreadsheet size={17} />
+                {exporting ? 'Generando…' : 'Descargar Excel'}
+              </Button>
+            </div>
           </div>
-        </div>
-        {failure && (
-          <p role="alert" className="inline-error">
-            {failure}
-          </p>
-        )}
-      </Card>
-      {error ? (
+          {failure && (
+            <p role="alert" className="inline-error">
+              {failure}
+            </p>
+          )}
+        </Card>
+      )}
+      {view === 'receipts' ? (
+        <InventoryReceiptsPanel onChanged={refresh} />
+      ) : error ? (
         <ErrorState message={error} retry={retry} />
       ) : loading || !data || !model || !current ? (
         <LoadingState />

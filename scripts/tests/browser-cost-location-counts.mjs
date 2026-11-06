@@ -369,8 +369,8 @@ try {
         'store',
       )
 
-      // Desde una entrada de inventario no existe la sección del editor:
-      // «Registrar conteo» debe abrir el perfume en lugar de quedarse detenido.
+      // La recepción pendiente puede prepararse sin contar ubicaciones.
+      // No convierte esos conteos desconocidos en cero ni habilita la venta.
       await page
         .getByRole('link', { name: 'Volver al inventario', exact: true })
         .click()
@@ -397,32 +397,37 @@ try {
         .getByLabel('Motivo', { exact: true })
         .fill('Compra pendiente de conteo físico')
       await entry
-        .getByRole('button', { name: 'Continuar con la compra', exact: true })
+        .getByRole('button', {
+          name: 'Continuar con la recepción',
+          exact: true,
+        })
         .click()
-      await missingDialog()
-        .getByRole('button', { name: 'Registrar conteo', exact: true })
-        .click()
-      await page
-        .getByRole('heading', { name: 'Editar perfume', exact: true })
+      const reception = page.getByRole('dialog', {
+        name: 'Recibir mercadería',
+        exact: true,
+      })
+      await reception
+        .getByRole('heading', { name: 'Recibir mercadería', exact: true })
         .waitFor()
       equal(
-        new URL(page.url()).pathname,
-        `/products/${productId(5)}/edit`,
-        'La entrada permite ir al editor para contar unidades reales',
+        await reception.getByLabel('Unidades', { exact: true }).inputValue(),
+        '2',
+        'La recepción conserva las unidades sin inventar existencias previas',
       )
-      equal(await page.getByRole('dialog').count(), 0)
       equal(
         (await counts(5)).movements,
         1,
-        'Navegar al conteo no registra una entrada ni vuelve a guardar el cero',
+        'Preparar una recepción no registra una entrada ni vuelve a guardar el cero',
       )
-      equal(new URL(page.url()).searchParams.get('countLocation'), 'store')
       equal(
-        await page
-          .getByLabel('Ubicación de las cantidades', { exact: true })
-          .inputValue(),
-        'store',
+        (await counts(5)).store,
+        null,
+        'El conteo desconocido permanece pendiente',
       )
+      await reception
+        .getByRole('button', { name: 'Cancelar', exact: true })
+        .click()
+      await entry.getByRole('button', { name: 'Cancelar', exact: true }).click()
 
       // Otro administrador cuenta siete mientras este cuadro aún ofrece cero.
       await edit(6)

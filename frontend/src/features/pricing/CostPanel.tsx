@@ -19,6 +19,11 @@ import type { OpeningCostInput, ShipmentInput } from '../reports/accounting'
 import { shipmentPayments, type ShipmentPayment } from '../accounting/finance'
 import { localDay } from '../reports/model'
 import { PaymentDateConfirmation } from '../accounting/PaymentDateConfirmation'
+import { formatDate } from '../../lib/format'
+import {
+  postInventoryReceipt,
+  type InventoryReceiptRecord,
+} from '../inventory/inventoryReceipts'
 import {
   correctPurchase,
   purchaseBanks,
@@ -65,6 +70,7 @@ export function PurchaseDialog({
   initialQuantity,
   initialNote = '',
   correcting,
+  reviewingReceipt,
   onClose,
   onRecorded,
 }: {
@@ -76,6 +82,7 @@ export function PurchaseDialog({
   initialQuantity?: number
   initialNote?: string
   correcting?: PurchaseHistoryRecord
+  reviewingReceipt?: InventoryReceiptRecord
   onClose: () => void
   onRecorded: (message: string) => void
 }) {
@@ -106,22 +113,44 @@ export function PurchaseDialog({
               paymentTreatment,
               replacement: purchase,
             })
-          : accountingService.recordShipment({ ...purchase, requestId }),
+          : reviewingReceipt
+            ? postInventoryReceipt({
+                requestId,
+                receiptId: reviewingReceipt.id,
+                expectedRevision: reviewingReceipt.revision,
+                purchase,
+              })
+            : accountingService.recordShipment({ ...purchase, requestId }),
       {
         scope: storageScope ?? 'anonymous',
-        key: correcting ? 'purchase-correction' : 'purchase',
-        label: correcting ? 'Corrección de compra' : 'Compra',
+        key: correcting
+          ? 'purchase-correction'
+          : reviewingReceipt
+            ? 'inventory-receipt-post'
+            : 'purchase',
+        label: correcting
+          ? 'Corrección de compra'
+          : reviewingReceipt
+            ? 'Revisión contable de recepción'
+            : 'Compra',
       },
     ),
   )
   const [incurredOn, setIncurredOn] = useState(localDay(new Date()))
-  const [supplier, setSupplier] = useState(correcting?.supplier ?? '')
-  const [reference, setReference] = useState(correcting?.reference ?? '')
-  const [payment, setPayment] = useState<ShipmentPayment>(
-    correcting?.account ?? 'caja',
+  const [supplier, setSupplier] = useState(
+    correcting?.supplier ?? reviewingReceipt?.supplier ?? '',
+  )
+  const [reference, setReference] = useState(
+    correcting?.reference ?? reviewingReceipt?.reference ?? '',
+  )
+  const [agency, setAgency] = useState(
+    correcting?.agency ?? reviewingReceipt?.agency ?? '',
+  )
+  const [payment, setPayment] = useState<ShipmentPayment | ''>(
+    correcting?.account ?? (reviewingReceipt ? '' : 'caja'),
   )
   const [currency, setCurrency] = useState<Currency>(
-    correcting?.currency ?? 'NIO',
+    correcting?.currency ?? reviewingReceipt?.currency ?? 'NIO',
   )
   const [bank, setBank] = useState(correcting?.bank_ledger_account ?? '')
   const [correctionReason, setCorrectionReason] = useState('')
@@ -133,14 +162,20 @@ export function PurchaseDialog({
   const [rateText, setRateText] = useState(
     correcting
       ? String(correcting.exchange_rate)
-      : catalogRate
-        ? String(catalogRate)
-        : '',
+      : reviewingReceipt
+        ? String(reviewingReceipt.exchangeRate)
+        : catalogRate
+          ? String(catalogRate)
+          : '',
   )
   const [shipping, setShipping] = useState(
-    String(correcting?.shipping_amount ?? 0),
+    String(
+      correcting?.shipping_amount ?? reviewingReceipt?.shippingAmount ?? 0,
+    ),
   )
-  const [note, setNote] = useState(correcting?.note ?? initialNote)
+  const [note, setNote] = useState(
+    correcting?.note ?? reviewingReceipt?.note ?? initialNote,
+  )
   const [lines, setLines] = useState<PurchaseLineDraft[]>(
     correcting
       ? correcting.lines.map((line) => ({
@@ -149,14 +184,21 @@ export function PurchaseDialog({
           quantity: String(line.quantity),
           unitPrice: String(line.unit_price),
         }))
-      : [
-          {
-            ...blankLine(initialProduct),
-            location: initialLocation,
-            quantity:
-              initialQuantity === undefined ? '' : String(initialQuantity),
-          },
-        ],
+      : reviewingReceipt
+        ? reviewingReceipt.lines.map((line) => ({
+            productId: line.productId,
+            location: line.location,
+            quantity: String(line.quantity),
+            unitPrice: String(line.unitPrice),
+          }))
+        : [
+            {
+              ...blankLine(initialProduct),
+              location: initialLocation,
+              quantity:
+                initialQuantity === undefined ? '' : String(initialQuantity),
+            },
+          ],
   )
   const [checked, setChecked] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -198,7 +240,7 @@ export function PurchaseDialog({
   const [today, setToday] = useState(() => localDay(new Date()))
   const dateKey = `${payment}:${incurredOn}`
   const pastPayment =
-    payment !== 'credito' && !!incurredOn && incurredOn < today
+    !!payment && payment !== 'credito' && !!incurredOn && incurredOn < today
   const dateProblem =
     !incurredOn || incurredOn > today
       ? 'Elige una fecha que no sea futura.'
@@ -219,7 +261,9 @@ export function PurchaseDialog({
       try {
         await operation.retryPending()
         onRecorded(
-          'Compra confirmada. Inventario y costo promedio actualizados.',
+          reviewingReceipt
+            ? 'Recepción contabilizada. Inventario y costo promedio actualizados; las unidades ya están disponibles para vender.'
+            : 'Compra confirmada. Inventario y costo promedio actualizados.',
         )
       } catch (error) {
         setFailure(errorMessage(error))
@@ -232,6 +276,12 @@ export function PurchaseDialog({
     const submitToday = localDay(new Date())
     setToday(submitToday)
     if (!preview.ready || !incurredOn || incurredOn > submitToday) return
+    if (!payment) {
+      setFailure(
+        'Selecciona cómo se pagó la compra o si quedó a crédito del proveedor.',
+      )
+      return
+    }
     if (
       payment === 'banco' &&
       !purchaseBanks.some(
@@ -266,7 +316,7 @@ export function PurchaseDialog({
       await operation.execute({
         incurredOn,
         supplier: supplier.trim(),
-        agency: '',
+        agency: agency.trim(),
         reference: reference.trim(),
         note: note.trim(),
         currency,
@@ -289,9 +339,11 @@ export function PurchaseDialog({
         })),
       })
       onRecorded(
-        correcting
-          ? 'Compra corregida. El original y su anulación permanecen en el historial.'
-          : `Compra registrada: ${counts.format(preview.units)} ${preview.units === 1 ? 'unidad' : 'unidades'} en inventario y costo promedio actualizado.`,
+        reviewingReceipt
+          ? 'Recepción contabilizada. Inventario y costo promedio actualizados; las unidades ya están disponibles para vender.'
+          : correcting
+            ? 'Compra corregida. El original y su anulación permanecen en el historial.'
+            : `Compra registrada: ${counts.format(preview.units)} ${preview.units === 1 ? 'unidad' : 'unidades'} en inventario y costo promedio actualizado.`,
       )
     } catch (error) {
       setFailure(errorMessage(error))
@@ -302,7 +354,13 @@ export function PurchaseDialog({
   return (
     <Dialog
       open
-      title={correcting ? 'Corregir compra' : 'Registrar compra'}
+      title={
+        correcting
+          ? 'Corregir compra'
+          : reviewingReceipt
+            ? 'Revisar recepción'
+            : 'Registrar compra'
+      }
       className="pricing-purchase-dialog"
       dismissible={!busy && !uncertain}
       onClose={() => {
@@ -314,6 +372,27 @@ export function PurchaseDialog({
           disabled={busy || uncertain}
           className="pricing-purchase-form"
         >
+          {reviewingReceipt && (
+            <>
+              <p className="receipt-notice">
+                Mercadería recibida el {formatDate(reviewingReceipt.incurredOn)}{' '}
+                por {reviewingReceipt.createdByName || 'Inventario'}. Revisa los
+                costos y elige la cuenta de pago. Al contabilizar, estas
+                unidades estarán disponibles para vender.
+              </p>
+              {preview.lines.some(
+                (line) =>
+                  line.existing === null ||
+                  (line.existing > 0 && line.previousAverage === null),
+              ) && (
+                <p role="status" className="receipt-notice">
+                  Completa primero el conteo y el costo de las existencias
+                  previas en Inventario, sin incluir estas unidades pendientes.
+                  Después vuelve a abrir la revisión.
+                </p>
+              )}
+            </>
+          )}
           {correcting && (
             <>
               <p>
@@ -389,13 +468,23 @@ export function PurchaseDialog({
               value={reference}
               onChange={(event) => setReference(event.target.value)}
             />
+            <Input
+              label="Agencia de envío"
+              maxLength={160}
+              value={agency}
+              onChange={(event) => setAgency(event.target.value)}
+            />
             <Select
               label="Pago"
               value={payment}
-              onChange={(event) =>
+              onChange={(event) => {
                 setPayment(event.target.value as ShipmentPayment)
-              }
+                setFailure('')
+              }}
             >
+              {reviewingReceipt && (
+                <option value="">Seleccionar pago o crédito</option>
+              )}
               {(Object.keys(shipmentPayments) as ShipmentPayment[]).map(
                 (id) => (
                   <option key={id} value={id}>
@@ -468,7 +557,8 @@ export function PurchaseDialog({
                 products={products}
                 currency={currency}
                 checked={checked}
-                removable={lines.length > 1}
+                removable={!reviewingReceipt && lines.length > 1}
+                locked={Boolean(reviewingReceipt)}
                 onChange={(changes) => update(index, changes)}
                 onRemove={() =>
                   setLines((current) =>
@@ -478,14 +568,16 @@ export function PurchaseDialog({
               />
             ))}
           </div>
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={lines.length >= 200}
-            onClick={() => setLines((current) => [...current, blankLine()])}
-          >
-            <Plus size={16} /> Agregar perfume
-          </Button>
+          {!reviewingReceipt && (
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={lines.length >= 200}
+              onClick={() => setLines((current) => [...current, blankLine()])}
+            >
+              <Plus size={16} /> Agregar perfume
+            </Button>
+          )}
           {pastPayment && (
             <PaymentDateConfirmation
               date={incurredOn}
@@ -532,7 +624,9 @@ export function PurchaseDialog({
                 ? 'Verificar guardado'
                 : correcting
                   ? 'Guardar corrección'
-                  : 'Registrar compra'}
+                  : reviewingReceipt
+                    ? 'Contabilizar recepción'
+                    : 'Registrar compra'}
           </Button>
           <Button
             type="button"
@@ -556,6 +650,7 @@ function PurchaseLine({
   currency,
   checked,
   removable,
+  locked = false,
   onChange,
   onRemove,
 }: {
@@ -566,6 +661,7 @@ function PurchaseLine({
   currency: Currency
   checked: boolean
   removable: boolean
+  locked?: boolean
   onChange: (changes: Partial<PurchaseLineDraft>) => void
   onRemove: () => void
 }) {
@@ -580,11 +676,13 @@ function PurchaseLine({
           label={`Perfume ${index + 1}`}
           products={products}
           value={line.productId}
+          disabled={locked}
           onChange={(productId) => onChange({ productId })}
         />
         <Select
           label="Entra a"
           value={line.location}
+          disabled={locked}
           onChange={(event) =>
             onChange({ location: event.target.value as InventoryLocation })
           }
@@ -599,6 +697,7 @@ function PurchaseLine({
           min={1}
           step={1}
           value={line.quantity}
+          disabled={locked}
           onChange={(event) => onChange({ quantity: event.target.value })}
         />
         <Input

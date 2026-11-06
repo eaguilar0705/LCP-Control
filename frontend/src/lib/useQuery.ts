@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import { errorMessage } from './errors'
+import { queryRevision, subscribeQueryRefresh } from './queryRefresh'
 export function useQuery<T>(load: () => Promise<T>) {
+  const revision = useSyncExternalStore(subscribeQueryRefresh, queryRevision)
   const [state, setState] = useState<{
     data: T | null
     error: string | null
@@ -20,7 +22,7 @@ export function useQuery<T>(load: () => Promise<T>) {
     return () => {
       active = false
     }
-  }, [load, attempt])
+  }, [load, attempt, revision])
   const retry = useCallback(() => {
     setState({ data: null, error: null, loading: true })
     setAttempt((value) => value + 1)

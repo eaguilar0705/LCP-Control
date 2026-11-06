@@ -4,6 +4,10 @@ import { createServer } from 'vite'
 import { chromium } from 'playwright'
 import { browserDatabase } from './browser-database.mjs'
 
+process.env.VITE_SUPABASE_URL ??= 'https://local-test.supabase.co'
+process.env.VITE_SUPABASE_PUBLISHABLE_KEY ??= 'sb_publishable_local_test'
+process.env.VITE_DATA_MODE ??= 'supabase'
+
 const base = process.env.LCP_TEST_BASE_URL ?? 'http://127.0.0.1:5196'
 assert.ok(
   ['127.0.0.1', 'localhost', '[::1]'].includes(new URL(base).hostname) ||
@@ -193,7 +197,9 @@ try {
         (await one('select count(*)::int n from public.purchase_shipments')).n,
         0,
       )
-      await dialog.getByRole('button', { name: 'Cerrar', exact: true }).click()
+      await dialog
+        .getByRole('button', { name: 'Cancelar', exact: true })
+        .click()
       await dialog.waitFor({ state: 'hidden' })
       await action.selectOption('EXIT')
       await editor.getByLabel('Unidades a mover', { exact: true }).fill('1')
@@ -237,21 +243,30 @@ try {
         `PASS controles de inventario ${width}px: primer conteo claro, ubicaciones, motivo, compra y salida`,
       )
     } catch (error) {
-      await page.screenshot({
-        path: `${output}/fallo-${width}.png`,
-        fullPage: true,
-      })
+      const diagnostics = {
+        error: String(error),
+        errors,
+        failures: fixture.failures,
+      }
+      try {
+        diagnostics.body = await page
+          .locator('body')
+          .innerText({ timeout: 5000 })
+      } catch (failure) {
+        diagnostics.bodyError = String(failure)
+      }
+      try {
+        await page.screenshot({
+          path: `${output}/fallo-${width}.png`,
+          fullPage: true,
+          timeout: 5000,
+        })
+      } catch (failure) {
+        diagnostics.screenshotError = String(failure)
+      }
       await writeFile(
         `${output}/fallo-${width}.json`,
-        JSON.stringify(
-          {
-            errors,
-            failures: fixture.failures,
-            body: await page.locator('body').innerText(),
-          },
-          null,
-          2,
-        ),
+        JSON.stringify(diagnostics, null, 2),
       )
       throw error
     } finally {

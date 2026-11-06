@@ -403,17 +403,14 @@ try {
       await inventory()
       await page.getByRole('button', { name: 'Entrada', exact: true }).click()
       dialog = page.getByRole('dialog', { name: 'Entrada de inventario' })
-      await dialog
-        .getByText('Esta entrada necesita Administración.', { exact: true })
-        .waitFor()
+      await dialog.getByLabel('Cantidad', { exact: true }).waitFor()
       equal(
         await dialog.getByLabel('Cantidad', { exact: true }).count(),
-        0,
-        'se avisa antes de llenar datos innecesarios',
+        1,
+        'Bodega prepara la recepción sin registrar una compra definitiva',
       )
       await dialog
-        .getByRole('button', { name: 'Cerrar', exact: true })
-        .last()
+        .getByRole('button', { name: 'Cancelar', exact: true })
         .click()
       dialog = await fillExit('El rol Inventario conserva sus salidas normales')
       await dialog

@@ -1,0 +1,63 @@
+.inventory-receipts-panel {
+  margin-bottom: 1.25rem;
+  padding: 1.1rem;
+}
+.receipt-panel-heading,
+.receipt-row-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.receipt-panel-heading h2 {
+  margin-top: 0;
+}
+.receipt-panel-heading p {
+  max-width: 70ch;
+}
+.receipt-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.receipt-list {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 1rem;
+}
+.receipt-row {
+  padding: 1rem;
+  border: 1px solid var(--border, #dce1e8);
+  border-radius: 0.8rem;
+  overflow-wrap: anywhere;
+}
+.receipt-row p {
+  margin: 0.45rem 0;
+}
+.receipt-products {
+  padding-left: 1.25rem;
+  margin: 0.75rem 0;
+}
+.receipt-products li {
+  margin: 0.3rem 0;
+}
+.receipt-pagination {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+.receipt-notice {
+  padding: 0.8rem;
+  border-left: 3px solid var(--primary, #8b5a36);
+  background: var(--surface-subtle, #f6f4ef);
+}
+@media (max-width: 680px) {
+  .receipt-panel-heading,
+  .receipt-row-heading {
+    flex-direction: column;
+  }
+  .receipt-actions .button {
+    flex: 1 1 auto;
+  }
+}

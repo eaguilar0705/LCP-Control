@@ -472,8 +472,16 @@ try {
       await page.getByRole('button', { name: 'Entrada', exact: true }).click()
       await page
         .getByRole('dialog')
-        .getByText('Esta entrada necesita Administración.', { exact: true })
+        .getByLabel('Cantidad', { exact: true })
         .waitFor()
+      equal(
+        await page
+          .getByRole('dialog')
+          .getByLabel('Pago', { exact: true })
+          .count(),
+        0,
+        'Bodega puede preparar una recepción sin elegir contrapartida',
+      )
       equal(errors, [])
       equal(fixture.failures, [])
       console.log(

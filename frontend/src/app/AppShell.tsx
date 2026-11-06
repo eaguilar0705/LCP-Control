@@ -29,6 +29,7 @@ import {
   subscribeOperationReferences,
 } from '../lib/operationRecovery'
 import { errorMessage } from '../lib/errors'
+import { refreshQueries } from '../lib/queryRefresh'
 import { can, roleLabels, type Capability } from '../lib/permissions'
 import {
   pendingDocuments,
@@ -124,6 +125,7 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
     setOperationNotice(null)
     try {
       await entry.operation.retryPending()
+      refreshQueries()
       setOperationNotice({
         revision: pendingOperationsRevision(),
         message: 'Operación confirmada. Consulta el historial.',
@@ -396,7 +398,10 @@ export function AppShell({ demo = false }: { demo?: boolean }) {
           <OperationRecoveryBanner
             references={recoveredReferences}
             base={base}
-            onConfirmed={() => setError('')}
+            onConfirmed={() => {
+              setError('')
+              refreshQueries()
+            }}
           />
           {outstanding.length > 0 && (
             <aside

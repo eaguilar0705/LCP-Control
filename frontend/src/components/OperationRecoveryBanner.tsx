@@ -73,6 +73,9 @@ export function OperationRecoveryBanner({
               'opening-cost',
               'price-tier-create',
               'price-list-prices',
+              'inventory-receipt',
+              'inventory-receipt-post',
+              'inventory-receipt-cancel',
             ].includes(reference.kind)
             const history =
               reference.kind === 'ledger-account-change'

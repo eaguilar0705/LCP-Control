@@ -71,8 +71,71 @@ try {
         .fill(String(quantity))
       await dialog.getByLabel('Motivo', { exact: true }).fill(note)
       await dialog
-        .getByRole('button', { name: 'Continuar con la compra', exact: true })
+        .getByRole('button', {
+          name: 'Continuar con la recepción',
+          exact: true,
+        })
         .click()
+    }
+    const saveReceipt = async (cost, reference) => {
+      const dialog = page.getByRole('dialog')
+      await dialog
+        .getByRole('heading', { name: 'Recibir mercadería', exact: true })
+        .waitFor()
+      equal(
+        await dialog.getByLabel('Pago', { exact: true }).count(),
+        0,
+        'recibir no requiere pago',
+      )
+      await dialog
+        .getByLabel('Costo por unidad (C$)', { exact: true })
+        .fill(String(cost))
+      await dialog
+        .getByLabel('Factura o referencia', { exact: true })
+        .fill(reference)
+      await dialog
+        .getByRole('button', { name: 'Guardar recepción', exact: true })
+        .click()
+      await dialog.waitFor({ state: 'hidden' })
+      const row = page.getByRole('article', {
+        name: `Recepción ${reference}`,
+        exact: true,
+      })
+      await row.waitFor()
+      return row
+    }
+    const reviewReceipt = async (reference) => {
+      await page
+        .getByRole('article', { name: `Recepción ${reference}`, exact: true })
+        .getByRole('button', { name: 'Revisar recepción', exact: true })
+        .click()
+      const dialog = page.getByRole('dialog')
+      await dialog
+        .getByRole('heading', { name: 'Revisar recepción', exact: true })
+        .waitFor()
+      equal(
+        await dialog.getByLabel('Pago', { exact: true }).inputValue(),
+        '',
+        'la revisión exige pago explícito',
+      )
+      equal(
+        await dialog.getByLabel('Unidades', { exact: true }).isDisabled(),
+        true,
+        'cantidad recibida fija',
+      )
+      equal(
+        await dialog.getByLabel('Entra a', { exact: true }).isDisabled(),
+        true,
+        'ubicación recibida fija',
+      )
+      return dialog
+    }
+    const postReceipt = async (dialog) => {
+      await dialog.getByLabel('Pago', { exact: true }).selectOption('credito')
+      await dialog
+        .getByRole('button', { name: 'Contabilizar recepción', exact: true })
+        .click()
+      await dialog.waitFor({ state: 'hidden' })
     }
     const healthy = async (label) => {
       equal(errors, [], label + ': errores de navegador')
@@ -147,12 +210,12 @@ try {
       await page.getByRole('heading', { name: 'Inicio', exact: true }).waitFor()
       await navigate('/inventory')
 
-      // La entrada fallida de la captura debe conducir a la compra sin
-      // descartar lo escrito ni tocar existencias antes de confirmarla.
+      // Entrada conserva lo escrito. Recibir y cancelar la captura no mueven
+      // unidades, costo ni mayor; únicamente la revisión contable lo hace.
       await entry('QA-0001', 10, 'store', 'Compra recibida para mostrador')
       let dialog = page.getByRole('dialog')
       await dialog
-        .getByRole('heading', { name: 'Registrar compra', exact: true })
+        .getByRole('heading', { name: 'Recibir mercadería', exact: true })
         .waitFor()
       equal(
         await dialog.getByLabel('Unidades', { exact: true }).inputValue(),
@@ -187,28 +250,41 @@ try {
         'cancelar conserva motivo',
       )
       await dialog
-        .getByRole('button', { name: 'Continuar con la compra', exact: true })
+        .getByRole('button', {
+          name: 'Continuar con la recepción',
+          exact: true,
+        })
         .click()
       dialog = page.getByRole('dialog')
-      await dialog
-        .getByLabel('Costo por unidad (C$)', { exact: true })
-        .fill('1000')
-      await dialog.getByLabel('Pago', { exact: true }).selectOption('credito')
-      await dialog
-        .getByLabel('Factura o referencia', { exact: true })
-        .fill(`COMPRA-TIENDA-${width}`)
-      await dialog
-        .locator('.pricing-outcome strong')
-        .filter({ hasText: '1033.333333' })
-        .waitFor()
-      await healthy('compra tienda ' + width)
-      await dialog
-        .getByRole('button', { name: 'Registrar compra', exact: true })
-        .click()
-      await dialog.waitFor({ state: 'hidden' })
+      await saveReceipt(1000, `COMPRA-TIENDA-${width}`)
       equal(
         await totals(id(1)),
-        { store: 15, warehouse: 0, cost: '1033.333333', purchases: 1 },
+        { store: 5, warehouse: 0, cost: '1100.000000', purchases: 0 },
+        'recibida pendiente no habilita stock ni costo',
+      )
+      await fixture.db.exec('reset role')
+      equal(
+        Number(
+          (
+            await one(
+              "select coalesce(sum(debit),0) amount from private.operational_postings where source='purchase' and account='1130'",
+            )
+          ).amount,
+        ),
+        0,
+        'recepción pendiente no contabiliza',
+      )
+      await identity(fixture.db, admin)
+      dialog = await reviewReceipt(`COMPRA-TIENDA-${width}`)
+      await dialog
+        .locator('.pricing-outcome strong')
+        .filter({ hasText: '1033.33' })
+        .waitFor()
+      await healthy('compra tienda ' + width)
+      await postReceipt(dialog)
+      equal(
+        await totals(id(1)),
+        { store: 15, warehouse: 0, cost: '1033.333330', purchases: 1 },
         'promedio ponderado de las notas',
       )
       equal(
@@ -236,7 +312,7 @@ try {
       await entry('QA-0001', 3, 'warehouse', 'Compra para bodega')
       dialog = page.getByRole('dialog')
       await dialog
-        .getByRole('heading', { name: 'Registrar compra', exact: true })
+        .getByRole('heading', { name: 'Recibir mercadería', exact: true })
         .waitFor()
       equal(
         await dialog.getByLabel('Entra a', { exact: true }).inputValue(),
@@ -246,31 +322,64 @@ try {
         await dialog.getByLabel('Unidades', { exact: true }).inputValue(),
         '3',
       )
-      await dialog
-        .getByLabel('Costo por unidad (C$)', { exact: true })
-        .fill('1200')
-      await dialog.getByLabel('Pago', { exact: true }).selectOption('credito')
-      await dialog
-        .getByRole('button', { name: 'Registrar compra', exact: true })
-        .click()
-      await dialog.waitFor({ state: 'hidden' })
+      await saveReceipt(1200, `COMPRA-BODEGA-${width}`)
       equal(
         await totals(id(1)),
-        { store: 15, warehouse: 3, cost: '1061.111111', purchases: 2 },
+        { store: 15, warehouse: 0, cost: '1033.333330', purchases: 1 },
+        'segunda recepción no cambia inventario antes de revisar',
+      )
+      dialog = await reviewReceipt(`COMPRA-BODEGA-${width}`)
+      await postReceipt(dialog)
+      equal(
+        await totals(id(1)),
+        { store: 15, warehouse: 3, cost: '1061.111110', purchases: 2 },
         'pondera tienda y bodega juntas',
       )
 
       // No convierte el stock sin costo en una entrada gratis. Registra el
       // costo inicial de lo existente y luego recibe sólo las unidades nuevas.
       await entry('QA-0003', 2, 'store', 'Compra después del costo inicial')
-      dialog = page.getByRole('dialog')
-      await dialog.getByRole('heading', { name: /Costo inicial/ }).waitFor()
+      await saveReceipt(1000, `COSTO-INICIAL-${width}`)
+      dialog = await reviewReceipt(`COSTO-INICIAL-${width}`)
+      await dialog
+        .getByText(/Completa primero el conteo y el costo de las existencias/)
+        .waitFor()
       equal(await totals(id(3)), {
         store: 4,
         warehouse: 2,
         cost: null,
         purchases: 0,
       })
+      await dialog.getByLabel('Pago', { exact: true }).selectOption('credito')
+      await dialog
+        .getByRole('button', { name: 'Contabilizar recepción', exact: true })
+        .click()
+      equal(
+        await dialog.isVisible(),
+        true,
+        'no contabiliza hasta cargar costo de stock previo',
+      )
+      equal(await totals(id(3)), {
+        store: 4,
+        warehouse: 2,
+        cost: null,
+        purchases: 0,
+      })
+      await dialog
+        .getByRole('button', { name: 'Cancelar', exact: true })
+        .click()
+      await page.evaluate(
+        (path) => {
+          globalThis.history.pushState({}, '', path)
+          globalThis.dispatchEvent(new globalThis.PopStateEvent('popstate'))
+        },
+        `/products/${id(3)}/edit`,
+      )
+      await page
+        .getByRole('button', { name: 'Costo de inventario', exact: true })
+        .click()
+      dialog = page.getByRole('dialog')
+      await dialog.getByRole('heading', { name: /Costo inicial/ }).waitFor()
       await dialog
         .getByLabel('Costo por unidad (C$)', { exact: true })
         .fill('900')
@@ -280,15 +389,14 @@ try {
       await dialog
         .getByRole('button', { name: 'Guardar costo inicial', exact: true })
         .click()
-      await page
-        .getByRole('heading', { name: 'Registrar compra', exact: true })
-        .waitFor()
-      dialog = page.getByRole('dialog')
+      await dialog.waitFor({ state: 'hidden' })
       equal(
         await totals(id(3)),
         { store: 4, warehouse: 2, cost: '900.000000', purchases: 0 },
         'costo inicial no suma unidades',
       )
+      await navigate('/inventory')
+      dialog = await reviewReceipt(`COSTO-INICIAL-${width}`)
       equal(
         await dialog.getByLabel('Unidades', { exact: true }).inputValue(),
         '2',
@@ -297,14 +405,7 @@ try {
         await dialog.getByLabel('Nota', { exact: true }).inputValue(),
         'Compra después del costo inicial',
       )
-      await dialog
-        .getByLabel('Costo por unidad (C$)', { exact: true })
-        .fill('1000')
-      await dialog.getByLabel('Pago', { exact: true }).selectOption('credito')
-      await dialog
-        .getByRole('button', { name: 'Registrar compra', exact: true })
-        .click()
-      await dialog.waitFor({ state: 'hidden' })
+      await postReceipt(dialog)
       equal(await totals(id(3)), {
         store: 6,
         warehouse: 2,
@@ -313,9 +414,10 @@ try {
       })
 
       await entry('QA-0004', 7, 'store', 'Conteo pendiente de bodega')
-      dialog = page.getByRole('dialog')
+      await saveReceipt(200, `CONTEO-PENDIENTE-${width}`)
+      dialog = await reviewReceipt(`CONTEO-PENDIENTE-${width}`)
       await dialog
-        .getByText('Falta el conteo de Tienda o Bodega.', { exact: true })
+        .getByText(/Completa primero el conteo y el costo de las existencias/)
         .waitFor()
       equal(
         await totals(id(4)),
@@ -323,9 +425,31 @@ try {
         'no inventa el conteo faltante',
       )
       await healthy('conteo pendiente ' + width)
+      await dialog.getByLabel('Pago', { exact: true }).selectOption('credito')
       await dialog
-        .getByRole('link', { name: 'Registrar conteo', exact: true })
+        .getByRole('button', { name: 'Contabilizar recepción', exact: true })
         .click()
+      equal(
+        await dialog.isVisible(),
+        true,
+        'no contabiliza con conteo desconocido',
+      )
+      equal(await totals(id(4)), {
+        store: 0,
+        warehouse: null,
+        cost: '100.000000',
+        purchases: 0,
+      })
+      await dialog
+        .getByRole('button', { name: 'Cancelar', exact: true })
+        .click()
+      await page.evaluate(
+        (path) => {
+          globalThis.history.pushState({}, '', path)
+          globalThis.dispatchEvent(new globalThis.PopStateEvent('popstate'))
+        },
+        `/products/${id(4)}/edit#cantidades-perfume`,
+      )
       await page.locator('.product-stock-editor').waitFor()
       equal(new URL(page.url()).pathname, `/products/${id(4)}/edit`)
 
@@ -337,6 +461,10 @@ try {
         },
         `/products/${id(5)}/edit`,
       )
+      await page
+        .locator('.product-stock-editor')
+        .getByLabel('Cómo cambiar las cantidades', { exact: true })
+        .selectOption('ENTRY')
       await page
         .locator('.product-stock-editor')
         .getByRole('button', { name: 'Registrar compra', exact: true })
@@ -354,6 +482,21 @@ try {
         path: `${output}/compra-${width}.png`,
         fullPage: true,
       })
+      dialog = page.getByRole('dialog')
+      await dialog.getByLabel('Unidades', { exact: true }).fill('2')
+      await dialog
+        .getByLabel('Costo por unidad (C$)', { exact: true })
+        .fill('500')
+      await dialog.getByLabel('Pago', { exact: true }).selectOption('credito')
+      await dialog
+        .getByRole('button', { name: 'Registrar compra', exact: true })
+        .click()
+      await dialog.waitFor({ state: 'hidden' })
+      equal(
+        await totals(id(5)),
+        { store: 2, warehouse: 0, cost: '500.000000', purchases: 1 },
+        'compra inmediata autorizada sigue disponible desde edición',
+      )
       if (width === 1440) {
         await fixture.db.exec('reset role')
         await fixture.db.query(
@@ -375,20 +518,28 @@ try {
           .getByRole('heading', { name: 'Inicio', exact: true })
           .waitFor()
         await navigate('/inventory')
-        await page.getByRole('button', { name: 'Entrada', exact: true }).click()
-        dialog = page.getByRole('dialog')
-        await dialog
-          .getByText('Esta entrada necesita Administración.', { exact: true })
-          .waitFor()
+        await entry(
+          'QA-0001',
+          2,
+          'warehouse',
+          'Recepción del personal de bodega',
+        )
+        await saveReceipt(1250, 'BODEGA-PENDIENTE')
         equal(
-          await dialog.getByLabel('Cantidad', { exact: true }).count(),
+          await page
+            .getByRole('article', {
+              name: 'Recepción BODEGA-PENDIENTE',
+              exact: true,
+            })
+            .getByRole('button', { name: 'Revisar recepción', exact: true })
+            .count(),
           0,
-          'la restricción se explica antes de pedir cantidades',
+          'Bodega recibe sin permiso para contabilizar',
         )
         equal(
           await totals(id(1)),
-          { store: 15, warehouse: 3, cost: '1061.111111', purchases: 2 },
-          'Inventario no recibe sin el costo autorizado',
+          { store: 15, warehouse: 3, cost: '1061.111110', purchases: 2 },
+          'Bodega no habilita existencias sin revisión contable',
         )
         await healthy('entrada con rol Inventario')
       }

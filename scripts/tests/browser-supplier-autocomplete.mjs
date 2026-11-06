@@ -35,27 +35,27 @@ try {
         (await one('select count(*)::int n from public.purchase_shipments')).n,
       )
     const openPurchase = async () => {
-      await page.getByRole('button', { name: 'Entrada', exact: true }).click()
+      await page.getByRole('button', { name: 'Compras', exact: true }).click()
       let dialog = page.getByRole('dialog')
       await dialog
-        .getByRole('button', { name: /Producto del movimiento/ })
+        .getByRole('button', { name: 'Registrar compra', exact: true })
         .click()
-      await dialog.getByPlaceholder('Nombre, marca o código…').fill('QA-0001')
-      await dialog.getByRole('option').first().click()
-      await dialog
-        .getByLabel('Ubicación', { exact: true })
-        .selectOption('store')
-      await dialog.getByLabel('Cantidad', { exact: true }).fill('2')
-      await dialog
-        .getByLabel('Motivo', { exact: true })
-        .fill('Compra de auditoría de proveedor')
-      await dialog
-        .getByRole('button', { name: 'Continuar con la compra', exact: true })
-        .click()
-      dialog = page.getByRole('dialog')
+      dialog = page.getByRole('dialog', { name: 'Registrar compra', exact: true })
       await dialog
         .getByRole('heading', { name: 'Registrar compra', exact: true })
         .waitFor()
+      await dialog.getByRole('button', { name: /^Perfume 1 / }).click()
+      await dialog.getByPlaceholder('Nombre, marca o código…').fill('QA-0001')
+      await dialog
+        .getByRole('listbox', { name: 'Perfume 1', exact: true })
+        .getByRole('option')
+        .first()
+        .click()
+      await dialog.getByLabel('Entra a', { exact: true }).selectOption('store')
+      await dialog.getByLabel('Unidades', { exact: true }).fill('2')
+      await dialog
+        .getByLabel('Nota', { exact: true })
+        .fill('Compra de auditoría de proveedor')
       await dialog.getByLabel('Pago', { exact: true }).selectOption('credito')
       await dialog
         .getByLabel('Costo por unidad (C$)', { exact: true })
@@ -70,6 +70,10 @@ try {
         .getByRole('button', { name: 'Registrar compra', exact: true })
         .click()
       await dialog.waitFor({ state: 'hidden' })
+      await page
+        .getByRole('dialog', { name: 'Historial de compras', exact: true })
+        .getByRole('button', { name: 'Cerrar', exact: true })
+        .click()
       equal(
         (
           await one(

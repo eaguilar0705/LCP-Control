@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Minus, Plus, Package, ArrowRight, ClipboardCheck } from 'lucide-react'
-import { useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import {
   Button,
   Card,
@@ -57,7 +57,7 @@ export function ProductStockEditor({
   onPurchase?: (location: InventoryLocation) => void
   onPendingChange?: (pending: boolean) => void
 }) {
-  const { demo, role, storageScope = 'anonymous' } = useAccess()
+  const { demo, role, base, storageScope = 'anonymous' } = useAccess()
   const navigation = useLocation()
   const requestedLocation = new URLSearchParams(navigation.search).get(
     'countLocation',
@@ -193,6 +193,12 @@ export function ProductStockEditor({
         </div>
         <Package size={25} />
       </div>
+      <p className="muted">
+        Para ingresar mercadería pendiente de revisión contable, usa{' '}
+        <Link to={`${base}/inventory`}>Recibir mercadería en Inventario</Link>.
+        No incluyas unidades de recepciones pendientes en el conteo; un ajuste
+        registra la diferencia como sobrante o faltante.
+      </p>
 
       {loading ? (
         <LoadingState />

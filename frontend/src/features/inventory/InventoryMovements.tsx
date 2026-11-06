@@ -11,7 +11,7 @@ import {
 import { can, type Capability } from '../../lib/permissions'
 import { errorMessage } from '../../lib/errors'
 import { createIdempotentOperation } from '../../lib/idempotentOperation'
-import { ProductCostDialog } from '../products/ProductCostDialog'
+import { InventoryReceiptDialog } from './InventoryReceiptDialog'
 import { InventoryTransfers } from './InventoryTransfers'
 
 // `title` y `done` se escriben enteros: «Dañado» y «Ajuste» no concuerdan con
@@ -87,8 +87,6 @@ export function InventoryMovements({
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const uncertain = operation.isUncertain()
-  const purchaseNeedsAdmin =
-    action?.type === 'ENTRY' && !can(role, 'product.edit_cost')
   const item = items.find(({ product }) => product.id === productId)
   const quantity = item?.quantities[location]
   if (demo) return null
@@ -126,15 +124,8 @@ export function InventoryMovements({
       setError('Selecciona un producto, una cantidad válida y el motivo.')
       return
     }
-    // Las unidades compradas necesitan su costo y cuenta de pago. El ajuste
-    // sigue disponible para registrar el conteo inicial o corregirlo.
+    // La entrada se recibe primero; sólo la revisión contable habilita el stock.
     if (action.type === 'ENTRY') {
-      if (!can(role, 'product.edit_cost')) {
-        setError(
-          'Solicita a un administrador que registre la compra con su costo.',
-        )
-        return
-      }
       setError('')
       setPurchase({ productId, location, quantity: nextQuantity, note })
       return
@@ -222,134 +213,125 @@ export function InventoryMovements({
             if (!busy && !uncertain) setAction(null)
           }}
         >
-          {purchaseNeedsAdmin ? (
-            <div role="status">
-              <strong>Esta entrada necesita Administración.</strong>
+          <form onSubmit={submit} className="movement-form">
+            {action.type === 'ADJUSTMENT' && (
               <p>
-                Solicita que registren la compra con su costo y cuenta de pago.
-                Para mover unidades que ya tienes, usa Traslados; para el conteo
-                físico, solicita un ajuste al Superadmin.
+                Escribe el total contado, no la diferencia. No incluyas unidades
+                de recepciones pendientes en este conteo. Para ingresar una
+                compra usa Recibir mercadería; un ajuste registra la diferencia
+                como sobrante o faltante.
               </p>
+            )}
+            {action.type === 'ENTRY' && (
+              <p>
+                Esta entrada continuará como recepción pendiente de revisión
+                contable. Las unidades estarán disponibles para vender después
+                de la revisión.
+              </p>
+            )}
+            <fieldset disabled={busy || uncertain} className="form-fields">
+              <ProductSelect
+                label="Producto del movimiento"
+                products={items.map(({ product }) => product)}
+                value={productId}
+                onChange={setProductId}
+              />
+              <Select
+                label="Ubicación"
+                value={location}
+                onChange={(event) =>
+                  setLocation(event.target.value as MovementRequest['location'])
+                }
+              >
+                {Object.entries(labels.location).map(([value, label]) => (
+                  <option value={value} key={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
+              {item && <p>Existencias actuales: {quantity ?? 'Sin conteo'}</p>}
+              <Input
+                label={
+                  action.type === 'ADJUSTMENT' ? 'Conteo total' : 'Cantidad'
+                }
+                name="quantity"
+                type="number"
+                required
+                min={action.type === 'ADJUSTMENT' ? 0 : 1}
+                max={1000000}
+                step={1}
+                value={quantityText}
+                onChange={(event) => setQuantityText(event.target.value)}
+              />
+              {action.type === 'ADJUSTMENT' && item && (
+                <p role="status">
+                  {labels.location[location]}: {quantity ?? 'Sin conteo'} →{' '}
+                  {quantityText.trim() !== '' &&
+                  Number.isInteger(Number(quantityText)) &&
+                  Number(quantityText) >= 0 &&
+                  Number(quantityText) <= 1000000
+                    ? `${Number(quantityText)} unidades al guardar`
+                    : 'Indica el conteo total'}
+                </p>
+              )}
+              <Input
+                label="Motivo"
+                name="note"
+                required
+                maxLength={2000}
+                value={noteText}
+                onChange={(event) => setNoteText(event.target.value)}
+              />
+            </fieldset>
+            {error && !uncertain && (
               <Button
                 type="button"
                 variant="secondary"
+                disabled={busy}
+                onClick={() => {
+                  setError('')
+                  onRecorded()
+                }}
+              >
+                Actualizar existencias
+              </Button>
+            )}
+            {error && (
+              <p role="alert" className="inline-error">
+                {error}
+              </p>
+            )}
+            <div className="form-actions">
+              <Button type="submit" disabled={busy}>
+                {busy
+                  ? 'Registrando…'
+                  : uncertain
+                    ? 'Verificar guardado'
+                    : action.type === 'ENTRY'
+                      ? 'Continuar con la recepción'
+                      : action.type === 'ADJUSTMENT'
+                        ? 'Guardar ajuste'
+                        : 'Confirmar movimiento'}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={busy || uncertain}
                 onClick={() => setAction(null)}
               >
-                Cerrar
+                Cancelar
               </Button>
             </div>
-          ) : (
-            <form onSubmit={submit} className="movement-form">
-              {action.type === 'ADJUSTMENT' && (
-                <p>Escribe el total contado, no la diferencia.</p>
-              )}
-              <fieldset disabled={busy || uncertain} className="form-fields">
-                <ProductSelect
-                  label="Producto del movimiento"
-                  products={items.map(({ product }) => product)}
-                  value={productId}
-                  onChange={setProductId}
-                />
-                <Select
-                  label="Ubicación"
-                  value={location}
-                  onChange={(event) =>
-                    setLocation(
-                      event.target.value as MovementRequest['location'],
-                    )
-                  }
-                >
-                  {Object.entries(labels.location).map(([value, label]) => (
-                    <option value={value} key={value}>
-                      {label}
-                    </option>
-                  ))}
-                </Select>
-                {item && (
-                  <p>Existencias actuales: {quantity ?? 'Sin conteo'}</p>
-                )}
-                <Input
-                  label={
-                    action.type === 'ADJUSTMENT' ? 'Conteo total' : 'Cantidad'
-                  }
-                  name="quantity"
-                  type="number"
-                  required
-                  min={action.type === 'ADJUSTMENT' ? 0 : 1}
-                  max={1000000}
-                  step={1}
-                  value={quantityText}
-                  onChange={(event) => setQuantityText(event.target.value)}
-                />
-                {action.type === 'ADJUSTMENT' && item && (
-                  <p role="status">
-                    {labels.location[location]}: {quantity ?? 'Sin conteo'} →{' '}
-                    {quantityText.trim() !== '' &&
-                    Number.isInteger(Number(quantityText)) &&
-                    Number(quantityText) >= 0 &&
-                    Number(quantityText) <= 1000000
-                      ? `${Number(quantityText)} unidades al guardar`
-                      : 'Indica el conteo total'}
-                  </p>
-                )}
-                <Input
-                  label="Motivo"
-                  name="note"
-                  required
-                  maxLength={2000}
-                  value={noteText}
-                  onChange={(event) => setNoteText(event.target.value)}
-                />
-              </fieldset>
-              {error && !uncertain && (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={busy}
-                  onClick={() => {
-                    setError('')
-                    onRecorded()
-                  }}
-                >
-                  Actualizar existencias
-                </Button>
-              )}
-              {error && (
-                <p role="alert" className="inline-error">
-                  {error}
-                </p>
-              )}
-              <div className="form-actions">
-                <Button type="submit" disabled={busy}>
-                  {busy
-                    ? 'Registrando…'
-                    : uncertain
-                      ? 'Verificar guardado'
-                      : action.type === 'ENTRY' &&
-                          can(role, 'product.edit_cost')
-                        ? 'Continuar con la compra'
-                        : action.type === 'ADJUSTMENT'
-                          ? 'Guardar ajuste'
-                          : 'Confirmar movimiento'}
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={busy || uncertain}
-                  onClick={() => setAction(null)}
-                >
-                  Cancelar
-                </Button>
-              </div>
-            </form>
-          )}
+          </form>
         </Dialog>
       )}
       {purchase && (
-        <ProductCostDialog
-          productId={purchase.productId}
+        <InventoryReceiptDialog
+          items={items}
+          initialProduct={purchase.productId}
           initialLocation={purchase.location}
-          purchase={purchase}
+          initialQuantity={purchase.quantity}
+          initialNote={purchase.note}
           onClose={() => setPurchase(null)}
           onRecorded={(message) => {
             setMessage(message)

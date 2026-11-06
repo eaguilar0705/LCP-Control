@@ -55,6 +55,7 @@ import {
 import { useAccess } from '../../app/AccessContext'
 import { MovementDrafts } from './MovementDrafts'
 import { InventoryMovements } from './InventoryMovements'
+import { InventoryReceiptsPanel } from './InventoryReceiptsPanel'
 import { ProductPrices, ProductPriceValue } from './ProductPrices'
 import { inventoryPriceLists } from './inventory-price-lists'
 import './inventory-prices.css'
@@ -79,6 +80,7 @@ export function InventoryPage() {
   const [currency, setCurrency] = useState<Currency>('NIO')
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<Product | null>(null)
+  const [receiptsVersion, setReceiptsVersion] = useState(0)
   const activeFilterCount =
     [
       filters.category,
@@ -170,10 +172,19 @@ export function InventoryPage() {
         ) : (
           <InventoryMovements
             items={(data ?? []).filter((i) => i.product.active)}
-            onRecorded={retry}
+            onRecorded={() => {
+              retry()
+              setReceiptsVersion((version) => version + 1)
+            }}
           />
         )}
       </div>
+      <InventoryReceiptsPanel
+        items={data ?? []}
+        onChanged={retry}
+        allowCreate
+        refreshKey={receiptsVersion}
+      />
       <Card className="inventory-workspace">
         <div className="inventory-toolbar">
           <div className="catalog-toolbar-heading">
