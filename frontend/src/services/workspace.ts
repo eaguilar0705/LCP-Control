@@ -93,6 +93,7 @@ export const saveStaff = (
   })
 type MovementRow = {
   id: string
+  product_id: string
   created_at: string
   type: string
   quantity: number
@@ -103,14 +104,27 @@ type MovementRow = {
   products:
     { name: string; sku: string } | { name: string; sku: string }[] | null
 }
-export async function listMovements(): Promise<MovementRow[]> {
-  const { data, error } = await client()
+export async function listMovements(
+  day = '',
+  offset = 0,
+): Promise<MovementRow[]> {
+  const query = client()
     .from('inventory_movements')
     .select(
-      'id,created_at,type,quantity,before_quantity,after_quantity,location,note,products(name,sku)',
+      'id,product_id,created_at,type,quantity,before_quantity,after_quantity,location,note,products(name,sku)',
     )
     .order('created_at', { ascending: false })
-    .limit(200)
+    .order('id', { ascending: false })
+    .range(offset, offset + 50)
+  if (day) {
+    const start = new Date(`${day}T00:00:00-06:00`)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !Number.isFinite(start.getTime()))
+      throw new AppError('validation', 'Selecciona una fecha válida.')
+    query
+      .gte('created_at', start.toISOString())
+      .lt('created_at', new Date(start.getTime() + 86400000).toISOString())
+  }
+  const { data, error } = await query
   if (error) throw toAppError(error)
   return data ?? []
 }

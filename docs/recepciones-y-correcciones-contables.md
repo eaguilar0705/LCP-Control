@@ -10,6 +10,16 @@ La recepción de mercancía y la clasificación de su pago son operaciones vincu
 4. Para pagos existentes, usar **Vincular pagos ya registrados**. El renglón de Proveedores debe cubrir esos abonos, pues ya descontaron el dinero. No volver a acreditar el banco por el mismo pago. Las fechas deben conservar la secuencia de la recepción, clasificación y abonos; los anticipos se registran con su cuenta contable correspondiente.
 5. Revisar y confirmar. Se conserva el vínculo con la recepción y no se vuelve a ingresar mercancía. Los nuevos abonos se registran desde **Cobros y pagos** y respetan el crédito efectivamente clasificado.
 
+## Compras ingresadas por error como conteo
+
+En **Inventario → Movimientos**, elegir la fecha del ingreso y **Revisar ingreso como compra**. Esta opción es del SuperAdmin y corresponde únicamente a compras nuevas que se guardaron por error como un aumento de conteo.
+
+La regularización conserva las unidades, la valorización y los costos ya registrados. Archiva la clasificación anterior de sobrante, conserva el movimiento original y registra una compra contra **2190 · Compras por clasificar**, sin ingresar mercancía otra vez ni efectuar pagos. Los importes conservados requieren revisión: la opción no inventa el costo real de una factura de proveedor.
+
+La compra aparece en **Inventario → Compras → Ver compra → Editar recepción completa** y en **Contabilidad → Comprobantes → Recepciones de inventario**. Allí se corrigen los costos y se clasifica su pago. Reabrir el ingreso desde Movimientos lleva a su compra existente; no crea otra. Las correcciones posteriores mantienen su historial.
+
+Los conteos que realmente representan sobrantes mantienen su tratamiento original. No se convierten automáticamente en compras.
+
 ## Monedas y borradores
 
 En un comprobante manual, **Usar córdobas y dólares en el comprobante** permite usar una moneda y tasa por renglón. Las cajas y bancos estándar conservan su moneda. El cuadre usa los equivalentes NIO, sin sumar dólares y córdobas como si fueran iguales.

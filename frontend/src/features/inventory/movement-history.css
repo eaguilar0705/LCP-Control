@@ -1,0 +1,31 @@
+.movement-history-filters {
+  padding: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+}
+.movement-history-filters > :first-child {
+  flex: 1 1 220px;
+}
+.movement-list .movement-record > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.movement-edit-link {
+  margin-top: 10px;
+  white-space: normal;
+}
+.movement-history-pagination {
+  align-items: center;
+  justify-content: center;
+}
+@media (max-width: 420px) {
+  .movement-history-filters > :first-child {
+    flex-basis: 100%;
+  }
+  .movement-history-filters > button {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+}

@@ -1,5 +1,6 @@
 import { useCallback, useState, type FormEvent } from 'react'
 import { History } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import {
   Button,
   Dialog,
@@ -54,7 +55,7 @@ function PurchaseHistory({
   onChanged: () => void
 }) {
   const canVoid = useCanVoid()
-  const { role } = useAccess()
+  const { role, base } = useAccess()
   const [editingReceipt, setEditingReceipt] = useState(false)
   const { inventoryService, productService, settingsService } = useServices()
   const [cursor, setCursor] = useState<PurchaseHistoryRecord>()
@@ -149,7 +150,17 @@ function PurchaseHistory({
         <ErrorState message={error} retry={retry} />
       ) : (
         <>
-          {!data?.rows.length && <p>No hay compras registradas.</p>}
+          {!data?.rows.length && (
+            <div>
+              <p>No hay compras registradas.</p>
+              <Link
+                className="button button-secondary"
+                to={`${base}/inventory/history`}
+              >
+                Ver conteos y movimientos
+              </Link>
+            </div>
+          )}
           <div className="purchase-history-list">
             {data?.rows.slice(0, 50).map((row) => (
               <article key={row.id} className="purchase-history-row">

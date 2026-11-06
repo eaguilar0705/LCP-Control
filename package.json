@@ -64,6 +64,8 @@
     "test:inventory-receipts": "node scripts/tests/inventory-receipts.mjs && node scripts/tests/inventory-receipts-integration.mjs",
     "test:browser:inventory-receipts": "node scripts/tests/browser-inventory-receipts.mjs",
     "test:purchase-accounting": "node scripts/tests/purchase-classification.mjs",
+    "test:count-purchases": "node scripts/tests/count-purchase-adoption.mjs",
+    "test:browser:count-purchases": "node scripts/tests/browser-count-purchase-adoption.mjs",
     "test:browser:purchase-accounting": "node scripts/tests/browser-purchase-classification.mjs"
   },
   "devDependencies": {

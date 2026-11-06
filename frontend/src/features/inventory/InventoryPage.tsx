@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Package,
+  History,
   Plus,
   Pencil,
   LayoutGrid,
@@ -150,6 +151,14 @@ export function InventoryPage() {
         icon={Package}
       >
         <div className="inventory-actions">
+          {!demo && (
+            <Link
+              className="button button-secondary"
+              to={`${base}/inventory/history`}
+            >
+              <History size={18} /> Movimientos
+            </Link>
+          )}
           <PriceListsPanel onSaved={retry} />
           <PurchaseHistoryPanel onChanged={retry} />
           {manage && (
