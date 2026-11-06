@@ -18,6 +18,7 @@ import {
 import type { OpeningCostInput, ShipmentInput } from '../reports/accounting'
 import { shipmentPayments, type ShipmentPayment } from '../accounting/finance'
 import { localDay } from '../reports/model'
+import { PurchaseAmounts } from './PurchaseAmounts'
 import { PaymentDateConfirmation } from '../accounting/PaymentDateConfirmation'
 import { formatDate } from '../../lib/format'
 import {
@@ -160,9 +161,9 @@ export function PurchaseDialog({
       correcting?.account === 'credito' ? 'keep_payments' : 'recording_error',
     )
   const [rateText, setRateText] = useState(
-    correcting
+    correcting?.currency === 'USD'
       ? String(correcting.exchange_rate)
-      : reviewingReceipt
+      : reviewingReceipt?.currency === 'USD'
         ? String(reviewingReceipt.exchangeRate)
         : catalogRate
           ? String(catalogRate)
@@ -610,6 +611,13 @@ export function PurchaseDialog({
               ? '—'
               : `${currency === 'NIO' ? 'C$' : 'US$'} ${exactCost(preview.perUnit)}`}
           </p>
+          <PurchaseAmounts
+            goods={preview.goods}
+            shipping={typed(shipping)}
+            currency={currency}
+            exchangeRate={validRate(currency, rateText)}
+            systemRate={catalogRate}
+          />
         </fieldset>
         {checked && preview.problem && (
           <p role="alert" className="inline-error">

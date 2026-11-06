@@ -1,0 +1,32 @@
+.purchase-amounts {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--cream, #faf8f4);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 20px;
+  margin: 16px 0;
+}
+.purchase-amounts > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.purchase-amounts span,
+.purchase-amounts small {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.purchase-amounts strong {
+  color: var(--wine);
+  overflow-wrap: anywhere;
+}
+.purchase-amounts small {
+  grid-column: 1 / -1;
+}
+@media (max-width: 380px) {
+  .purchase-amounts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

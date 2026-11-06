@@ -22,6 +22,10 @@ Los conteos que realmente representan sobrantes mantienen su tratamiento origina
 
 ## Monedas y borradores
 
+Las compras y recepciones muestran el total en su moneda original y su equivalente. Para compras en córdobas, el equivalente USD se calcula con el tipo de cambio configurado en Negocio, sin fijar una tasa en el código. Las compras nuevas toman esa tasa por defecto; la tasa contable de un importe NIO continúa siendo 1.
+
+El equivalente USD se muestra con dos decimales y nunca se usa para recalcular el importe original. El costo de compra no se redondea al dólar entero, como sí ocurre con ciertos precios de venta. Una compra USD ya registrada conserva su tasa histórica; **Usar tipo de cambio actual** permite elegir expresamente la vigente al corregirla.
+
 En un comprobante manual, **Usar córdobas y dólares en el comprobante** permite usar una moneda y tasa por renglón. Las cajas y bancos estándar conservan su moneda. El cuadre usa los equivalentes NIO, sin sumar dólares y córdobas como si fueran iguales.
 
 La tasa del comprobante no modifica la tasa comercial ni los precios del catálogo. Una diferencia cambiaria requiere una clasificación explícita del contador; no se crea una ganancia automática comparando con la tasa de ventas.

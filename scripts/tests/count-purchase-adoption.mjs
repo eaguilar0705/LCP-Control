@@ -300,19 +300,19 @@ try {
       productId,
       location: 'store',
       quantity: 12,
-      unitPrice: i === 0 ? 940 : 800,
+      unitPrice: i === 0 ? 940 : 840,
     })),
     impacts: receipt.products.map((p) => ({
       productId: p.id,
       expectedStore: p.store,
       expectedWarehouse: p.warehouse,
       expectedValueNio: p.value,
-      targetValueNio: p.id === products[0] ? 11280 : 9600,
+      targetValueNio: p.id === products[0] ? 11280 : 10080,
     })),
   })
   eq(
     revision.receipt.goods_amount,
-    20880,
+    21360,
     'el costo de la compra regularizada sigue siendo editable',
   )
   eq(
@@ -333,7 +333,7 @@ try {
     lines: [
       {
         account: '2190',
-        debit: 20880,
+        debit: 21360,
         credit: 0,
         currency: 'NIO',
         exchangeRate: 1,
@@ -341,7 +341,7 @@ try {
       {
         account: '2111',
         debit: 0,
-        credit: 20880,
+        credit: 21360,
         currency: 'NIO',
         exchangeRate: 1,
       },
@@ -350,7 +350,7 @@ try {
   const finalLedger = (await one('select public.ledger_report($1,$1) r', [day]))
     .r
   eq(finalLedger.accounts.find((a) => a.code === '2190').closing, 0)
-  eq(finalLedger.accounts.find((a) => a.code === '1130').closing, 20880)
+  eq(finalLedger.accounts.find((a) => a.code === '1130').closing, 21360)
   console.log(
     `PASS ${checks} comprobaciones de compras regularizadas desde conteos; sin escrituras remotas`,
   )

@@ -66,6 +66,8 @@
     "test:purchase-accounting": "node scripts/tests/purchase-classification.mjs",
     "test:count-purchases": "node scripts/tests/count-purchase-adoption.mjs",
     "test:browser:count-purchases": "node scripts/tests/browser-count-purchase-adoption.mjs",
+    "test:purchase-currency": "node --test scripts/tests/purchase-amounts.test.mjs && node scripts/tests/count-purchase-adoption.mjs",
+    "test:browser:purchase-currency": "node scripts/tests/browser-purchase-currency.mjs",
     "test:browser:purchase-accounting": "node scripts/tests/browser-purchase-classification.mjs"
   },
   "devDependencies": {

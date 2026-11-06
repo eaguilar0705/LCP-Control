@@ -10,6 +10,9 @@ import {
 } from '../../components/ui'
 import { SupplierAutocomplete } from '../../components/SupplierAutocomplete'
 import { useQuery } from '../../lib/useQuery'
+import { useServices } from '../../services/useServices'
+import { PurchaseAmounts } from './PurchaseAmounts'
+import { purchaseAmounts } from './purchase-amount-model'
 import { formatCurrency } from '../../lib/format'
 import { errorMessage } from '../../lib/errors'
 import { createIdempotentOperation } from '../../lib/idempotentOperation'
@@ -35,6 +38,7 @@ interface Product {
   average: number | null
 }
 interface ReceiptContext {
+  systemRate: number | null
   receipt: {
     id: string
     revision: number
@@ -75,10 +79,16 @@ export function ReceiptEditor({
   onClose: () => void
   onSaved: () => void
 }) {
-  const load = useCallback(
-    () => journalRpc<ReceiptContext>('receipt_edit_context', { p_id: id }),
-    [id],
-  )
+  const { settingsService } = useServices()
+  const load = useCallback(async () => {
+    const [receipt, rate] = await Promise.all([
+      journalRpc<Omit<ReceiptContext, 'systemRate'>>('receipt_edit_context', {
+        p_id: id,
+      }),
+      settingsService.getExchangeRate(),
+    ])
+    return { ...receipt, systemRate: rate?.usdToNio ?? null }
+  }, [id, settingsService])
   const query = useQuery(load)
   const [pending, setPending] = useState(false)
   return (
@@ -117,14 +127,20 @@ function ReceiptForm({
   onSaved: () => void
   onPending: (v: boolean) => void
 }) {
-  const { receipt: r, products, accounts } = context
+  const { receipt: r, products, accounts, systemRate } = context
   const { storageScope = 'anonymous' } = useAccess()
   const [date, setDate] = useState(r.incurred_on),
     [supplier, setSupplier] = useState(r.supplier),
     [reference, setReference] = useState(r.reference),
     [note, setNote] = useState(r.note)
   const [currency, setCurrency] = useState(r.currency),
-    [rate, setRate] = useState(String(r.exchange_rate)),
+    [rate, setRate] = useState(
+      r.currency === 'USD'
+        ? String(r.exchange_rate)
+        : systemRate
+          ? String(systemRate)
+          : '',
+    ),
     [shipping, setShipping] = useState(String(r.shipping_amount))
   const [lines, setLines] = useState(r.lines.map((l) => ({ ...l })))
   const [targets, setTargets] = useState<Record<string, string>>(() =>
@@ -166,8 +182,15 @@ function ReceiptForm({
     ]),
   ].filter(Boolean)
   const exchangeRate = currency === 'NIO' ? 1 : Number(rate)
-  const goods = money(lines.reduce((s, l) => s + l.quantity * l.unit_price, 0)),
-    total = money(goods * exchangeRate) + money(Number(shipping) * exchangeRate)
+  const goods = money(lines.reduce((s, l) => s + l.quantity * l.unit_price, 0))
+  const amounts = purchaseAmounts({
+    goods,
+    shipping: Number(shipping),
+    currency,
+    exchangeRate,
+    systemRate,
+  })
+  const total = amounts?.nio ?? NaN
   const before =
     money(Number(r.goods_amount) * Number(r.exchange_rate)) +
     money(Number(r.shipping_amount) * Number(r.exchange_rate))
@@ -274,6 +297,8 @@ function ReceiptForm({
             value={currency}
             onChange={(e) => {
               setCurrency(e.target.value as 'NIO' | 'USD')
+              if (e.target.value === 'USD' && r.currency !== 'USD')
+                setRate(systemRate ? String(systemRate) : '')
               setTargets({})
             }}
           >
@@ -295,6 +320,21 @@ function ReceiptForm({
               }}
             />
           )}
+          {currency === 'USD' &&
+            systemRate != null &&
+            Number(rate) !== systemRate && (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setRate(String(systemRate))
+                  setTargets({})
+                  setReview(false)
+                }}
+              >
+                Usar tipo de cambio actual
+              </Button>
+            )}
           <Input
             label="Envío de todo el pedido"
             type="number"
@@ -470,6 +510,13 @@ function ReceiptForm({
           </Select>
         </div>
       </fieldset>
+      <PurchaseAmounts
+        goods={goods}
+        shipping={Number(shipping)}
+        currency={currency}
+        exchangeRate={exchangeRate}
+        systemRate={systemRate}
+      />
       <div className="day-closing">
         <p>
           Total anterior: <strong>{formatCurrency(before, 'NIO')}</strong> ·

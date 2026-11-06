@@ -15,6 +15,7 @@ import {
   type InventoryLocation,
 } from '../../lib/domain'
 import { localDay } from '../reports/model'
+import { PurchaseAmounts } from '../pricing/PurchaseAmounts'
 import {
   hasDecimals,
   typed,
@@ -70,7 +71,9 @@ export function InventoryReceiptDialog({
   )
   const [incurredOn, setIncurredOn] = useState(() => localDay(new Date()))
   const [currency, setCurrency] = useState<Currency>('NIO')
-  const [rateText, setRateText] = useState('')
+  const [rateText, setRateText] = useState<string | null>(null)
+  const rateValue =
+    rateText ?? (catalogRate ? String(catalogRate.usdToNio) : '')
   const [shipping, setShipping] = useState('0')
   const [supplier, setSupplier] = useState('')
   const [agency, setAgency] = useState('')
@@ -87,7 +90,7 @@ export function InventoryReceiptDialog({
   const [busy, setBusy] = useState(false)
   const [failure, setFailure] = useState('')
   const uncertain = operation.isUncertain()
-  const rate = validRate(currency, rateText)
+  const rate = validRate(currency, rateValue)
   const units = lines.reduce(
     (total, line) =>
       total +
@@ -259,7 +262,7 @@ export function InventoryReceiptDialog({
                 inputMode="decimal"
                 min={0.000001}
                 step={0.000001}
-                value={rateText}
+                value={rateValue}
                 onChange={(event) => setRateText(event.target.value)}
               />
             )}
@@ -361,6 +364,18 @@ export function InventoryReceiptDialog({
           <p className="pricing-purchase-total">
             {units.toLocaleString('es-NI')} unidades pendientes de revisión
           </p>
+          <PurchaseAmounts
+            goods={lines.reduce(
+              (sum, line) =>
+                sum +
+                (Number(line.quantity) || 0) * (Number(line.unitPrice) || 0),
+              0,
+            )}
+            shipping={Number(shipping)}
+            currency={currency}
+            exchangeRate={rate}
+            systemRate={catalogRate?.usdToNio}
+          />
         </fieldset>
         {failure && (
           <p role="alert" className="inline-error">
