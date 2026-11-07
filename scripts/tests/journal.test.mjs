@@ -100,6 +100,52 @@ test('missing opening or historical cost never presents an invented balanced sta
   }
 })
 
+test('compras sin contrapartida dejan los estados y Excel pendientes hasta completar el asiento', () => {
+  const data = fixture()
+  const confirmed = journalModel(data, 'Tienda')
+  const pending = journalModel(
+    {
+      ...data,
+      purchaseAccounting: {
+        pendingCount: 1,
+        pendingTotalNio: 21360,
+        unpostedDifferenceNio: 21360,
+      },
+    },
+    'Tienda',
+  )
+  assert.ok(pending.warnings.some((w) => w.includes('Clasificar compra')))
+  assert.equal(pending.trial.find((r) => r.code === '1130').closingNio, null)
+  assert.ok(Object.values(pending.trialTotals).every((v) => v === null))
+  assert.equal(pending.income.at(-1).periodNio, null)
+  assert.equal(pending.balance.left.at(-1).amount, null)
+  assert.equal(pending.balance.right.at(-1).amount, null)
+  assert.equal(
+    pending.balance.right.find((r) => r.description === 'Total pasivo').amount,
+    null,
+  )
+  // Los cobros confirmados conservan su importe conocido.
+  assert.equal(pending.trial.find((r) => r.code === '1110-001').closingNio, 900)
+  const sheets = accountingWorkbookSheets(pending)
+  assert.equal(sheets[1].rows.find((r) => r[0] === '1130')[5], 'Pendiente')
+  assert.equal(sheets[2].rows.at(-1)[2], 'Pendiente')
+  assert.ok(sheets[3].notes.some((n) => n.includes('Clasificar compra')))
+  assert.deepEqual(
+    journalModel(
+      {
+        ...data,
+        purchaseAccounting: {
+          pendingCount: 0,
+          pendingTotalNio: 0,
+          unpostedDifferenceNio: 0,
+        },
+      },
+      'Tienda',
+    ),
+    confirmed,
+  )
+})
+
 test('two missing costs preserve known balances, sales and expenses without inventing inventory or profit', () => {
   const f = {
     ...fixture(),

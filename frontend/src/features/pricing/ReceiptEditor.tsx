@@ -154,11 +154,11 @@ function ReceiptForm({
   const [costAccount, setCostAccount] = useState('5120'),
     [counterpart, setCounterpart] = useState(
       r.account === 'pending'
-        ? '2190'
+        ? '1130'
         : r.account === 'credito'
           ? '2111'
           : r.currency === 'USD'
-            ? '2190'
+            ? ''
             : (r.bank_ledger_account ?? '1110-001'),
     )
   const [review, setReview] = useState(false),
@@ -492,22 +492,33 @@ function ReceiptForm({
                 </option>
               ))}
           </Select>
-          <Select
-            label="Contrapartida de la diferencia"
-            value={counterpart}
-            disabled={r.account === 'pending'}
-            onChange={(e) => setCounterpart(e.target.value)}
-          >
-            {accounts
-              .filter(
-                (a) => a.code !== '1130' && accountCurrency(a.code) !== 'USD',
-              )
-              .map((a) => (
-                <option key={a.code} value={a.code}>
-                  {a.displayCode} · {a.name}
-                </option>
-              ))}
-          </Select>
+          {r.account === 'pending' ? (
+            <p className="accounting-note">
+              El cargo de la compra queda fijo en Inventario de perfumes. La
+              contrapartida de pago se revisa en Clasificar compra.
+            </p>
+          ) : (
+            <Select
+              label="Contrapartida de la diferencia"
+              required
+              value={counterpart}
+              onChange={(e) => setCounterpart(e.target.value)}
+            >
+              <option value="">Seleccionar contrapartida</option>
+              {accounts
+                .filter(
+                  (a) =>
+                    a.code !== '1130' &&
+                    a.code !== '2190' &&
+                    accountCurrency(a.code) !== 'USD',
+                )
+                .map((a) => (
+                  <option key={a.code} value={a.code}>
+                    {a.displayCode} · {a.name}
+                  </option>
+                ))}
+            </Select>
+          )}
         </div>
       </fieldset>
       <PurchaseAmounts

@@ -1,12 +1,12 @@
 # Recepciones y correcciones contables
 
-La recepción de mercancía y la clasificación de su pago son operaciones vinculadas. Los datos históricos existentes conservan su tratamiento.
+La recepción de mercancía y la clasificación de su pago son operaciones vinculadas. El cargo de la compra corresponde a **1130 · Inventario de perfumes**; la contrapartida de pago se completa en Contabilidad.
 
 ## Trabajo diario
 
 1. En Inventario, registrar la compra con sus perfumes, unidades, costos, proveedor, fecha y referencia. La opción inicial es **Pendiente de clasificar**.
-2. La recepción actualiza cantidades, costo promedio y valor de inventario. Su contrapartida es **2190 · Compras por clasificar**. No descuenta caja ni bancos.
-3. En **Contabilidad → Comprobantes → Recepciones de inventario**, abrir **Clasificar compra**. El primer renglón cancela la cuenta temporal. Completar caja, bancos y/o proveedores; se pueden agregar ingresos o gastos de diferencia cambiaria expresamente.
+2. La recepción actualiza cantidades, costo promedio y valor de inventario. Prepara el total como cargo a Inventario de perfumes, sin descontar caja ni bancos. Hasta completar la contrapartida, el asiento queda fuera del mayor y los estados indican que hay compras pendientes; no se crea una deuda ficticia.
+3. En **Contabilidad → Comprobantes → Recepciones de inventario**, abrir **Clasificar compra**. La **cuenta 1** queda fija en Inventario de perfumes, con el total de mercadería y envío en NIO. No se puede cambiar, eliminar ni alterar su importe. Completar únicamente las contrapartidas de caja, bancos y/o proveedores; se pueden distribuir pagos o agregar diferencias cambiarias expresamente.
 4. Para pagos existentes, usar **Vincular pagos ya registrados**. El renglón de Proveedores debe cubrir esos abonos, pues ya descontaron el dinero. No volver a acreditar el banco por el mismo pago. Las fechas deben conservar la secuencia de la recepción, clasificación y abonos; los anticipos se registran con su cuenta contable correspondiente.
 5. Revisar y confirmar. Se conserva el vínculo con la recepción y no se vuelve a ingresar mercancía. Los nuevos abonos se registran desde **Cobros y pagos** y respetan el crédito efectivamente clasificado.
 
@@ -14,7 +14,7 @@ La recepción de mercancía y la clasificación de su pago son operaciones vincu
 
 En **Inventario → Movimientos**, elegir la fecha del ingreso y **Revisar ingreso como compra**. Esta opción es del SuperAdmin y corresponde únicamente a compras nuevas que se guardaron por error como un aumento de conteo.
 
-La regularización conserva las unidades, la valorización y los costos ya registrados. Archiva la clasificación anterior de sobrante, conserva el movimiento original y registra una compra contra **2190 · Compras por clasificar**, sin ingresar mercancía otra vez ni efectuar pagos. Los importes conservados requieren revisión: la opción no inventa el costo real de una factura de proveedor.
+La regularización conserva las unidades, la valorización y los costos ya registrados. Archiva la clasificación anterior de sobrante, conserva el movimiento original y prepara una compra con cargo fijo a Inventario de perfumes, sin ingresar mercancía otra vez ni efectuar pagos. Los importes conservados requieren revisión: la opción no inventa el costo real de una factura de proveedor.
 
 La compra aparece en **Inventario → Compras → Ver compra → Editar recepción completa** y en **Contabilidad → Comprobantes → Recepciones de inventario**. Allí se corrigen los costos y se clasifica su pago. Reabrir el ingreso desde Movimientos lleva a su compra existente; no crea otra. Las correcciones posteriores mantienen su historial.
 
@@ -38,18 +38,28 @@ La tasa del comprobante no modifica la tasa comercial ni los precios del catálo
 
 ## Correcciones del SuperAdmin
 
-- **Editar clasificación / Editar comprobante:** conserva identificador, número, autor original y versiones anteriores. Permite corregir fecha, concepto, referencia, cuentas, importes, monedas y tasas, incluso en una jornada cerrada. No permite dejar un asiento descuadrado ni quitar el crédito que respalda abonos reales.
+- **Editar clasificación / Editar comprobante:** conserva identificador, número, autor original y versiones anteriores. Permite corregir fecha, concepto, referencia y contrapartidas, incluso en una jornada cerrada. En la clasificación de compras el cargo a Inventario se mantiene fijo y toma el total vigente de la recepción. No permite dejar un asiento descuadrado ni quitar el crédito que respalda abonos reales.
 - **Dejar pendiente de clasificar:** conserva el comprobante anulado y permite volver a clasificar. Con abonos existentes, se debe corregir la clasificación o resolver antes sus vinculaciones.
 - **Editar recepción completa / Editar recepción:** modifica proveedor, referencia, fecha, productos, cantidades, ubicaciones, costos y envío mediante una revisión vinculada. La compra original no desaparece. Solo se aplica la diferencia de unidades a las existencias actuales.
-- En una recepción con operaciones posteriores, el contador revisa el **valor final del inventario** de cada perfume. La diferencia del costo de compra se distribuye entre inventario restante y la cuenta de costo/gasto elegida. No se recalculan a ciegas los costos congelados de facturas anteriores. La corrección se registra en la jornada actual; requiere abrirla. Si cambia el importe de una compra pendiente/clasificada, la cuenta temporal refleja la diferencia y la recepción vuelve a requerir revisión de su clasificación.
+- En una recepción con operaciones posteriores, el contador revisa el **valor final del inventario** de cada perfume. La diferencia del costo de compra se distribuye entre inventario restante y la cuenta de costo/gasto elegida. No se recalculan a ciegas los costos congelados de facturas anteriores. La corrección se registra en la jornada actual; requiere abrirla. Si cambia el importe de una compra pendiente/clasificada, vuelve a requerir revisión de su contrapartida. Los estados muestran esa revisión pendiente hasta completar el asiento por el nuevo total.
 - **Editar abono**, en Cobros y pagos, conserva el registro y permite corregir fecha, tipo de abono, documento vinculado, moneda, tasa, cuenta, importe y referencia. Se valida el reemplazo excluyendo el abono anterior en una sola transacción. Los abonos vinculados desde una clasificación se desvinculan allí antes de reasignarlos.
 
 La edición de un asiento generado por una corrección de recepción lleva a la recepción de origen: así se corrigen conjuntamente el libro contable y el valor del inventario. La edición no modifica automáticamente los precios de venta ni las facturas emitidas. Toda corrección conserva actor, revisión y fecha.
+
+## Actualización del flujo
+
+La cuenta **Compras por clasificar (2190)** se retira del catálogo y de nuevos comprobantes. La migración convierte las clasificaciones existentes al cargo directo a Inventario, conserva sus versiones anteriores y evita que la recepción y su clasificación sumen el inventario dos veces. Los abonos, cantidades, costos, facturas y solicitudes originales se conservan. Las compras sin contrapartida necesitan completarse desde Clasificar compra.
+
+Aplicar en Supabase `backend/supabase/migrations/20261107010000_compras_con_inventario_fijo.sql` antes de publicar esta interfaz. Compilar no actualiza la base remota. **Recepciones pendientes** de Bodega mantiene su revisión previa a liberar las unidades; es un flujo distinto.
 
 ## Validación
 
 `npm run test:purchase-accounting` prueba recepciones, clasificación, créditos parciales, pagos, ambas monedas, correcciones posteriores, informes, borradores, permisos, revisiones, recuperación e idempotencia en PostgreSQL desechable.
 
+Incluye una actualización desde la base anterior con compras clasificadas, abonos, consumo, correcciones y borradores existentes. Verifica que se conserve ese estado al retirar la cuenta temporal y que el servidor rechace alterar el cargo fijo.
+
 `npm run test:browser:purchase-accounting` usa las migraciones y RPC reales en esa base desechable con transporte interceptado, en escritorio, tableta y móvil. Incluye pérdida de respuesta de guardado, revisión del PDF y control de desbordamiento. No crea pruebas en producción.
+
+Comprueba además el cargo fijo al clasificar, retomar borradores y editar desde la tabla de comprobantes; verifica que una factura nueva siga emitiéndose y descontando las unidades correctas.
 
 `node --test scripts/tests/statement-currency.test.mjs` y `node scripts/tests/browser-statement-currency.mjs` verifican la conversión de los tres estados y del Excel, cambios de tasa, ausencia de tasa y conservación de los asientos, en escritorio y móvil con datos aislados.

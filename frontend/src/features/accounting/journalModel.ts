@@ -1,4 +1,5 @@
 import type { AccountingModel, IncomeRow, BalanceRow } from './accountingModel'
+import { formatCurrency } from '../../lib/format'
 
 export interface LedgerAccount {
   code: string
@@ -33,6 +34,7 @@ export interface JournalDetailRecord extends JournalRecord {
   lines: JournalDetailLine[]
   sourceReceiptId?: string | null
   receiptCorrection?: boolean
+  purchaseInventoryDebit?: number
   editingAccounts?: {
     code: string
     displayCode?: string
@@ -98,6 +100,11 @@ export interface LedgerReport {
   accounts: LedgerAccount[]
   entries: JournalRecord[]
   automaticEntries?: AutomaticJournalRecord[]
+  purchaseAccounting?: {
+    pendingCount: number
+    pendingTotalNio: number
+    unpostedDifferenceNio: number
+  }
 }
 const round = (x: number) => Math.round((x + Number.EPSILON) * 100) / 100 || 0
 function roundedRatio(numerator: bigint, denominator: bigint) {
@@ -280,11 +287,16 @@ export function journalModel(
     warnings.push(
       `${data.missingSales} facturas sin detalle contable completo.`,
     )
+  const pendingPurchases = (data.purchaseAccounting?.pendingCount ?? 0) > 0
+  if (pendingPurchases)
+    warnings.push(
+      `${data.purchaseAccounting!.pendingCount} compra(s) por ${formatCurrency(data.purchaseAccounting!.pendingTotalNio, 'NIO')} requieren completar o revisar su contrapartida en Comprobantes → Clasificar compra. Los estados quedan pendientes hasta confirmar esos asientos.`,
+    )
   // Consultar desde antes de la apertura sólo limita el alcance del libro.
   // Ese aviso no invalida los saldos y movimientos registrados desde su inicio.
   const available =
     data.startOn !== null && data.startOn <= data.to && data.missingSales === 0
-  const complete = available && data.missingCosts === 0
+  const complete = available && data.missingCosts === 0 && !pendingPurchases
   if (available && data.missingCosts)
     warnings.push(
       'Se muestran los importes conocidos. Inventario, costo de venta, otros ingresos y pérdidas de inventario quedan pendientes, junto con los totales y utilidades que dependen de esos costos.',
@@ -464,7 +476,7 @@ export function journalModel(
           code: '',
           description: 'Total pasivo',
           kind: 'subtotal',
-          amount: known(liabilities),
+          amount: pendingPurchases ? null : known(liabilities),
         },
         {
           code:

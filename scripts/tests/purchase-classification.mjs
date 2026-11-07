@@ -33,7 +33,8 @@ const line = (account, debit, credit, currency = 'NIO', exchangeRate = 1) => ({
 })
 const ledger = async () =>
   (await one('select public.ledger_report($1,$1) r', [day])).r
-const balance = (l, code) => l.accounts.find((a) => a.code === code).closing
+const balance = (l, code) =>
+  l.accounts.find((a) => a.code === code)?.closing ?? 0
 const stock = async () =>
   (
     await one(
@@ -56,9 +57,9 @@ try {
   eq(
     (
       await one("select private.ledger_account_restriction('2190') r")
-    ).r.includes('necesaria'),
+    ).r.includes('retirada'),
     true,
-    'la cuenta automática se puede renombrar, pero no desactivar',
+    'la cuenta temporal está retirada',
   )
   await db.exec(
     "create or replace function pg_catalog.now() returns timestamptz language sql stable as $$select '2026-11-06T20:00:00Z'::timestamptz$$",
@@ -135,8 +136,12 @@ try {
     balance(before, '1120-001'),
     'recepción no descuenta banco',
   )
-  eq(balance(book, '1130') - balance(before, '1130'), 1000)
-  eq(balance(book, '2190') - balance(before, '2190'), -1000)
+  eq(
+    balance(book, '1130') - balance(before, '1130'),
+    0,
+    'la recepción preparada no duplica el cargo al mayor',
+  )
+  eq(balance(book, '2190') - balance(before, '2190'), 0)
   let credits = (await one('select public.credit_accounts($1) r', [day])).r
   eq(
     credits.rows.filter((r) => r.shipmentId === receipt).length,
@@ -146,7 +151,7 @@ try {
   const input = {
     requestId: crypto.randomUUID(),
     ...classify(receipt, [
-      line('2190', 1000, 0),
+      line('1130', 1000, 0),
       line('1120-001', 0, 400),
       line('1110-001', 0, 200),
       line('2111', 0, 400),
@@ -212,7 +217,7 @@ try {
     description: 'Compra corregida',
     reference: 'REC-CORR',
     lines: [
-      line('2190', 1000, 0),
+      line('1130', 1000, 0),
       line('1120-001', 0, 500),
       line('1110-001', 0, 100),
       line('2111', 0, 400),
@@ -238,7 +243,7 @@ try {
       ...edit,
       requestId: crypto.randomUUID(),
       expectedRevision: 1,
-      lines: [line('2190', 1000, 0), line('1120-001', 0, 1000)],
+      lines: [line('1130', 1000, 0), line('1120-001', 0, 1000)],
     }),
     /abonos/,
   )
@@ -340,7 +345,7 @@ try {
     currency: 'NIO',
     exchangeRate: 1,
     shippingAmount: 0,
-    counterpart: '2190',
+    counterpart: '1130',
     costAccount: '5150',
     lines: [
       { productId: product, location: 'store', quantity: 10, unitPrice: 120 },
@@ -368,7 +373,11 @@ try {
     '120.000000',
   )
   book = await ledger()
-  eq(balance(book, '1130'), 960, 'valor del inventario restante corregido')
+  eq(
+    balance(book, '1130'),
+    760,
+    'la diferencia de compra espera revisión de la contrapartida',
+  )
   eq(
     balance(book, '5150'),
     240,
@@ -376,8 +385,8 @@ try {
   )
   eq(
     balance(book, '2190'),
-    -200,
-    'solo la diferencia de compra queda por clasificar',
+    0,
+    'la corrección no vuelve a usar la cuenta retirada',
   )
   const digest = (await one('select public.report_digest($1,$1) r', [day])).r
   eq(
@@ -434,7 +443,7 @@ try {
     description: 'Clasificación completada tras corrección',
     reference: 'REC-CORREGIDA',
     lines: [
-      line('2190', 1320, 0),
+      line('1130', 1320, 0),
       line('1120-001', 0, 820),
       line('1110-001', 0, 100),
       line('2111', 0, 400),
@@ -595,7 +604,7 @@ try {
   })
   const reversibleEntry = await call(
     'classify_purchase',
-    classify(reversibleReceipt, [line('2190', 10, 0), line('1110-001', 0, 10)]),
+    classify(reversibleReceipt, [line('1130', 10, 0), line('1110-001', 0, 10)]),
   )
   await one('select public.void_journal_entry($1,$2)', [
     reversibleEntry.id,
@@ -611,7 +620,7 @@ try {
     'classify_purchase',
     classify(
       reversibleReceipt,
-      [line('2190', 10, 0), line('1110-001', 0, 10)],
+      [line('1130', 10, 0), line('1110-001', 0, 10)],
       { entryId: reversibleEntry.id },
     ),
   )

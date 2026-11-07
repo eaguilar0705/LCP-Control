@@ -254,7 +254,7 @@ function ClassificationDialog({
           accounts={
             query.data?.editingAccounts ??
             data.accounts.filter(
-              (a) => a.postable && a.active !== false && a.code !== '1130',
+              (a) => a.postable && a.active !== false && a.code !== '2190',
             )
           }
           kind="adjustment"
@@ -263,7 +263,7 @@ function ClassificationDialog({
           initialDate={localDay(new Date())}
           initialLines={[
             {
-              account: '2190',
+              account: '1130',
               currency: 'NIO',
               exchangeRate: 1,
               debit: total,
@@ -277,6 +277,7 @@ function ClassificationDialog({
               credit: total,
             },
           ]}
+          fixedInventoryDebit={total}
           submitName="classify_purchase"
           extraInput={{
             shipmentId: receipt.id,

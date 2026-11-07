@@ -108,10 +108,11 @@ export function CountPurchaseCorrection({
               <strong>{formatCurrency(data.valueNio, 'NIO')}</strong>
             </p>
             <p>
-              Las unidades ya están en inventario. Se trasladará su
-              contrapartida de Otros ingresos a Compras por clasificar, sin
-              volver a sumar existencias ni descontar caja o bancos. Después
-              podrás corregir el costo y completar el pago.
+              Las unidades ya están en inventario. Se retirará su registro como
+              sobrante y se preparará la compra con cargo a Inventario de
+              perfumes, sin volver a sumar existencias ni descontar caja o
+              bancos. Después podrás corregir el costo y elegir la contrapartida
+              de pago en Contabilidad.
             </p>
             <label className="checkbox-field">
               <input

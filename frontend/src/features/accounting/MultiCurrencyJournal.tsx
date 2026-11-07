@@ -33,6 +33,7 @@ export interface AccountingDraft {
     extraInput?: Record<string, unknown>
     entryId?: string
     expectedRevision?: number
+    fixedInventoryDebit?: number
   }
 }
 const blank = (): JournalLine => ({
@@ -54,6 +55,7 @@ export function MultiCurrencyJournal({
   submitName,
   extraInput,
   initialDraft,
+  fixedInventoryDebit,
   children,
   onSaved,
   onCancel,
@@ -68,6 +70,7 @@ export function MultiCurrencyJournal({
   initialDate?: string
   submitName?: string
   initialDraft?: AccountingDraft
+  fixedInventoryDebit?: number
   extraInput?: Record<string, unknown>
   children?: ReactNode
   onSaved: () => void
@@ -75,6 +78,15 @@ export function MultiCurrencyJournal({
   onPending?: (value: boolean) => void
 }) {
   const { storageScope = 'anonymous' } = useAccess()
+  const purchaseClassification =
+    submitName === 'classify_purchase' ||
+    initialDraft?.data.submitName === 'classify_purchase' ||
+    Boolean(entry?.sourceReceiptId && !entry.receiptCorrection)
+  const selectableAccounts = accounts.filter(
+    (account) =>
+      account.code !== '2190' &&
+      (!purchaseClassification || account.code !== '1130'),
+  )
   const [date, setDate] = useState(
     initialDraft?.data.date ??
       entry?.occurred_on ??
@@ -87,19 +99,36 @@ export function MultiCurrencyJournal({
   const [reference, setReference] = useState(
     initialDraft?.data.reference ?? entry?.reference ?? initialReference,
   )
-  const [lines, setLines] = useState<JournalLine[]>(
-    () =>
-      initialDraft?.data.lines ??
-      (entry
-        ? entry.lines.map((l) => ({
-            account: l.account,
-            debit: l.debit ?? 0,
-            credit: l.credit ?? 0,
-            currency: l.currency ?? entry.currency,
-            exchangeRate: l.exchange_rate ?? entry.exchange_rate,
-          }))
-        : (initialLines ?? [blank(), blank()])),
-  )
+  const [lines, setLines] = useState<JournalLine[]>(() => {
+    const entryLines = entry?.lines.map((l) => ({
+      account: l.account,
+      debit: l.debit ?? 0,
+      credit: l.credit ?? 0,
+      currency: l.currency ?? entry.currency,
+      exchangeRate: l.exchange_rate ?? entry.exchange_rate,
+    }))
+    const source = initialDraft?.data.lines ??
+      entryLines ??
+      initialLines ?? [blank(), blank()]
+    if (!purchaseClassification) return source
+    const inventoryAccounts = (line: JournalLine) =>
+      line.account === '1130' || line.account === '2190'
+    const inventoryTotals = mixedJournalTotals(
+      (entryLines ?? source).filter(inventoryAccounts),
+    )
+    const debit =
+      fixedInventoryDebit ??
+      entry?.purchaseInventoryDebit ??
+      (entryLines
+        ? inventoryTotals.debitNio - inventoryTotals.creditNio
+        : (initialDraft?.data.fixedInventoryDebit ??
+          inventoryTotals.debitNio - inventoryTotals.creditNio))
+    const counterparts = source.filter((line) => !inventoryAccounts(line))
+    return [
+      { account: '1130', currency: 'NIO', exchangeRate: 1, debit, credit: 0 },
+      ...(counterparts.length ? counterparts : [blank()]),
+    ]
+  })
   const [draftId] = useState(() => initialDraft?.id ?? crypto.randomUUID())
   const [draftRevision, setDraftRevision] = useState(
     initialDraft?.revision ?? -1,
@@ -141,6 +170,7 @@ export function MultiCurrencyJournal({
   const totals = mixedJournalTotals(lines)
   const uncertain = operation.isUncertain()
   function update(index: number, patch: Partial<JournalLine>) {
+    if (purchaseClassification && index === 0) return
     setError('')
     setReview(false)
     setLines((old) => old.map((l, i) => (i === index ? { ...l, ...patch } : l)))
@@ -210,6 +240,9 @@ export function MultiCurrencyJournal({
               kind: entry?.kind ?? kind,
               submitName,
               extraInput,
+              ...(purchaseClassification
+                ? { fixedInventoryDebit: lines[0].debit }
+                : {}),
               ...(entry
                 ? {
                     entryId: entry.id,
@@ -271,6 +304,13 @@ export function MultiCurrencyJournal({
           }}
         />
         {children}
+        {purchaseClassification && (
+          <p className="accounting-note">
+            El total recibido se carga a Inventario de perfumes. Elige las
+            cuentas con las que pagaste o Proveedores si quedó a crédito. Para
+            cambiar unidades o costos, edita la recepción.
+          </p>
+        )}
         <div className="mixed-journal-lines">
           {lines.map((line, i) => (
             <div className="mixed-journal-line" key={i}>
@@ -278,6 +318,7 @@ export function MultiCurrencyJournal({
                 label={`Cuenta ${i + 1}`}
                 required
                 value={line.account}
+                disabled={purchaseClassification && i === 0}
                 onChange={(e) => {
                   const currency =
                     accountCurrency(e.target.value) ?? line.currency ?? 'NIO'
@@ -294,7 +335,14 @@ export function MultiCurrencyJournal({
                 }}
               >
                 <option value="">Seleccionar cuenta</option>
-                {accounts.map((a) => (
+                {purchaseClassification && i === 0 && (
+                  <option value="1130">
+                    {accounts.find((a) => a.code === '1130')?.displayCode ??
+                      '1130'}{' '}
+                    · Inventario de perfumes
+                  </option>
+                )}
+                {selectableAccounts.map((a) => (
                   <option key={a.code} value={a.code}>
                     {a.displayCode ?? a.code} · {a.name}
                   </option>
@@ -303,7 +351,10 @@ export function MultiCurrencyJournal({
               <Select
                 label={`Moneda ${i + 1}`}
                 value={line.currency ?? 'NIO'}
-                disabled={accountCurrency(line.account) !== null}
+                disabled={
+                  (purchaseClassification && i === 0) ||
+                  accountCurrency(line.account) !== null
+                }
                 onChange={(e) =>
                   update(i, {
                     currency: e.target.value as 'NIO' | 'USD',
@@ -323,6 +374,7 @@ export function MultiCurrencyJournal({
                   max="1000"
                   step="0.000001"
                   value={line.exchangeRate ?? ''}
+                  readOnly={purchaseClassification && i === 0}
                   onChange={(e) =>
                     update(i, { exchangeRate: Number(e.target.value) })
                   }
@@ -337,6 +389,7 @@ export function MultiCurrencyJournal({
                 max="100000000"
                 step="0.01"
                 value={line.debit || ''}
+                readOnly={purchaseClassification && i === 0}
                 onChange={(e) =>
                   update(i, {
                     debit: Number(e.target.value),
@@ -351,6 +404,7 @@ export function MultiCurrencyJournal({
                 max="100000000"
                 step="0.01"
                 value={line.credit || ''}
+                readOnly={purchaseClassification && i === 0}
                 onChange={(e) =>
                   update(i, {
                     credit: Number(e.target.value),
@@ -361,9 +415,12 @@ export function MultiCurrencyJournal({
               <Button
                 type="button"
                 variant="ghost"
-                disabled={lines.length <= 2}
+                disabled={
+                  lines.length <= 2 || (purchaseClassification && i === 0)
+                }
                 aria-label={`Quitar renglón ${i + 1}`}
                 onClick={() => {
+                  if (purchaseClassification && i === 0) return
                   setLines((old) => old.filter((_, j) => j !== i))
                   setReview(false)
                 }}

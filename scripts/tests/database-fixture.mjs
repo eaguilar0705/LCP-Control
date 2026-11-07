@@ -5,7 +5,7 @@ export const admin = '11111111-1111-4111-8111-111111111111',
   warehouse = '33333333-3333-4333-8333-333333333333',
   viewer = '44444444-4444-4444-8444-444444444444',
   outsider = '55555555-5555-4555-8555-555555555555'
-export async function database() {
+export async function database({ beforeMigration } = {}) {
   const db = new PGlite()
   try {
     await db.exec(`create role anon; create role authenticated;
@@ -34,6 +34,7 @@ export async function database() {
     for (const file of (await readdir('backend/supabase/migrations')).sort()) {
       if (
         file.endsWith('.sql') &&
+        (!beforeMigration || file < beforeMigration) &&
         !file.includes('harden_platform_function_grants')
       ) {
         await db.exec(

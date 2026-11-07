@@ -239,7 +239,7 @@ try {
     currency: 'NIO',
     exchangeRate: 1,
     linkedPayments: [],
-    lines: [journalLine('2190', 100, 0), journalLine('1110-001', 0, 100)],
+    lines: [journalLine('1130', 100, 0), journalLine('1110-001', 0, 100)],
   }
   const entry = await rpc(db, 'classify_purchase', classification)
   eq(
@@ -260,9 +260,9 @@ try {
     'ambos flujos y la corrección comparten el valor real del inventario',
   )
   eq(
-    ledger.accounts.find((a) => a.code === '2190').closing,
-    0,
-    'la clasificación cancela únicamente la compra pendiente independiente',
+    ledger.accounts.some((a) => a.code === '2190'),
+    false,
+    'la clasificación no crea una cuenta temporal',
   )
 
   await identity(db, warehouse)

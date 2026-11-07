@@ -119,6 +119,56 @@ try {
         name: 'Clasificar compra',
         exact: true,
       })
+      const fixedInventory = async (total, label) => {
+        eq(
+          await dialog.getByLabel('Cuenta 1', { exact: true }).inputValue(),
+          '1130',
+          label + ' carga Inventario',
+        )
+        eq(
+          await dialog.getByLabel('Cuenta 1', { exact: true }).isDisabled(),
+          true,
+          label + ' cuenta de inventario fija',
+        )
+        eq(
+          await dialog.getByLabel('Moneda 1', { exact: true }).isDisabled(),
+          true,
+          label + ' moneda de inventario fija',
+        )
+        eq(
+          await dialog.getByLabel('Debe 1', { exact: true }).inputValue(),
+          String(total),
+          label + ' total recibido',
+        )
+        eq(
+          await dialog.getByLabel('Debe 1', { exact: true }).isEditable(),
+          false,
+          label + ' importe de inventario fijo',
+        )
+        eq(
+          await dialog.getByLabel('Haber 1', { exact: true }).isEditable(),
+          false,
+          label + ' Haber de inventario fijo',
+        )
+        eq(
+          await dialog
+            .getByRole('button', { name: 'Quitar renglón 1', exact: true })
+            .isDisabled(),
+          true,
+          label + ' inventario no eliminable',
+        )
+        eq(
+          await dialog.getByLabel('Cuenta 2', { exact: true }).isEnabled(),
+          true,
+          label + ' contrapartida editable',
+        )
+        eq(
+          await dialog.locator('option[value="2190"]').count(),
+          0,
+          label + ' sin cuenta retirada',
+        )
+      }
+      await fixedInventory(200, 'clasificación inicial')
       await dialog
         .getByLabel('Cuenta 2', { exact: true })
         .selectOption('1110-001')
@@ -176,6 +226,7 @@ try {
         name: 'Editar clasificación de compra',
         exact: true,
       })
+      await fixedInventory(200, 'edición de clasificación')
       await dialog.getByLabel('Referencia', { exact: true }).fill('REC-EDITADA')
       await dialog
         .getByRole('button', { name: 'Revisar y guardar', exact: true })
@@ -236,7 +287,7 @@ try {
         name: 'Clasificar compra',
         exact: true,
       })
-      await dialog.getByLabel('Debe 1', { exact: true }).fill('300')
+      await fixedInventory(300, 'clasificación tras corregir recepción')
       await dialog.getByLabel('Haber 2', { exact: true }).fill('300')
       await dialog
         .getByRole('button', { name: 'Revisar y guardar', exact: true })
@@ -390,7 +441,7 @@ try {
         linkedPayments: [],
         lines: [
           {
-            account: '2190',
+            account: '1130',
             currency: 'NIO',
             exchangeRate: 1,
             debit: 100,

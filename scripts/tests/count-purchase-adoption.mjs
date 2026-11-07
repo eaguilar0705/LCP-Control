@@ -219,10 +219,11 @@ try {
   eq(
     (
       await one(
-        "select sum(credit-debit)::numeric amount from private.operational_postings where account='2190'",
+        "select count(*)::int amount from private.operational_postings where account='2190' or (source='purchase' and source_id=$1)",
+        [shipment],
       )
     ).amount,
-    '19230.85',
+    0,
   )
   eq(
     (
@@ -259,7 +260,7 @@ try {
     linkedPayments: [],
     lines: [
       {
-        account: '2190',
+        account: '1130',
         debit: 19230.85,
         credit: 0,
         currency: 'NIO',
@@ -282,7 +283,10 @@ try {
     'clasificar a crédito tampoco mueve de nuevo las unidades',
   )
   const ledger = (await one('select public.ledger_report($1,$1) r', [day])).r
-  eq(ledger.accounts.find((a) => a.code === '2190').closing, 0)
+  eq(
+    ledger.accounts.some((a) => a.code === '2190'),
+    false,
+  )
   eq(ledger.accounts.find((a) => a.code === '2111').closing, -19230.85)
   const revision = await call('revise_purchase_receipt', {
     shipmentId: shipment,
@@ -294,7 +298,7 @@ try {
     currency: 'NIO',
     exchangeRate: 1,
     shippingAmount: 0,
-    counterpart: '2190',
+    counterpart: '1130',
     costAccount: '5120',
     lines: products.map((productId, i) => ({
       productId,
@@ -332,7 +336,7 @@ try {
     reference: 'Factura real',
     lines: [
       {
-        account: '2190',
+        account: '1130',
         debit: 21360,
         credit: 0,
         currency: 'NIO',
@@ -349,7 +353,10 @@ try {
   })
   const finalLedger = (await one('select public.ledger_report($1,$1) r', [day]))
     .r
-  eq(finalLedger.accounts.find((a) => a.code === '2190').closing, 0)
+  eq(
+    finalLedger.accounts.some((a) => a.code === '2190'),
+    false,
+  )
   eq(finalLedger.accounts.find((a) => a.code === '1130').closing, 21360)
   console.log(
     `PASS ${checks} comprobaciones de compras regularizadas desde conteos; sin escrituras remotas`,

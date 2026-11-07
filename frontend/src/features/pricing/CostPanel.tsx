@@ -553,6 +553,13 @@ export function PurchaseDialog({
               onChange={(event) => setShipping(event.target.value)}
             />
           </div>
+          {payment === 'pending' && (
+            <p className="accounting-note">
+              El total queda preparado como cargo fijo a Inventario de perfumes.
+              En Contabilidad → Comprobantes → Clasificar compra eliges la
+              contrapartida de pago para completar el asiento.
+            </p>
+          )}
           <div className="pricing-purchase-lines">
             {lines.map((line, index) => (
               <PurchaseLine

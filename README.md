@@ -2,6 +2,8 @@
 
 Código fuente de la aplicación de inventario, facturación, proformas y contabilidad, con React, TypeScript, Vite y Supabase.
 
+Las compras pendientes se completan en **Contabilidad → Comprobantes → Clasificar compra**: la primera cuenta queda fija en **Inventario de perfumes**, por el total recibido; se editan las contrapartidas de pago. La cuenta Compras por clasificar se retira del flujo y del catálogo. Aplicar la migración correspondiente antes de publicar la interfaz; ver [recepciones y correcciones contables](docs/recepciones-y-correcciones-contables.md).
+
 Contabilidad presenta comprobantes, cobros y pagos, catálogo de cuentas, balanza de comprobación, estado de resultado y estado de situación financiera. El libro integra operaciones automáticas y comprobantes manuales de partida doble. La descarga de Excel contiene las cuatro hojas de estados y catálogo. «Pendiente» indica que falta información para confirmar el importe; no equivale a cero. Los saldos iniciales y ajustes se registran desde Comprobantes; los cobros y pagos se vinculan a su deuda. Los precios se editan en cada perfume.
 
 En **Negocio → Importar desde Excel**, los administradores pueden descargar la plantilla y cargar productos, precios, existencias de bodega y tienda, cuentas y saldos iniciales, clientes, proveedores y datos del negocio. Incluye vista previa, validación completa y protección contra cargas duplicadas. Ver [formato y puesta en marcha](docs/importacion-excel.md); la función requiere aplicar la migración de importación en Supabase antes de utilizarla con la base remota.
