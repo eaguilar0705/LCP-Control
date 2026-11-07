@@ -21,6 +21,8 @@ import { useQuery } from '../../lib/useQuery'
 import { useServices } from '../../services/useServices'
 import { createIdempotentOperation } from '../../lib/idempotentOperation'
 import { errorMessage } from '../../lib/errors'
+import { InventoryAdjustmentAccounting } from '../inventory/InventoryAdjustmentAccounting'
+import { useInventoryAdjustmentAccounting } from '../inventory/useInventoryAdjustmentAccounting'
 
 const actions: {
   type: MovementRequest['type']
@@ -140,6 +142,12 @@ export function ProductStockEditor({
     after >= 0 &&
     after <= 1000000
   const locked = busy || disabled || loading || !item || !item.product.active
+  const adjustmentAccounting = useInventoryAdjustmentAccounting(
+    `${navigation.key}:${product.id}:${location}:${movementType}:${initial ? 'initial' : 'counted'}`,
+    movementType === 'ADJUSTMENT' && !initial,
+    before,
+    valid ? after : null,
+  )
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -154,6 +162,20 @@ export function ProductStockEditor({
       )
       return
     }
+    if (!uncertain && movementType === 'ADJUSTMENT' && !initial) {
+      if (amount === before) {
+        setError('La cantidad ya coincide con las existencias.')
+        return
+      }
+      if (!adjustmentAccounting.valid) {
+        setError(
+          adjustmentAccounting.kind === 'loss'
+            ? 'Una pérdida real debe disminuir las existencias actuales.'
+            : 'Selecciona una cuenta de contrapartida disponible para la corrección.',
+        )
+        return
+      }
+    }
     setBusy(true)
     setError('')
     setMessage('')
@@ -166,13 +188,26 @@ export function ProductStockEditor({
           type: movementType,
           quantity: amount,
           ...(movementType === 'ADJUSTMENT'
-            ? { expectedQuantity: before }
+            ? {
+                expectedQuantity: before,
+                ...(!initial
+                  ? {
+                      adjustmentKind: adjustmentAccounting.kind,
+                      ...(adjustmentAccounting.kind === 'correction'
+                        ? {
+                            counterAccount: adjustmentAccounting.counterAccount,
+                          }
+                        : {}),
+                    }
+                  : {}),
+              }
             : {}),
           note: note.trim(),
         })
       operation.reset()
       setQuantity('')
       setNote(movementType === 'ADJUSTMENT' ? 'Conteo físico' : '')
+      adjustmentAccounting.reset()
       setMessage(
         `Cantidad guardada en ${labels.location[location]}. El movimiento quedó en el historial.`,
       )
@@ -196,8 +231,9 @@ export function ProductStockEditor({
       <p className="muted">
         Para ingresar mercadería pendiente de revisión contable, usa{' '}
         <Link to={`${base}/inventory`}>Recibir mercadería en Inventario</Link>.
-        No incluyas unidades de recepciones pendientes en el conteo; un ajuste
-        registra la diferencia como sobrante o faltante.
+        No incluyas unidades de recepciones pendientes en el conteo. Al cambiar
+        un conteo existente, elige si corriges una cantidad o reconoces una
+        pérdida real.
       </p>
 
       {loading ? (
@@ -239,6 +275,7 @@ export function ProductStockEditor({
                         location: e.target.value as InventoryLocation,
                       })
                       setError('')
+                      adjustmentAccounting.reset()
                     }}
                   >
                     <option value="store">Tienda</option>
@@ -273,6 +310,7 @@ export function ProductStockEditor({
                           type: nextType,
                         })
                         setError('')
+                        adjustmentAccounting.reset()
                       }}
                     >
                       {available.map((a) => (
@@ -338,6 +376,11 @@ export function ProductStockEditor({
                         <small>{labels.location[location]} · al guardar</small>
                       </div>
                     </div>
+                    {movementType === 'ADJUSTMENT' && !initial && (
+                      <InventoryAdjustmentAccounting
+                        accounting={adjustmentAccounting}
+                      />
+                    )}
                     <Input
                       label="Motivo del cambio de cantidad"
                       required

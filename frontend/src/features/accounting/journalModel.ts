@@ -19,6 +19,7 @@ export interface LedgerAccount {
 }
 export interface JournalRecord {
   id: string
+  inventoryCorrection?: boolean
   number: number
   occurred_on: string
   kind: string

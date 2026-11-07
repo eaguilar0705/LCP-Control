@@ -99,6 +99,8 @@ type MovementRow = {
   quantity: number
   before_quantity: number | null
   after_quantity: number
+  adjustment_kind?: 'correction' | 'loss' | null
+  counter_account?: string | null
   location: string
   note: string
   products:
@@ -111,7 +113,7 @@ export async function listMovements(
   const query = client()
     .from('inventory_movements')
     .select(
-      'id,product_id,created_at,type,quantity,before_quantity,after_quantity,location,note,products(name,sku)',
+      'id,product_id,created_at,type,quantity,before_quantity,after_quantity,adjustment_kind,counter_account,location,note,products(name,sku)',
     )
     .order('created_at', { ascending: false })
     .order('id', { ascending: false })

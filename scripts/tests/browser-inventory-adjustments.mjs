@@ -52,7 +52,7 @@ try {
       ).rows
     const movement = async (note) =>
       one(
-        'select type,location,before_quantity,after_quantity,actor_id,note from public.inventory_movements where product_id=$1 and note=$2',
+        'select type,location,before_quantity,after_quantity,actor_id,note,adjustment_kind,counter_account from public.inventory_movements where product_id=$1 and note=$2',
         [product, note],
       )
     const navigate = async (path) => {
@@ -76,11 +76,19 @@ try {
       name: 'Guardar ajuste',
       exact: true,
     })
-    const adjust = async (place, total, note) => {
+    const treatment = editor.getByLabel('Tratamiento del ajuste', {
+      exact: true,
+    })
+    const counterAccount = editor.getByLabel('Cuenta de contrapartida', {
+      exact: true,
+    })
+    const adjust = async (place, total, note, kind = 'correction') => {
       await location.selectOption(place)
       await action.selectOption('ADJUSTMENT')
       await count.fill(String(total))
       await noteField.fill(note)
+      await treatment.selectOption(kind)
+      if (kind === 'correction') await counterAccount.selectOption('3110-001')
       await save.click()
       await page.waitForFunction(
         ({ place, total }) => {
@@ -98,6 +106,16 @@ try {
         { place: place === 'store' ? 'Tienda' : 'Bodega', total },
       )
       equal(await count.inputValue(), '', 'Se limpia el conteo guardado')
+      equal(
+        await treatment.inputValue(),
+        'correction',
+        'Cada nuevo ajuste comienza como corrección',
+      )
+      equal(
+        await counterAccount.inputValue(),
+        '',
+        'La contrapartida no se conserva ni se presupone para otro ajuste',
+      )
     }
     const setRole = async (role) => {
       await fixture.db.exec('reset role')
@@ -163,6 +181,61 @@ try {
       )
       const generalNote = `Conteo físico general ${width}`
       await dialog.getByLabel('Motivo', { exact: true }).fill(generalNote)
+      const dialogTreatment = dialog.getByLabel('Tratamiento del ajuste', {
+        exact: true,
+      })
+      const dialogAccount = dialog.getByLabel('Cuenta de contrapartida', {
+        exact: true,
+      })
+      equal(await dialogTreatment.inputValue(), 'correction')
+      equal(
+        await dialogAccount.inputValue(),
+        '',
+        'La corrección exige elegir una cuenta sin predeterminarla',
+      )
+      equal(await dialogAccount.getAttribute('required'), '')
+      await dialogAccount
+        .locator('option[value="3110-001"]')
+        .waitFor({ state: 'attached' })
+      const options = await dialogAccount
+        .locator('option')
+        .evaluateAll((rows) => rows.map((row) => row.value))
+      equal(
+        options.some((code) =>
+          [
+            '1130',
+            '5150',
+            '4110',
+            '4190',
+            '5120',
+            '5130-002',
+            '6000',
+            '1110-002',
+            '1120-002',
+            '1120-004',
+            '1120-006',
+          ].includes(code),
+        ),
+        false,
+        'No ofrece inventario, pérdidas, resultados ni cuentas USD',
+      )
+      equal(
+        await dialogTreatment
+          .locator('option[value="loss"]')
+          .getAttribute('disabled'),
+        '',
+        'Una pérdida no permite aumentar existencias',
+      )
+      await dialog
+        .getByRole('button', { name: 'Guardar ajuste', exact: true })
+        .click()
+      equal(await dialog.isVisible(), true)
+      equal(
+        (await stock())[0].quantity,
+        20,
+        'Sin contrapartida no se modifica el inventario',
+      )
+      await dialogAccount.selectOption('3110-001')
       await page.screenshot({
         path: `${output}/modal-${width}.png`,
         fullPage: true,
@@ -184,6 +257,8 @@ try {
           after_quantity: 25,
           actor_id: admin,
           note: generalNote,
+          adjustment_kind: 'correction',
+          counter_account: '3110-001',
         },
         'El ajuste general conserva el conteo, la ubicación y el responsable',
       )
@@ -224,7 +299,7 @@ try {
       )
 
       const lowerNote = `Conteo menor en tienda ${width}`
-      await adjust('store', 18, lowerNote)
+      await adjust('store', 18, lowerNote, 'loss')
       equal(await movement(lowerNote), {
         type: 'ADJUSTMENT',
         location: 'store',
@@ -232,6 +307,8 @@ try {
         after_quantity: 18,
         actor_id: admin,
         note: lowerNote,
+        adjustment_kind: 'loss',
+        counter_account: null,
       })
       const zeroNote = `Conteo de cero en bodega ${width}`
       await adjust('warehouse', 0, zeroNote)
@@ -264,6 +341,7 @@ try {
       await count.fill('21')
       const retryNote = `Conteo con respuesta perdida ${width}`
       await noteField.fill(retryNote)
+      await counterAccount.selectOption('3110-001')
       await save.click()
       await editor
         .getByRole('alert')
@@ -271,6 +349,8 @@ try {
         .waitFor()
       equal(await count.isDisabled(), true)
       equal(await noteField.isDisabled(), true)
+      equal(await treatment.isDisabled(), true)
+      equal(await counterAccount.isDisabled(), true)
       await editor
         .getByRole('button', { name: 'Verificar guardado', exact: true })
         .click()
@@ -287,6 +367,8 @@ try {
         18,
         'El conteo incluye las existencias que se revisaron',
       )
+      equal(payloads[0].adjustmentKind, 'correction')
+      equal(payloads[0].counterAccount, '3110-001')
       equal(
         (
           await one(
@@ -296,6 +378,16 @@ try {
         ).n,
         1,
       )
+      equal(
+        (
+          await one(
+            'select count(*)::int n from public.journal_entries where description like $1',
+            [`%${retryNote}`],
+          )
+        ).n,
+        1,
+        'Recuperar una corrección no duplica su comprobante',
+      )
 
       // Otro movimiento cambia la ubicación tras abrir el editor. El conteo
       // anterior se rechaza y no sobrescribe las existencias nuevas.
@@ -303,6 +395,7 @@ try {
       await count.fill('5')
       const staleNote = `Conteo desactualizado ${width}`
       await noteField.fill(staleNote)
+      await counterAccount.selectOption('3110-001')
       await fixture.db.query(
         'select public.record_inventory_movement($1::jsonb)',
         [
@@ -313,6 +406,8 @@ try {
             type: 'ADJUSTMENT',
             quantity: 2,
             expectedQuantity: 0,
+            adjustmentKind: 'correction',
+            counterAccount: '3110-001',
             note: `Conteo registrado desde otra sesión ${width}`,
           }),
         ],
@@ -351,6 +446,21 @@ try {
           )[1]?.textContent === '2',
       )
       await adjust('warehouse', 5, `Conteo actualizado ${width}`)
+      const ledger = (
+        await one('select public.ledger_report($1,$1) r', [fixture.today])
+      ).r
+      const loss = ledger.accounts.find((row) => row.code === '5150')
+      equal(
+        [loss.debit, loss.credit, loss.closing],
+        [700, 0, 700],
+        'Solo la baja elegida como pérdida real afecta resultados',
+      )
+      const gain = ledger.accounts.find((row) => row.code === '4190')
+      equal(
+        [gain.debit, gain.credit],
+        [0, 0],
+        'Las correcciones de cantidad no generan otros ingresos',
+      )
       equal(
         (await one('select count(*)::int n from public.purchase_shipments')).n,
         0,
@@ -376,6 +486,36 @@ try {
             globalThis.innerWidth + 1,
         ),
         false,
+      )
+      await navigate('/inventory/history')
+      await page
+        .getByRole('heading', {
+          name: 'Movimientos de inventario',
+          exact: true,
+        })
+        .waitFor()
+      await page
+        .getByText('Pérdida real · 5150 · Pérdidas de inventario', {
+          exact: true,
+        })
+        .waitFor()
+      equal(
+        await page
+          .getByText('Corrección de cantidad · Contrapartida: 3110-001', {
+            exact: true,
+          })
+          .count(),
+        5,
+      )
+      equal(
+        await page
+          .getByRole('button', {
+            name: 'Revisar ingreso como compra',
+            exact: true,
+          })
+          .count(),
+        0,
+        'Las correcciones ya contabilizadas no se duplican como compras',
       )
 
       await setRole('admin')

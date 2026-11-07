@@ -228,6 +228,12 @@ export function JournalDetail({
           )}
           {warning && <p role="status">{warning}</p>}
           {data.voided_at && <p>ANULADO · {data.void_reason}</p>}
+          {data.inventoryCorrection && (
+            <p className="accounting-note">
+              Comprobante vinculado a una corrección de existencias. Conserva la
+              cuenta de contrapartida elegida y el costo del movimiento.
+            </p>
+          )}
           <div className="accounting-table-scroll">
             <table className="accounting-table journal-detail-table">
               <thead>
@@ -301,6 +307,7 @@ export function JournalDetail({
             )}
             {!snapshot &&
               !data.receiptCorrection &&
+              !data.inventoryCorrection &&
               !entry &&
               !data.voided_at &&
               !demo &&

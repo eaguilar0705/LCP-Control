@@ -306,6 +306,7 @@ function ledgerPeriod(source: ReportSource, range: ReportRange): LedgerPeriod {
     tiers.set(document.tier, tier)
   }
   for (const row of accounting.movementCosts ?? []) {
+    if (row.adjustmentKind === 'correction') continue
     if (!datedInRange(localDay(row.createdAt), range)) continue
     if (known(row.unitCostNio))
       result.inventoryWriteOffNio +=
@@ -316,6 +317,7 @@ function ledgerPeriod(source: ReportSource, range: ReportRange): LedgerPeriod {
     (accounting.movementCosts ?? []).map((row) => row.movementId),
   )
   for (const row of movementsInRange(source.movements, range)) {
+    if (row.adjustmentKind === 'correction') continue
     if (row.id && costedMovements.has(row.id)) continue
     if (row.type === 'DAMAGED' || row.type === 'EXIT')
       result.missingWriteOffUnits += Math.abs(row.quantity)

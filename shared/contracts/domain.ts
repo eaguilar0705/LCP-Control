@@ -281,6 +281,10 @@ export interface MovementRequest {
   type: 'ENTRY' | 'EXIT' | 'DAMAGED' | 'ADJUSTMENT'
   quantity: number
   expectedQuantity?: number | null
+  /** Corrección de cantidades o pérdida real, al modificar un conteo existente. */
+  adjustmentKind?: 'correction' | 'loss'
+  /** Contrapartida de balance elegida por el contador; importes del ajuste en NIO. */
+  counterAccount?: string
   reference?: string
   note: string
 }

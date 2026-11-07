@@ -35,7 +35,7 @@ export function accountingWorkbookSheets(
       notes: [
         ...notes,
         ...model.warningsByView.trial,
-        'El saldo inicial corresponde al día anterior al inicio del período. Debe y Haber incluyen los movimientos del período.',
+        'El saldo inicial reúne la apertura contable y los movimientos anteriores al período. Debe y Haber incluyen los movimientos del período, sin la apertura.',
         'Saldo final: deudoras = inicial + Debe − Haber; acreedoras = inicial − Debe + Haber.',
         'Los totales de saldos muestran la diferencia entre deudores y acreedores.',
       ],

@@ -226,6 +226,8 @@ export function JournalWorkspace({
                     'Anulado'
                   ) : e.kind === 'opening' ? (
                     'Registrado'
+                  ) : e.inventoryCorrection ? (
+                    'Corrección de existencias'
                   ) : canVoid ? (
                     <Button
                       variant="ghost"

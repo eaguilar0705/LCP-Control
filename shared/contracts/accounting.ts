@@ -136,6 +136,7 @@ export interface AccountingSource {
   shippingExpenses?: { incurredOn: string; amountNio: number }[]
   movementCosts?: {
     movementId: string
+    adjustmentKind?: 'correction' | 'loss' | null
     productId: string
     type: string
     quantity: number

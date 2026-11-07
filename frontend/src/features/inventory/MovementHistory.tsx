@@ -123,9 +123,17 @@ export function MovementHistory() {
                     {movementDate.format(new Date(r.created_at))}
                   </p>
                   <p>{r.note}</p>
+                  {r.type === 'ADJUSTMENT' && r.adjustment_kind && (
+                    <p>
+                      {r.adjustment_kind === 'loss'
+                        ? 'Pérdida real · 5150 · Pérdidas de inventario'
+                        : `Corrección de cantidad${r.counter_account ? ` · Contrapartida: ${r.counter_account}` : ''}`}
+                    </p>
+                  )}
                   {!demo &&
                     role === 'superadmin' &&
                     r.type === 'ADJUSTMENT' &&
+                    r.adjustment_kind !== 'correction' &&
                     r.after_quantity > (r.before_quantity ?? 0) && (
                       <Button
                         variant="secondary"

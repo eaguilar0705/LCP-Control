@@ -942,6 +942,7 @@ export const supabaseAdapter: DataProvider = {
       quantity: number
       before_quantity: number | null
       after_quantity: number
+      adjustment_kind?: 'correction' | 'loss' | null
       created_at: string
     }
     const results = await Promise.allSettled([
@@ -957,7 +958,7 @@ export const supabaseAdapter: DataProvider = {
         client()
           .from('inventory_movements')
           .select(
-            'id,product_id,type,quantity,before_quantity,after_quantity,created_at',
+            'id,product_id,type,quantity,before_quantity,after_quantity,adjustment_kind,created_at',
             { count: 'exact' },
           )
           .gte('created_at', from)
@@ -1024,6 +1025,7 @@ export const supabaseAdapter: DataProvider = {
         quantity: row.quantity,
         beforeQuantity: row.before_quantity,
         afterQuantity: row.after_quantity,
+        adjustmentKind: row.adjustment_kind,
         createdAt: row.created_at,
       })),
       inventory: inventory.rows.map(toItem),
@@ -1087,6 +1089,12 @@ export const supabaseAdapter: DataProvider = {
         quantity: input.quantity,
         ...(input.expectedQuantity !== undefined
           ? { expectedQuantity: input.expectedQuantity }
+          : {}),
+        ...(input.adjustmentKind !== undefined
+          ? { adjustmentKind: input.adjustmentKind }
+          : {}),
+        ...(input.counterAccount !== undefined
+          ? { counterAccount: input.counterAccount }
           : {}),
         reference: input.reference ?? '',
         note: input.note,

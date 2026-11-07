@@ -13,6 +13,8 @@ import { errorMessage } from '../../lib/errors'
 import { createIdempotentOperation } from '../../lib/idempotentOperation'
 import { InventoryReceiptDialog } from './InventoryReceiptDialog'
 import { InventoryTransfers } from './InventoryTransfers'
+import { InventoryAdjustmentAccounting } from './InventoryAdjustmentAccounting'
+import { useInventoryAdjustmentAccounting } from './useInventoryAdjustmentAccounting'
 
 // `title` y `done` se escriben enteros: «Dañado» y «Ajuste» no concuerdan con
 // «de inventario … registrada» como sí lo hacen «Entrada» y «Salida».
@@ -89,6 +91,16 @@ export function InventoryMovements({
   const uncertain = operation.isUncertain()
   const item = items.find(({ product }) => product.id === productId)
   const quantity = item?.quantities[location]
+  const countedQuantity =
+    quantityText.trim() !== '' && Number.isInteger(Number(quantityText))
+      ? Number(quantityText)
+      : null
+  const adjustmentAccounting = useInventoryAdjustmentAccounting(
+    `${action?.type ?? ''}:${productId}:${location}:${quantity == null ? 'initial' : 'counted'}`,
+    action?.type === 'ADJUSTMENT' && quantity != null,
+    quantity ?? null,
+    countedQuantity,
+  )
   if (demo) return null
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -124,6 +136,20 @@ export function InventoryMovements({
       setError('Selecciona un producto, una cantidad válida y el motivo.')
       return
     }
+    if (action.type === 'ADJUSTMENT' && quantity != null) {
+      if (nextQuantity === quantity) {
+        setError('La cantidad ya coincide con las existencias.')
+        return
+      }
+      if (!adjustmentAccounting.valid) {
+        setError(
+          adjustmentAccounting.kind === 'loss'
+            ? 'Una pérdida real debe disminuir las existencias actuales.'
+            : 'Selecciona una cuenta de contrapartida disponible para la corrección.',
+        )
+        return
+      }
+    }
     // La entrada se recibe primero; sólo la revisión contable habilita el stock.
     if (action.type === 'ENTRY') {
       setError('')
@@ -158,7 +184,17 @@ export function InventoryMovements({
         type: action.type,
         quantity: nextQuantity,
         ...(action.type === 'ADJUSTMENT'
-          ? { expectedQuantity: quantity ?? null }
+          ? {
+              expectedQuantity: quantity ?? null,
+              ...(quantity != null
+                ? {
+                    adjustmentKind: adjustmentAccounting.kind,
+                    ...(adjustmentAccounting.kind === 'correction'
+                      ? { counterAccount: adjustmentAccounting.counterAccount }
+                      : {}),
+                  }
+                : {}),
+            }
           : {}),
         note,
       })
@@ -192,6 +228,7 @@ export function InventoryMovements({
                 setNoteText(entry.type === 'ADJUSTMENT' ? 'Conteo físico' : '')
                 setError('')
                 setMessage('')
+                adjustmentAccounting.reset()
               }}
             >
               {entry.label}
@@ -218,8 +255,8 @@ export function InventoryMovements({
               <p>
                 Escribe el total contado, no la diferencia. No incluyas unidades
                 de recepciones pendientes en este conteo. Para ingresar una
-                compra usa Recibir mercadería; un ajuste registra la diferencia
-                como sobrante o faltante.
+                compra usa Recibir mercadería. Al cambiar un conteo existente,
+                elige si corriges una cantidad o reconoces una pérdida real.
               </p>
             )}
             {action.type === 'ENTRY' && (
@@ -234,14 +271,20 @@ export function InventoryMovements({
                 label="Producto del movimiento"
                 products={items.map(({ product }) => product)}
                 value={productId}
-                onChange={setProductId}
+                onChange={(nextProductId) => {
+                  setProductId(nextProductId)
+                  adjustmentAccounting.reset()
+                  setError('')
+                }}
               />
               <Select
                 label="Ubicación"
                 value={location}
-                onChange={(event) =>
+                onChange={(event) => {
                   setLocation(event.target.value as MovementRequest['location'])
-                }
+                  adjustmentAccounting.reset()
+                  setError('')
+                }}
               >
                 {Object.entries(labels.location).map(([value, label]) => (
                   <option value={value} key={value}>
@@ -273,6 +316,11 @@ export function InventoryMovements({
                     ? `${Number(quantityText)} unidades al guardar`
                     : 'Indica el conteo total'}
                 </p>
+              )}
+              {action.type === 'ADJUSTMENT' && quantity != null && (
+                <InventoryAdjustmentAccounting
+                  accounting={adjustmentAccounting}
+                />
               )}
               <Input
                 label="Motivo"

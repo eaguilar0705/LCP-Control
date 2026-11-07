@@ -515,7 +515,7 @@ export function createAccountingAdapter(
               client()
                 .from('inventory_movement_costs')
                 .select(
-                  'movement_id,product_id,type,quantity,unit_cost_nio,total_cost_nio,created_at',
+                  'movement_id,product_id,type,quantity,unit_cost_nio,total_cost_nio,created_at,inventory_movements(adjustment_kind)',
                   { count: 'exact' },
                 )
                 .gte('created_at', from)
@@ -587,6 +587,11 @@ export function createAccountingAdapter(
         })),
         movementCosts: movementCosts.rows.map((row) => ({
           movementId: row.movement_id as string,
+          adjustmentKind: (
+            row.inventory_movements as {
+              adjustment_kind?: 'correction' | 'loss' | null
+            } | null
+          )?.adjustment_kind,
           productId: row.product_id as string,
           type: row.type as 'DAMAGED' | 'EXIT' | 'ADJUSTMENT',
           quantity: numeric(row.quantity),
