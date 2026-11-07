@@ -224,6 +224,8 @@ export function JournalWorkspace({
                     )
                   ) : e.voided_at ? (
                     'Anulado'
+                  ) : e.receiptNoAccountingEffect ? (
+                    'Sin efecto contable'
                   ) : e.kind === 'opening' ? (
                     'Registrado'
                   ) : e.inventoryCorrection ? (

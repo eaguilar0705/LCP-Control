@@ -46,6 +46,14 @@ La tasa del comprobante no modifica la tasa comercial ni los precios del catálo
 
 La edición de un asiento generado por una corrección de recepción lleva a la recepción de origen: así se corrigen conjuntamente el libro contable y el valor del inventario. La edición no modifica automáticamente los precios de venta ni las facturas emitidas. Toda corrección conserva actor, revisión y fecha.
 
+### Cargos y abonos que se compensan en Inventario
+
+Una recepción pendiente puede corregir su costo antes de clasificar el pago. Esa revisión no es una segunda compra: el total definitivo se carga una sola vez al clasificarla. Las correcciones nuevas consolidan los importes por cuenta; cuando el resultado es cero, conservan su revisión sin generar otro comprobante.
+
+Los comprobantes anteriores que cargaban y abonaban el mismo importe a Inventario conservan sus renglones y su historial original. La balanza, el detalle y el PDF presentan su efecto neto para no inflar Debe y Haber. El detalle indica **Sin efecto contable** cuando corresponde y permite **Ver registro original de la corrección**. Por ejemplo, un cargo y un abono de C$2,129.15 en Inventario no representan otra entrada ni salida de mercancía. Los costos consumidos y las contrapartidas que sí cambian conservan su efecto real.
+
+Aplicar `backend/supabase/migrations/20261107220000_consolidar_correcciones_de_recepcion.sql` después de las migraciones anteriores. Esta migración cambia funciones y lecturas; no reescribe comprobantes, pagos, cantidades ni costos históricos. Verificación aislada: `npm run test:receipt-correction-netting` y `npm run test:browser:receipt-correction-netting`.
+
 ## Actualización del flujo
 
 La cuenta **Compras por clasificar (2190)** se retira del catálogo y de nuevos comprobantes. La migración convierte las clasificaciones existentes al cargo directo a Inventario, conserva sus versiones anteriores y evita que la recepción y su clasificación sumen el inventario dos veces. Los abonos, cantidades, costos, facturas y solicitudes originales se conservan. Las compras sin contrapartida necesitan completarse desde Clasificar compra.

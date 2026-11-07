@@ -66,6 +66,8 @@
     "test:inventory-receipts": "node scripts/tests/inventory-receipts.mjs && node scripts/tests/inventory-receipts-integration.mjs",
     "test:browser:inventory-receipts": "node scripts/tests/browser-inventory-receipts.mjs",
     "test:purchase-accounting": "node scripts/tests/purchase-classification.mjs && node scripts/tests/fixed-inventory-purchase.mjs",
+    "test:receipt-correction-netting": "node scripts/tests/receipt-correction-netting.mjs",
+    "test:browser:receipt-correction-netting": "node scripts/tests/browser-receipt-correction-netting.mjs",
     "test:count-purchases": "node scripts/tests/count-purchase-adoption.mjs",
     "test:browser:count-purchases": "node scripts/tests/browser-count-purchase-adoption.mjs",
     "test:purchase-currency": "node --test scripts/tests/purchase-amounts.test.mjs && node scripts/tests/count-purchase-adoption.mjs",

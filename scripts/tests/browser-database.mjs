@@ -3,8 +3,8 @@ import { database, identity, admin } from './database-fixture.mjs'
 // Browser requests execute the real migrations/RPCs in a disposable PostgreSQL
 // instance. Auth delivery and Storage transport are stubbed; nothing reaches
 // production, and no invitation or recovery email is sent.
-export async function browserDatabase(page) {
-  const db = await database()
+export async function browserDatabase(page, options = {}) {
+  const db = await database(options)
   const failures = []
   const user = {
     id: admin,

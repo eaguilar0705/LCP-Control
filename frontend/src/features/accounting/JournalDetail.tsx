@@ -63,6 +63,11 @@ export function JournalDetail({
     : entry?.missingCosts
       ? `Costo pendiente en ${entry.missingCosts} factura(s).`
       : ''
+  const receiptNote = data?.receiptNoAccountingEffect
+    ? 'Esta corrección no modifica los saldos contables. Los cargos y abonos que se compensan en una misma cuenta no se suman como movimientos nuevos.'
+    : data?.receiptPostingNormalized
+      ? 'Se muestran los importes netos por cuenta para no duplicar cargos y abonos de la misma corrección. Se conserva el registro original.'
+      : ''
   async function download() {
     if (!data) return
     setBusy(true)
@@ -94,6 +99,7 @@ export function JournalDetail({
         ...(data.revision !== undefined ? [`Revisión: ${data.revision}`] : []),
         data.description,
         ...(warning ? [warning] : []),
+        ...(receiptNote ? [receiptNote] : []),
         ...(data.voided_at ? [`ANULADO: ${data.void_reason}`] : []),
       ]) {
         for (const row of pdf.splitTextToSize(text, 178) as string[]) {
@@ -227,6 +233,11 @@ export function JournalDetail({
             </div>
           )}
           {warning && <p role="status">{warning}</p>}
+          {receiptNote && (
+            <p className="accounting-note" role="status">
+              {receiptNote}
+            </p>
+          )}
           {data.voided_at && <p>ANULADO · {data.void_reason}</p>}
           {data.inventoryCorrection && (
             <p className="accounting-note">
@@ -244,6 +255,11 @@ export function JournalDetail({
                 </tr>
               </thead>
               <tbody>
+                {data.receiptNoAccountingEffect && data.lines.length === 0 && (
+                  <tr>
+                    <td colSpan={3}>Sin movimiento contable neto.</td>
+                  </tr>
+                )}
                 {data.lines.map((l, i) => (
                   <tr key={i}>
                     <th scope="row">
@@ -294,6 +310,38 @@ export function JournalDetail({
               </tfoot>
             </table>
           </div>
+          {!!data.receiptOriginalLines?.length && (
+            <details className="day-history">
+              <summary>Ver registro original de la corrección</summary>
+              <div className="accounting-table-scroll">
+                <table className="accounting-table journal-detail-table">
+                  <caption>Registro original conservado para consulta</caption>
+                  <thead>
+                    <tr>
+                      <th>Cuenta</th>
+                      <th>Debe NIO</th>
+                      <th>Haber NIO</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.receiptOriginalLines.map((line, i) => (
+                      <tr key={i}>
+                        <th scope="row">
+                          {line.displayAccount ?? line.account} · {line.name}
+                        </th>
+                        <td data-label="Debe NIO">
+                          {amount(line.debit_nio, 'NIO')}
+                        </td>
+                        <td data-label="Haber NIO">
+                          {amount(line.credit_nio, 'NIO')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          )}
           {failure && (
             <p role="alert" className="inline-error">
               {failure}

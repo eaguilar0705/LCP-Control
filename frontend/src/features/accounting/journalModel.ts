@@ -20,6 +20,7 @@ export interface LedgerAccount {
 export interface JournalRecord {
   id: string
   inventoryCorrection?: boolean
+  receiptNoAccountingEffect?: boolean
   number: number
   occurred_on: string
   kind: string
@@ -35,6 +36,8 @@ export interface JournalDetailRecord extends JournalRecord {
   lines: JournalDetailLine[]
   sourceReceiptId?: string | null
   receiptCorrection?: boolean
+  receiptPostingNormalized?: boolean
+  receiptOriginalLines?: JournalDetailLine[]
   purchaseInventoryDebit?: number
   editingAccounts?: {
     code: string
