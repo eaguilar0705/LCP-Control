@@ -103,6 +103,13 @@ type MovementRow = {
   counter_account?: string | null
   location: string
   note: string
+  request_id?: string | null
+  is_invoice_reversal?: boolean
+  document_id?: string | null
+  voided_at?: string | null
+  void_reason?: string | null
+  voided_by?: string | null
+  reversal_of?: string | null
   products:
     { name: string; sku: string } | { name: string; sku: string }[] | null
 }
@@ -113,7 +120,7 @@ export async function listMovements(
   const query = client()
     .from('inventory_movements')
     .select(
-      'id,product_id,created_at,type,quantity,before_quantity,after_quantity,adjustment_kind,counter_account,location,note,products(name,sku)',
+      'id,product_id,created_at,type,quantity,before_quantity,after_quantity,adjustment_kind,counter_account,location,note,request_id,is_invoice_reversal,document_id,voided_at,void_reason,voided_by,reversal_of,products(name,sku)',
     )
     .order('created_at', { ascending: false })
     .order('id', { ascending: false })

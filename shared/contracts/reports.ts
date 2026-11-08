@@ -50,6 +50,7 @@ export interface ReportCustomer {
 
 export interface ReportMovement {
   id?: string
+  reversalOf?: string | null
   adjustmentKind?: 'correction' | 'loss' | null
   beforeQuantity?: number | null
   afterQuantity?: number

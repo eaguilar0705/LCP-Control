@@ -60,19 +60,21 @@ export function useInventoryAdjustmentAccounting(
     (a) =>
       a.active &&
       a.postable &&
-      ['asset', 'liability', 'equity'].includes(a.bucket) &&
-      !['1130', '5150'].includes(a.code) &&
-      accountCurrency(a.code) !== 'USD',
+      (a.code === '5150' ||
+        (['asset', 'liability', 'equity'].includes(a.bucket) &&
+          a.code !== '1130' &&
+          accountCurrency(a.code) !== 'USD')),
   )
   const canRecordLoss =
     before !== null && after !== null && after >= 0 && after < before
   const valid =
     !enabled ||
-    (current.kind === 'loss'
-      ? canRecordLoss
-      : !query.loading &&
-        !query.error &&
-        accounts.some((a) => a.code === current.counterAccount))
+    (!query.loading &&
+      !query.error &&
+      accounts.some((a) => a.code === current.counterAccount) &&
+      (current.kind === 'loss'
+        ? current.counterAccount === '5150' && canRecordLoss
+        : current.counterAccount !== '5150'))
   return {
     ...current,
     accounts,
@@ -83,9 +85,17 @@ export function useInventoryAdjustmentAccounting(
     valid,
     canRecordLoss,
     setKind: (kind: AdjustmentKind) =>
-      setSelection({ contextKey, kind, counterAccount: '' }),
+      setSelection({
+        contextKey,
+        kind,
+        counterAccount: kind === 'loss' ? '5150' : '',
+      }),
     setCounterAccount: (counterAccount: string) =>
-      setSelection({ ...current, contextKey, counterAccount }),
+      setSelection({
+        contextKey,
+        kind: counterAccount === '5150' ? 'loss' : 'correction',
+        counterAccount,
+      }),
     reset: () =>
       setSelection({ contextKey, kind: 'correction', counterAccount: '' }),
   }

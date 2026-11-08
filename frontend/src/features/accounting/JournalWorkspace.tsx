@@ -228,6 +228,8 @@ export function JournalWorkspace({
                     'Sin efecto contable'
                   ) : e.kind === 'opening' ? (
                     'Registrado'
+                  ) : e.inventoryAdjustmentVoid ? (
+                    'Anulación de ajuste'
                   ) : e.inventoryCorrection ? (
                     'Corrección de existencias'
                   ) : canVoid ? (

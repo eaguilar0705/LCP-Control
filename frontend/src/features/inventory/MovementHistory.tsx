@@ -5,6 +5,7 @@ import {
   TriangleAlert,
   RefreshCw,
   Pencil,
+  Ban,
 } from 'lucide-react'
 import {
   WorkspaceHeading,
@@ -26,6 +27,7 @@ import { can } from '../../lib/permissions'
 import { localDay } from '../reports/model'
 import './movement-history.css'
 import { CountPurchaseCorrection } from './CountPurchaseCorrection'
+import { InventoryAdjustmentVoidDialog } from './InventoryAdjustmentVoidDialog'
 
 const movementDate = new Intl.DateTimeFormat('es-NI', {
   timeZone: 'America/Managua',
@@ -41,6 +43,8 @@ export function MovementHistory() {
     : localDay(new Date())
   const [offset, setOffset] = useState(0)
   const [purchaseMovement, setPurchaseMovement] = useState<string>()
+  const [voidMovement, setVoidMovement] = useState<string>()
+  const [notice, setNotice] = useState('')
   const load = useCallback(
     async () => ({
       day,
@@ -94,6 +98,11 @@ export function MovementHistory() {
           <RefreshCw size={16} /> Actualizar
         </Button>
       </Card>
+      {notice && (
+        <p role="status" className="page-feedback">
+          {notice}
+        </p>
+      )}
       {loading && <LoadingState />}
       {error && <ErrorState message={error} retry={retry} />}
       {!loading && !error && (
@@ -123,6 +132,18 @@ export function MovementHistory() {
                     {movementDate.format(new Date(r.created_at))}
                   </p>
                   <p>{r.note}</p>
+                  {r.voided_at && (
+                    <p>
+                      Anulado ·{' '}
+                      {r.void_reason || 'Motivo registrado en la anulación.'}
+                    </p>
+                  )}
+                  {r.reversal_of && (
+                    <p>
+                      Reversión de un ajuste anulado. El registro original
+                      permanece en el historial.
+                    </p>
+                  )}
                   {r.type === 'ADJUSTMENT' && r.adjustment_kind && (
                     <p>
                       {r.adjustment_kind === 'loss'
@@ -134,6 +155,8 @@ export function MovementHistory() {
                     role === 'superadmin' &&
                     r.type === 'ADJUSTMENT' &&
                     r.adjustment_kind !== 'correction' &&
+                    !r.voided_at &&
+                    !r.reversal_of &&
                     r.after_quantity > (r.before_quantity ?? 0) && (
                       <Button
                         variant="secondary"
@@ -141,6 +164,27 @@ export function MovementHistory() {
                         onClick={() => setPurchaseMovement(r.id)}
                       >
                         Revisar ingreso como compra
+                      </Button>
+                    )}
+                  {!demo &&
+                    role === 'superadmin' &&
+                    r.type === 'ADJUSTMENT' &&
+                    r.request_id &&
+                    r.before_quantity !== null &&
+                    r.after_quantity !== r.before_quantity &&
+                    !r.is_invoice_reversal &&
+                    !r.document_id &&
+                    !r.voided_at &&
+                    !r.reversal_of && (
+                      <Button
+                        variant="secondary"
+                        className="movement-edit-link"
+                        onClick={() => {
+                          setNotice('')
+                          setVoidMovement(r.id)
+                        }}
+                      >
+                        <Ban size={15} /> Anular ajuste
                       </Button>
                     )}
                   {!demo &&
@@ -159,13 +203,17 @@ export function MovementHistory() {
                     {r.before_quantity ?? '—'} → {r.after_quantity}
                   </strong>
                   <span className="record-badge is-muted">
-                    {{
-                      ENTRY: 'Entrada',
-                      EXIT: 'Salida',
-                      DAMAGED: 'Dañado',
-                      ADJUSTMENT: 'Ajuste',
-                      SALE: 'Venta',
-                    }[r.type] ?? r.type}
+                    {r.reversal_of
+                      ? 'Reversión'
+                      : r.voided_at
+                        ? 'Anulado'
+                        : ({
+                            ENTRY: 'Entrada',
+                            EXIT: 'Salida',
+                            DAMAGED: 'Dañado',
+                            ADJUSTMENT: 'Ajuste',
+                            SALE: 'Venta',
+                          }[r.type] ?? r.type)}
                   </span>
                 </div>
               </article>
@@ -201,6 +249,20 @@ export function MovementHistory() {
           movementId={purchaseMovement}
           onClose={() => setPurchaseMovement(undefined)}
           onChanged={retry}
+        />
+      )}
+      {voidMovement && (
+        <InventoryAdjustmentVoidDialog
+          key={voidMovement}
+          movementId={voidMovement}
+          onClose={() => setVoidMovement(undefined)}
+          onVoided={() => {
+            setVoidMovement(undefined)
+            setNotice(
+              'Ajuste anulado. Se registró la reversión y se conservó el historial.',
+            )
+            retry()
+          }}
         />
       )}
     </>

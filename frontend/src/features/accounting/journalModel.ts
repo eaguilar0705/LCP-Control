@@ -20,6 +20,7 @@ export interface LedgerAccount {
 export interface JournalRecord {
   id: string
   inventoryCorrection?: boolean
+  inventoryAdjustmentVoid?: boolean
   receiptNoAccountingEffect?: boolean
   number: number
   occurred_on: string

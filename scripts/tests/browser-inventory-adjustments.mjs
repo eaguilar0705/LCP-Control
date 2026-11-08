@@ -87,8 +87,34 @@ try {
       await action.selectOption('ADJUSTMENT')
       await count.fill(String(total))
       await noteField.fill(note)
-      await treatment.selectOption(kind)
-      if (kind === 'correction') await counterAccount.selectOption('3110-001')
+      if (kind === 'loss') {
+        equal(
+          await treatment.inputValue(),
+          'correction',
+          'Una baja no se convierte automáticamente en pérdida',
+        )
+        equal(
+          await counterAccount.inputValue(),
+          '',
+          'La pérdida exige una elección explícita',
+        )
+        await counterAccount.selectOption('5150')
+        equal(
+          await treatment.inputValue(),
+          'loss',
+          'Elegir Pérdidas desde Cuenta cambia el tratamiento',
+        )
+        await counterAccount.selectOption('3110-001')
+        equal(
+          await treatment.inputValue(),
+          'correction',
+          'Elegir balance vuelve a corrección en una sola selección',
+        )
+        await counterAccount.selectOption('5150')
+      } else {
+        await counterAccount.selectOption('3110-001')
+        equal(await treatment.inputValue(), 'correction')
+      }
       await save.click()
       await page.waitForFunction(
         ({ place, total }) => {
@@ -204,7 +230,6 @@ try {
         options.some((code) =>
           [
             '1130',
-            '5150',
             '4110',
             '4190',
             '5120',
@@ -217,7 +242,19 @@ try {
           ].includes(code),
         ),
         false,
-        'No ofrece inventario, pérdidas, resultados ni cuentas USD',
+        'No ofrece inventario, otras cuentas de resultados ni cuentas USD',
+      )
+      equal(
+        options.includes('5150'),
+        true,
+        'Pérdidas de inventario aparece en Cuenta de contrapartida',
+      )
+      equal(
+        await dialogAccount
+          .locator('option[value="5150"]')
+          .getAttribute('disabled'),
+        '',
+        'La opción Pérdidas no permite aumentar existencias',
       )
       equal(
         await dialogTreatment
@@ -517,6 +554,164 @@ try {
         0,
         'Las correcciones ya contabilizadas no se duplican como compras',
       )
+
+      // Anular revierte el ajuste elegido sobre las existencias actuales,
+      // conserva el original y recupera una respuesta perdida sin duplicarlo.
+      const originalRecord = page
+        .locator('.movement-record')
+        .filter({ hasText: generalNote })
+      await originalRecord
+        .getByRole('button', { name: 'Anular ajuste', exact: true })
+        .click()
+      const voidDialog = page.getByRole('dialog')
+      await voidDialog
+        .getByRole('heading', {
+          name: 'Anular ajuste de inventario',
+          exact: true,
+        })
+        .waitFor()
+      await voidDialog.getByRole('table').waitFor()
+      equal(
+        await voidDialog
+          .getByRole('row', { name: /^Existencias/ })
+          .locator('td')
+          .allTextContents(),
+        ['21', '16'],
+        'La vista previa revierte cinco unidades sobre el conteo actual',
+      )
+      equal(
+        await voidDialog.getByRole('table').evaluate((table) => {
+          const region = table.parentElement.getBoundingClientRect()
+          const lastColumn = table
+            .querySelector('thead th:last-child')
+            .getBoundingClientRect()
+          return lastColumn.right <= region.right + 1
+        }),
+        true,
+        'La vista previa muestra la columna Después de anular incluso en móvil',
+      )
+      const voidReason = `Anular ajuste duplicado ${width}`
+      const reason = voidDialog.getByLabel('Motivo de anulación', {
+        exact: true,
+      })
+      const confirmVoid = voidDialog.getByRole('button', {
+        name: 'Confirmar anulación',
+        exact: true,
+      })
+      const originalMovement = await one(
+        'select id,voided_at from public.inventory_movements where note=$1',
+        [generalNote],
+      )
+      await confirmVoid.click()
+      equal(
+        (
+          await one(
+            'select voided_at from public.inventory_movements where id=$1',
+            [originalMovement.id],
+          )
+        ).voided_at,
+        null,
+        'Sin motivo no se anula el ajuste',
+      )
+      await reason.fill(voidReason)
+      await page.screenshot({
+        path: `${output}/anular-${width}.png`,
+        fullPage: true,
+      })
+      const voidPayloads = []
+      let voidLost = false
+      const voidHandler = async (route) => {
+        const payload = route.request().postDataJSON().p_input
+        voidPayloads.push(payload)
+        if (voidLost) return route.fallback()
+        voidLost = true
+        await fixture.db.query(
+          'select public.void_inventory_adjustment($1::jsonb)',
+          [JSON.stringify(payload)],
+        )
+        await route.abort('failed')
+      }
+      const journalsBeforeVoid = (
+        await one('select count(*)::int n from public.journal_entries')
+      ).n
+      await page.route('**/rest/v1/rpc/void_inventory_adjustment', voidHandler)
+      await confirmVoid.click()
+      await voidDialog
+        .getByRole('alert')
+        .filter({ hasText: 'No pudimos confirmar el guardado.' })
+        .waitFor()
+      equal(await reason.isDisabled(), true)
+      equal(
+        await voidDialog
+          .getByRole('button', { name: 'Cancelar', exact: true })
+          .isDisabled(),
+        true,
+      )
+      await voidDialog
+        .getByRole('button', { name: 'Verificar guardado', exact: true })
+        .click()
+      await voidDialog.waitFor({ state: 'hidden' })
+      await page.unroute(
+        '**/rest/v1/rpc/void_inventory_adjustment',
+        voidHandler,
+      )
+      equal(voidPayloads.length, 2)
+      equal(
+        voidPayloads[1],
+        voidPayloads[0],
+        'La recuperación conserva motivo, token y requestId de la anulación',
+      )
+      equal(voidPayloads[0].movementId, originalMovement.id)
+      equal(voidPayloads[0].reason, voidReason)
+      await originalRecord
+        .getByText(`Anulado · ${voidReason}`, { exact: true })
+        .waitFor()
+      equal(
+        await originalRecord
+          .getByRole('button', { name: 'Anular ajuste', exact: true })
+          .count(),
+        0,
+      )
+      const reversalRecord = page.locator('.movement-record').filter({
+        has: page
+          .locator('.record-badge')
+          .getByText('Reversión', { exact: true }),
+      })
+      await reversalRecord.waitFor()
+      equal(
+        await reversalRecord
+          .getByRole('button', { name: 'Anular ajuste', exact: true })
+          .count(),
+        0,
+      )
+      equal(
+        (
+          await one(
+            'select count(*)::int n from public.inventory_movements where reversal_of=$1',
+            [originalMovement.id],
+          )
+        ).n,
+        1,
+      )
+      equal(
+        (
+          await one(
+            'select count(*)::int n from public.inventory_movements where id=$1',
+            [originalMovement.id],
+          )
+        ).n,
+        1,
+        'El ajuste original permanece físicamente en el historial',
+      )
+      equal(
+        (await one('select count(*)::int n from public.journal_entries')).n,
+        journalsBeforeVoid + 1,
+        'Solo registra un comprobante de reversión',
+      )
+      equal(await stock(), [
+        { location: 'store', quantity: 16 },
+        { location: 'warehouse', quantity: 5 },
+      ])
 
       await setRole('admin')
       await navigate(`/products/${product}/edit`)

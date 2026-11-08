@@ -11,6 +11,7 @@ export const operationLabels = {
   'finance-entry': 'Cobro o pago',
   expense: 'Gasto',
   'inventory-movement': 'Movimiento de inventario',
+  'inventory-adjustment-void': 'Anulación de ajuste de inventario',
   'inventory-transfer': 'Traslado',
   'inventory-receipt': 'Recepción de mercadería',
   'inventory-receipt-post': 'Contabilización de recepción',

@@ -306,18 +306,22 @@ function ledgerPeriod(source: ReportSource, range: ReportRange): LedgerPeriod {
     tiers.set(document.tier, tier)
   }
   for (const row of accounting.movementCosts ?? []) {
-    if (row.adjustmentKind === 'correction') continue
+    if (row.adjustmentKind === 'correction' || row.reversalOf) continue
     if (!datedInRange(localDay(row.createdAt), range)) continue
     if (known(row.unitCostNio))
       result.inventoryWriteOffNio +=
         row.totalCostNio ?? roundMoney(row.quantity * row.unitCostNio)
     else result.missingWriteOffUnits += row.quantity
   }
+  for (const row of accounting.inventoryAdjustmentReversals ?? []) {
+    if (datedInRange(row.occurredOn, range))
+      result.inventoryWriteOffNio += row.inventoryWriteOffNio
+  }
   const costedMovements = new Set(
     (accounting.movementCosts ?? []).map((row) => row.movementId),
   )
   for (const row of movementsInRange(source.movements, range)) {
-    if (row.adjustmentKind === 'correction') continue
+    if (row.adjustmentKind === 'correction' || row.reversalOf) continue
     if (row.id && costedMovements.has(row.id)) continue
     if (row.type === 'DAMAGED' || row.type === 'EXIT')
       result.missingWriteOffUnits += Math.abs(row.quantity)

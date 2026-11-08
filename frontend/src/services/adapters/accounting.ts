@@ -515,7 +515,7 @@ export function createAccountingAdapter(
               client()
                 .from('inventory_movement_costs')
                 .select(
-                  'movement_id,product_id,type,quantity,unit_cost_nio,total_cost_nio,created_at,inventory_movements(adjustment_kind)',
+                  'movement_id,product_id,type,quantity,unit_cost_nio,total_cost_nio,created_at,inventory_movements(adjustment_kind,reversal_of)',
                   { count: 'exact' },
                 )
                 .gte('created_at', from)
@@ -541,6 +541,30 @@ export function createAccountingAdapter(
                 .range(start, end),
             )
           : Promise.resolve({ rows: [] as AccountingRow[], truncated: false }),
+        lines
+          ? (async () => {
+              const { data, error } = await client().rpc(
+                'inventory_adjustment_void_postings',
+                { p_from: window.from, p_to: window.to },
+              )
+              if (error) throw error
+              if (
+                !Array.isArray(data) ||
+                data.some(
+                  (row) =>
+                    !row ||
+                    typeof row.movementId !== 'string' ||
+                    typeof row.occurredOn !== 'string' ||
+                    !Number.isFinite(Number(row.inventoryWriteOffNio)),
+                )
+              )
+                throw new AppError(
+                  'unexpected',
+                  'No se recibieron las anulaciones de inventario completas. Vuelve a consultar.',
+                )
+              return { rows: data as AccountingRow[], truncated: false }
+            })()
+          : Promise.resolve({ rows: [] as AccountingRow[], truncated: false }),
       ])
       const failures = results.filter((result) => result.status === 'rejected')
       // A missing table must not hide a simultaneous permission or network error.
@@ -556,6 +580,7 @@ export function createAccountingAdapter(
         saleCosts,
         movementCosts,
         shippingExpenses,
+        inventoryReversals,
       ] = results.map((result) => {
         if (result.status === 'rejected') throw result.reason
         return result.value
@@ -576,6 +601,11 @@ export function createAccountingAdapter(
             .occurred_on,
           amountNio: numeric(row.debit_nio) - numeric(row.credit_nio),
         })),
+        inventoryAdjustmentReversals: inventoryReversals.rows.map((row) => ({
+          movementId: row.movementId as string,
+          occurredOn: row.occurredOn as string,
+          inventoryWriteOffNio: numeric(row.inventoryWriteOffNio),
+        })),
         saleCosts: saleCosts.rows.map((row) => ({
           documentId: row.document_id as string,
           productId: row.product_id as string,
@@ -592,6 +622,9 @@ export function createAccountingAdapter(
               adjustment_kind?: 'correction' | 'loss' | null
             } | null
           )?.adjustment_kind,
+          reversalOf: (
+            row.inventory_movements as { reversal_of?: string | null } | null
+          )?.reversal_of,
           productId: row.product_id as string,
           type: row.type as 'DAMAGED' | 'EXIT' | 'ADJUSTMENT',
           quantity: numeric(row.quantity),
@@ -606,6 +639,7 @@ export function createAccountingAdapter(
           saleCosts,
           movementCosts,
           shippingExpenses,
+          inventoryReversals,
         ].some((result) => result.truncated),
       }
     },

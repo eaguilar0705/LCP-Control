@@ -239,11 +239,18 @@ export function JournalDetail({
             </p>
           )}
           {data.voided_at && <p>ANULADO · {data.void_reason}</p>}
-          {data.inventoryCorrection && (
+          {data.inventoryAdjustmentVoid ? (
             <p className="accounting-note">
-              Comprobante vinculado a una corrección de existencias. Conserva la
-              cuenta de contrapartida elegida y el costo del movimiento.
+              Comprobante de anulación de un ajuste de inventario. Revierte su
+              efecto contable y conserva el vínculo con el movimiento original.
             </p>
+          ) : (
+            data.inventoryCorrection && (
+              <p className="accounting-note">
+                Comprobante vinculado a una corrección de existencias. Conserva
+                la cuenta de contrapartida elegida y el costo del movimiento.
+              </p>
+            )
           )}
           <div className="accounting-table-scroll">
             <table className="accounting-table journal-detail-table">

@@ -134,8 +134,15 @@ export interface AccountingSource {
   saleCosts: SaleCostSnapshot[]
   /** Egresos manuales de envío; no incluye filas de expense_records. */
   shippingExpenses?: { incurredOn: string; amountNio: number }[]
+  /** Efecto en pérdidas de las anulaciones auditadas, en la fecha de reversión. */
+  inventoryAdjustmentReversals?: {
+    movementId: string
+    occurredOn: string
+    inventoryWriteOffNio: number
+  }[]
   movementCosts?: {
     movementId: string
+    reversalOf?: string | null
     adjustmentKind?: 'correction' | 'loss' | null
     productId: string
     type: string

@@ -288,3 +288,33 @@ export interface MovementRequest {
   reference?: string
   note: string
 }
+
+/** Vista previa validada de la reversión de un ajuste manual de inventario. */
+export interface InventoryAdjustmentVoidContext {
+  movementId: string
+  productName: string
+  sku: string
+  location: InventoryLocation
+  beforeQuantity: number | null
+  afterQuantity: number
+  currentQuantity: number | null
+  resultingQuantity: number | null
+  quantityDelta: number | null
+  currentValueNio: number | null
+  resultingValueNio: number | null
+  valueDeltaNio: number | null
+  stateToken: string
+  canVoid: boolean
+  blockedReason?: string | null
+  voidedAt?: string | null
+  voidReason?: string | null
+  reversalMovementId?: string | null
+  journalEntryId?: string | null
+}
+
+export interface VoidInventoryAdjustmentInput {
+  requestId: string
+  movementId: string
+  stateToken: string
+  reason: string
+}

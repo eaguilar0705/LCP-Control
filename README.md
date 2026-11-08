@@ -12,6 +12,8 @@ La balanza separa la apertura contable de los movimientos: la apertura aparece e
 
 Al ajustar un conteo existente se elige **Ajuste** o **Pérdida real**. La corrección exige una cuenta de contrapartida de balance en córdobas y conserva un comprobante vinculado; la pérdida utiliza **Pérdidas de inventario**. Aplicar `20261107200000_ajustes_de_inventario_con_contrapartida.sql` antes de publicar la interfaz. Ver [ajustes de inventario](docs/ajustes-de-inventario.md).
 
+**Pérdidas de inventario** se puede elegir directamente en **Cuenta de contrapartida** para una baja real, sin asignarla automáticamente a las correcciones. En **Movimientos**, Superadmin dispone de **Anular ajuste** para revertir un ajuste manual equivocado conservando su historial y costo. Requiere `20261108000000_anular_ajustes_de_inventario.sql`.
+
 En **Negocio → Importar desde Excel**, los administradores pueden descargar la plantilla y cargar productos, precios, existencias de bodega y tienda, cuentas y saldos iniciales, clientes, proveedores y datos del negocio. Incluye vista previa, validación completa y protección contra cargas duplicadas. Ver [formato y puesta en marcha](docs/importacion-excel.md); la función requiere aplicar la migración de importación en Supabase antes de utilizarla con la base remota.
 
 En **Inventario → Listas de precios**, administración puede crear listas con su propio nombre y editar varios perfumes a la vez. Las listas adicionales empiezan sin precios y también se pueden completar desde la edición del perfume. Un perfume sin precio en la lista elegida no puede facturarse con ella. La plantilla inicial de Excel conserva las columnas de Emprendedor, VIP y Premium; las listas adicionales se completan desde Inventario.

@@ -30,6 +30,8 @@ export type {
   NewDocumentItem,
   NewDocument,
   MovementRequest,
+  InventoryAdjustmentVoidContext,
+  VoidInventoryAdjustmentInput,
 } from '@lcp/contracts/domain'
 
 export const bankTransferLabels = {

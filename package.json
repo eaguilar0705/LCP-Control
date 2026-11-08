@@ -36,6 +36,7 @@
     "test:cost-location-counts": "node scripts/tests/expected-inventory-count.mjs",
     "test:inventory-adjustments": "node scripts/tests/inventory-adjustments.mjs && node scripts/tests/expected-inventory-count.mjs",
     "test:inventory-adjustment-accounting": "node scripts/tests/inventory-adjustment-accounting.mjs && node --test scripts/tests/inventory-adjustment-reporting.test.mjs",
+    "test:inventory-adjustment-voids": "node scripts/tests/inventory-adjustment-voids.mjs",
     "test:browser:inventory-adjustments": "node scripts/tests/browser-inventory-adjustments.mjs && node scripts/tests/browser-stock-controls.mjs",
     "test:browser:cost-location-counts": "node scripts/tests/browser-cost-location-counts.mjs",
     "test:browser:images": "node scripts/tests/browser-product-images.mjs",

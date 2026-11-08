@@ -20,6 +20,24 @@
   align-items: center;
   justify-content: center;
 }
+.inventory-adjustment-void-preview {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 16px 0;
+}
+.inventory-adjustment-void-preview table {
+  table-layout: fixed;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.inventory-adjustment-void-preview td,
+.inventory-adjustment-void-preview th {
+  padding: 10px 5px;
+}
+.inventory-adjustment-void-preview th:first-child {
+  width: 38%;
+}
 @media (max-width: 420px) {
   .movement-history-filters > :first-child {
     flex-basis: 100%;
