@@ -1,13 +1,26 @@
 import { Button, Select } from '../../components/ui'
+import { InventoryAdjustmentPreview } from './InventoryAdjustmentPreview'
 import type { useInventoryAdjustmentAccounting } from './useInventoryAdjustmentAccounting'
 
 export function InventoryAdjustmentAccounting({
   accounting,
+  productId,
+  before,
+  after,
 }: {
   accounting: ReturnType<typeof useInventoryAdjustmentAccounting>
+  productId: string
+  before: number | null
+  after: number | null
 }) {
   return (
     <>
+      <InventoryAdjustmentPreview
+        productId={productId}
+        before={before}
+        after={after}
+        inventoryAccount={accounting.inventoryAccount}
+      />
       <Select
         label="Tratamiento del ajuste"
         value={accounting.kind}

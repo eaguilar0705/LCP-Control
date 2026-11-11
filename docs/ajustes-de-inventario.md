@@ -18,6 +18,16 @@ El conteo inicial no requiere este selector y puede conservar el costo pendiente
 
 Si las existencias cambiaron mientras revisabas el formulario, el sistema rechaza el conteo anterior. Actualiza las existencias y revisa el total antes de intentar otra vez. Si se pierde la respuesta al guardar, **Verificar guardado** consulta la misma operación para evitar duplicados.
 
+## Agregar únicamente las unidades adicionales
+
+Al abrir **Editar perfume** de la forma habitual, Superadmin empieza en **Agregar unidades**. También puede usar el botón **Agregar unidades** de Inventario. Se escribe solo lo adicional: si hay dos unidades y se agrega una, se escribe **1** y la vista previa muestra **2 → 3**. Para mercadería comprada se conserva **Registrar compra** o **Recibir mercadería**, con su revisión y costos propios.
+
+La opción **Ajustar existencias (conteo físico)** sigue disponible para escribir el total físico. Los accesos específicos a conteos abren esa opción. Cambiar entre cantidad adicional y conteo borra el número introducido para no reinterpretarlo accidentalmente. Una ubicación sin contar requiere registrar primero su conteo inicial.
+
+**Cuenta de inventario (automática)** muestra Inventario de perfumes, con su código visible. Esta cuenta aumenta al agregar unidades y disminuye al descontarlas; **Cuenta de contrapartida** corresponde a la otra parte del asiento. Inventario no se selecciona como su propia contrapartida, porque ese asiento compensaría su valor en la misma cuenta.
+
+Con costo de C$500 y dos unidades existentes, agregar una unidad registra un aumento de **C$500** en Inventario, no C$1500. La estimación muestra solo la diferencia de unidades y el costo actual; el importe definitivo lo calcula la base al guardar. El costo pendiente se indica expresamente y no se sustituye por cero. El cambio conserva la revisión del conteo esperado, el costo histórico, la contrapartida y la recuperación del mismo guardado, sin sumar la unidad dos veces si se pierde la respuesta.
+
 ## Cuenta de orden y descuentos sin pérdida
 
 El audio del dueño del 10 de noviembre precisa que los ajustes deben acumularse en una cuenta de orden y mostrarse en la balanza, sin reconocer ingresos, costos ni gastos.
@@ -77,3 +87,5 @@ En la revisión del 8 de noviembre pasaron 166 comprobaciones de anulación, 124
 La actualización de cuentas de orden del 10 de noviembre pasó 80 comprobaciones nuevas de base de datos, 124 del tratamiento contable existente, 142 pruebas generales y 72 comprobaciones nuevas de navegador. También pasaron las 237 comprobaciones del recorrido existente de ajustes y las 60 de controles de inventario, en anchos de 1440, 390 y 320 px. Además, pasaron 354 comprobaciones de confirmación de movimientos y 486 de primer uso en los tres anchos. Lint, tipos y compilación también pasaron.
 
 En la revisión anterior, la suite general `test:database` se detenía en la preparación de `business-day.mjs` porque su base de prueba no define `storage.allow_only_operation`, requerida por una migración anterior. `extended-store-flow.mjs` se detenía antes de probar los ajustes porque una compra de su primer día omite la cuenta bancaria. Estos fallos requieren actualizar esas pruebas; no se modificaron los flujos de negocio para evitarlos.
+
+Las adiciones por unidades del 10 de noviembre pasaron 93 comprobaciones de navegador en 1440, 390 y 320 px y seis pruebas de cálculo de valor. El ejemplo de dos unidades más una de C$500 termina en tres unidades, incrementa el valor en C$500 y registra la contrapartida una sola vez, incluso con respuesta perdida. También volvieron a pasar las 237 comprobaciones de ajustes y las 60 de controles existentes.

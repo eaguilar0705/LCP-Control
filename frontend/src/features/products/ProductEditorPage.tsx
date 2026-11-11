@@ -3,6 +3,7 @@ import { ProductCostDialog } from './ProductCostDialog'
 import { TransientImage } from '../../components/TransientImage'
 import { ScanButton } from '../scanner/ScanButton'
 import { ProductStockEditor } from './ProductStockEditor'
+import { ProductSalesHistory } from './ProductSalesHistory'
 import { can } from '../../lib/permissions'
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import {
@@ -833,6 +834,9 @@ function ProductForm({
         <p className="page-feedback">
           Guarda el perfume para registrar sus cantidades en Tienda y Bodega.
         </p>
+      )}
+      {product && !demo && can(role, 'finance.read') && (
+        <ProductSalesHistory key={product.id} productId={product.id} />
       )}
       {confirmRemove && (
         <Dialog

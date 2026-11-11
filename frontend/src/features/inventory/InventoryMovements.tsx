@@ -19,12 +19,19 @@ import { useInventoryAdjustmentAccounting } from './useInventoryAdjustmentAccoun
 // `title` y `done` se escriben enteros: «Dañado» y «Ajuste» no concuerdan con
 // «de inventario … registrada» como sí lo hacen «Entrada» y «Salida».
 const actions: {
-  type: MovementRequest['type']
+  type: MovementRequest['type'] | 'ADD'
   label: string
   title: string
   done: string
   capability: Capability
 }[] = [
+  {
+    type: 'ADD',
+    label: 'Agregar unidades',
+    title: 'Agregar unidades al inventario',
+    done: 'Unidades agregadas',
+    capability: 'inventory.adjust',
+  },
   {
     type: 'ADJUSTMENT',
     label: 'Ajustar existencias',
@@ -97,10 +104,13 @@ export function InventoryMovements({
       : null
   const manualAdjustment =
     action?.type === 'ADJUSTMENT' ||
+    action?.type === 'ADD' ||
     (action?.type === 'EXIT' && can(role, 'inventory.adjust'))
   const finalQuantity =
-    action?.type === 'EXIT' && quantity != null && countedQuantity !== null
-      ? quantity - countedQuantity
+    (action?.type === 'EXIT' || action?.type === 'ADD') &&
+    quantity != null &&
+    countedQuantity !== null
+      ? quantity + (action.type === 'ADD' ? countedQuantity : -countedQuantity)
       : countedQuantity
   const adjustmentAccounting = useInventoryAdjustmentAccounting(
     `${action?.type ?? ''}:${productId}:${location}:${quantity == null ? 'initial' : 'counted'}`,
@@ -156,6 +166,16 @@ export function InventoryMovements({
       )
       return
     }
+    if (
+      manualAdjustment &&
+      quantity != null &&
+      (finalQuantity === null || finalQuantity < 0 || finalQuantity > 1000000)
+    ) {
+      setError(
+        'El total de existencias debe estar entre cero y un millón de unidades.',
+      )
+      return
+    }
     if (manualAdjustment && quantity != null) {
       if (finalQuantity === quantity) {
         setError('La cantidad ya coincide con las existencias.')
@@ -188,7 +208,12 @@ export function InventoryMovements({
       await operation.execute({
         productId,
         location,
-        type: manualAdjustment ? 'ADJUSTMENT' : action.type,
+        type:
+          action.type === 'ADD'
+            ? 'ADJUSTMENT'
+            : manualAdjustment
+              ? 'ADJUSTMENT'
+              : action.type,
         quantity: manualAdjustment ? finalQuantity! : nextQuantity,
         ...(manualAdjustment
           ? {
@@ -232,7 +257,13 @@ export function InventoryMovements({
                 setAction(entry)
                 setProductId(items.length === 1 ? items[0].product.id : '')
                 setQuantityText('')
-                setNoteText(entry.type === 'ADJUSTMENT' ? 'Conteo físico' : '')
+                setNoteText(
+                  entry.type === 'ADJUSTMENT'
+                    ? 'Conteo físico'
+                    : entry.type === 'ADD'
+                      ? 'Corrección de existencias'
+                      : '',
+                )
                 setError('')
                 setMessage('')
                 adjustmentAccounting.reset()
@@ -264,6 +295,13 @@ export function InventoryMovements({
                 de recepciones pendientes en este conteo. Para ingresar una
                 compra usa Recibir mercadería. Al cambiar un conteo existente,
                 elige si corriges una cantidad o reconoces una pérdida real.
+              </p>
+            )}
+            {action.type === 'ADD' && (
+              <p>
+                Escribe solo las unidades que vas a agregar. Si hay 2 y agregas
+                1, el total será 3. Para unidades compradas, usa Recibir
+                mercadería.
               </p>
             )}
             {action.type === 'EXIT' && (
@@ -314,7 +352,11 @@ export function InventoryMovements({
               {item && <p>Existencias actuales: {quantity ?? 'Sin conteo'}</p>}
               <Input
                 label={
-                  action.type === 'ADJUSTMENT' ? 'Conteo total' : 'Cantidad'
+                  action.type === 'ADJUSTMENT'
+                    ? 'Conteo total'
+                    : action.type === 'ADD'
+                      ? 'Unidades a agregar'
+                      : 'Cantidad'
                 }
                 name="quantity"
                 type="number"
@@ -325,14 +367,16 @@ export function InventoryMovements({
                 value={quantityText}
                 onChange={(event) => setQuantityText(event.target.value)}
               />
-              {action.type === 'EXIT' && item && quantity != null && (
-                <p role="status">
-                  {labels.location[location]}: {quantity} →{' '}
-                  {finalQuantity !== null && finalQuantity >= 0
-                    ? `${finalQuantity} unidades al guardar`
-                    : 'Revisa las unidades a descontar'}
-                </p>
-              )}
+              {(action.type === 'EXIT' || action.type === 'ADD') &&
+                item &&
+                quantity != null && (
+                  <p role="status">
+                    {labels.location[location]}: {quantity} →{' '}
+                    {finalQuantity !== null && finalQuantity >= 0
+                      ? `${finalQuantity} unidades al guardar`
+                      : 'Revisa las unidades a descontar'}
+                  </p>
+                )}
               {action.type === 'ADJUSTMENT' && item && (
                 <p role="status">
                   {labels.location[location]}: {quantity ?? 'Sin conteo'} →{' '}
@@ -344,11 +388,16 @@ export function InventoryMovements({
                     : 'Indica el conteo total'}
                 </p>
               )}
-              {manualAdjustment && quantity != null && (
-                <InventoryAdjustmentAccounting
-                  accounting={adjustmentAccounting}
-                />
-              )}
+              {manualAdjustment &&
+                quantity != null &&
+                can(role, 'inventory.adjust') && (
+                  <InventoryAdjustmentAccounting
+                    accounting={adjustmentAccounting}
+                    productId={productId}
+                    before={quantity ?? null}
+                    after={finalQuantity}
+                  />
+                )}
               <Input
                 label="Motivo"
                 name="note"

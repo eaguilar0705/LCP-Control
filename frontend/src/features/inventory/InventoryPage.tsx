@@ -29,6 +29,7 @@ import {
 } from '../../components/ui'
 import { ProductImage } from '../../components/ProductImage'
 import { ProductBarcode } from '../../components/ProductBarcode'
+import { ProductSalesHistory } from '../products/ProductSalesHistory'
 import { useServices } from '../../services/useServices'
 import { useQuery } from '../../lib/useQuery'
 import {
@@ -704,6 +705,9 @@ export function InventoryPage() {
             >
               Ajustar existencias
             </Link>
+          )}
+          {!demo && can(role, 'finance.read') && (
+            <ProductSalesHistory key={selected.id} productId={selected.id} />
           )}
         </Dialog>
       )}

@@ -1,0 +1,98 @@
+.product-sales-history {
+  min-width: 0;
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  border: 1px solid var(--line, #e6ddd2);
+  border-radius: 14px;
+  background: var(--surface, #fff);
+}
+.product-sales-history-heading,
+.product-sales-history-record header,
+.product-sales-history-pagination {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+}
+.product-sales-history-heading h2,
+.product-sales-history-record h3 {
+  margin: 0;
+}
+.product-sales-history-heading p {
+  margin: 0.4rem 0 0;
+}
+.product-sales-history-list {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 1.1rem;
+}
+.product-sales-history-record {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--line, #e6ddd2);
+  border-radius: 12px;
+  overflow-wrap: anywhere;
+}
+.product-sales-history-record.is-historical {
+  background: var(--surface-warm, #faf7f3);
+}
+.product-sales-history-record time,
+.product-sales-history-record header small {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.85rem;
+  color: var(--muted, #776b61);
+}
+.product-sales-history-status {
+  display: grid;
+  justify-items: start;
+  gap: 0.3rem;
+}
+.product-sales-history-customer {
+  display: grid;
+  gap: 0.2rem;
+  margin: 0.9rem 0;
+}
+.product-sales-history-customer > span,
+.product-sales-history-record dt {
+  font-size: 0.8rem;
+  color: var(--muted, #776b61);
+}
+.product-sales-history-record dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin: 0.9rem 0;
+}
+.product-sales-history-record dd {
+  margin: 0.25rem 0 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.product-sales-history-return,
+.product-sales-history-note {
+  margin: 0.75rem 0;
+  font-size: 0.88rem;
+}
+.product-sales-history-pagination {
+  align-items: center;
+  margin-top: 1rem;
+  font-size: 0.86rem;
+}
+.product-sales-history-pagination > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+@media (max-width: 600px) {
+  .product-sales-history {
+    padding: 0.9rem;
+  }
+  .product-sales-history-record {
+    padding: 0.8rem;
+  }
+  .product-sales-history-record dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

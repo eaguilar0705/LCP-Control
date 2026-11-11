@@ -78,6 +78,7 @@ export function useInventoryAdjustmentAccounting(
   return {
     ...current,
     accounts,
+    inventoryAccount: query.data?.find((a) => a.code === '1130'),
     lossAccount: query.data?.find((a) => a.code === '5150'),
     loading: query.loading,
     error: query.error,

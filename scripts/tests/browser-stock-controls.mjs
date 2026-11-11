@@ -120,7 +120,7 @@ try {
         true,
         'La ubicación contada mantiene sus operaciones',
       )
-      equal(await action.locator('option').count(), 3)
+      equal(await action.locator('option').count(), 4)
       await action.selectOption('EXIT')
       equal(
         await editor
@@ -165,7 +165,7 @@ try {
       equal(
         await action.isEnabled(),
         true,
-        'Después del primer conteo se habilitan las tres operaciones',
+        'Después del primer conteo se habilitan las cuatro operaciones',
       )
       const movement = await one(
         'select type,before_quantity,after_quantity from public.inventory_movements where product_id=$1 order by created_at desc limit 1',

@@ -1,0 +1,17 @@
+.inventory-adjustment-preview {
+  padding: 1rem;
+  border: 1px solid var(--line, #e6ddd2);
+  border-radius: 12px;
+  background: var(--surface-warm, #faf7f3);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.inventory-adjustment-value p {
+  margin: 0.55rem 0;
+}
+.inventory-adjustment-value strong {
+  font-variant-numeric: tabular-nums;
+}
+.inventory-adjustment-value small {
+  color: var(--muted, #776b61);
+}

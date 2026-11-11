@@ -24,11 +24,18 @@ import { errorMessage } from '../../lib/errors'
 import { InventoryAdjustmentAccounting } from '../inventory/InventoryAdjustmentAccounting'
 import { useInventoryAdjustmentAccounting } from '../inventory/useInventoryAdjustmentAccounting'
 
+type StockAction = MovementRequest['type'] | 'ADD'
+
 const actions: {
-  type: MovementRequest['type']
+  type: StockAction
   label: string
   permission: Capability
 }[] = [
+  {
+    type: 'ADD',
+    label: 'Agregar unidades',
+    permission: 'inventory.adjust',
+  },
   {
     type: 'ADJUSTMENT',
     label: 'Ajustar existencias (conteo físico)',
@@ -96,19 +103,22 @@ export function ProductStockEditor({
       ? selection.location
       : (countLocation ?? selection.location)
   const canAdjust = can(role, 'inventory.adjust') || demo
+  const defaultAction: StockAction = canAdjust
+    ? countLocation || navigation.hash === '#cantidades-perfume'
+      ? 'ADJUSTMENT'
+      : 'ADD'
+    : 'ENTRY'
   const [typeSelection, setTypeSelection] = useState<{
     navigationKey: string
-    type: MovementRequest['type']
+    type: StockAction
   }>(() => ({
     navigationKey: navigation.key,
-    type: canAdjust ? 'ADJUSTMENT' : 'ENTRY',
+    type: defaultAction,
   }))
   const type =
     typeSelection.navigationKey === navigation.key
       ? typeSelection.type
-      : canAdjust
-        ? 'ADJUSTMENT'
-        : 'ENTRY'
+      : defaultAction
   const [quantity, setQuantity] = useState('')
   const [note, setNote] = useState(canAdjust ? 'Conteo físico' : '')
   const [busy, setBusy] = useState(false)
@@ -125,7 +135,9 @@ export function ProductStockEditor({
   const movementType = initial ? 'ADJUSTMENT' : type
   const requiresPurchase = movementType === 'ENTRY' && !!onPurchase
   const manualAdjustment =
-    movementType === 'ADJUSTMENT' || (movementType === 'EXIT' && canAdjust)
+    movementType === 'ADJUSTMENT' ||
+    movementType === 'ADD' ||
+    (movementType === 'EXIT' && canAdjust)
   const action = actions.find((a) => a.type === movementType)!
   const available = actions.filter((a) => can(role, a.permission) || demo)
   const amount = Number(quantity)
@@ -134,7 +146,10 @@ export function ProductStockEditor({
       ? amount
       : before === null
         ? null
-        : before + (movementType === 'ENTRY' ? amount : -amount)
+        : before +
+          (movementType === 'ENTRY' || movementType === 'ADD'
+            ? amount
+            : -amount)
   const valid =
     quantity.trim() !== '' &&
     Number.isInteger(amount) &&
@@ -187,7 +202,12 @@ export function ProductStockEditor({
         await operation.execute({
           productId: product.id,
           location,
-          type: manualAdjustment ? 'ADJUSTMENT' : movementType,
+          type:
+            movementType === 'ADD'
+              ? 'ADJUSTMENT'
+              : manualAdjustment
+                ? 'ADJUSTMENT'
+                : movementType,
           quantity: manualAdjustment ? after! : amount,
           ...(manualAdjustment
             ? {
@@ -208,7 +228,13 @@ export function ProductStockEditor({
         })
       operation.reset()
       setQuantity('')
-      setNote(movementType === 'ADJUSTMENT' ? 'Conteo físico' : '')
+      setNote(
+        movementType === 'ADJUSTMENT'
+          ? 'Conteo físico'
+          : movementType === 'ADD'
+            ? 'Corrección de existencias'
+            : '',
+      )
       adjustmentAccounting.reset()
       setMessage(
         `Cantidad guardada en ${labels.location[location]}. El movimiento quedó en el historial.`,
@@ -301,16 +327,24 @@ export function ProductStockEditor({
                       label="Cómo cambiar las cantidades"
                       value={movementType}
                       onChange={(e) => {
-                        const nextType = e.target
-                          .value as MovementRequest['type']
-                        if (!note || note === 'Conteo físico')
+                        const nextType = e.target.value as StockAction
+                        if (
+                          !note ||
+                          note === 'Conteo físico' ||
+                          note === 'Corrección de existencias'
+                        )
                           setNote(
-                            nextType === 'ADJUSTMENT' ? 'Conteo físico' : '',
+                            nextType === 'ADJUSTMENT'
+                              ? 'Conteo físico'
+                              : nextType === 'ADD'
+                                ? 'Corrección de existencias'
+                                : '',
                           )
                         setTypeSelection({
                           navigationKey: navigation.key,
                           type: nextType,
                         })
+                        setQuantity('')
                         setError('')
                         adjustmentAccounting.reset()
                       }}
@@ -331,6 +365,13 @@ export function ProductStockEditor({
                     {movementType === 'ADJUSTMENT' && (
                       <p className="muted">
                         Escribe el total contado, no la diferencia.
+                      </p>
+                    )}
+                    {movementType === 'ADD' && (
+                      <p className="muted">
+                        Escribe solo las unidades que vas a agregar. Si hay 2 y
+                        agregas 1, el total será 3. Para unidades compradas, usa
+                        Registrar compra.
                       </p>
                     )}
                     {movementType === 'EXIT' && (
@@ -358,7 +399,9 @@ export function ProductStockEditor({
                           label={
                             movementType === 'ADJUSTMENT'
                               ? 'Conteo total del perfume'
-                              : 'Unidades a mover'
+                              : movementType === 'ADD'
+                                ? 'Unidades a agregar'
+                                : 'Unidades a mover'
                           }
                           type="number"
                           required
@@ -387,9 +430,12 @@ export function ProductStockEditor({
                         <small>{labels.location[location]} · al guardar</small>
                       </div>
                     </div>
-                    {manualAdjustment && !initial && (
+                    {manualAdjustment && !initial && canAdjust && (
                       <InventoryAdjustmentAccounting
                         accounting={adjustmentAccounting}
+                        productId={product.id}
+                        before={before}
+                        after={valid ? after : null}
                       />
                     )}
                     <Input
