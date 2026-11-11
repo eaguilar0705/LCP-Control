@@ -95,11 +95,18 @@ export function InventoryMovements({
     quantityText.trim() !== '' && Number.isInteger(Number(quantityText))
       ? Number(quantityText)
       : null
+  const manualAdjustment =
+    action?.type === 'ADJUSTMENT' ||
+    (action?.type === 'EXIT' && can(role, 'inventory.adjust'))
+  const finalQuantity =
+    action?.type === 'EXIT' && quantity != null && countedQuantity !== null
+      ? quantity - countedQuantity
+      : countedQuantity
   const adjustmentAccounting = useInventoryAdjustmentAccounting(
     `${action?.type ?? ''}:${productId}:${location}:${quantity == null ? 'initial' : 'counted'}`,
-    action?.type === 'ADJUSTMENT' && quantity != null,
+    manualAdjustment && quantity != null,
     quantity ?? null,
-    countedQuantity,
+    finalQuantity,
   )
   if (demo) return null
 
@@ -136,8 +143,21 @@ export function InventoryMovements({
       setError('Selecciona un producto, una cantidad válida y el motivo.')
       return
     }
-    if (action.type === 'ADJUSTMENT' && quantity != null) {
-      if (nextQuantity === quantity) {
+    // Una salida o una merma mayor que lo contado dejaría el inventario en
+    // negativo: la base lo rechaza y el movimiento se pierde. Se detiene aquí,
+    // diciendo cuántas unidades hay, en lugar de devolver el error del servidor.
+    if (
+      quantity != null &&
+      (action.type === 'EXIT' || action.type === 'DAMAGED') &&
+      nextQuantity > quantity
+    ) {
+      setError(
+        `Solo hay ${quantity} ${quantity === 1 ? 'unidad' : 'unidades'} en ${labels.location[location]}. No puedes sacar más de lo contado.`,
+      )
+      return
+    }
+    if (manualAdjustment && quantity != null) {
+      if (finalQuantity === quantity) {
         setError('La cantidad ya coincide con las existencias.')
         return
       }
@@ -162,28 +182,15 @@ export function InventoryMovements({
       )
       return
     }
-    // Una salida o una merma mayor que lo contado dejaría el inventario en
-    // negativo: la base lo rechaza y el movimiento se pierde. Se detiene aquí,
-    // diciendo cuántas unidades hay, en lugar de devolver el error del servidor.
-    if (
-      quantity != null &&
-      (action.type === 'EXIT' || action.type === 'DAMAGED') &&
-      nextQuantity > quantity
-    ) {
-      setError(
-        `Solo hay ${quantity} ${quantity === 1 ? 'unidad' : 'unidades'} en ${labels.location[location]}. No puedes sacar más de lo contado.`,
-      )
-      return
-    }
     setBusy(true)
     setError('')
     try {
       await operation.execute({
         productId,
         location,
-        type: action.type,
-        quantity: nextQuantity,
-        ...(action.type === 'ADJUSTMENT'
+        type: manualAdjustment ? 'ADJUSTMENT' : action.type,
+        quantity: manualAdjustment ? finalQuantity! : nextQuantity,
+        ...(manualAdjustment
           ? {
               expectedQuantity: quantity ?? null,
               ...(quantity != null
@@ -259,6 +266,18 @@ export function InventoryMovements({
                 elige si corriges una cantidad o reconoces una pérdida real.
               </p>
             )}
+            {action.type === 'EXIT' && (
+              <p>
+                {can(role, 'inventory.adjust')
+                  ? 'Escribe las unidades a descontar y elige la contrapartida. Para corregir sin pérdida, usa tu cuenta de orden.'
+                  : 'Esta salida se registra como pérdida real de inventario. Para corregir cantidades sin pérdida, solicita el ajuste a un Superadmin.'}
+              </p>
+            )}
+            {action.type === 'DAMAGED' && (
+              <p>
+                El producto dañado se registra como pérdida real de inventario.
+              </p>
+            )}
             {action.type === 'ENTRY' && (
               <p>
                 Esta entrada continuará como recepción pendiente de revisión
@@ -306,6 +325,14 @@ export function InventoryMovements({
                 value={quantityText}
                 onChange={(event) => setQuantityText(event.target.value)}
               />
+              {action.type === 'EXIT' && item && quantity != null && (
+                <p role="status">
+                  {labels.location[location]}: {quantity} →{' '}
+                  {finalQuantity !== null && finalQuantity >= 0
+                    ? `${finalQuantity} unidades al guardar`
+                    : 'Revisa las unidades a descontar'}
+                </p>
+              )}
               {action.type === 'ADJUSTMENT' && item && (
                 <p role="status">
                   {labels.location[location]}: {quantity ?? 'Sin conteo'} →{' '}
@@ -317,7 +344,7 @@ export function InventoryMovements({
                     : 'Indica el conteo total'}
                 </p>
               )}
-              {action.type === 'ADJUSTMENT' && quantity != null && (
+              {manualAdjustment && quantity != null && (
                 <InventoryAdjustmentAccounting
                   accounting={adjustmentAccounting}
                 />

@@ -197,7 +197,7 @@ function AccountsDialog({
                 <Input
                   label="Código"
                   required
-                  pattern="[1-6][0-9]{3}(-[0-9]{3}){0,3}"
+                  pattern="[1-7][0-9]{3}(-[0-9]{3}){0,3}"
                   maxLength={16}
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
@@ -229,6 +229,13 @@ function AccountsDialog({
                   <p className="muted">
                     Cuenta mayor:{' '}
                     {(form.displayParent ?? parent) || 'Cuenta principal'}
+                  </p>
+                )}
+                {accounts.find((a) => a.code === parent)?.bucket ===
+                  'memorandum' && (
+                  <p className="muted">
+                    Cuenta de orden: se muestra en la balanza, fuera del estado
+                    de resultados y del estado de situación financiera.
                   </p>
                 )}
               </fieldset>

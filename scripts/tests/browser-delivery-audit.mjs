@@ -371,6 +371,9 @@ try {
         .selectOption('EXIT')
       await stock.getByLabel('Unidades a mover', { exact: true }).fill('2')
       await stock
+        .getByLabel('Tratamiento del ajuste', { exact: true })
+        .selectOption('loss')
+      await stock
         .getByLabel('Motivo del cambio de cantidad', { exact: true })
         .fill('Salida auditada de dos unidades')
       await stock
@@ -392,6 +395,9 @@ try {
       await stock
         .getByLabel('Conteo total del perfume', { exact: true })
         .fill('20')
+      await stock
+        .getByLabel('Tratamiento del ajuste', { exact: true })
+        .selectOption('loss')
       await stock
         .getByLabel('Motivo del cambio de cantidad', { exact: true })
         .fill('Conteo físico auditado de veinte unidades')

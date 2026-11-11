@@ -316,3 +316,82 @@ test('card settlement rates are inputs; withholding is separate from the fee', (
   })
   assert.throws(() => cardSettlement(1000, 0, 101, 'net_commission'))
 })
+
+test('las cuentas de orden acumulan correcciones en la balanza y Excel sin alterar resultados', () => {
+  const initial = fixture()
+  const before = journalModel(initial, 'Tienda')
+  const adjusted = structuredClone(initial)
+  const inventory = adjusted.accounts.find((a) => a.code === '1130')
+  inventory.credit += 300
+  inventory.closing -= 300
+  adjusted.accounts.push(
+    {
+      ...account('7000', 'memorandum', 'debit', 0, 0, 0),
+      name: 'Cuentas de orden',
+      postable: false,
+    },
+    {
+      ...account('7000-001', 'memorandum', 'debit', 0, 300, 0),
+      name: 'Ajustes de inventario',
+      parent: '7000',
+    },
+  )
+  const after = journalModel(adjusted, 'Tienda')
+  const order = after.trial.find((row) => row.code === '7000-001')
+  assert.equal(order.debitNio, 300)
+  assert.equal(order.creditNio, 0)
+  assert.equal(order.closingNio, 300)
+  assert.equal(
+    after.trial.some((row) => row.code === '7000'),
+    false,
+  )
+  assert.equal(after.trialTotals.closingNio, 0)
+  assert.equal(after.trialTotals.debitNio, after.trialTotals.creditNio)
+  assert.deepEqual(after.income, before.income)
+  assert.equal(after.income.at(-1).periodNio, 1155)
+  assert.equal(
+    after.balance.left.at(-1).amount,
+    before.balance.left.at(-1).amount - 300,
+  )
+  assert.deepEqual(after.balance.right, before.balance.right)
+  assert.equal(
+    [...after.balance.left, ...after.balance.right].some((row) =>
+      row.code.startsWith('7'),
+    ),
+    false,
+  )
+  assert.ok(
+    after.warningsByView.balance.some((message) =>
+      message.includes('activo no coincide'),
+    ),
+  )
+  const sheets = accountingWorkbookSheets(after)
+  assert.ok(sheets[0].rows.some((row) => row[0] === '7000'))
+  assert.deepEqual(
+    sheets[1].rows.find((row) => row[0] === '7000-001'),
+    ['7000-001', 'Ajustes de inventario', 0, 300, 0, 300],
+  )
+  assert.equal(JSON.stringify(sheets[2].rows).includes('7000-001'), false)
+  assert.equal(JSON.stringify(sheets[3].rows).includes('7000-001'), false)
+  assert.ok(
+    sheets[3].notes.some((message) => message.includes('activo no coincide')),
+  )
+})
+
+test('la reversión y el arrastre de una cuenta de orden conservan sus saldos sin convertirlos en utilidad', () => {
+  const initial = fixture()
+  const before = journalModel(initial, 'Tienda')
+  initial.accounts.push(account('7000-001', 'memorandum', 'debit', 300, 0, 300))
+  const inventory = initial.accounts.find((a) => a.code === '1130')
+  inventory.opening -= 300
+  inventory.debit += 300
+  const reverted = journalModel(initial, 'Tienda')
+  const order = reverted.trial.find((row) => row.code === '7000-001')
+  assert.equal(order.openingNio, 300)
+  assert.equal(order.creditNio, 300)
+  assert.equal(order.closingNio, 0)
+  assert.equal(reverted.trialTotals.closingNio, 0)
+  assert.deepEqual(reverted.income, before.income)
+  assert.deepEqual(reverted.balance, before.balance)
+  assert.deepEqual(reverted.warnings, [])
+})

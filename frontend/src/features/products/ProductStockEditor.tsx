@@ -124,6 +124,8 @@ export function ProductStockEditor({
   const countBlocked = initial && !canAdjust
   const movementType = initial ? 'ADJUSTMENT' : type
   const requiresPurchase = movementType === 'ENTRY' && !!onPurchase
+  const manualAdjustment =
+    movementType === 'ADJUSTMENT' || (movementType === 'EXIT' && canAdjust)
   const action = actions.find((a) => a.type === movementType)!
   const available = actions.filter((a) => can(role, a.permission) || demo)
   const amount = Number(quantity)
@@ -144,7 +146,7 @@ export function ProductStockEditor({
   const locked = busy || disabled || loading || !item || !item.product.active
   const adjustmentAccounting = useInventoryAdjustmentAccounting(
     `${navigation.key}:${product.id}:${location}:${movementType}:${initial ? 'initial' : 'counted'}`,
-    movementType === 'ADJUSTMENT' && !initial,
+    manualAdjustment && !initial,
     before,
     valid ? after : null,
   )
@@ -162,8 +164,8 @@ export function ProductStockEditor({
       )
       return
     }
-    if (!uncertain && movementType === 'ADJUSTMENT' && !initial) {
-      if (amount === before) {
+    if (!uncertain && manualAdjustment && !initial) {
+      if (after === before) {
         setError('La cantidad ya coincide con las existencias.')
         return
       }
@@ -185,9 +187,9 @@ export function ProductStockEditor({
         await operation.execute({
           productId: product.id,
           location,
-          type: movementType,
-          quantity: amount,
-          ...(movementType === 'ADJUSTMENT'
+          type: manualAdjustment ? 'ADJUSTMENT' : movementType,
+          quantity: manualAdjustment ? after! : amount,
+          ...(manualAdjustment
             ? {
                 expectedQuantity: before,
                 ...(!initial
@@ -315,7 +317,9 @@ export function ProductStockEditor({
                     >
                       {available.map((a) => (
                         <option key={a.type} value={a.type}>
-                          {a.label}
+                          {a.type === 'EXIT' && !canAdjust
+                            ? 'Descontar unidades (pérdida real)'
+                            : a.label}
                         </option>
                       ))}
                     </Select>
@@ -327,6 +331,13 @@ export function ProductStockEditor({
                     {movementType === 'ADJUSTMENT' && (
                       <p className="muted">
                         Escribe el total contado, no la diferencia.
+                      </p>
+                    )}
+                    {movementType === 'EXIT' && (
+                      <p className="muted">
+                        {canAdjust
+                          ? 'Escribe las unidades a descontar y elige la contrapartida. Para corregir sin pérdida, usa tu cuenta de orden.'
+                          : 'Esta salida se registra como pérdida real de inventario. Para corregir cantidades sin pérdida, solicita el ajuste a un Superadmin.'}
                       </p>
                     )}
                     <div className="stock-adjustment-row">
@@ -376,7 +387,7 @@ export function ProductStockEditor({
                         <small>{labels.location[location]} · al guardar</small>
                       </div>
                     </div>
-                    {movementType === 'ADJUSTMENT' && !initial && (
+                    {manualAdjustment && !initial && (
                       <InventoryAdjustmentAccounting
                         accounting={adjustmentAccounting}
                       />

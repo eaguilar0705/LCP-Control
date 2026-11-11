@@ -318,7 +318,7 @@ export function parseBusinessImportRows(
         case 'Cuentas': {
           const code = text('codigo', true, 40)
           unique('codigo', code)
-          if (!/^[1-6][0-9]{3}(-[0-9]{3}){0,3}$/.test(code))
+          if (!/^[1-7][0-9]{3}(-[0-9]{3}){0,3}$/.test(code))
             problem(
               name,
               row,

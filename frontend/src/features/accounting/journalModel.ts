@@ -8,7 +8,14 @@ export interface LedgerAccount {
   name: string
   parent: string | null
   bucket:
-    'asset' | 'liability' | 'equity' | 'revenue' | 'cost' | 'expense' | 'tax'
+    | 'asset'
+    | 'liability'
+    | 'equity'
+    | 'revenue'
+    | 'cost'
+    | 'expense'
+    | 'tax'
+    | 'memorandum'
   nature: 'debit' | 'credit'
   postable: boolean
   active?: boolean

@@ -101,6 +101,9 @@ try {
       await dialog.getByPlaceholder('Nombre, marca o código…').fill('QA-0001')
       await dialog.getByRole('option').first().click()
       await dialog.getByLabel('Cantidad', { exact: true }).fill('2')
+      await dialog
+        .getByLabel('Tratamiento del ajuste', { exact: true })
+        .selectOption('loss')
       await dialog.getByLabel('Motivo', { exact: true }).fill(note)
       return dialog
     }

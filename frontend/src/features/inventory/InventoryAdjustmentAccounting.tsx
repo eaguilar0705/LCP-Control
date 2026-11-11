@@ -15,7 +15,7 @@ export function InventoryAdjustmentAccounting({
           accounting.setKind(event.target.value as 'correction' | 'loss')
         }
       >
-        <option value="correction">Ajuste (corrección de cantidad)</option>
+        <option value="correction">Corrección de cantidad (sin pérdida)</option>
         <option value="loss" disabled={!accounting.canRecordLoss}>
           Pérdida real
         </option>
@@ -46,14 +46,16 @@ export function InventoryAdjustmentAccounting({
         <>
           <p className="muted">
             La corrección cambia la cantidad y el valor del inventario contra la
-            cuenta elegida, sin registrar ingresos ni gastos.
+            cuenta elegida, sin registrar ingresos, costos ni gastos. Para
+            acumular estos ajustes fuera del estado de resultados, elige una
+            cuenta de orden creada en Contabilidad → Catálogo de cuentas.
           </p>
           {!accounting.loading &&
             !accounting.error &&
             !accounting.accounts.length && (
               <p role="status">
-                No hay cuentas de activo, pasivo o capital disponibles para este
-                ajuste. Activa o agrega la cuenta correspondiente en
+                No hay cuentas de orden, activo, pasivo o capital disponibles
+                para este ajuste. Activa o agrega la cuenta correspondiente en
                 Contabilidad.
               </p>
             )}

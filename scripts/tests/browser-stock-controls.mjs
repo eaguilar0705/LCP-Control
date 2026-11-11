@@ -204,6 +204,9 @@ try {
       await action.selectOption('EXIT')
       await editor.getByLabel('Unidades a mover', { exact: true }).fill('1')
       await editor
+        .getByLabel('Tratamiento del ajuste', { exact: true })
+        .selectOption('loss')
+      await editor
         .getByLabel('Motivo del cambio de cantidad', { exact: true })
         .fill('Salida registrada después del primer conteo')
       await editor

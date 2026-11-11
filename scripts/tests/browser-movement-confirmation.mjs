@@ -180,6 +180,10 @@ try {
           await dialog.getByPlaceholder('Nombre, marca o código…').fill(sku)
           await dialog.getByRole('option').first().click()
           await dialog.getByLabel('Cantidad', { exact: true }).fill(quantity)
+          if (scenario.type === 'EXIT')
+            await dialog
+              .getByLabel('Tratamiento del ajuste', { exact: true })
+              .selectOption('loss')
           await dialog.getByLabel('Motivo', { exact: true }).fill(reason)
           return dialog
         }
@@ -249,8 +253,8 @@ try {
             request_id: lost.payloads[0].requestId,
             product_id: product,
             location: 'store',
-            type: scenario.type,
-            quantity: 2,
+            type: scenario.type === 'EXIT' ? 'ADJUSTMENT' : scenario.type,
+            quantity: scenario.type === 'EXIT' ? 18 : 2,
             before_quantity: 20,
             after_quantity: 18,
             note,
@@ -283,6 +287,9 @@ try {
         .getByLabel('Cómo cambiar las cantidades', { exact: true })
         .selectOption('EXIT')
       await editor.getByLabel('Unidades a mover', { exact: true }).fill('2')
+      await editor
+        .getByLabel('Tratamiento del ajuste', { exact: true })
+        .selectOption('loss')
       const note = `Salida desde edición con respuesta perdida ${width}`
       await editor
         .getByLabel('Motivo del cambio de cantidad', { exact: true })
@@ -361,6 +368,9 @@ try {
       )
       await editor.getByLabel('Unidades a mover', { exact: true }).fill('1')
       await editor
+        .getByLabel('Tratamiento del ajuste', { exact: true })
+        .selectOption('loss')
+      await editor
         .getByLabel('Motivo del cambio de cantidad', { exact: true })
         .fill('Nueva salida desde edición')
       await editor
@@ -399,6 +409,9 @@ try {
         await dialog.getByPlaceholder('Nombre, marca o código…').fill('QA-0004')
         await dialog.getByRole('option').first().click()
         await dialog.getByLabel('Cantidad', { exact: true }).fill(quantity)
+        await dialog
+          .getByLabel('Tratamiento del ajuste', { exact: true })
+          .selectOption('loss')
         await dialog.getByLabel('Motivo', { exact: true }).fill(reason)
         return dialog
       }
@@ -471,6 +484,9 @@ try {
       await recreatedStock
         .getByLabel('Unidades a mover', { exact: true })
         .fill('5')
+      await recreatedStock
+        .getByLabel('Tratamiento del ajuste', { exact: true })
+        .selectOption('loss')
       await recreatedStock
         .getByLabel('Motivo del cambio de cantidad', { exact: true })
         .fill('Salida alternativa bloqueada')

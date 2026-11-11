@@ -143,6 +143,9 @@ try {
         'cancelar conserva ruta',
       )
       await nameInput.fill(original)
+      await page
+        .getByRole('button', { name: 'Costo de inventario', exact: true })
+        .click({ trial: true })
       equal(await warnsReload(), false, 'deshacer modificación elimina aviso')
       await nameInput.fill(changed)
       await page
@@ -379,6 +382,9 @@ try {
       await dialog.getByRole('option').first().click()
       await dialog.getByLabel('Cantidad', { exact: true }).fill('21')
       await dialog
+        .getByLabel('Cuenta de contrapartida', { exact: true })
+        .selectOption('3110-001')
+      await dialog
         .getByLabel('Motivo', { exact: true })
         .fill('Cantidad escrita por error')
       await dialog
@@ -397,6 +403,9 @@ try {
         0,
       )
       await dialog.getByLabel('Cantidad', { exact: true }).fill('1')
+      await dialog
+        .getByLabel('Tratamiento del ajuste', { exact: true })
+        .selectOption('loss')
       await dialog
         .getByRole('button', { name: 'Confirmar movimiento', exact: true })
         .click()
@@ -584,6 +593,10 @@ try {
         'operator',
         'superadmin',
       ]) {
+        // Retira la pantalla anterior y deja terminar sus consultas antes de
+        // cambiar el rol compartido por las solicitudes de este fixture.
+        await page.goto(base + '/login')
+        await page.waitForLoadState('networkidle')
         await fixture.db.exec('reset role')
         await fixture.db.query(
           'update public.staff_members set role=$2 where user_id=$1',

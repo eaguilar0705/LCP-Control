@@ -387,3 +387,36 @@ test('template is a real XLSX with instructions and no business data examples', 
   // The writer stores XML without compression, so real data examples would be visible here.
   assert.doesNotMatch(text, /SKU-001|cliente@example.com|Casa SA/)
 })
+
+test('permite importar cuentas de orden bajo el grupo 7 y rechaza numeraciones ajenas al catálogo', () => {
+  const result = parseBusinessImportRows([
+    sheet(
+      'Cuentas',
+      ['codigo', 'nombre', 'padre'],
+      ['7000-001', 'Ajustes de inventario', '7000'],
+      ['7000-001-001', 'Correcciones de tienda', '7000-001'],
+    ),
+  ])
+  assert.deepEqual(result.problems, [])
+  assert.deepEqual(result.data.accounts, [
+    { code: '7000-001', name: 'Ajustes de inventario', parent: '7000' },
+    {
+      code: '7000-001-001',
+      name: 'Correcciones de tienda',
+      parent: '7000-001',
+    },
+  ])
+  for (const code of ['8000-001', '9000', '7000-01', '7000-001-001-001-001']) {
+    assert.ok(
+      parseBusinessImportRows([
+        sheet(
+          'Cuentas',
+          ['codigo', 'nombre', 'padre'],
+          [code, 'Cuenta inválida', '7000'],
+        ),
+      ]).problems.some((problem) =>
+        problem.message.includes('codigo de cuenta inválido'),
+      ),
+    )
+  }
+})

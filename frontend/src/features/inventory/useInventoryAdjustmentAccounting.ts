@@ -61,7 +61,7 @@ export function useInventoryAdjustmentAccounting(
       a.active &&
       a.postable &&
       (a.code === '5150' ||
-        (['asset', 'liability', 'equity'].includes(a.bucket) &&
+        (['asset', 'liability', 'equity', 'memorandum'].includes(a.bucket) &&
           a.code !== '1130' &&
           accountCurrency(a.code) !== 'USD')),
   )
