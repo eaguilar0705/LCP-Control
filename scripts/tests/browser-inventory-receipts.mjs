@@ -106,7 +106,8 @@ try {
           (select count(*)::int from public.purchase_shipments) purchases,
           (select count(*)::int from public.inventory_movements) movements,
           (select coalesce(sum(debit),0)::float8 from private.operational_postings where source='purchase' and account='1130') "inventoryDebit",
-          (select coalesce(sum(credit),0)::float8 from private.operational_postings where source='purchase' and account='2111') "supplierCredit"`,
+          (select coalesce(sum(credit),0)::float8 from private.operational_postings where source='purchase' and account='2111') "supplierCredit",
+          (select coalesce(sum(credit_nio),0)::float8 from public.journal_lines where account='1160-001') "advanceCredit"`,
         [product],
       )
       await identity(fixture.db, admin)
@@ -212,7 +213,13 @@ try {
       return receipt(reference)
     }
     try {
+      const applyAdvance = width === 390
       await fixture.db.exec('reset role')
+      await fixture.db
+        .exec(`insert into public.ledger_accounts(code,name,parent,bucket,nature)
+        values ('1160','Anticipo para gastos','1100','asset','debit'),
+        ('1160-001','Pedido en tránsito','1160','asset','debit')
+        on conflict(code) do nothing`)
       await fixture.db.query(
         'update public.inventory_balances set quantity=0 where product_id=$1',
         [product],
@@ -297,7 +304,13 @@ try {
         .filter({ hasText: /Selecciona cómo se pagó/i })
         .waitFor()
       equal(await stockAndLedger(), before, 'no registra sin forma de pago')
-      await dialog.getByLabel('Pago', { exact: true }).selectOption('credito')
+      await dialog
+        .getByLabel('Pago', { exact: true })
+        .selectOption(applyAdvance ? 'advance' : 'credito')
+      if (applyAdvance)
+        await dialog
+          .getByLabel('Cuenta del anticipo', { exact: true })
+          .selectOption('1160-001')
       await dialog
         .getByLabel('Costo por unidad (C$)', { exact: true })
         .fill('220')
@@ -353,8 +366,9 @@ try {
           cost: 240,
           purchases: 1,
           movements: before.movements + 1,
-          inventoryDebit: 960,
-          supplierCredit: 960,
+          inventoryDebit: applyAdvance ? 0 : 960,
+          supplierCredit: applyAdvance ? 0 : 960,
+          advanceCredit: applyAdvance ? 960 : 0,
         },
         'la revisión crea una sola compra con el costo y el envío revisados',
       )

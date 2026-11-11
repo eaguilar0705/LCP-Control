@@ -743,6 +743,36 @@ try {
 
   // El cierre no se reabre al recibir/cancelar; los guardias de compra siguen vigentes.
   await as(admin)
+  await owner(`insert into public.ledger_accounts(code,name,parent,bucket,nature)
+    values ('1160','Anticipo para gastos','1100','asset','debit'),
+    ('1160-001','Pedido en tránsito','1160','asset','debit')
+    on conflict(code) do nothing`)
+  const advanceReceipt = receiptInput({ reference: 'PEDIDO-PAGADO' })
+  const advanceId = await rpc(db, 'record_inventory_receipt', advanceReceipt)
+  const advance = postInput(advanceId, advanceReceipt, {
+    advanceAccount: '1160-001',
+    purchase: purchase(advanceReceipt, { account: 'pending' }),
+  })
+  await unchanged(
+    'post_inventory_receipt',
+    { ...advance, advanceAccount: '1120-001' },
+    /cuenta activa de anticipos/i,
+  )
+  const beforeAdvance = await ledger()
+  const advanceShipment = await rpc(db, 'post_inventory_receipt', advance)
+  const afterAdvance = await ledger()
+  const delta = (code) =>
+    Number(
+      (
+        account(afterAdvance, code).closing -
+        account(beforeAdvance, code).closing
+      ).toFixed(2),
+    )
+  eq(delta('1130'), 1150)
+  eq(delta('1160-001'), -1150)
+  for (const code of ['1110-001', '1120-001', '2111']) eq(delta(code), 0)
+  eq(await rpc(db, 'post_inventory_receipt', advance), advanceShipment)
+  eq(await ledger(), afterAdvance)
   const day = (await one("select public.get_business_day('2026-11-06') r")).r
   await rpc(db, 'close_business_day', {
     requestId: crypto.randomUUID(),

@@ -19,6 +19,8 @@ import { formatCurrency, formatDate } from '../../lib/format'
 import { labels, type InventoryItem } from '../../lib/domain'
 import { PurchaseDialog } from '../pricing/CostPanel'
 import { ReceiptEditor } from '../pricing/ReceiptEditor'
+import { journalRpc } from '../accounting/journalService'
+import type { LedgerAccount } from '../accounting/journalModel'
 import { purchaseBankName } from '../pricing/purchaseService'
 import { InventoryReceiptDialog } from './InventoryReceiptDialog'
 import {
@@ -223,7 +225,9 @@ function ReceiptWorkspace({
                           ? purchaseBankName(receipt.posting.bankLedgerAccount)
                           : receipt.posting.account === 'credito'
                             ? 'Crédito del proveedor'
-                            : 'Caja'}
+                            : receipt.posting.account === 'pending'
+                              ? 'Clasificación contable'
+                              : 'Caja'}
                         {receipt.posting.currency === 'USD' &&
                           ` · tasa C$ ${receipt.posting.exchangeRate}`}
                         {receipt.posting.corrected &&
@@ -339,12 +343,24 @@ function ReviewReceipt({
 }) {
   const { inventoryService, productService, settingsService } = useServices()
   const load = useCallback(async () => {
-    const [inventory, pricing, rate] = await Promise.all([
+    const [inventory, pricing, rate, accounts] = await Promise.all([
       inventoryService.getInventory(true),
       productService.listPricing(),
       settingsService.getExchangeRate(),
+      journalRpc<LedgerAccount[]>('ledger_accounts_list', {}),
     ])
-    return { inventory, pricing: pricing.rows, rate: rate?.usdToNio ?? null }
+    return {
+      inventory,
+      pricing: pricing.rows,
+      rate: rate?.usdToNio ?? null,
+      advanceAccounts: accounts.filter(
+        (account) =>
+          account.active &&
+          account.postable &&
+          account.bucket === 'asset' &&
+          (account.code === '1160' || account.parent === '1160'),
+      ),
+    }
   }, [inventoryService, productService, settingsService])
   const { data, loading, error, retry } = useQuery(load)
   if (!data || loading || error)
@@ -364,6 +380,7 @@ function ReviewReceipt({
       catalogRate={data.rate}
       initialProduct=""
       reviewingReceipt={receipt}
+      advanceAccounts={data.advanceAccounts}
       onClose={onClose}
       onRecorded={onRecorded}
     />

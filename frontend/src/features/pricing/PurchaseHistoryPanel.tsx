@@ -185,7 +185,9 @@ function PurchaseHistory({
                   </strong>
                   <p>
                     {row.account === 'pending'
-                      ? 'Pendiente de clasificar en Contabilidad'
+                      ? row.classification_entry_id
+                        ? 'Consultar clasificación en Contabilidad'
+                        : 'Pendiente de clasificar en Contabilidad'
                       : row.account === 'banco'
                         ? purchaseBankName(row.bank_ledger_account)
                         : row.account === 'credito'

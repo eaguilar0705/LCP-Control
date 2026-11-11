@@ -28,7 +28,7 @@ export interface InventoryReceiptRecord extends Omit<
     exchangeRate: number
     goodsAmount: number
     shippingAmount: number
-    account: 'caja' | 'banco' | 'credito'
+    account: ShipmentInput['account']
     bankLedgerAccount: string | null
     corrected: boolean
   } | null
@@ -43,6 +43,7 @@ export interface PostInventoryReceiptInput {
   requestId: string
   receiptId: string
   expectedRevision: number
+  advanceAccount?: string
   purchase: Omit<ShipmentInput, 'requestId'>
 }
 

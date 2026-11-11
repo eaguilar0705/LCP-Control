@@ -72,6 +72,7 @@ export function PurchaseDialog({
   initialNote = '',
   correcting,
   reviewingReceipt,
+  advanceAccounts = [],
   onClose,
   onRecorded,
 }: {
@@ -84,6 +85,7 @@ export function PurchaseDialog({
   initialNote?: string
   correcting?: PurchaseHistoryRecord
   reviewingReceipt?: InventoryReceiptRecord
+  advanceAccounts?: { code: string; name: string; displayCode?: string }[]
   onClose: () => void
   onRecorded: (message: string) => void
 }) {
@@ -95,6 +97,7 @@ export function PurchaseDialog({
         correctionReason?: string
         refundConfirmed?: boolean
         paymentTreatment?: PurchasePaymentTreatment
+        advanceAccount?: string
       },
       unknown
     >(
@@ -102,6 +105,7 @@ export function PurchaseDialog({
         correctionReason,
         refundConfirmed,
         paymentTreatment,
+        advanceAccount,
         requestId,
         ...purchase
       }) =>
@@ -120,6 +124,7 @@ export function PurchaseDialog({
                 receiptId: reviewingReceipt.id,
                 expectedRevision: reviewingReceipt.revision,
                 purchase,
+                ...(advanceAccount ? { advanceAccount } : {}),
               })
             : accountingService.recordShipment({ ...purchase, requestId }),
       {
@@ -147,9 +152,10 @@ export function PurchaseDialog({
   const [agency, setAgency] = useState(
     correcting?.agency ?? reviewingReceipt?.agency ?? '',
   )
-  const [payment, setPayment] = useState<ShipmentPayment | ''>(
+  const [payment, setPayment] = useState<ShipmentPayment | 'advance' | ''>(
     correcting?.account ?? (reviewingReceipt ? '' : 'pending'),
   )
+  const [advanceAccount, setAdvanceAccount] = useState('')
   const [currency, setCurrency] = useState<Currency>(
     correcting?.currency ?? reviewingReceipt?.currency ?? 'NIO',
   )
@@ -244,6 +250,7 @@ export function PurchaseDialog({
     !!payment &&
     payment !== 'credito' &&
     payment !== 'pending' &&
+    payment !== 'advance' &&
     !!incurredOn &&
     incurredOn < today
   const dateProblem =
@@ -288,6 +295,13 @@ export function PurchaseDialog({
       return
     }
     if (
+      payment === 'advance' &&
+      !advanceAccounts.some((a) => a.code === advanceAccount)
+    ) {
+      setFailure('Selecciona la cuenta donde se registró el anticipo.')
+      return
+    }
+    if (
       payment === 'banco' &&
       !purchaseBanks.some(
         (item) => item.code === bank && item.currency === currency,
@@ -309,6 +323,7 @@ export function PurchaseDialog({
     if (
       payment !== 'credito' &&
       payment !== 'pending' &&
+      payment !== 'advance' &&
       incurredOn < submitToday &&
       confirmedPaymentDate !== dateKey
     ) {
@@ -328,7 +343,8 @@ export function PurchaseDialog({
         currency,
         exchangeRate: rate,
         shippingAmount: round2(typed(shipping)),
-        account: payment,
+        account: payment === 'advance' ? 'pending' : payment,
+        ...(payment === 'advance' ? { advanceAccount } : {}),
         ...(payment === 'banco' ? { bankLedgerAccount: bank } : {}),
         ...(correcting
           ? {
@@ -484,12 +500,17 @@ export function PurchaseDialog({
               label="Pago"
               value={payment}
               onChange={(event) => {
-                setPayment(event.target.value as ShipmentPayment)
+                setPayment(
+                  event.target.value as ShipmentPayment | 'advance' | '',
+                )
                 setFailure('')
               }}
             >
               {reviewingReceipt && (
                 <option value="">Seleccionar pago o crédito</option>
+              )}
+              {reviewingReceipt && advanceAccounts.length > 0 && (
+                <option value="advance">Aplicar anticipo</option>
               )}
               {(Object.keys(shipmentPayments) as ShipmentPayment[])
                 .filter((id) => !reviewingReceipt || id !== 'pending')
@@ -499,6 +520,20 @@ export function PurchaseDialog({
                   </option>
                 ))}
             </Select>
+            {payment === 'advance' && (
+              <Select
+                label="Cuenta del anticipo"
+                value={advanceAccount}
+                onChange={(event) => setAdvanceAccount(event.target.value)}
+              >
+                <option value="">Seleccionar cuenta</option>
+                {advanceAccounts.map((account) => (
+                  <option key={account.code} value={account.code}>
+                    {account.displayCode ?? account.code} · {account.name}
+                  </option>
+                ))}
+              </Select>
+            )}
             <Select
               label="Moneda de la compra"
               value={currency}
