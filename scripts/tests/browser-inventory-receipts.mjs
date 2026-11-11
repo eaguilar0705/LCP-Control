@@ -422,6 +422,15 @@ try {
         'la corrección de compras contabilizadas requiere SuperAdmin',
       )
       await role('superadmin')
+      const extraProduct = 'aaaaaaaa-aaaa-4aaa-8aaa-000000000002'
+      if (width === 390) {
+        await fixture.db.exec('reset role')
+        await fixture.db.query(
+          "update public.inventory_balances set quantity=null where product_id=$1 and location='warehouse'",
+          [extraProduct],
+        )
+        await identity(fixture.db, admin)
+      }
       await login()
       await navigate('/inventory')
       await page
@@ -438,7 +447,88 @@ try {
       await editor
         .getByRole('button', { name: 'Revisar corrección', exact: true })
         .waitFor()
-      await editor.getByRole('button', { name: 'Cerrar', exact: true }).click()
+      if (width === 390) {
+        const firstValue = editor.getByLabel(
+          'Valor final del inventario · QA-0001 (C$)',
+          { exact: true },
+        )
+        await firstValue.fill('964')
+        await editor.getByLabel('Costo unitario 1', { exact: true }).fill('221')
+        await editor
+          .getByRole('button', { name: 'Agregar perfume', exact: true })
+          .click()
+        await editor
+          .getByLabel('Perfume 2', { exact: true })
+          .selectOption(extraProduct)
+        await editor.getByLabel('Costo unitario 2', { exact: true }).fill('100')
+        await editor
+          .getByLabel('Buscar perfume en la recepción', { exact: true })
+          .fill('QA-0002')
+        equal(
+          await firstValue.count(),
+          0,
+          'la búsqueda filtra los renglones por SKU',
+        )
+        await editor
+          .getByRole('button', { name: 'Cerrar', exact: true })
+          .click()
+        await page
+          .getByLabel('Recepción ' + references.posted, { exact: true })
+          .getByRole('button', { name: 'Editar recepción', exact: true })
+          .click()
+        equal(
+          await firstValue.inputValue(),
+          '964',
+          'el valor digitado sobrevive a editar otro renglón y reabrir',
+        )
+        equal(
+          await editor
+            .getByLabel('Costo unitario 2', { exact: true })
+            .inputValue(),
+          '100',
+        )
+        const countButton = editor.getByRole('button', {
+          name: 'Registrar conteo',
+          exact: true,
+        })
+        await countButton.click()
+        const countDialog = page.getByRole('dialog', {
+          name: 'Registrar conteo inicial',
+          exact: true,
+        })
+        await countDialog
+          .getByLabel('Unidades contadas', { exact: true })
+          .fill('0')
+        await countDialog
+          .getByRole('button', { name: 'Guardar conteo', exact: true })
+          .click()
+        await countDialog
+          .waitFor({ state: 'hidden', timeout: 6000 })
+          .catch(async () => {
+            throw new Error(await countDialog.innerText())
+          })
+        await countButton.waitFor({ state: 'hidden' })
+        equal(
+          await firstValue.inputValue(),
+          '964',
+          'registrar el conteo conserva el borrador',
+        )
+        await editor
+          .getByLabel('Valor final del inventario · QA-0002 (C$)', {
+            exact: true,
+          })
+          .fill('2100')
+        await editor
+          .getByRole('button', { name: 'Revisar corrección', exact: true })
+          .click()
+        await editor
+          .getByRole('button', { name: 'Confirmar corrección', exact: true })
+          .click()
+      } else {
+        await editor
+          .getByRole('button', { name: 'Cerrar', exact: true })
+          .click()
+      }
       await editor.waitFor({ state: 'hidden' })
       await page.screenshot({
         path: `${output}/final-${width}.png`,
