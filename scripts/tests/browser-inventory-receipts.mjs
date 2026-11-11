@@ -400,6 +400,32 @@ try {
         .getByText('Cancelada', { exact: true })
         .waitFor()
       await healthy('cola final ' + width)
+      equal(
+        await page
+          .getByRole('button', { name: 'Editar recepción', exact: true })
+          .count(),
+        0,
+        'la corrección de compras contabilizadas requiere SuperAdmin',
+      )
+      await role('superadmin')
+      await login()
+      await navigate('/inventory')
+      await page
+        .getByLabel('Estado de recepciones', { exact: true })
+        .selectOption('posted')
+      await page
+        .getByLabel('Recepción ' + references.posted, { exact: true })
+        .getByRole('button', { name: 'Editar recepción', exact: true })
+        .click()
+      const editor = page.getByRole('dialog', {
+        name: 'Editar recepción de mercancía',
+        exact: true,
+      })
+      await editor
+        .getByRole('button', { name: 'Revisar corrección', exact: true })
+        .waitFor()
+      await editor.getByRole('button', { name: 'Cerrar', exact: true }).click()
+      await editor.waitFor({ state: 'hidden' })
       await page.screenshot({
         path: `${output}/final-${width}.png`,
         fullPage: true,

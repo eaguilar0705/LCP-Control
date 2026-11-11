@@ -20,6 +20,11 @@
   margin: 0.35rem 0;
   overflow-wrap: anywhere;
 }
+.purchase-history-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
 .purchase-history-detail {
   grid-column: 1 / -1;
   min-width: 0;
@@ -59,8 +64,5 @@
 @media (max-width: 600px) {
   .purchase-history-row {
     grid-template-columns: minmax(0, 1fr);
-  }
-  .purchase-history-row > button {
-    justify-self: start;
   }
 }

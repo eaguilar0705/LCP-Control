@@ -18,6 +18,7 @@ import { errorMessage } from '../../lib/errors'
 import { formatCurrency, formatDate } from '../../lib/format'
 import { labels, type InventoryItem } from '../../lib/domain'
 import { PurchaseDialog } from '../pricing/CostPanel'
+import { ReceiptEditor } from '../pricing/ReceiptEditor'
 import { purchaseBankName } from '../pricing/purchaseService'
 import { InventoryReceiptDialog } from './InventoryReceiptDialog'
 import {
@@ -82,6 +83,7 @@ function ReceiptWorkspace({
   }, [status, cursor, refreshKey])
   const { data, loading, error, retry, refresh } = useQuery(load)
   const [creating, setCreating] = useState(false)
+  const [editingShipmentId, setEditingShipmentId] = useState<string>()
   const [selected, setSelected] = useState<InventoryReceiptRecord>()
   const [cancelling, setCancelling] = useState<InventoryReceiptRecord>()
   const [message, setMessage] = useState('')
@@ -92,6 +94,7 @@ function ReceiptWorkspace({
       setPrevious([])
     }
     setCreating(false)
+    setEditingShipmentId(undefined)
     setSelected(undefined)
     setCancelling(undefined)
     setMessage(text)
@@ -231,6 +234,16 @@ function ReceiptWorkspace({
                       El costo y pago vigentes se consultan en Inventario →
                       Compras.
                     </p>
+                    {role === 'superadmin' && receipt.shipmentId && (
+                      <Button
+                        variant="secondary"
+                        onClick={() =>
+                          setEditingShipmentId(receipt.shipmentId ?? undefined)
+                        }
+                      >
+                        Editar recepción
+                      </Button>
+                    )}
                   </div>
                 )}
                 {receipt.cancelReason && (
@@ -288,6 +301,13 @@ function ReceiptWorkspace({
           items={items}
           onClose={() => setCreating(false)}
           onRecorded={saved}
+        />
+      )}
+      {editingShipmentId && (
+        <ReceiptEditor
+          id={editingShipmentId}
+          onClose={() => setEditingShipmentId(undefined)}
+          onSaved={() => saved('Recepción corregida.')}
         />
       )}
       {selected && (

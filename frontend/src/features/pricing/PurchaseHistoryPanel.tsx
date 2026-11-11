@@ -193,14 +193,27 @@ function PurchaseHistory({
                           : 'Caja'}
                   </p>
                 </div>
-                <Button
-                  variant="secondary"
-                  onClick={() =>
-                    setSelected(selected?.id === row.id ? undefined : row)
-                  }
-                >
-                  {selected?.id === row.id ? 'Ocultar detalle' : 'Ver compra'}
-                </Button>
+                <div className="purchase-history-actions">
+                  <Button
+                    variant="secondary"
+                    onClick={() =>
+                      setSelected(selected?.id === row.id ? undefined : row)
+                    }
+                  >
+                    {selected?.id === row.id ? 'Ocultar detalle' : 'Ver compra'}
+                  </Button>
+                  {!row.correction && role === 'superadmin' && (
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        setSelected(row)
+                        setEditingReceipt(true)
+                      }}
+                    >
+                      Editar recepción completa
+                    </Button>
+                  )}
+                </div>
                 {selected?.id === row.id && (
                   <div className="purchase-history-detail">
                     <div className="table-scroll">
@@ -244,14 +257,6 @@ function PurchaseHistory({
                       )}
                       {row.note ? ` · ${row.note}` : ''}
                     </p>
-                    {!row.correction && role === 'superadmin' && (
-                      <Button
-                        variant="secondary"
-                        onClick={() => setEditingReceipt(true)}
-                      >
-                        Editar recepción completa
-                      </Button>
-                    )}
                     {row.correction ? (
                       <div className="purchase-correction-record">
                         <strong>
