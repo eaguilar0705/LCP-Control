@@ -497,7 +497,7 @@ try {
           exact: true,
         })
         await countDialog
-          .getByLabel('Unidades contadas', { exact: true })
+          .getByLabel('Unidades antes de esta corrección', { exact: true })
           .fill('0')
         await countDialog
           .getByRole('button', { name: 'Guardar conteo', exact: true })

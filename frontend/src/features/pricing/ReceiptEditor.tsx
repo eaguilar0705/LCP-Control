@@ -331,6 +331,7 @@ function ReceiptForm({
     event.preventDefault()
     if (busy) return
     if (!uncertain && missingCounts.length) {
+      setSearch('')
       setError(
         'Registra los conteos que faltan antes de revisar la corrección.',
       )
@@ -624,10 +625,32 @@ function ReceiptForm({
                 <strong>
                   {p.sku} · {p.name}
                 </strong>
+                {(p.store === null || p.warehouse === null) && (
+                  <ul className="receipt-products">
+                    {missingCounts
+                      .filter((item) => item.product.id === id)
+                      .map((item) => (
+                        <li key={`${item.product.id}:${item.location}`}>
+                          Falta el conteo en {labels.location[item.location]}{' '}
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            disabled={busy || uncertain}
+                            onClick={() => {
+                              onPending(true)
+                              setCount(item)
+                            }}
+                          >
+                            Registrar conteo
+                          </Button>
+                        </li>
+                      ))}
+                  </ul>
+                )}
                 <p>
                   {p.store === null || p.warehouse === null
                     ? 'Conteo pendiente'
-                    : `Existencias actuales: ${p.store + p.warehouse} · Después: ${p.store + p.warehouse + delta}`}
+                    : `Antes de corregir: ${p.store + p.warehouse} · Cambio de esta recepción: ${delta > 0 ? '+' : ''}${delta} · Después: ${p.store + p.warehouse + delta}`}
                   {currentValue(p) !== null &&
                     ` · Valor actual: ${formatCurrency(currentValue(p)!, 'NIO')}`}
                 </p>
@@ -732,30 +755,6 @@ function ReceiptForm({
           <p role="alert" className="inline-error">
             {error}
           </p>
-        )}
-        {missingCounts.length > 0 && (
-          <div className="receipt-value-review">
-            <strong>Conteos pendientes</strong>
-            <ul className="receipt-products">
-              {missingCounts.map((item) => (
-                <li key={`${item.product.id}:${item.location}`}>
-                  {item.product.sku} · {item.product.name} ·{' '}
-                  {labels.location[item.location]}{' '}
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={busy || uncertain}
-                    onClick={() => {
-                      onPending(true)
-                      setCount(item)
-                    }}
-                  >
-                    Registrar conteo
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          </div>
         )}
         <div className="form-actions">
           <Button type="submit" disabled={busy}>

@@ -79,7 +79,7 @@ export function ReceiptInitialCount({
           {productName} · {labels.location[location]}
         </p>
         <Input
-          label="Unidades contadas"
+          label="Unidades antes de esta corrección"
           type="number"
           min="0"
           max="1000000"
@@ -89,6 +89,11 @@ export function ReceiptInitialCount({
           value={quantity}
           onChange={(event) => setQuantity(event.target.value)}
         />
+        <p>
+          Excluye las unidades que vas a agregar con esta corrección. Si todas
+          las unidades de esta ubicación pertenecen a la entrada que estás
+          agregando, escribe 0.
+        </p>
         {error && (
           <p role="alert" className="inline-error">
             {error}
