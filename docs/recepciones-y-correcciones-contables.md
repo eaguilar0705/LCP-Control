@@ -22,11 +22,11 @@ Los conteos que realmente representan sobrantes mantienen su tratamiento origina
 
 ## Monedas y borradores
 
-Las compras y recepciones muestran el total en su moneda original y su equivalente. Para compras en córdobas, el equivalente USD se calcula con el tipo de cambio configurado en Negocio, sin fijar una tasa en el código. Las compras nuevas toman esa tasa por defecto; la tasa contable de un importe NIO continúa siendo 1.
+Las compras y recepciones muestran el total en su moneda original y su equivalente. Para compras en córdobas, el equivalente USD se calcula con el tipo de cambio **contable** configurado en Negocio. Las compras nuevas toman esa tasa por defecto; la tasa contable de un importe NIO continúa siendo 1. La tasa de inventario se configura por separado para los precios de venta; ver [tasas independientes](tasas-de-inventario-y-contabilidad.md).
 
 El equivalente USD se muestra con dos decimales y nunca se usa para recalcular el importe original. El costo de compra no se redondea al dólar entero, como sí ocurre con ciertos precios de venta. Una compra USD ya registrada conserva su tasa histórica; **Usar tipo de cambio actual** permite elegir expresamente la vigente al corregirla.
 
-En **Contabilidad → Balanza de comprobación / Estado de resultado / Estado de situación financiera**, **Moneda del reporte** permite consultar los mismos saldos en NIO o su equivalente USD con la tasa vigente de Negocio. El encabezado y el Excel indican la moneda y la tasa utilizada. La exportación conserva los valores numéricos sin redondeo intermedio; su presentación usa dos decimales.
+En **Contabilidad → Balanza de comprobación / Estado de resultado / Estado de situación financiera**, **Moneda del reporte** permite consultar los mismos saldos en NIO o su equivalente USD con la tasa contable vigente de Negocio. El encabezado y el Excel indican la moneda y la tasa utilizada. La exportación conserva los valores numéricos sin redondeo intermedio; su presentación usa dos decimales.
 
 La consulta USD no revaloriza existencias ni sustituye costos históricos de ventas. Por ejemplo, C$59,063.46 equivalen a US$1,596.31 con tasa 37. Si una cuenta externa usa otro costo de origen, cambiar la moneda del reporte no corrige esa diferencia: se debe conciliar el detalle y registrar la corrección correspondiente. Sin una tasa válida se mantiene disponible el reporte NIO y se indica que falta configurar el cambio.
 

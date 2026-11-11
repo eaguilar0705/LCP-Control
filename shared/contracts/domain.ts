@@ -169,8 +169,12 @@ export interface BusinessSettings {
  * registrarse. Cambiarla aquí no altera ninguna operación ya emitida.
  */
 export interface ExchangeRate {
+  /** Tasa comercial para calcular y convertir precios del catálogo. */
   usdToNio: number
   updatedAt: string | null
+  /** Tasa propuesta para operaciones contables y equivalencias de estados. */
+  accountingUsdToNio?: number | null
+  accountingUpdatedAt?: string | null
 }
 
 export interface CustomerRecord {

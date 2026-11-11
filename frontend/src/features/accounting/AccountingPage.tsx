@@ -13,6 +13,7 @@ import type { Currency } from '../../lib/domain'
 import { validStatementRate } from './statementCurrency'
 import { useServices } from '../../services/useServices'
 import { useQuery } from '../../lib/useQuery'
+import { accountingExchangeRate } from '../../lib/exchangeRates'
 import { errorMessage } from '../../lib/errors'
 import { adjustRange, localDay, requestedReportDay } from '../reports/model'
 import { accountingViews } from './accountingModel'
@@ -81,7 +82,7 @@ export function AccountingPage() {
     return {
       ledger,
       name: business?.name ?? 'La Casa del Perfume',
-      exchangeRate: rate?.usdToNio ?? null,
+      exchangeRate: accountingExchangeRate(rate),
     }
   }, [range, salesService, settingsService])
   const { data, error, loading, retry, refresh } = useQuery(load)
@@ -193,7 +194,8 @@ export function AccountingPage() {
           </div>
           {isStatement && data && !canConvert && (
             <p role="status" className="inline-error">
-              Configura el tipo de cambio para consultar en dólares.
+              Configura el tipo de cambio contable en Negocio para consultar en
+              dólares.
             </p>
           )}
           {failure && (

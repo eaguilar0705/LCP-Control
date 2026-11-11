@@ -22,7 +22,7 @@ export function statementCurrency({
     currency,
     label:
       currency === 'USD'
-        ? `USD equivalentes · Tasa del sistema: C$${exchangeRate} por US$1`
+        ? `USD equivalentes · Tasa contable: C$${exchangeRate} por US$1`
         : 'NIO',
     // Sin redondeo intermedio ni reconversión del equivalente al libro contable.
     convert: (value: number | null) =>

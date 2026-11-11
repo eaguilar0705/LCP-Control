@@ -99,7 +99,8 @@ export function createServices(provider: DataProvider) {
     },
     settingsService: {
       getExchangeRate: () => provider.getExchangeRate(),
-      saveExchangeRate: (rate: number) => provider.saveExchangeRate(rate),
+      saveExchangeRate: (rate: number, purpose?: 'catalog' | 'accounting') =>
+        provider.saveExchangeRate(rate, purpose),
     },
     salesService: {
       getTodaySummary: () => provider.getTodaySummary(),

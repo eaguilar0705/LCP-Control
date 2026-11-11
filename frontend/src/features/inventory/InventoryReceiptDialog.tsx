@@ -8,6 +8,7 @@ import { useServices } from '../../services/useServices'
 import { useQuery } from '../../lib/useQuery'
 import { createIdempotentOperation } from '../../lib/idempotentOperation'
 import { errorMessage } from '../../lib/errors'
+import { accountingExchangeRate } from '../../lib/exchangeRates'
 import {
   labels,
   type Currency,
@@ -73,7 +74,7 @@ export function InventoryReceiptDialog({
   const [currency, setCurrency] = useState<Currency>('NIO')
   const [rateText, setRateText] = useState<string | null>(null)
   const rateValue =
-    rateText ?? (catalogRate ? String(catalogRate.usdToNio) : '')
+    rateText ?? String(accountingExchangeRate(catalogRate) ?? '')
   const [shipping, setShipping] = useState('0')
   const [supplier, setSupplier] = useState('')
   const [agency, setAgency] = useState('')

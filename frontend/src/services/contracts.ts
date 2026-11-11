@@ -75,7 +75,10 @@ export interface DataProvider {
   getBusiness(): Promise<BusinessSettings>
   /** `null` mientras nadie haya registrado una tasa. */
   getExchangeRate(): Promise<ExchangeRate | null>
-  saveExchangeRate(rate: number): Promise<void>
+  saveExchangeRate(
+    rate: number,
+    purpose?: 'catalog' | 'accounting',
+  ): Promise<void>
   listCustomers(): Promise<CustomerRecord[]>
   /**
    * Documentos de un tipo emitidos en el periodo (días de Managua, ambos

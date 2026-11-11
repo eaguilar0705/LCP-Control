@@ -51,9 +51,10 @@ try {
       }, path)
     const setRate = async (rate) => {
       await fixture.db.exec('reset role')
-      await fixture.db.query('update public.exchange_rates set usd_to_nio=$1', [
-        rate,
-      ])
+      await fixture.db.query(
+        'update public.exchange_rates set accounting_usd_to_nio=$1',
+        [rate],
+      )
       await identity(fixture.db, admin)
     }
     const healthy = async () => {

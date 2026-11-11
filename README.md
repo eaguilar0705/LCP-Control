@@ -2,6 +2,8 @@
 
 Código fuente de la aplicación de inventario, facturación, proformas y contabilidad, con React, TypeScript, Vite y Supabase.
 
+En **Negocio** se configuran por separado las tasas de **inventario y precios** (36.6243) y **contabilidad** (37). La primera recalcula el catálogo; la segunda se propone en operaciones nuevas y convierte los estados a USD. Ver [uso, activación y comprobaciones](docs/tasas-de-inventario-y-contabilidad.md).
+
 En **Inventario**, al abrir la ficha de un perfume, Administración puede consultar su **Historial de ventas**: fecha y hora, cliente, factura, unidades, precio unitario neto y total en la moneda de la venta. También está disponible en **Editar perfume**. Las devoluciones, facturas anuladas y productos retirados al corregir una factura se identifican expresamente. Requiere `20261111010000_historico_ventas_por_producto.sql`; ver [uso y activación](docs/historico-ventas-por-producto.md).
 
 Las compras pendientes se completan en **Contabilidad → Comprobantes → Clasificar compra**: la primera cuenta queda fija en **Inventario de perfumes**, por el total recibido; se editan las contrapartidas de pago. La cuenta Compras por clasificar se retira del flujo y del catálogo. Aplicar la migración correspondiente antes de publicar la interfaz; ver [recepciones y correcciones contables](docs/recepciones-y-correcciones-contables.md).

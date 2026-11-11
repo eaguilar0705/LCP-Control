@@ -12,6 +12,7 @@ import {
 import { useServices } from '../../services/useServices'
 import { useAccess } from '../../app/AccessContext'
 import { useQuery } from '../../lib/useQuery'
+import { accountingExchangeRate } from '../../lib/exchangeRates'
 import { errorMessage } from '../../lib/errors'
 import { formatCurrency, formatDate } from '../../lib/format'
 import { createIdempotentOperation } from '../../lib/idempotentOperation'
@@ -335,7 +336,7 @@ export function RecordDialog({
   const rate =
     currency === 'NIO'
       ? 1
-      : Number(rateText || (savedRate ? String(savedRate.usdToNio) : ''))
+      : Number(rateText || (accountingExchangeRate(savedRate) ?? ''))
   const amount = Number(amountText)
   const matchingBanks = bankAccounts?.filter((a) =>
     accountAcceptsCurrency(a.code, currency),
@@ -675,9 +676,7 @@ export function RecordDialog({
                 min="0.000001"
                 step="0.000001"
                 required
-                value={
-                  rateText || (savedRate ? String(savedRate.usdToNio) : '')
-                }
+                value={rateText || (accountingExchangeRate(savedRate) ?? '')}
                 onChange={(event) => setRateText(event.target.value)}
               />
             )}

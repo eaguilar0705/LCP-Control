@@ -15,6 +15,7 @@ import { useServices } from '../../services/useServices'
 import { useQuery } from '../../lib/useQuery'
 import { can } from '../../lib/permissions'
 import { errorMessage } from '../../lib/errors'
+import { accountingExchangeRate } from '../../lib/exchangeRates'
 import { formatCurrency, formatDate } from '../../lib/format'
 import { createIdempotentOperation } from '../../lib/idempotentOperation'
 import { PurchaseDialog } from './CostPanel'
@@ -73,7 +74,7 @@ function PurchaseHistory({
       rows,
       inventory,
       pricing: pricing.rows,
-      rate: rate?.usdToNio ?? null,
+      rate: accountingExchangeRate(rate),
     }
   }, [cursor, inventoryService, productService, settingsService])
   const { data, loading, error, retry } = useQuery(load)
@@ -103,7 +104,7 @@ function PurchaseHistory({
       <PurchaseDialog
         inventory={data.inventory}
         pricing={data.pricing}
-        catalogRate={data.rate}
+        accountingRate={data.rate}
         initialProduct=""
         onClose={() => setAction(undefined)}
         onRecorded={saved}
@@ -114,7 +115,7 @@ function PurchaseHistory({
       <PurchaseDialog
         inventory={data.inventory}
         pricing={data.pricing}
-        catalogRate={data.rate}
+        accountingRate={data.rate}
         initialProduct={selected.lines[0]?.product_id ?? ''}
         correcting={selected}
         onClose={() => setAction(undefined)}

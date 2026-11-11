@@ -16,6 +16,7 @@ import { PurchaseAmounts } from './PurchaseAmounts'
 import { purchaseAmounts } from './purchase-amount-model'
 import { formatCurrency } from '../../lib/format'
 import { errorMessage } from '../../lib/errors'
+import { accountingExchangeRate } from '../../lib/exchangeRates'
 import { createIdempotentOperation } from '../../lib/idempotentOperation'
 import { useAccess } from '../../app/AccessContext'
 import { journalRpc } from '../accounting/journalService'
@@ -125,7 +126,7 @@ export function ReceiptEditor({
       }),
       settingsService.getExchangeRate(),
     ])
-    return { ...receipt, systemRate: rate?.usdToNio ?? null }
+    return { ...receipt, systemRate: accountingExchangeRate(rate) }
   }, [id, settingsService])
   const query = useQuery(load)
   const [pending, setPending] = useState(false)

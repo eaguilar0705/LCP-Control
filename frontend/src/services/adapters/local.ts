@@ -102,7 +102,12 @@ export const localWrites = {
   // La misma tasa con la que se cotizó el catálogo de muestra: el equivalente
   // que se enseña en pantalla tiene que dar el precio de la otra lista.
   async getExchangeRate() {
-    return { usdToNio: DEMO_EXCHANGE_RATE, updatedAt: null }
+    return {
+      usdToNio: DEMO_EXCHANGE_RATE,
+      updatedAt: null,
+      accountingUsdToNio: DEMO_EXCHANGE_RATE,
+      accountingUpdatedAt: null,
+    }
   },
   saveExchangeRate: async () => unavailable(),
   async listCustomers() {

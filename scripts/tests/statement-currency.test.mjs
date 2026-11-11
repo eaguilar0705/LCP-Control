@@ -131,7 +131,7 @@ test('Excel y pantalla comparten conversión sin redondear antes de sumar ni mut
   assert.ok(
     files
       .get('xl/worksheets/sheet2.xml')
-      .includes('Tasa del sistema: C$37 por US$1'),
+      .includes('Tasa contable: C$37 por US$1'),
   )
   model.trial[0].closingNio = null
   assert.equal(

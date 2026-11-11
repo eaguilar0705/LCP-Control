@@ -37,6 +37,7 @@ import { useServices } from '../../services/useServices'
 import { createIdempotentOperation } from '../../lib/idempotentOperation'
 import { useAccess } from '../../app/AccessContext'
 import { useQuery } from '../../lib/useQuery'
+import { accountingExchangeRate } from '../../lib/exchangeRates'
 import { useWorkspaceDrafts } from '../../lib/workspaceDrafts'
 import { AppError, errorMessage } from '../../lib/errors'
 import { formatCurrency, formatDate } from '../../lib/format'
@@ -365,7 +366,7 @@ export function DocumentWorkspace({ kind }: { kind: DocumentKind }) {
   }, [dirty, busy, savingDraft, pendingIssue, copy.singular])
 
   const exchangeField =
-    exchangeText ?? (savedRate ? String(savedRate.usdToNio) : '')
+    exchangeText ?? String(accountingExchangeRate(savedRate) ?? '')
   const exchangeRate = exchangeField === '' ? null : Number(exchangeField)
 
   const valid = lines.every(

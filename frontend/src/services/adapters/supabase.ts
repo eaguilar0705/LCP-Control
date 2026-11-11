@@ -701,7 +701,9 @@ export const supabaseAdapter: DataProvider = {
   async getExchangeRate() {
     const { data, error } = await client()
       .from('exchange_rates')
-      .select('usd_to_nio,updated_at')
+      .select(
+        'usd_to_nio,updated_at,accounting_usd_to_nio,accounting_updated_at',
+      )
       .limit(1)
       .maybeSingle()
     if (error) {
@@ -711,11 +713,24 @@ export const supabaseAdapter: DataProvider = {
     if (!data) return null
     const value = Number(data.usd_to_nio)
     return Number.isFinite(value) && value > 0
-      ? { usdToNio: value, updatedAt: data.updated_at as string }
+      ? {
+          usdToNio: value,
+          updatedAt: data.updated_at as string,
+          accountingUsdToNio:
+            data.accounting_usd_to_nio == null
+              ? value
+              : Number(data.accounting_usd_to_nio),
+          accountingUpdatedAt: (data.accounting_updated_at as string) ?? null,
+        }
       : null
   },
-  async saveExchangeRate(rate: number) {
-    const { error } = await client().rpc('set_exchange_rate', { p_rate: rate })
+  async saveExchangeRate(rate: number, purpose = 'catalog') {
+    const { error } = await client().rpc(
+      purpose === 'accounting'
+        ? 'set_accounting_exchange_rate'
+        : 'set_exchange_rate',
+      { p_rate: rate },
+    )
     if (error) fail(error)
   },
   // Todos los clientes, por páginas: un límite fijo dejaba fuera del selector

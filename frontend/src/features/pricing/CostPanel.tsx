@@ -65,7 +65,7 @@ const round5 = (value: number) => Math.round(value * 1e5) / 1e5
 export function PurchaseDialog({
   inventory,
   pricing,
-  catalogRate,
+  accountingRate,
   initialProduct,
   initialLocation = 'warehouse',
   initialQuantity,
@@ -78,7 +78,7 @@ export function PurchaseDialog({
 }: {
   inventory: InventoryItem[]
   pricing: ProductPricing[]
-  catalogRate: number | null
+  accountingRate: number | null
   initialProduct: string
   initialLocation?: InventoryLocation
   initialQuantity?: number
@@ -171,8 +171,8 @@ export function PurchaseDialog({
       ? String(correcting.exchange_rate)
       : reviewingReceipt?.currency === 'USD'
         ? String(reviewingReceipt.exchangeRate)
-        : catalogRate
-          ? String(catalogRate)
+        : accountingRate
+          ? String(accountingRate)
           : '',
   )
   const [shipping, setShipping] = useState(
@@ -241,7 +241,6 @@ export function PurchaseDialog({
           return previous ? { ...row, averageCost: previous.cost_before } : row
         })
       : pricing,
-    catalogRate,
   })
   const products = inventory.map((item) => item.product)
   const [today, setToday] = useState(() => localDay(new Date()))
@@ -658,7 +657,7 @@ export function PurchaseDialog({
             shipping={typed(shipping)}
             currency={currency}
             exchangeRate={validRate(currency, rateText)}
-            systemRate={catalogRate}
+            systemRate={accountingRate}
           />
         </fieldset>
         {checked && preview.problem && (
@@ -829,14 +828,14 @@ function CostOutcome({
  */
 export function OpeningCostDialog({
   item,
-  catalogRate,
+  accountingRate,
   notice,
   onClose,
   onRecorded,
 }: {
   item: InventoryItem
   pricing: ProductPricing | undefined
-  catalogRate: number | null
+  accountingRate: number | null
   notice?: string
   onClose: () => void
   onRecorded: (message: string) => void
@@ -851,7 +850,7 @@ export function OpeningCostDialog({
   )
   const [currency, setCurrency] = useState<Currency>('NIO')
   const [rateText, setRateText] = useState(
-    catalogRate ? String(catalogRate) : '',
+    accountingRate ? String(accountingRate) : '',
   )
   const [unitText, setUnitText] = useState('')
   const [note, setNote] = useState('')

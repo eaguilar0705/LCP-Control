@@ -29,6 +29,8 @@ import { can, roleLabels } from '../../lib/permissions'
 import { useQuery } from '../../lib/useQuery'
 import { errorMessage } from '../../lib/errors'
 import { formatDate } from '../../lib/format'
+import { accountingExchangeRate } from '../../lib/exchangeRates'
+import { refreshQueries } from '../../lib/queryRefresh'
 import {
   listStaff,
   deleteStaff,
@@ -599,7 +601,11 @@ export function BusinessPage() {
             </p>
           )}
         </Card>
-        <ExchangeRateCard key={importVersion} />
+        <ExchangeRateCard key={`catalog:${importVersion}`} purpose="catalog" />
+        <ExchangeRateCard
+          key={`accounting:${importVersion}`}
+          purpose="accounting"
+        />
       </div>
       <ConfirmDialog
         open={reloadBusiness}
@@ -621,30 +627,29 @@ export function BusinessPage() {
   )
 }
 
-/**
- * La tasa con la que se cotiza el catálogo. Los precios se fijan en dólares y
- * los de córdobas salen de aquí, así que cambiarla vuelve a calcular la lista
- * entera en córdobas. Lo ya emitido no se toca: cada factura, compra y gasto
- * guarda la tasa del día en que se registró.
- */
-function ExchangeRateCard() {
+/** Cada tasa se guarda por separado; las operaciones emitidas conservan la suya. */
+function ExchangeRateCard({ purpose }: { purpose: 'catalog' | 'accounting' }) {
   const { demo, role } = useAccess()
   const { settingsService } = useServices()
-  const { data, error, loading, retry } = useQuery(
-    settingsService.getExchangeRate,
-  )
+  const { data, error, loading } = useQuery(settingsService.getExchangeRate)
+  const accounting = purpose === 'accounting'
   const [rate, setRate] = useState('')
   const [message, setMessage] = useState('')
   const [failure, setFailure] = useState('')
   const [busy, setBusy] = useState(false)
-  // Tasa escrita que espera confirmación. Cambiarla reprecia todo el catálogo
-  // en córdobas: un dedo de más (3.66 en vez de 36.6) bajaría los precios a la
-  // décima parte, así que se pide confirmar viendo la tasa anterior y el cambio.
+  // Comparar la tasa anterior y el cambio antes de recalcular precios o
+  // equivalencias permite detectar errores de captura.
   const [pending, setPending] = useState<number | null>(null)
   const editable = !demo && can(role, 'settings.manage')
   const value = Number(rate)
   const valid = Number.isFinite(value) && value > 0 && value <= 1000000
-  const current = data?.usdToNio ?? null
+  const current = accounting
+    ? accountingExchangeRate(data)
+    : (data?.usdToNio ?? null)
+  const updatedAt = accounting ? data?.accountingUpdatedAt : data?.updatedAt
+  const updateLabel = accounting
+    ? 'Actualizar tasa contable'
+    : 'Actualizar tasa'
   const change =
     pending !== null && current ? (pending - current) / current : null
 
@@ -661,13 +666,15 @@ function ExchangeRateCard() {
     setBusy(true)
     setFailure('')
     try {
-      await settingsService.saveExchangeRate(pending)
+      await settingsService.saveExchangeRate(pending, purpose)
       setPending(null)
       setMessage(
-        'Tipo de cambio actualizado. Los precios del catálogo se recalcularon con la nueva tasa.',
+        accounting
+          ? 'Tipo de cambio contable actualizado para nuevas operaciones y consultas en dólares.'
+          : 'Tipo de cambio de inventario actualizado. Los precios del catálogo se recalcularon con la nueva tasa.',
       )
       setRate('')
-      retry()
+      refreshQueries()
     } catch (saveError) {
       setFailure(errorMessage(saveError))
     } finally {
@@ -680,10 +687,19 @@ function ExchangeRateCard() {
       <div className="section-heading">
         <div>
           <span className="section-kicker">MONEDA</span>
-          <h2>Tipo de cambio del dólar</h2>
+          <h2>
+            {accounting
+              ? 'Tipo de cambio contable'
+              : 'Tipo de cambio de inventario'}
+          </h2>
         </div>
         <Coins size={20} />
       </div>
+      <p className="muted">
+        {accounting
+          ? 'Se propone para compras, cobros, pagos y facturas en dólares, y convierte los estados contables a USD. Cada operación conserva su tasa registrada.'
+          : 'Calcula los precios de venta de los perfumes y sus listas en córdobas y dólares. Es independiente de la tasa contable.'}
+      </p>
       {loading ? (
         <LoadingState />
       ) : (
@@ -691,34 +707,45 @@ function ExchangeRateCard() {
           <p className="exchange-rate-current">
             {error ? (
               <span className="muted">{error}</span>
-            ) : data ? (
+            ) : current !== null ? (
               <>
-                <strong>{data.usdToNio} C$</strong>
+                <strong>{current} C$</strong>
                 <span>
                   por 1 USD
-                  {data.updatedAt
-                    ? ` · actualizado el ${formatDate(data.updatedAt)}`
+                  {updatedAt
+                    ? ` · actualizado el ${formatDate(updatedAt)}`
                     : ''}
                 </span>
               </>
             ) : (
               <span className="muted">
-                Todavía no hay una tasa registrada. Sin ella no se puede fijar
-                el precio en córdobas de un perfume.
+                {accounting
+                  ? 'Todavía no hay una tasa contable registrada.'
+                  : 'Todavía no hay una tasa de inventario registrada. Sin ella no se puede fijar el precio de un perfume.'}
               </span>
             )}
           </p>
           {editable && (
             <form onSubmit={submit}>
               <Input
-                label="Córdobas por 1 dólar"
+                label={
+                  accounting
+                    ? 'Córdobas por 1 dólar en contabilidad'
+                    : 'Córdobas por 1 dólar'
+                }
                 type="number"
                 min="0.000001"
                 max={1000000}
                 step="0.000001"
                 required
                 value={rate}
-                placeholder={data ? String(data.usdToNio) : '36.60'}
+                placeholder={
+                  current !== null
+                    ? String(current)
+                    : accounting
+                      ? '37'
+                      : '36.6243'
+                }
                 onChange={(event) => setRate(event.target.value)}
               />
               <div className="form-actions">
@@ -727,7 +754,7 @@ function ExchangeRateCard() {
                   disabled={busy || !valid}
                   aria-busy={busy}
                 >
-                  {busy ? 'Guardando…' : 'Actualizar tasa'}
+                  {busy ? 'Guardando…' : updateLabel}
                 </Button>
               </div>
             </form>
@@ -743,8 +770,12 @@ function ExchangeRateCard() {
       {pending !== null && (
         <ConfirmDialog
           open
-          title="Cambiar el tipo de cambio"
-          confirmLabel="Actualizar tasa"
+          title={
+            accounting
+              ? 'Cambiar el tipo de cambio contable'
+              : 'Cambiar el tipo de cambio de inventario'
+          }
+          confirmLabel={updateLabel}
           busyLabel="Guardando…"
           busy={busy}
           error={failure}
@@ -763,9 +794,9 @@ function ExchangeRateCard() {
             .
           </p>
           <p className="muted">
-            Se recalculará la otra moneda del precio de todos los perfumes: el
-            córdoba de los fijados en dólares y el dólar de los calculados desde
-            una compra en córdobas. Lo ya emitido conserva su tasa.
+            {accounting
+              ? 'Los estados en dólares usarán esta tasa. Se propondrá en operaciones nuevas; las ya registradas conservan su tasa histórica. Los precios del catálogo conservan su tasa de inventario.'
+              : 'Se recalcularán los precios del catálogo con esta tasa y el redondeo al dólar superior. La tasa contable y las operaciones ya registradas se conservan.'}
           </p>
           {change !== null && Math.abs(change) >= 0.1 && (
             <p className="inline-error">

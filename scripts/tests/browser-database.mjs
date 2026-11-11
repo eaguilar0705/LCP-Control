@@ -35,7 +35,7 @@ export async function browserDatabase(page, options = {}) {
     [admin],
   )
   await db.exec(`insert into public.business_settings(name,legal_name,tax_id,address,phone,email) values('La Casa del Perfume','Perfumería de auditoría','RUC-AUDITORIA','Managua','88888888','tienda@example.test');
-    insert into public.exchange_rates(id,usd_to_nio) values(true,36.6) on conflict(id) do update set usd_to_nio=36.6;
+    insert into public.exchange_rates(id,usd_to_nio,accounting_usd_to_nio) values(true,36.6,36.6) on conflict(id) do update set usd_to_nio=36.6,accounting_usd_to_nio=36.6;
     insert into public.brands(name) values('Lattafa');
     insert into public.products(id,sku,name,brand_id,size,unit,category,gender,minimum_stock)
       select ('aaaaaaaa-aaaa-4aaa-8aaa-'||lpad(i::text,12,'0'))::uuid,'QA-'||lpad(i::text,4,'0'),
