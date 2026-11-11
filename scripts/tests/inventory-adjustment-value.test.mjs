@@ -1,6 +1,18 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { inventoryAdjustmentValue } from '../../frontend/src/features/inventory/inventoryAdjustmentValue.ts'
+import { fileURLToPath } from 'node:url'
+import { createServer } from 'vite'
+
+const server = await createServer({
+  configFile: false,
+  logLevel: 'error',
+  root: fileURLToPath(new URL('../../frontend', import.meta.url)),
+  server: { middlewareMode: true, hmr: false, ws: false },
+})
+const { inventoryAdjustmentValue } = await server.ssrLoadModule(
+  '/src/features/inventory/inventoryAdjustmentValue.ts',
+)
+await server.close()
 
 test('agregar una unidad de C$500 a dos unidades valora solo una, no el total de tres', () => {
   assert.deepEqual(inventoryAdjustmentValue(2, 3, 500), {
