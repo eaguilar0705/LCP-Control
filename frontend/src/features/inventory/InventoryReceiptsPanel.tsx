@@ -15,7 +15,7 @@ import { can } from '../../lib/permissions'
 import { useQuery } from '../../lib/useQuery'
 import { createIdempotentOperation } from '../../lib/idempotentOperation'
 import { errorMessage } from '../../lib/errors'
-import { accountingExchangeRate } from '../../lib/exchangeRates'
+import { inventoryExchangeRate } from '../../lib/exchangeRates'
 import { formatCurrency, formatDate } from '../../lib/format'
 import { labels, type InventoryItem } from '../../lib/domain'
 import { PurchaseDialog } from '../pricing/CostPanel'
@@ -353,7 +353,7 @@ function ReviewReceipt({
     return {
       inventory,
       pricing: pricing.rows,
-      rate: accountingExchangeRate(rate),
+      rate: inventoryExchangeRate(rate),
       advanceAccounts: accounts.filter(
         (account) =>
           account.active &&
@@ -378,7 +378,7 @@ function ReviewReceipt({
     <PurchaseDialog
       inventory={data.inventory}
       pricing={data.pricing}
-      accountingRate={data.rate}
+      inventoryRate={data.rate}
       initialProduct=""
       reviewingReceipt={receipt}
       advanceAccounts={data.advanceAccounts}

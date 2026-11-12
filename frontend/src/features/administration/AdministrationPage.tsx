@@ -29,7 +29,10 @@ import { can, roleLabels } from '../../lib/permissions'
 import { useQuery } from '../../lib/useQuery'
 import { errorMessage } from '../../lib/errors'
 import { formatDate } from '../../lib/format'
-import { accountingExchangeRate } from '../../lib/exchangeRates'
+import {
+  accountingExchangeRate,
+  inventoryExchangeRate,
+} from '../../lib/exchangeRates'
 import { refreshQueries } from '../../lib/queryRefresh'
 import {
   listStaff,
@@ -603,6 +606,10 @@ export function BusinessPage() {
         </Card>
         <ExchangeRateCard key={`catalog:${importVersion}`} purpose="catalog" />
         <ExchangeRateCard
+          key={`inventory:${importVersion}`}
+          purpose="inventory"
+        />
+        <ExchangeRateCard
           key={`accounting:${importVersion}`}
           purpose="accounting"
         />
@@ -628,11 +635,56 @@ export function BusinessPage() {
 }
 
 /** Cada tasa se guarda por separado; las operaciones emitidas conservan la suya. */
-function ExchangeRateCard({ purpose }: { purpose: 'catalog' | 'accounting' }) {
+const rateCardOptions = {
+  catalog: {
+    title: 'Tipo de cambio de precios de venta',
+    label: 'Córdobas por 1 dólar en precios de venta',
+    updateLabel: 'Actualizar tasa de precios',
+    defaultValue: '37',
+    description:
+      'Convierte los precios de venta de los perfumes y sus listas entre dólares y córdobas. Es independiente de la tasa de costos de inventario y de la contable.',
+    message:
+      'Tipo de cambio de precios de venta actualizado. Los precios del catálogo se recalcularon con la nueva tasa.',
+    confirmation:
+      'Se recalcularán los precios del catálogo con esta tasa y el redondeo al dólar superior. Las tasas de costos de inventario y de contabilidad, y las operaciones ya registradas, se conservan.',
+  },
+  inventory: {
+    title: 'Tipo de cambio de costos de inventario',
+    label: 'Córdobas por 1 dólar en costos de inventario',
+    updateLabel: 'Actualizar tasa de costos',
+    defaultValue: '36.6243',
+    description:
+      'Se propone para valorar nuevas compras, recepciones y costos iniciales del inventario en dólares. Los precios de venta utilizan su propia tasa.',
+    message:
+      'Tipo de cambio de costos de inventario actualizado para nuevas operaciones. Los precios de venta se conservan.',
+    confirmation:
+      'Se propondrá en nuevas compras y costos de inventario. Las operaciones registradas conservan su tasa histórica y su valor. Los precios de venta y la tasa contable se conservan.',
+  },
+  accounting: {
+    title: 'Tipo de cambio contable',
+    label: 'Córdobas por 1 dólar en contabilidad',
+    updateLabel: 'Actualizar tasa contable',
+    defaultValue: '37',
+    description:
+      'Se propone para cobros, pagos y facturas en dólares, y convierte los estados contables a USD. Cada operación conserva su tasa registrada.',
+    message:
+      'Tipo de cambio contable actualizado para nuevas operaciones y consultas en dólares.',
+    confirmation:
+      'Los estados en dólares usarán esta tasa. Se propondrá en operaciones nuevas; las ya registradas conservan su tasa histórica. Los precios de venta y los costos de inventario utilizan sus propias tasas.',
+  },
+} as const
+
+function ExchangeRateCard({
+  purpose,
+}: {
+  purpose: keyof typeof rateCardOptions
+}) {
   const { demo, role } = useAccess()
   const { settingsService } = useServices()
   const { data, error, loading } = useQuery(settingsService.getExchangeRate)
   const accounting = purpose === 'accounting'
+  const inventory = purpose === 'inventory'
+  const options = rateCardOptions[purpose]
   const [rate, setRate] = useState('')
   const [message, setMessage] = useState('')
   const [failure, setFailure] = useState('')
@@ -645,11 +697,15 @@ function ExchangeRateCard({ purpose }: { purpose: 'catalog' | 'accounting' }) {
   const valid = Number.isFinite(value) && value > 0 && value <= 1000000
   const current = accounting
     ? accountingExchangeRate(data)
-    : (data?.usdToNio ?? null)
-  const updatedAt = accounting ? data?.accountingUpdatedAt : data?.updatedAt
-  const updateLabel = accounting
-    ? 'Actualizar tasa contable'
-    : 'Actualizar tasa'
+    : inventory
+      ? inventoryExchangeRate(data)
+      : (data?.usdToNio ?? null)
+  const updatedAt = accounting
+    ? data?.accountingUpdatedAt
+    : inventory
+      ? data?.inventoryUpdatedAt
+      : data?.updatedAt
+  const updateLabel = options.updateLabel
   const change =
     pending !== null && current ? (pending - current) / current : null
 
@@ -668,11 +724,7 @@ function ExchangeRateCard({ purpose }: { purpose: 'catalog' | 'accounting' }) {
     try {
       await settingsService.saveExchangeRate(pending, purpose)
       setPending(null)
-      setMessage(
-        accounting
-          ? 'Tipo de cambio contable actualizado para nuevas operaciones y consultas en dólares.'
-          : 'Tipo de cambio de inventario actualizado. Los precios del catálogo se recalcularon con la nueva tasa.',
-      )
+      setMessage(options.message)
       setRate('')
       refreshQueries()
     } catch (saveError) {
@@ -687,19 +739,11 @@ function ExchangeRateCard({ purpose }: { purpose: 'catalog' | 'accounting' }) {
       <div className="section-heading">
         <div>
           <span className="section-kicker">MONEDA</span>
-          <h2>
-            {accounting
-              ? 'Tipo de cambio contable'
-              : 'Tipo de cambio de inventario'}
-          </h2>
+          <h2>{options.title}</h2>
         </div>
         <Coins size={20} />
       </div>
-      <p className="muted">
-        {accounting
-          ? 'Se propone para compras, cobros, pagos y facturas en dólares, y convierte los estados contables a USD. Cada operación conserva su tasa registrada.'
-          : 'Calcula los precios de venta de los perfumes y sus listas en córdobas y dólares. Es independiente de la tasa contable.'}
-      </p>
+      <p className="muted">{options.description}</p>
       {loading ? (
         <LoadingState />
       ) : (
@@ -719,20 +763,14 @@ function ExchangeRateCard({ purpose }: { purpose: 'catalog' | 'accounting' }) {
               </>
             ) : (
               <span className="muted">
-                {accounting
-                  ? 'Todavía no hay una tasa contable registrada.'
-                  : 'Todavía no hay una tasa de inventario registrada. Sin ella no se puede fijar el precio de un perfume.'}
+                Todavía no hay una tasa registrada para este uso.
               </span>
             )}
           </p>
           {editable && (
             <form onSubmit={submit}>
               <Input
-                label={
-                  accounting
-                    ? 'Córdobas por 1 dólar en contabilidad'
-                    : 'Córdobas por 1 dólar'
-                }
+                label={options.label}
                 type="number"
                 min="0.000001"
                 max={1000000}
@@ -740,11 +778,7 @@ function ExchangeRateCard({ purpose }: { purpose: 'catalog' | 'accounting' }) {
                 required
                 value={rate}
                 placeholder={
-                  current !== null
-                    ? String(current)
-                    : accounting
-                      ? '37'
-                      : '36.6243'
+                  current !== null ? String(current) : options.defaultValue
                 }
                 onChange={(event) => setRate(event.target.value)}
               />
@@ -770,11 +804,7 @@ function ExchangeRateCard({ purpose }: { purpose: 'catalog' | 'accounting' }) {
       {pending !== null && (
         <ConfirmDialog
           open
-          title={
-            accounting
-              ? 'Cambiar el tipo de cambio contable'
-              : 'Cambiar el tipo de cambio de inventario'
-          }
+          title={`Cambiar el ${options.title.toLowerCase()}`}
           confirmLabel={updateLabel}
           busyLabel="Guardando…"
           busy={busy}
@@ -793,11 +823,7 @@ function ExchangeRateCard({ purpose }: { purpose: 'catalog' | 'accounting' }) {
               ` (${change > 0 ? '+' : ''}${(change * 100).toLocaleString('es-NI', { maximumFractionDigits: 1 })} %)`}
             .
           </p>
-          <p className="muted">
-            {accounting
-              ? 'Los estados en dólares usarán esta tasa. Se propondrá en operaciones nuevas; las ya registradas conservan su tasa histórica. Los precios del catálogo conservan su tasa de inventario.'
-              : 'Se recalcularán los precios del catálogo con esta tasa y el redondeo al dólar superior. La tasa contable y las operaciones ya registradas se conservan.'}
-          </p>
+          <p className="muted">{options.confirmation}</p>
           {change !== null && Math.abs(change) >= 0.1 && (
             <p className="inline-error">
               Es un cambio de más del 10 %. Revisa que la tasa esté bien escrita

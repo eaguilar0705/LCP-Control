@@ -55,7 +55,8 @@ export function PricingFields({
     <div className="pricing-fields">
       {rate !== null && (
         <p className="muted">
-          Tipo de cambio de inventario: C$ {rate} por US$1. Se edita en Negocio.
+          Tipo de cambio de precios de venta: C$ {rate} por US$1. Se edita en
+          Negocio.
         </p>
       )}
       <div className="pricing-purchase">

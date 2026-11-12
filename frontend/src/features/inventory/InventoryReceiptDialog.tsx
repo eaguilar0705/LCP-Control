@@ -8,7 +8,7 @@ import { useServices } from '../../services/useServices'
 import { useQuery } from '../../lib/useQuery'
 import { createIdempotentOperation } from '../../lib/idempotentOperation'
 import { errorMessage } from '../../lib/errors'
-import { accountingExchangeRate } from '../../lib/exchangeRates'
+import { inventoryExchangeRate } from '../../lib/exchangeRates'
 import {
   labels,
   type Currency,
@@ -73,8 +73,7 @@ export function InventoryReceiptDialog({
   const [incurredOn, setIncurredOn] = useState(() => localDay(new Date()))
   const [currency, setCurrency] = useState<Currency>('NIO')
   const [rateText, setRateText] = useState<string | null>(null)
-  const rateValue =
-    rateText ?? String(accountingExchangeRate(catalogRate) ?? '')
+  const rateValue = rateText ?? String(inventoryExchangeRate(catalogRate) ?? '')
   const [shipping, setShipping] = useState('0')
   const [supplier, setSupplier] = useState('')
   const [agency, setAgency] = useState('')
@@ -250,7 +249,7 @@ export function InventoryReceiptDialog({
               onChange={(event) => {
                 setCurrency(event.target.value as Currency)
                 if (!rateText && catalogRate)
-                  setRateText(String(catalogRate.usdToNio))
+                  setRateText(String(inventoryExchangeRate(catalogRate) ?? ''))
               }}
             >
               <option value="NIO">C$ Córdobas</option>
@@ -375,7 +374,7 @@ export function InventoryReceiptDialog({
             shipping={Number(shipping)}
             currency={currency}
             exchangeRate={rate}
-            systemRate={catalogRate?.usdToNio}
+            systemRate={inventoryExchangeRate(catalogRate)}
           />
         </fieldset>
         {failure && (

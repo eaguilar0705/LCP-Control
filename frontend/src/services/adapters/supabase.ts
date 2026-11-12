@@ -702,7 +702,7 @@ export const supabaseAdapter: DataProvider = {
     const { data, error } = await client()
       .from('exchange_rates')
       .select(
-        'usd_to_nio,updated_at,accounting_usd_to_nio,accounting_updated_at',
+        'usd_to_nio,updated_at,accounting_usd_to_nio,accounting_updated_at,inventory_usd_to_nio,inventory_updated_at',
       )
       .limit(1)
       .maybeSingle()
@@ -721,6 +721,11 @@ export const supabaseAdapter: DataProvider = {
               ? value
               : Number(data.accounting_usd_to_nio),
           accountingUpdatedAt: (data.accounting_updated_at as string) ?? null,
+          inventoryUsdToNio:
+            data.inventory_usd_to_nio == null
+              ? null
+              : Number(data.inventory_usd_to_nio),
+          inventoryUpdatedAt: (data.inventory_updated_at as string) ?? null,
         }
       : null
   },
@@ -728,7 +733,9 @@ export const supabaseAdapter: DataProvider = {
     const { error } = await client().rpc(
       purpose === 'accounting'
         ? 'set_accounting_exchange_rate'
-        : 'set_exchange_rate',
+        : purpose === 'inventory'
+          ? 'set_inventory_exchange_rate'
+          : 'set_exchange_rate',
       { p_rate: rate },
     )
     if (error) fail(error)

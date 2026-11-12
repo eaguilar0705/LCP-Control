@@ -107,6 +107,8 @@ export const localWrites = {
       updatedAt: null,
       accountingUsdToNio: DEMO_EXCHANGE_RATE,
       accountingUpdatedAt: null,
+      inventoryUsdToNio: DEMO_EXCHANGE_RATE,
+      inventoryUpdatedAt: null,
     }
   },
   saveExchangeRate: async () => unavailable(),

@@ -2,7 +2,7 @@
 
 Código fuente de la aplicación de inventario, facturación, proformas y contabilidad, con React, TypeScript, Vite y Supabase.
 
-En **Negocio** se configuran por separado las tasas de **inventario y precios** (36.6243) y **contabilidad** (37). La primera recalcula el catálogo; la segunda se propone en operaciones nuevas y convierte los estados a USD. Ver [uso, activación y comprobaciones](docs/tasas-de-inventario-y-contabilidad.md).
+En **Negocio** se configuran por separado las tasas de **precios de venta** (37), **costos de inventario** (36.6243) y **contabilidad** (37). Los precios se convierten a córdobas con 37; las nuevas compras y costos de inventario proponen 36.6243. Requiere `20261112010000_separar_tasa_de_costos_y_precios_de_venta.sql`, después de las migraciones anteriores. Ver [uso, activación y comprobaciones](docs/tasas-de-inventario-y-contabilidad.md).
 
 En **Inventario**, al abrir la ficha de un perfume, Administración puede consultar su **Historial de ventas**: fecha y hora, cliente, factura, unidades, precio unitario neto y total en la moneda de la venta. También está disponible en **Editar perfume**. Las devoluciones, facturas anuladas y productos retirados al corregir una factura se identifican expresamente. Requiere `20261111010000_historico_ventas_por_producto.sql`; ver [uso y activación](docs/historico-ventas-por-producto.md).
 

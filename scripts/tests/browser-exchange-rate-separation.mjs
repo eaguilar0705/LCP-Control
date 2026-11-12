@@ -41,15 +41,27 @@ try {
     const one = async (sql) => (await fixture.db.query(sql)).rows[0]
     const rates = async () => {
       const r = await one(
-        'select usd_to_nio,accounting_usd_to_nio from public.exchange_rates',
+        'select usd_to_nio,inventory_usd_to_nio,accounting_usd_to_nio from public.exchange_rates',
       )
-      return [Number(r.usd_to_nio), Number(r.accounting_usd_to_nio)]
+      return [
+        Number(r.usd_to_nio),
+        Number(r.inventory_usd_to_nio),
+        Number(r.accounting_usd_to_nio),
+      ]
     }
     const price = async () =>
       Number(
         (
           await one(
             "select amount from public.product_prices where product_id='aaaaaaaa-aaaa-4aaa-8aaa-000000000001' and tier_code='emprendedor' and currency='USD'",
+          )
+        ).amount,
+      )
+    const nioPrice = async () =>
+      Number(
+        (
+          await one(
+            "select amount from public.product_prices where product_id='aaaaaaaa-aaaa-4aaa-8aaa-000000000001' and tier_code='emprendedor' and currency='NIO'",
           )
         ).amount,
       )
@@ -72,16 +84,26 @@ try {
         `sin desbordamiento a ${width}px`,
       )
     }
-    const change = async (accounting, value) => {
-      const label = accounting ? 'Actualizar tasa contable' : 'Actualizar tasa'
-      await page
-        .getByLabel(
-          accounting
-            ? 'Córdobas por 1 dólar en contabilidad'
-            : 'Córdobas por 1 dólar',
-          { exact: true },
-        )
-        .fill(String(value))
+    const change = async (purpose, value) => {
+      const config = {
+        accounting: [
+          'Actualizar tasa contable',
+          'Córdobas por 1 dólar en contabilidad',
+          'contable actualizado',
+        ],
+        inventory: [
+          'Actualizar tasa de costos',
+          'Córdobas por 1 dólar en costos de inventario',
+          'costos de inventario actualizado',
+        ],
+        catalog: [
+          'Actualizar tasa de precios',
+          'Córdobas por 1 dólar en precios de venta',
+          'precios de venta actualizado',
+        ],
+      }[purpose]
+      const [label, inputLabel, message] = config
+      await page.getByLabel(inputLabel, { exact: true }).fill(String(value))
       await page.getByRole('button', { name: label, exact: true }).click()
       const dialog = page.getByRole('dialog')
       await dialog.getByRole('button', { name: label, exact: true }).click()
@@ -89,18 +111,16 @@ try {
       await page
         .getByRole('status')
         .filter({
-          hasText: accounting
-            ? 'contable actualizado'
-            : 'inventario actualizado',
+          hasText: message,
         })
         .waitFor()
     }
     try {
       await fixture.db.exec(`reset role;
-        update public.exchange_rates set usd_to_nio=36.6243,accounting_usd_to_nio=37;
+        update public.exchange_rates set usd_to_nio=37,inventory_usd_to_nio=36.6243,accounting_usd_to_nio=37;
         insert into public.product_pricing(product_id,purchase_price,purchase_currency,markup_emprendedor,markup_vip,markup_premium,updated_by)
-        values('aaaaaaaa-aaaa-4aaa-8aaa-000000000001',705,'NIO',20,20,20,'11111111-1111-4111-8111-111111111111');
-        select private.reprice_catalog(36.6243);`)
+        values('aaaaaaaa-aaaa-4aaa-8aaa-000000000001',20,'USD',20,20,20,'11111111-1111-4111-8111-111111111111');
+        select private.reprice_catalog(37);`)
       await identity(fixture.db, admin)
       await page.goto('http://127.0.0.1:5211/login')
       await page
@@ -116,24 +136,40 @@ try {
       await navigate('/settings')
       await page
         .getByRole('heading', {
-          name: 'Tipo de cambio de inventario',
+          name: 'Tipo de cambio de precios de venta',
           exact: true,
         })
         .waitFor()
       await page
         .getByRole('heading', { name: 'Tipo de cambio contable', exact: true })
         .waitFor()
-      eq(await rates(), [36.6243, 37])
-      await change(true, 38.5)
-      eq(await rates(), [36.6243, 38.5])
+      await page
+        .getByRole('heading', {
+          name: 'Tipo de cambio de costos de inventario',
+          exact: true,
+        })
+        .waitFor()
+      eq(await rates(), [37, 36.6243, 37])
+      eq(await nioPrice(), 888)
+      await change('accounting', 38.5)
+      eq(await rates(), [37, 36.6243, 38.5])
       eq(await price(), 24)
-      await change(false, 37)
-      eq(await rates(), [37, 38.5])
-      eq(await price(), 23)
-      await change(false, 36.6243)
-      await change(true, 37)
-      eq(await rates(), [36.6243, 37])
+      await change('inventory', 36.5)
+      eq(await rates(), [37, 36.5, 38.5])
+      eq(
+        await nioPrice(),
+        888,
+        'La tasa de costos no modifica el precio de venta',
+      )
+      await change('catalog', 38)
+      eq(await rates(), [38, 36.5, 38.5])
+      eq(await nioPrice(), 912)
+      await change('catalog', 37)
+      await change('inventory', 36.6243)
+      await change('accounting', 37)
+      eq(await rates(), [37, 36.6243, 37])
       eq(await price(), 24)
+      eq(await nioPrice(), 888)
       await healthy()
       await page.screenshot({
         path: `output/exchange-rates-review/settings-${width}.png`,
@@ -143,7 +179,7 @@ try {
       await page.getByLabel('Precio de compra', { exact: true }).waitFor()
       eq(
         await page.getByLabel('Precio de compra', { exact: true }).inputValue(),
-        '705',
+        '20',
       )
       eq(
         (
@@ -158,7 +194,7 @@ try {
       )
       await page
         .getByText(
-          'Tipo de cambio de inventario: C$ 36.6243 por US$1. Se edita en Negocio.',
+          'Tipo de cambio de precios de venta: C$ 37 por US$1. Se edita en Negocio.',
           { exact: true },
         )
         .waitFor()
@@ -167,6 +203,76 @@ try {
         path: `output/exchange-rates-review/product-${width}.png`,
         fullPage: true,
       })
+      // Los formularios de nuevas compras y recepciones usan la tasa de costos.
+      await page
+        .getByRole('button', { name: 'Costo de inventario', exact: true })
+        .click()
+      let dialog = page.getByRole('dialog', {
+        name: 'Registrar compra',
+        exact: true,
+      })
+      await dialog
+        .getByLabel('Moneda de la compra', { exact: true })
+        .selectOption('USD')
+      eq(
+        await dialog
+          .getByLabel('Tasa del pedido (C$ por dólar)', { exact: true })
+          .inputValue(),
+        '36.6243',
+      )
+      await dialog
+        .getByRole('button', { name: 'Cancelar', exact: true })
+        .click()
+      await fixture.db.exec('reset role')
+      await fixture.db.exec(
+        "delete from public.product_costs where product_id='aaaaaaaa-aaaa-4aaa-8aaa-000000000002'",
+      )
+      await identity(fixture.db, admin)
+      await navigate('/products/aaaaaaaa-aaaa-4aaa-8aaa-000000000002/edit')
+      await page
+        .getByRole('button', { name: 'Costo de inventario', exact: true })
+        .click()
+      dialog = page
+        .getByRole('dialog')
+        .filter({ has: page.getByRole('heading', { name: /Costo inicial/ }) })
+      await dialog.getByLabel('Moneda', { exact: true }).selectOption('USD')
+      eq(
+        await dialog
+          .getByLabel('Tasa (C$ por dólar)', { exact: true })
+          .inputValue(),
+        '36.6243',
+        'El costo inicial también usa la tasa de inventario',
+      )
+      await dialog
+        .getByRole('button', { name: 'Cancelar', exact: true })
+        .click()
+      await healthy()
+      await navigate('/inventory')
+      await page
+        .getByRole('button', { name: 'Recibir mercadería', exact: true })
+        .click()
+      dialog = page.getByRole('dialog', {
+        name: 'Recibir mercadería',
+        exact: true,
+      })
+      await dialog
+        .getByLabel('Moneda de la compra', { exact: true })
+        .selectOption('USD')
+      await page.waitForFunction(() =>
+        [...globalThis.document.querySelectorAll('input')].some(
+          (input) => input.value === '36.6243',
+        ),
+      )
+      eq(
+        await dialog
+          .getByLabel('Tasa del pedido (C$ por dólar)', { exact: true })
+          .inputValue(),
+        '36.6243',
+      )
+      await dialog
+        .getByRole('button', { name: 'Cancelar', exact: true })
+        .click()
+      await healthy()
       await navigate('/sales')
       await page
         .locator('.price-controls')
@@ -188,7 +294,7 @@ try {
         .locator('.statement-heading')
         .getByText(/Tasa contable: C\$37 por US\$1/)
         .waitFor()
-      eq(await rates(), [36.6243, 37])
+      eq(await rates(), [37, 36.6243, 37])
       await healthy()
     } catch (error) {
       console.error({

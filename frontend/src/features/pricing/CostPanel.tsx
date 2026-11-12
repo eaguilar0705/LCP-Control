@@ -65,7 +65,7 @@ const round5 = (value: number) => Math.round(value * 1e5) / 1e5
 export function PurchaseDialog({
   inventory,
   pricing,
-  accountingRate,
+  inventoryRate,
   initialProduct,
   initialLocation = 'warehouse',
   initialQuantity,
@@ -78,7 +78,7 @@ export function PurchaseDialog({
 }: {
   inventory: InventoryItem[]
   pricing: ProductPricing[]
-  accountingRate: number | null
+  inventoryRate: number | null
   initialProduct: string
   initialLocation?: InventoryLocation
   initialQuantity?: number
@@ -171,8 +171,8 @@ export function PurchaseDialog({
       ? String(correcting.exchange_rate)
       : reviewingReceipt?.currency === 'USD'
         ? String(reviewingReceipt.exchangeRate)
-        : accountingRate
-          ? String(accountingRate)
+        : inventoryRate
+          ? String(inventoryRate)
           : '',
   )
   const [shipping, setShipping] = useState(
@@ -657,7 +657,7 @@ export function PurchaseDialog({
             shipping={typed(shipping)}
             currency={currency}
             exchangeRate={validRate(currency, rateText)}
-            systemRate={accountingRate}
+            systemRate={inventoryRate}
           />
         </fieldset>
         {checked && preview.problem && (
@@ -828,14 +828,14 @@ function CostOutcome({
  */
 export function OpeningCostDialog({
   item,
-  accountingRate,
+  inventoryRate,
   notice,
   onClose,
   onRecorded,
 }: {
   item: InventoryItem
   pricing: ProductPricing | undefined
-  accountingRate: number | null
+  inventoryRate: number | null
   notice?: string
   onClose: () => void
   onRecorded: (message: string) => void
@@ -850,7 +850,7 @@ export function OpeningCostDialog({
   )
   const [currency, setCurrency] = useState<Currency>('NIO')
   const [rateText, setRateText] = useState(
-    accountingRate ? String(accountingRate) : '',
+    inventoryRate ? String(inventoryRate) : '',
   )
   const [unitText, setUnitText] = useState('')
   const [note, setNote] = useState('')

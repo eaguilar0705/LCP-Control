@@ -175,6 +175,9 @@ export interface ExchangeRate {
   /** Tasa propuesta para operaciones contables y equivalencias de estados. */
   accountingUsdToNio?: number | null
   accountingUpdatedAt?: string | null
+  /** Tasa propuesta para valorar compras y costos del inventario en USD. */
+  inventoryUsdToNio?: number | null
+  inventoryUpdatedAt?: string | null
 }
 
 export interface CustomerRecord {

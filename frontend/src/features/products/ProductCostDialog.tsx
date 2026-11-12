@@ -19,7 +19,7 @@ import {
 } from '../../lib/domain'
 import { createIdempotentOperation } from '../../lib/idempotentOperation'
 import { errorMessage } from '../../lib/errors'
-import { accountingExchangeRate } from '../../lib/exchangeRates'
+import { inventoryExchangeRate } from '../../lib/exchangeRates'
 import './product-cost-dialog.css'
 
 export function ProductCostDialog({
@@ -95,7 +95,7 @@ function CostLoader({
       item: inventory.find((item) => item.product.id === productId),
       pricing,
       cost,
-      rate: accountingExchangeRate(rate),
+      rate: inventoryExchangeRate(rate),
     }
   }, [inventoryService, productService, settingsService, productId])
   const { data, loading, error, retry } = useQuery(load)
@@ -291,7 +291,7 @@ function CostLoader({
       <OpeningCostDialog
         item={item}
         pricing={data.pricing.rows.find((row) => row.productId === productId)}
-        accountingRate={data.rate}
+        inventoryRate={data.rate}
         notice={
           purchase
             ? `Registra primero el costo de las unidades que ya tienes. Después continuarás con la entrada de ${purchase.quantity} unidades.`
@@ -306,7 +306,7 @@ function CostLoader({
     <PurchaseDialog
       inventory={[item]}
       pricing={data.pricing.rows}
-      accountingRate={data.rate}
+      inventoryRate={data.rate}
       initialProduct={productId}
       initialLocation={initialLocation}
       initialQuantity={purchase?.quantity}

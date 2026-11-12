@@ -77,7 +77,7 @@ export interface DataProvider {
   getExchangeRate(): Promise<ExchangeRate | null>
   saveExchangeRate(
     rate: number,
-    purpose?: 'catalog' | 'accounting',
+    purpose?: 'catalog' | 'inventory' | 'accounting',
   ): Promise<void>
   listCustomers(): Promise<CustomerRecord[]>
   /**
