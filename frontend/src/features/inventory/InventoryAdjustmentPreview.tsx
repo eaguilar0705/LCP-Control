@@ -11,11 +11,13 @@ export function InventoryAdjustmentPreview({
   before,
   after,
   inventoryAccount,
+  automaticCounterAccount = false,
 }: {
   productId: string
   before: number | null
   after: number | null
   inventoryAccount?: { code: string; displayCode?: string; name: string }
+  automaticCounterAccount?: boolean
 }) {
   const { productService } = useServices()
   const load = useCallback(
@@ -37,8 +39,9 @@ export function InventoryAdjustmentPreview({
         value={`${inventoryAccount?.displayCode ?? inventoryAccount?.code ?? '1130'} · ${inventoryAccount?.name ?? 'Inventario de perfumes'}`}
       />
       <p className="muted">
-        Esta cuenta aumenta al agregar unidades y disminuye al descontarlas. En
-        contrapartida elige la otra cuenta del asiento.
+        {automaticCounterAccount
+          ? 'Inventario aumenta por el valor de las unidades agregadas. La cuenta de orden se asigna automáticamente.'
+          : 'Esta cuenta aumenta al agregar unidades y disminuye al descontarlas. En contrapartida elige la otra cuenta del asiento.'}
       </p>
       {query.error ? (
         <div>

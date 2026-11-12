@@ -41,6 +41,11 @@ try {
     const errors = []
     page.on('pageerror', (error) => errors.push(error.message))
     const fixture = await browserDatabase(page)
+    const automaticCode = (
+      await fixture.db.query(
+        "select code from public.ledger_accounts where name='Ajustes de inventario'",
+      )
+    ).rows[0].code
     const one = async (sql, values = []) =>
       (await fixture.db.query(sql, values)).rows[0]
     const stock = async () =>
@@ -83,6 +88,9 @@ try {
       exact: true,
     })
     const adjust = async (place, total, note, kind = 'correction') => {
+      const previous = (await stock()).find(
+        (s) => s.location === place,
+      ).quantity
       await location.selectOption(place)
       await action.selectOption('ADJUSTMENT')
       await count.fill(String(total))
@@ -111,9 +119,15 @@ try {
           'Elegir balance vuelve a corrección en una sola selección',
         )
         await counterAccount.selectOption('5150')
-      } else {
+      } else if (total <= previous) {
         await counterAccount.selectOption('3110-001')
         equal(await treatment.inputValue(), 'correction')
+      } else {
+        equal(
+          await counterAccount.count(),
+          0,
+          'El aumento usa la cuenta de orden automática',
+        )
       }
       await save.click()
       await page.waitForFunction(
@@ -199,7 +213,7 @@ try {
       await dialog
         .getByLabel('Ubicación', { exact: true })
         .selectOption('store')
-      await dialog.getByLabel('Conteo total', { exact: true }).fill('25')
+      await dialog.getByLabel('Conteo total', { exact: true }).fill('15')
       equal(
         await dialog.getByLabel('Motivo', { exact: true }).inputValue(),
         'Conteo físico',
@@ -253,15 +267,15 @@ try {
         await dialogAccount
           .locator('option[value="5150"]')
           .getAttribute('disabled'),
-        '',
-        'La opción Pérdidas no permite aumentar existencias',
+        null,
+        'Una deducción permite elegir Pérdidas de inventario',
       )
       equal(
         await dialogTreatment
           .locator('option[value="loss"]')
           .getAttribute('disabled'),
-        '',
-        'Una pérdida no permite aumentar existencias',
+        null,
+        'Una deducción permite elegir Pérdida real',
       )
       await dialog
         .getByRole('button', { name: 'Guardar ajuste', exact: true })
@@ -273,6 +287,9 @@ try {
         'Sin contrapartida no se modifica el inventario',
       )
       await dialogAccount.selectOption('3110-001')
+      await dialog.getByLabel('Conteo total', { exact: true }).fill('25')
+      equal(await dialogAccount.count(), 0, 'El aumento no pide contrapartida')
+      equal(await dialogTreatment.count(), 0)
       await page.screenshot({
         path: `${output}/modal-${width}.png`,
         fullPage: true,
@@ -295,7 +312,7 @@ try {
           actor_id: admin,
           note: generalNote,
           adjustment_kind: 'correction',
-          counter_account: '3110-001',
+          counter_account: automaticCode,
         },
         'El ajuste general conserva el conteo, la ubicación y el responsable',
       )
@@ -378,7 +395,7 @@ try {
       await count.fill('21')
       const retryNote = `Conteo con respuesta perdida ${width}`
       await noteField.fill(retryNote)
-      await counterAccount.selectOption('3110-001')
+      equal(await counterAccount.count(), 0)
       await save.click()
       await editor
         .getByRole('alert')
@@ -386,8 +403,8 @@ try {
         .waitFor()
       equal(await count.isDisabled(), true)
       equal(await noteField.isDisabled(), true)
-      equal(await treatment.isDisabled(), true)
-      equal(await counterAccount.isDisabled(), true)
+      equal(await treatment.count(), 0)
+      equal(await counterAccount.count(), 0)
       await editor
         .getByRole('button', { name: 'Verificar guardado', exact: true })
         .click()
@@ -405,7 +422,7 @@ try {
         'El conteo incluye las existencias que se revisaron',
       )
       equal(payloads[0].adjustmentKind, 'correction')
-      equal(payloads[0].counterAccount, '3110-001')
+      equal(Object.hasOwn(payloads[0], 'counterAccount'), false)
       equal(
         (
           await one(
@@ -432,7 +449,7 @@ try {
       await count.fill('5')
       const staleNote = `Conteo desactualizado ${width}`
       await noteField.fill(staleNote)
-      await counterAccount.selectOption('3110-001')
+      equal(await counterAccount.count(), 0)
       await fixture.db.query(
         'select public.record_inventory_movement($1::jsonb)',
         [
@@ -542,7 +559,17 @@ try {
             exact: true,
           })
           .count(),
-        5,
+        2,
+      )
+      equal(
+        await page
+          .getByText(
+            `Corrección de cantidad · Contrapartida: ${automaticCode}`,
+            { exact: true },
+          )
+          .count(),
+        3,
+        'Los aumentos conservan en el historial la cuenta de orden automática',
       )
       equal(
         await page

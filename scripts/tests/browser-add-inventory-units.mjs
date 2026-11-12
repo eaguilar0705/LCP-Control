@@ -79,6 +79,11 @@ try {
         openingUsd: 0,
       })
       await fixture.db.exec('reset role')
+      const automaticCode = (
+        await one(
+          'select increase_account from private.inventory_adjustment_defaults',
+        )
+      ).increase_account
       await fixture.db.query(
         "insert into public.products(id,sku,name,brand_id,size,unit,category,gender) values($1,'QA-ADD-500','Perfume para agregar unidades',(select id from public.brands limit 1),100,'ml','arabian','unisex')",
         [product],
@@ -146,7 +151,13 @@ try {
         'La edición habitual propone escribir las unidades adicionales',
       )
       await amount.fill('1')
-      await counter.selectOption(code)
+      equal(await counter.count(), 0, 'Agregar unidades no pide una cuenta')
+      equal(
+        await editor
+          .getByLabel('Tratamiento del ajuste', { exact: true })
+          .count(),
+        0,
+      )
       await note.fill('Agregar una unidad de quinientos')
       const inventoryAccount = editor.getByLabel(
         'Cuenta de inventario (automática)',
@@ -158,9 +169,13 @@ try {
       )
       equal(await inventoryAccount.getAttribute('readonly'), '')
       equal(
-        await counter.locator('option[value="1130"]').count(),
-        0,
-        'Inventario participa automáticamente y no se compensa contra sí mismo',
+        await editor
+          .getByText('La contrapartida se registra automáticamente', {
+            exact: false,
+          })
+          .isVisible(),
+        true,
+        'La cuenta de orden se asigna automáticamente',
       )
       await editor.locator('.inventory-adjustment-value').waitFor()
       equal(
@@ -197,7 +212,7 @@ try {
         before_quantity: 2,
         after_quantity: 3,
         adjustment_kind: 'correction',
-        counter_account: code,
+        counter_account: automaticCode,
       })
       await fixture.db.exec('reset role')
       const gain = await one(
@@ -226,7 +241,7 @@ try {
         500,
         'El mayor aumenta C$500, no C$1500',
       )
-      equal(book.accounts.find((a) => a.code === code).credit, 500)
+      equal(book.accounts.find((a) => a.code === automaticCode).credit, 500)
       equal(book.accounts.find((a) => a.code === '5150').debit, initialLoss)
 
       // Cambiar entre diferencia y conteo borra la cifra para no reinterpretarla.
@@ -240,14 +255,14 @@ try {
       await action.selectOption('ADD')
       equal(await amount.inputValue(), '')
       await amount.fill('999999')
-      await counter.selectOption(code)
+      equal(await counter.count(), 0)
       await save.click()
       await editor.getByRole('alert').waitFor()
       equal(await quantity(), 3, 'No acepta un total superior al máximo')
 
       // La respuesta se pierde después de guardar: verificar no agrega otra unidad.
       await amount.fill('1')
-      await counter.selectOption(code)
+      equal(await counter.count(), 0)
       await note.fill('Una unidad con respuesta perdida')
       const requests = []
       let dropped = false
@@ -278,6 +293,7 @@ try {
       equal(await quantity(), 4)
       equal(requests.length, 2)
       equal(requests[1], requests[0])
+      equal(Object.hasOwn(requests[0], 'counterAccount'), false)
       equal(
         {
           type: requests[0].type,
@@ -299,7 +315,11 @@ try {
       // El conteo total sigue disponible y también valora únicamente su diferencia.
       await action.selectOption('ADJUSTMENT')
       await count.fill('5')
-      await counter.selectOption(code)
+      equal(
+        await counter.count(),
+        0,
+        'El aumento por conteo también es automático',
+      )
       await note.fill('Conteo de cinco unidades')
       await editor
         .getByRole('button', { name: 'Guardar ajuste', exact: true })
@@ -333,9 +353,12 @@ try {
         .fill('QA-ADD-500')
       await dialog.getByRole('option').first().click()
       await dialog.getByLabel('Unidades a agregar', { exact: true }).fill('1')
-      await dialog
-        .getByLabel('Cuenta de contrapartida', { exact: true })
-        .selectOption(code)
+      equal(
+        await dialog
+          .getByLabel('Cuenta de contrapartida', { exact: true })
+          .count(),
+        0,
+      )
       await dialog
         .getByLabel('Motivo', { exact: true })
         .fill('Una unidad desde Inventario')
@@ -349,8 +372,37 @@ try {
         book.accounts.find((a) => a.code === '1130').debit - initialInventory,
         2000,
       )
-      equal(book.accounts.find((a) => a.code === code).credit, 2000)
+      equal(book.accounts.find((a) => a.code === automaticCode).credit, 2000)
       equal(book.accounts.find((a) => a.code === '5150').debit, initialLoss)
+
+      // Una deducción conserva la elección de cuenta. Cambiar luego a un aumento
+      // no arrastra la cuenta ni el tratamiento de pérdida seleccionado.
+      await navigate(`/products/${product}/edit`)
+      await action.selectOption('EXIT')
+      await editor.getByLabel('Unidades a mover', { exact: true }).fill('1')
+      await counter.selectOption('5150')
+      await action.selectOption('ADD')
+      await amount.fill('1')
+      equal(await counter.count(), 0)
+      await note.fill('Aumento después de elegir una pérdida')
+      await save.click()
+      await page.waitForFunction(
+        () =>
+          globalThis.document.querySelector(
+            '.product-stock-editor .stock-location-cards strong',
+          )?.textContent === '7',
+      )
+      equal(await quantity(), 7)
+      book = await ledger()
+      equal(book.accounts.find((a) => a.code === automaticCode).credit, 2500)
+      equal(book.accounts.find((a) => a.code === '5150').debit, initialLoss)
+      await action.selectOption('ENTRY')
+      equal(
+        await editor
+          .getByRole('button', { name: 'Registrar compra', exact: true })
+          .isVisible(),
+        true,
+      )
 
       // Otros roles conservan sus permisos y no reciben la adición de corrección.
       await page.goto(base + '/login')

@@ -7,10 +7,10 @@ El dueño necesita corregir las cantidades que encuentra al contar los perfumes,
 1. En **Inventario**, pulsa **Ajustar existencias**, o usa el enlace del perfume para abrir directamente sus cantidades. También está disponible arriba de **Editar perfume**.
 2. Elige **Tienda** o **Bodega**.
 3. Escribe el **total físico** de esa ubicación. Por ejemplo, si el sistema muestra 10 y contaste 13, escribe 13; si contaste 8, escribe 8. Puedes guardar 0.
-4. Si ya había un conteo, selecciona la **Cuenta de contrapartida**. Para acumular las correcciones fuera del estado de resultados, elige tu cuenta de orden. También se puede elegir la cuenta de activo, pasivo o capital que corresponda; no se asigna una cuenta automáticamente. **5150 · Pérdidas de inventario** también aparece en ese selector y se elige expresamente para pérdidas reales, como un perfume abierto de muestra o tester. Solo está disponible al disminuir existencias. El campo **Tratamiento del ajuste** queda sincronizado con la cuenta elegida. Las contrapartidas se expresan en córdobas.
+4. Si el nuevo conteo aumenta las existencias, el sistema utiliza automáticamente la cuenta de orden **Ajustes de inventario**, sin pedir tratamiento ni contrapartida. Si disminuye las existencias, selecciona la **Cuenta de contrapartida** de orden, activo, pasivo o capital que corresponda. **5150 · Pérdidas de inventario** también aparece en ese selector y se elige expresamente para pérdidas reales, como un perfume abierto de muestra o tester. Solo está disponible al disminuir existencias. El campo **Tratamiento del ajuste** queda sincronizado con la cuenta elegida. Las contrapartidas se expresan en córdobas.
 5. Revisa las cantidades antes y después y pulsa **Guardar ajuste**. El motivo ya trae **Conteo físico**; se puede cambiar cuando haga falta una aclaración.
 
-El cambio conserva fecha, usuario, motivo, tratamiento, cuenta elegida y cantidades anteriores y finales en el historial de movimientos. La corrección mantiene el costo promedio y registra su valor contra la cuenta elegida mediante un comprobante vinculado, sin reconocer ingresos ni gastos. Por ejemplo, corregir de 20 a 15 unidades mal digitadas disminuye el inventario contra esa cuenta; no registra una pérdida de cinco unidades. Una pérdida real sí conserva su costo en la cuenta de pérdidas. El comprobante de una corrección no se edita ni anula por separado del movimiento.
+El cambio conserva fecha, usuario, motivo, tratamiento, contrapartida y cantidades anteriores y finales en el historial de movimientos. La corrección mantiene el costo promedio y registra su valor contra la cuenta automática o elegida mediante un comprobante vinculado, sin reconocer ingresos ni gastos. Por ejemplo, corregir de 20 a 15 unidades mal digitadas disminuye el inventario contra la cuenta elegida; no registra una pérdida de cinco unidades. Una pérdida real sí conserva su costo en la cuenta de pérdidas. El comprobante de una corrección no se edita ni anula por separado del movimiento.
 
 El conteo inicial no requiere este selector y puede conservar el costo pendiente; para modificar un conteo ya registrado se necesita el costo del perfume. Si falta, el sistema indica completarlo desde **Costo de inventario** y conserva las cantidades anteriores. Los movimientos históricos conservan su clasificación; volver a contar no reclasifica una pérdida anterior. Las recepciones y devoluciones conservan su propio tratamiento.
 
@@ -24,7 +24,9 @@ Al abrir **Editar perfume** de la forma habitual, Superadmin empieza en **Agrega
 
 La opción **Ajustar existencias (conteo físico)** sigue disponible para escribir el total físico. Los accesos específicos a conteos abren esa opción. Cambiar entre cantidad adicional y conteo borra el número introducido para no reinterpretarlo accidentalmente. Una ubicación sin contar requiere registrar primero su conteo inicial.
 
-**Cuenta de inventario (automática)** muestra Inventario de perfumes, con su código visible. Esta cuenta aumenta al agregar unidades y disminuye al descontarlas; **Cuenta de contrapartida** corresponde a la otra parte del asiento. Inventario no se selecciona como su propia contrapartida, porque ese asiento compensaría su valor en la misma cuenta.
+**Cuenta de inventario (automática)** muestra Inventario de perfumes, con su código visible. Esta cuenta aumenta al agregar unidades y disminuye al descontarlas. Para los aumentos, la contrapartida se asigna automáticamente a **Ajustes de inventario**; **Cuenta de contrapartida** se mantiene para las deducciones. Inventario no se selecciona como su propia contrapartida, porque ese asiento compensaría su valor en la misma cuenta.
+
+El cambio solicitado el 11 de noviembre crea **Ajustes de inventario** bajo **7000 · Cuentas de orden**, con el primer código libre entre `7000-001` y `7000-999`. No reutiliza ni modifica las cuentas existentes, aunque ya tengan alguno de esos códigos. La cuenta creada debe mantenerse activa, como cuenta de orden que admite movimientos; si se desactiva o reclasifica, el sistema rechaza nuevas adiciones y pide revisarla en Contabilidad. Las operaciones ya guardadas se pueden recuperar aunque luego se desactive la cuenta.
 
 Con costo de C$500 y dos unidades existentes, agregar una unidad registra un aumento de **C$500** en Inventario, no C$1500. La estimación muestra solo la diferencia de unidades y el costo actual; el importe definitivo lo calcula la base al guardar. El costo pendiente se indica expresamente y no se sustituye por cero. El cambio conserva la revisión del conteo esperado, el costo histórico, la contrapartida y la recuperación del mismo guardado, sin sumar la unidad dos veces si se pierde la respuesta.
 
@@ -32,9 +34,9 @@ Con costo de C$500 y dos unidades existentes, agregar una unidad registra un aum
 
 El audio del dueño del 10 de noviembre precisa que los ajustes deben acumularse en una cuenta de orden y mostrarse en la balanza, sin reconocer ingresos, costos ni gastos.
 
-En **Contabilidad → Catálogo → Administrar cuentas → Agregar cuenta**, crea tu cuenta con **7000 · Cuentas de orden** como cuenta mayor; por ejemplo, código **7000-001** y el nombre que corresponda al negocio. La actualización solo crea la cuenta mayor, sin elegir ni crear una cuenta de movimiento por el dueño.
+La actualización del 11 de noviembre crea **Ajustes de inventario** para los aumentos automáticos. Para usar otras cuentas en las deducciones, en **Contabilidad → Catálogo → Administrar cuentas → Agregar cuenta**, crea tu cuenta con **7000 · Cuentas de orden** como cuenta mayor y un código disponible.
 
-En **Descontar unidades**, al editar un perfume, o en **Inventario → Salida**, Superadmin escribe las unidades a retirar, mantiene **Corrección de cantidad (sin pérdida)** y selecciona su cuenta de orden. Se muestra la cantidad final antes de guardar. La operación conserva el conteo esperado, su comprobante y el historial, y se puede anular como los otros ajustes. Por ejemplo, retirar una unidad que cuesta C$300 abona C$300 a Inventario y carga C$300 a la cuenta de orden; no aumenta **Pérdidas de inventario** ni cambia la utilidad. Un aumento por conteo invierte las dos partidas.
+En **Descontar unidades**, al editar un perfume, o en **Inventario → Salida**, Superadmin escribe las unidades a retirar, mantiene **Corrección de cantidad (sin pérdida)** y selecciona su cuenta de orden. Se muestra la cantidad final antes de guardar. La operación conserva el conteo esperado, su comprobante y el historial, y se puede anular como los otros ajustes. Por ejemplo, retirar una unidad que cuesta C$300 abona C$300 a Inventario y carga C$300 a la cuenta elegida; no aumenta **Pérdidas de inventario** ni cambia la utilidad. Un aumento por conteo carga Inventario y abona automáticamente **Ajustes de inventario**.
 
 Para una pérdida real se debe elegir expresamente **Pérdida real** o **5150 · Pérdidas de inventario**. Los roles sin permiso de ajustes conservan sus salidas como pérdida y reciben esa explicación antes de confirmar. Las compras y productos dañados conservan su tratamiento propio. Los movimientos históricos no se reclasifican.
 
@@ -66,6 +68,10 @@ Para habilitar las cuentas de orden y su uso como contrapartida, aplicar despué
 
 `backend/supabase/migrations/20261111000000_cuentas_de_orden_para_ajustes.sql`
 
+Para crear y asignar la cuenta de orden automática de los aumentos, aplicar después de todas las anteriores:
+
+`backend/supabase/migrations/20261111230000_orden_automatica_para_aumentos_de_inventario.sql`
+
 Después, publicar la compilación del frontend. Compilar localmente no aplica la migración ni cambia roles de usuarios existentes. El dueño debe tener asignado el rol Superadmin en Personal.
 
 ## Verificación local
@@ -76,6 +82,8 @@ npm run test:inventory-adjustments
 npm run test:inventory-adjustment-accounting
 npm run test:inventory-adjustment-voids
 npm run test:inventory-order-accounts
+npm run test:automatic-inventory-increases
+npm run test:browser:add-inventory-units
 npm run test:browser:inventory-order-accounts
 npm run test:browser:inventory-adjustments
 ```
@@ -89,3 +97,5 @@ La actualización de cuentas de orden del 10 de noviembre pasó 80 comprobacione
 En la revisión anterior, la suite general `test:database` se detenía en la preparación de `business-day.mjs` porque su base de prueba no define `storage.allow_only_operation`, requerida por una migración anterior. `extended-store-flow.mjs` se detenía antes de probar los ajustes porque una compra de su primer día omite la cuenta bancaria. Estos fallos requieren actualizar esas pruebas; no se modificaron los flujos de negocio para evitarlos.
 
 Las adiciones por unidades del 10 de noviembre pasaron 93 comprobaciones de navegador en 1440, 390 y 320 px y seis pruebas de cálculo de valor. El ejemplo de dos unidades más una de C$500 termina en tres unidades, incrementa el valor en C$500 y registra la contrapartida una sola vez, incluso con respuesta perdida. También volvieron a pasar las 237 comprobaciones de ajustes y las 60 de controles existentes.
+
+La cuenta automática del 11 de noviembre pasó 32 comprobaciones nuevas de migración, códigos ocupados, conservación del histórico, cuentas inactivas, permisos, valoración, partida doble y recuperación sin duplicados. Pasaron además 76 comprobaciones de conteos, 124 del tratamiento contable y seis pruebas de reportes, 166 de anulaciones y 80 de cuentas de orden. En navegador pasaron 129 comprobaciones de adiciones automáticas, 252 de ajustes y anulaciones, 72 de deducciones contra cuentas de orden y 60 de controles de inventario, en 1440, 390 y 320 px. Lint, tipos y compilación pasaron. Estas verificaciones usan bases desechables; no aplican la migración ni publican la interfaz en producción.

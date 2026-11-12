@@ -20,10 +20,15 @@ export function useInventoryAdjustmentAccounting(
   enabled: boolean,
   before: number | null,
   after: number | null,
+  additionOnly = false,
 ) {
   const { role, demo } = useAccess()
+  const automaticCounterAccount =
+    enabled &&
+    (additionOnly || (before !== null && after !== null && after > before))
+  const requiresCounterAccount = enabled && !automaticCounterAccount
   const load = useCallback(async () => {
-    if (!enabled || role !== 'superadmin' || demo) return []
+    if (!requiresCounterAccount || role !== 'superadmin' || demo) return []
     const accounts = await journalRpc<AdjustmentAccount[]>(
       'ledger_accounts_list',
       {},
@@ -45,17 +50,20 @@ export function useInventoryAdjustmentAccounting(
         'No se recibió la lista completa de cuentas. Vuelve a consultar.',
       )
     return accounts
-  }, [enabled, role, demo])
+  }, [requiresCounterAccount, role, demo])
   const query = useQuery(load)
   const [selection, setSelection] = useState({
     contextKey,
     kind: 'correction' as AdjustmentKind,
     counterAccount: '',
   })
-  const current =
+  const selected =
     selection.contextKey === contextKey
       ? selection
       : { contextKey, kind: 'correction' as const, counterAccount: '' }
+  const current = automaticCounterAccount
+    ? { ...selected, kind: 'correction' as const, counterAccount: '' }
+    : selected
   const accounts = (query.data ?? []).filter(
     (a) =>
       a.active &&
@@ -68,7 +76,7 @@ export function useInventoryAdjustmentAccounting(
   const canRecordLoss =
     before !== null && after !== null && after >= 0 && after < before
   const valid =
-    !enabled ||
+    !requiresCounterAccount ||
     (!query.loading &&
       !query.error &&
       accounts.some((a) => a.code === current.counterAccount) &&
@@ -77,6 +85,8 @@ export function useInventoryAdjustmentAccounting(
         : current.counterAccount !== '5150'))
   return {
     ...current,
+    automaticCounterAccount,
+    requiresCounterAccount,
     accounts,
     inventoryAccount: query.data?.find((a) => a.code === '1130'),
     lossAccount: query.data?.find((a) => a.code === '5150'),

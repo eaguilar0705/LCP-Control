@@ -117,6 +117,7 @@ export function InventoryMovements({
     manualAdjustment && quantity != null,
     quantity ?? null,
     finalQuantity,
+    action?.type === 'ADD',
   )
   if (demo) return null
 
@@ -221,7 +222,8 @@ export function InventoryMovements({
               ...(quantity != null
                 ? {
                     adjustmentKind: adjustmentAccounting.kind,
-                    ...(adjustmentAccounting.kind === 'correction'
+                    ...(adjustmentAccounting.kind === 'correction' &&
+                    adjustmentAccounting.requiresCounterAccount
                       ? { counterAccount: adjustmentAccounting.counterAccount }
                       : {}),
                   }
@@ -293,8 +295,10 @@ export function InventoryMovements({
               <p>
                 Escribe el total contado, no la diferencia. No incluyas unidades
                 de recepciones pendientes en este conteo. Para ingresar una
-                compra usa Recibir mercadería. Al cambiar un conteo existente,
-                elige si corriges una cantidad o reconoces una pérdida real.
+                compra usa Recibir mercadería. Los aumentos usan automáticamente
+                la cuenta de orden de ajustes de inventario; para las
+                deducciones, elige si corriges una cantidad o reconoces una
+                pérdida real.
               </p>
             )}
             {action.type === 'ADD' && (

@@ -78,7 +78,7 @@ try {
         openingUsd: 0,
       })
       await login()
-      // El dueño crea su propia cuenta, sin una hoja predeterminada.
+      // El dueño puede crear otra cuenta de orden para sus deducciones.
       await navigate('/accounting?section=catalog')
       await page
         .getByRole('button', { name: 'Administrar cuentas', exact: true })
@@ -89,7 +89,7 @@ try {
         .click()
       await accountsDialog
         .getByLabel('Código', { exact: true })
-        .fill('7000-001')
+        .fill('7000-501')
       await accountsDialog
         .getByLabel('Nombre de la cuenta', { exact: true })
         .fill('Cuenta de orden del dueño')
@@ -100,12 +100,12 @@ try {
         .getByRole('button', { name: 'Guardar cuenta', exact: true })
         .click()
       await accountsDialog
-        .getByRole('article', { name: 'Cuenta 7000-001', exact: true })
+        .getByRole('article', { name: 'Cuenta 7000-501', exact: true })
         .waitFor()
       equal(
         (
           await one(
-            "select bucket from public.ledger_accounts where code='7000-001'",
+            "select bucket from public.ledger_accounts where code='7000-501'",
           )
         ).bucket,
         'memorandum',
@@ -139,7 +139,7 @@ try {
         true,
       )
       equal(await quantity(), 20, 'Sin contrapartida no descuenta unidades')
-      await counter.selectOption('7000-001')
+      await counter.selectOption('7000-501')
       await editor
         .getByRole('button', { name: 'Guardar cantidades', exact: true })
         .click()
@@ -159,12 +159,12 @@ try {
         before_quantity: 20,
         after_quantity: 17,
         adjustment_kind: 'correction',
-        counter_account: '7000-001',
+        counter_account: '7000-501',
       })
       let book = await ledger()
       const account = (code) => book.accounts.find((row) => row.code === code)
       equal(
-        account('7000-001').debit,
+        account('7000-501').debit,
         300,
         'Tres unidades de C$100 van a orden',
       )
@@ -189,7 +189,7 @@ try {
       )
       book = await ledger()
       equal(account('5150').debit, 100)
-      equal(account('7000-001').debit, 300)
+      equal(account('7000-501').debit, 300)
 
       // Descontar desde Inventario ofrece la misma separación.
       await navigate('/inventory')
@@ -212,14 +212,14 @@ try {
       )
       await dialog
         .getByLabel('Cuenta de contrapartida', { exact: true })
-        .selectOption('7000-001')
+        .selectOption('7000-501')
       await dialog
         .getByRole('button', { name: 'Confirmar movimiento', exact: true })
         .click()
       await dialog.waitFor({ state: 'hidden' })
       equal(await quantity(), 14)
       book = await ledger()
-      equal(account('7000-001').debit, 500)
+      equal(account('7000-501').debit, 500)
       equal(
         account('5150').debit,
         100,

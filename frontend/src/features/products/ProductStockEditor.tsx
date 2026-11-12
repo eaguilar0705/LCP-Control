@@ -164,6 +164,7 @@ export function ProductStockEditor({
     manualAdjustment && !initial,
     before,
     valid ? after : null,
+    movementType === 'ADD',
   )
 
   async function submit(e: FormEvent) {
@@ -215,7 +216,8 @@ export function ProductStockEditor({
                 ...(!initial
                   ? {
                       adjustmentKind: adjustmentAccounting.kind,
-                      ...(adjustmentAccounting.kind === 'correction'
+                      ...(adjustmentAccounting.kind === 'correction' &&
+                      adjustmentAccounting.requiresCounterAccount
                         ? {
                             counterAccount: adjustmentAccounting.counterAccount,
                           }
@@ -260,8 +262,9 @@ export function ProductStockEditor({
         Para ingresar mercadería pendiente de revisión contable, usa{' '}
         <Link to={`${base}/inventory`}>Recibir mercadería en Inventario</Link>.
         No incluyas unidades de recepciones pendientes en el conteo. Al cambiar
-        un conteo existente, elige si corriges una cantidad o reconoces una
-        pérdida real.
+        un conteo existente, los aumentos usan automáticamente la cuenta de
+        orden de ajustes de inventario; para las deducciones, elige si corriges
+        una cantidad o reconoces una pérdida real.
       </p>
 
       {loading ? (
