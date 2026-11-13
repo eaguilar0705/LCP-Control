@@ -2,7 +2,7 @@ import type { ProductInput } from '@lcp/contracts/products'
 export type { ProductInput } from '@lcp/contracts/products'
 import { z } from 'zod'
 import type { Product, PricingInput } from '../../lib/domain'
-import { convertPrice, emptyPricing } from '../../lib/pricing'
+import { convertPrice, emptyPricing, legacyPriceTiers } from '../../lib/pricing'
 // Los mensajes se muestran junto al campo que los produce, así que se escriben
 // para quien llena el formulario, no para quien lee el código.
 const money = z
@@ -116,6 +116,15 @@ export function pricingInput(pricing?: PricingInput | null): PricingInput {
   }
 }
 export function productInput(product?: Product): ProductInput {
+  const prices = structuredClone(product?.prices ?? {})
+  // Un perfume importado puede no tener todas las listas o monedas. El
+  // formulario necesita ambas para renderizar; los ceros siguen siendo
+  // inválidos y obligan a completar el precio antes de guardar.
+  for (const tier of legacyPriceTiers)
+    prices[tier] = {
+      USD: prices[tier]?.USD ?? 0,
+      NIO: prices[tier]?.NIO ?? 0,
+    }
   return {
     id: product?.id ?? crypto.randomUUID(),
     revision: product?.revision ?? 0,
@@ -129,13 +138,7 @@ export function productInput(product?: Product): ProductInput {
     minimumStock: product?.minimumStock ?? 0,
     active: product?.active ?? true,
     imagePath: product?.imagePath ?? null,
-    prices: structuredClone(
-      product?.prices ?? {
-        emprendedor: { NIO: 0, USD: 0 },
-        vip: { NIO: 0, USD: 0 },
-        premium: { NIO: 0, USD: 0 },
-      },
-    ),
+    prices,
   }
 }
 export async function optimizeProductImage(file: File): Promise<Blob> {

@@ -87,6 +87,36 @@ test('la ficha no exige importes para una lista nueva sin precio', () => {
   const parsed = productInputSchema.parse(productInput(copy))
   assert.equal(Object.hasOwn(parsed.prices, 'lista_cuarta'), false)
 })
+
+test('la edición abre perfumes sin listas y exige completarlas antes de guardar', () => {
+  for (const savedPrices of [undefined, {}]) {
+    const input = productInput({ ...product, prices: savedPrices })
+    for (const tier of pricing.legacyPriceTiers)
+      assert.deepEqual(input.prices[tier], { USD: 0, NIO: 0 })
+    assert.equal(productInputSchema.safeParse(input).success, false)
+    assert.equal(Object.hasOwn(input.prices, 'lista_cuarta'), false)
+  }
+})
+
+test('la edición completa listas o monedas faltantes sin alterar precios guardados', () => {
+  const savedPrices = {
+    emprendedor: pair(30),
+    premium: { NIO: 1036 },
+    lista_cuarta: pair(27.03),
+  }
+  const original = structuredClone(savedPrices)
+  const input = productInput({ ...product, prices: savedPrices })
+  assert.deepEqual(input.prices.emprendedor, pair(30))
+  assert.deepEqual(input.prices.vip, { USD: 0, NIO: 0 })
+  assert.deepEqual(input.prices.premium, { USD: 0, NIO: 1036 })
+  assert.deepEqual(input.prices.lista_cuarta, pair(27.03))
+  assert.equal(productInputSchema.safeParse(input).success, false)
+  input.prices.vip = pair(29)
+  input.prices.premium = pair(28)
+  assert.equal(productInputSchema.safeParse(input).success, true)
+  input.prices.lista_cuarta.USD = 99
+  assert.deepEqual(savedPrices, original)
+})
 test('no convierte la falta de precio en cero ni en el de otra lista', () => {
   assert.equal(pricing.productPrice(product, 'lista_nueva', 'NIO'), null)
   assert.equal(
