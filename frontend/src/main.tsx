@@ -4,6 +4,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { AuthProvider } from './features/auth/AuthProvider'
 import { App } from './app/App'
 import { ErrorBoundary } from './app/ErrorBoundary'
+import { RouteError } from './app/ApplicationError'
 import './styles/styles.css'
 import './styles/identity.css'
 import './styles/catalog-documents.css'
@@ -21,6 +22,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         router={createBrowserRouter([
           {
             path: '*',
+            errorElement: <RouteError />,
             element: (
               <AuthProvider>
                 <App />

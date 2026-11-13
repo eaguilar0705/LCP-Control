@@ -1,0 +1,3 @@
+# Revalidar también las rutas que Cloudflare sirve mediante index.html.
+/*
+  Cache-Control: no-cache

@@ -74,6 +74,8 @@ npm run preview
 
 `check` valida lint y compila la aplicación en `output/dist/`. Publicar esa carpeta en un hosting HTTPS con fallback de rutas a `index.html`. `preview` permite revisar la compilación localmente y mantiene el servidor limitado a este equipo.
 
+Si una pestaña intenta abrir una pantalla de una versión anterior, la aplicación intenta recuperar la versión vigente una sola vez y ofrece recarga manual si la descarga sigue fallando. Cloudflare Pages revalida la caché mediante `_headers`. Ver [recuperación de pantallas y comprobaciones](docs/recuperacion-de-pantallas.md).
+
 Con el servidor local activo, `npm run test:browser:accounting` verifica el módulo en Chrome a 1440, 390 y 320 px; `npm run test:browser` recorre también inventario, ventas y reportes. Las pruebas interceptan Supabase y usan datos aislados. `LCP_TEST_BASE_URL` permite elegir un servidor local distinto del puerto 5173. La auditoría y sus correcciones se documentan en [el informe contable](docs/auditoria-contabilidad-2026-10-13.md).
 
 `npm run test:browser:store` verifica las entradas con costo, las listas adicionales, Caja y los filtros de clientes. La [revisión del 24 de octubre](docs/revision-tienda-2026-10-24.md) resume los cambios y sus comprobaciones.

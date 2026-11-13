@@ -17,6 +17,8 @@
     "check": "npm run lint && npm run build",
     "build": "npm run typecheck --workspace @lcp/contracts && npm run build --workspace @lcp/frontend",
     "typecheck": "npm run typecheck --workspaces --if-present",
+    "test:chunk-recovery": "node --test scripts/tests/chunk-recovery.test.mjs",
+    "test:browser:chunk-recovery": "node scripts/tests/browser-chunk-recovery.mjs",
     "test:discounts": "node --test scripts/tests/discount-model.test.mjs && node scripts/tests/discounts-and-history.mjs",
     "test:accounting": "node --test scripts/tests/*.test.mjs",
     "test:exchange-rates": "node scripts/tests/exchange-rate-separation.mjs",

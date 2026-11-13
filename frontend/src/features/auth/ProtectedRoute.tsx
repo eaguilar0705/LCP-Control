@@ -7,7 +7,13 @@ export function ProtectedRoute() {
   if (loading) return <LoadingState />
   if (error) return <ErrorState message={error} retry={retry} />
   if (!user)
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{ from: location.pathname + location.search + location.hash }}
+      />
+    )
   if (!user.role)
     return (
       <div className="access-state">

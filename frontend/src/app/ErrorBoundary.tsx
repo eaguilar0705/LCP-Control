@@ -1,19 +1,16 @@
 import { Component, type ReactNode } from 'react'
-import { ErrorState } from '../components/ui'
+import { ApplicationError } from './ApplicationError'
 export class ErrorBoundary extends Component<
   { children: ReactNode },
-  { failed: boolean }
+  { failed: boolean; error: unknown }
 > {
-  state = { failed: false }
-  static getDerivedStateFromError() {
-    return { failed: true }
+  state = { failed: false, error: null }
+  static getDerivedStateFromError(error: unknown) {
+    return { failed: true, error }
   }
   render() {
     return this.state.failed ? (
-      <ErrorState
-        message="No pudimos mostrar esta pantalla. Recarga la aplicación para continuar."
-        retry={() => window.location.reload()}
-      />
+      <ApplicationError error={this.state.error} />
     ) : (
       this.props.children
     )
