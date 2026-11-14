@@ -103,6 +103,23 @@ function AccountsDialog({
   const uncertain = operation.isUncertain()
   const disabled = busy || uncertain || stale
   const accounts = data ?? []
+  const byCode = new Map(accounts.map((account) => [account.code, account]))
+  function validParent(candidate: ManagedAccount, account: ManagedAccount) {
+    if (
+      candidate.bucket !== account.bucket ||
+      candidate.nature !== account.nature ||
+      candidate.code[0] !== account.code[0]
+    )
+      return false
+    const visited = new Set([account.code])
+    let code: string | null = candidate.code
+    while (code) {
+      if (visited.has(code)) return false
+      visited.add(code)
+      code = byCode.get(code)?.parent ?? null
+    }
+    return true
+  }
   const visible = accounts.filter(
     (a) =>
       (status === 'all' || a.active === (status === 'active')) &&
@@ -162,6 +179,7 @@ function AccountsDialog({
             newCode: code.trim(),
             name: name.trim(),
             expectedRevision: form.revision,
+            ...(parent !== (form.parent ?? '') ? { parent } : {}),
           },
     )
   }
@@ -209,7 +227,7 @@ function AccountsDialog({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                 />
-                {form === 'create' ? (
+                {form === 'create' || form.parent !== null ? (
                   <Select
                     label="Cuenta mayor"
                     required
@@ -218,7 +236,12 @@ function AccountsDialog({
                   >
                     <option value="">Seleccionar cuenta mayor</option>
                     {accounts
-                      .filter((a) => a.active)
+                      .filter(
+                        (a) =>
+                          (form !== 'create' && a.code === form.parent) ||
+                          (a.active &&
+                            (form === 'create' || validParent(a, form))),
+                      )
                       .map((a) => (
                         <option key={a.code} value={a.code}>
                           {a.displayCode ?? a.code} · {a.name}
@@ -226,10 +249,7 @@ function AccountsDialog({
                       ))}
                   </Select>
                 ) : (
-                  <p className="muted">
-                    Cuenta mayor:{' '}
-                    {(form.displayParent ?? parent) || 'Cuenta principal'}
-                  </p>
+                  <p className="muted">Cuenta principal</p>
                 )}
                 {accounts.find((a) => a.code === parent)?.bucket ===
                   'memorandum' && (
@@ -257,7 +277,8 @@ function AccountsDialog({
                     disabled ||
                     (form !== 'create' &&
                       name.trim() === form.name &&
-                      code.trim() === (form.displayCode ?? form.code))
+                      code.trim() === (form.displayCode ?? form.code) &&
+                      parent === (form.parent ?? ''))
                   }
                 >
                   {busy ? 'Guardando…' : 'Guardar cuenta'}

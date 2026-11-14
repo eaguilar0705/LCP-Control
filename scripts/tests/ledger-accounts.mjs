@@ -43,6 +43,49 @@ try {
     [admin, operator, warehouse, viewer, outsider],
   )
   await identity(db, admin)
+  const branch = await change({
+    action: 'create',
+    code: '5130-980',
+    name: 'Grupo de prueba',
+    parent: '5130',
+  })
+  const movedChild = await change({
+    action: 'create',
+    code: '5130-981',
+    name: 'Subcuenta de prueba',
+    parent: '5130',
+  })
+  const moved = await change({
+    action: 'rename',
+    code: movedChild.code,
+    name: movedChild.name,
+    parent: branch.code,
+    expectedRevision: movedChild.revision,
+  })
+  eq(
+    [moved.code, moved.parent, moved.revision],
+    [movedChild.code, branch.code, 1],
+  )
+  await rejected(
+    change({
+      action: 'rename',
+      code: branch.code,
+      name: branch.name,
+      parent: movedChild.code,
+      expectedRevision: branch.revision,
+    }),
+    /sus subcuentas/,
+  )
+  await rejected(
+    change({
+      action: 'rename',
+      code: movedChild.code,
+      name: movedChild.name,
+      parent: '2111',
+      expectedRevision: moved.revision,
+    }),
+    /mismo tipo/,
+  )
   eq((await account('4120')).active, false)
   eq(
     (await account('2117')).restriction,
