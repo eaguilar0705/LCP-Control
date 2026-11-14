@@ -267,6 +267,34 @@ try {
         fullPage: true,
       })
 
+      if (width === 390) {
+        await role('superadmin')
+        await login()
+        await navigate('/accounting?section=receipts')
+        await page
+          .getByLabel('Recepción ' + references.cancelled, { exact: true })
+          .getByRole('button', {
+            name: 'Editar recepción pendiente',
+            exact: true,
+          })
+          .click()
+        const pendingEditor = page.getByRole('dialog', {
+          name: 'Editar recepción pendiente',
+          exact: true,
+        })
+        await pendingEditor.getByLabel('Unidades', { exact: true }).fill('7')
+        await pendingEditor
+          .getByRole('button', { name: 'Guardar cambios', exact: true })
+          .click()
+        await pendingEditor.waitFor({ state: 'hidden' })
+        const edited = await receipt(references.cancelled)
+        equal([edited.status, edited.units, edited.revision], ['pending', 7, 1])
+        equal(
+          await stockAndLedger(),
+          before,
+          'el SuperAdmin edita la recepción antes de incorporar las unidades',
+        )
+      }
       await role('admin')
       await login()
       await navigate('/accounting?section=receipts')

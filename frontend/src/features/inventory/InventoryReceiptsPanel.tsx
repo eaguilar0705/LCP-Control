@@ -87,6 +87,7 @@ function ReceiptWorkspace({
   const { data, loading, error, retry, refresh } = useQuery(load)
   const [creating, setCreating] = useState(false)
   const [editingShipmentId, setEditingShipmentId] = useState<string>()
+  const [editingPending, setEditingPending] = useState<InventoryReceiptRecord>()
   const [selected, setSelected] = useState<InventoryReceiptRecord>()
   const [cancelling, setCancelling] = useState<InventoryReceiptRecord>()
   const [message, setMessage] = useState('')
@@ -98,6 +99,7 @@ function ReceiptWorkspace({
     }
     setCreating(false)
     setEditingShipmentId(undefined)
+    setEditingPending(undefined)
     setSelected(undefined)
     setCancelling(undefined)
     setMessage(text)
@@ -256,6 +258,14 @@ function ReceiptWorkspace({
                 )}
                 {receipt.status === 'pending' && (
                   <div className="receipt-actions">
+                    {role === 'superadmin' && (
+                      <Button
+                        variant="secondary"
+                        onClick={() => setEditingPending(receipt)}
+                      >
+                        Editar recepción pendiente
+                      </Button>
+                    )}
                     {review && (
                       <Button onClick={() => setSelected(receipt)}>
                         Revisar recepción
@@ -315,6 +325,16 @@ function ReceiptWorkspace({
           onSaved={() => saved('Recepción corregida.')}
         />
       )}
+      {editingPending && (
+        <EditPendingReceipt
+          receipt={editingPending}
+          onClose={() => {
+            setEditingPending(undefined)
+            refresh()
+          }}
+          onRecorded={saved}
+        />
+      )}
       {selected && (
         <ReviewReceipt
           receipt={selected}
@@ -330,6 +350,41 @@ function ReceiptWorkspace({
         />
       )}
     </>
+  )
+}
+
+function EditPendingReceipt({
+  receipt,
+  onClose,
+  onRecorded,
+}: {
+  receipt: InventoryReceiptRecord
+  onClose: () => void
+  onRecorded: (message: string) => void
+}) {
+  const { inventoryService } = useServices()
+  const load = useCallback(
+    () => inventoryService.getInventory(true),
+    [inventoryService],
+  )
+  const { data, error, retry } = useQuery(load)
+  if (!data)
+    return (
+      <Dialog open title="Editar recepción pendiente" onClose={onClose}>
+        {error ? (
+          <ErrorState message={error} retry={retry} />
+        ) : (
+          <LoadingState />
+        )}
+      </Dialog>
+    )
+  return (
+    <InventoryReceiptDialog
+      items={data}
+      editingReceipt={receipt}
+      onClose={onClose}
+      onRecorded={onRecorded}
+    />
   )
 }
 

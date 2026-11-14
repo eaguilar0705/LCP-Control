@@ -25,7 +25,9 @@ import {
 } from '../pricing/costPreview'
 import {
   recordInventoryReceipt,
+  editInventoryReceipt,
   type InventoryReceiptInput,
+  type InventoryReceiptRecord,
 } from './inventoryReceipts'
 import './inventory-receipts.css'
 
@@ -42,6 +44,7 @@ export function InventoryReceiptDialog({
   initialLocation = 'warehouse',
   initialQuantity,
   initialNote = '',
+  editingReceipt,
   onClose,
   onRecorded,
 }: {
@@ -50,6 +53,7 @@ export function InventoryReceiptDialog({
   initialLocation?: InventoryLocation
   initialQuantity?: number
   initialNote?: string
+  editingReceipt?: InventoryReceiptRecord
   onClose: () => void
   onRecorded: (message: string) => void
 }) {
@@ -62,7 +66,14 @@ export function InventoryReceiptDialog({
   const { data: catalogRate } = useQuery(loadRate)
   const [operation] = useState(() =>
     createIdempotentOperation<Omit<InventoryReceiptInput, 'requestId'>, string>(
-      recordInventoryReceipt,
+      (input) =>
+        editingReceipt
+          ? editInventoryReceipt({
+              ...input,
+              receiptId: editingReceipt.id,
+              expectedRevision: editingReceipt.revision,
+            })
+          : recordInventoryReceipt(input),
       {
         scope: storageScope,
         key: 'inventory-receipt',
@@ -70,23 +81,43 @@ export function InventoryReceiptDialog({
       },
     ),
   )
-  const [incurredOn, setIncurredOn] = useState(() => localDay(new Date()))
-  const [currency, setCurrency] = useState<Currency>('NIO')
-  const [rateText, setRateText] = useState<string | null>(null)
+  const [incurredOn, setIncurredOn] = useState(
+    () => editingReceipt?.incurredOn ?? localDay(new Date()),
+  )
+  const [currency, setCurrency] = useState<Currency>(
+    editingReceipt?.currency ?? 'NIO',
+  )
+  const [rateText, setRateText] = useState<string | null>(
+    editingReceipt?.currency === 'USD'
+      ? String(editingReceipt.exchangeRate)
+      : null,
+  )
   const rateValue = rateText ?? String(inventoryExchangeRate(catalogRate) ?? '')
-  const [shipping, setShipping] = useState('0')
-  const [supplier, setSupplier] = useState('')
-  const [agency, setAgency] = useState('')
-  const [reference, setReference] = useState('')
-  const [note, setNote] = useState(initialNote)
-  const [lines, setLines] = useState<PurchaseLineDraft[]>(() => [
-    {
-      ...blankLine(),
-      productId: initialProduct,
-      location: initialLocation,
-      quantity: initialQuantity === undefined ? '' : String(initialQuantity),
-    },
-  ])
+  const [shipping, setShipping] = useState(
+    String(editingReceipt?.shippingAmount ?? 0),
+  )
+  const [supplier, setSupplier] = useState(editingReceipt?.supplier ?? '')
+  const [agency, setAgency] = useState(editingReceipt?.agency ?? '')
+  const [reference, setReference] = useState(editingReceipt?.reference ?? '')
+  const [note, setNote] = useState(editingReceipt?.note ?? initialNote)
+  const [lines, setLines] = useState<PurchaseLineDraft[]>(() =>
+    editingReceipt
+      ? editingReceipt.lines.map((line) => ({
+          productId: line.productId,
+          location: line.location,
+          quantity: String(line.quantity),
+          unitPrice: String(line.unitPrice),
+        }))
+      : [
+          {
+            ...blankLine(),
+            productId: initialProduct,
+            location: initialLocation,
+            quantity:
+              initialQuantity === undefined ? '' : String(initialQuantity),
+          },
+        ],
+  )
   const [busy, setBusy] = useState(false)
   const [failure, setFailure] = useState('')
   const uncertain = operation.isUncertain()
@@ -189,7 +220,9 @@ export function InventoryReceiptDialog({
           })),
         })
       onRecorded(
-        'Recepción guardada, pendiente de revisión contable. Estas unidades todavía no están disponibles para vender.',
+        editingReceipt
+          ? 'Cambios guardados. La recepción sigue pendiente de contabilizar.'
+          : 'Recepción guardada, pendiente de revisión contable. Estas unidades todavía no están disponibles para vender.',
       )
     } catch (error) {
       setFailure(errorMessage(error))
@@ -200,7 +233,9 @@ export function InventoryReceiptDialog({
   return (
     <Dialog
       open
-      title="Recibir mercadería"
+      title={
+        editingReceipt ? 'Editar recepción pendiente' : 'Recibir mercadería'
+      }
       className="pricing-purchase-dialog"
       dismissible={!busy && !uncertain}
       onClose={() => {
@@ -388,7 +423,9 @@ export function InventoryReceiptDialog({
               ? 'Guardando…'
               : uncertain
                 ? 'Verificar guardado'
-                : 'Guardar recepción'}
+                : editingReceipt
+                  ? 'Guardar cambios'
+                  : 'Guardar recepción'}
           </Button>
           <Button
             type="button"

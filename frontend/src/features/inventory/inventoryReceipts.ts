@@ -1,5 +1,6 @@
 import type {
   CancelInventoryReceiptInput,
+  EditInventoryReceiptInput,
   InventoryReceiptInput,
   InventoryReceiptPage,
   InventoryReceiptRecord,
@@ -57,6 +58,8 @@ async function receiptMutation(name: string, input: object) {
 
 export const recordInventoryReceipt = (input: InventoryReceiptInput) =>
   receiptMutation('record_inventory_receipt', input)
+export const editInventoryReceipt = (input: EditInventoryReceiptInput) =>
+  receiptMutation('edit_inventory_receipt', input)
 export const postInventoryReceipt = (input: PostInventoryReceiptInput) =>
   receiptMutation('post_inventory_receipt', input)
 export const cancelInventoryReceipt = (input: CancelInventoryReceiptInput) =>

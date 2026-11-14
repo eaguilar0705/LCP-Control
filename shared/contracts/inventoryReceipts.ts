@@ -34,6 +34,11 @@ export interface InventoryReceiptRecord extends Omit<
   } | null
 }
 
+export type EditInventoryReceiptInput = InventoryReceiptInput & {
+  receiptId: string
+  expectedRevision: number
+}
+
 export interface InventoryReceiptPage {
   receipts: InventoryReceiptRecord[]
   hasMore: boolean

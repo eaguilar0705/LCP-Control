@@ -741,6 +741,61 @@ try {
     'una compra corregida no se presenta como vigente sin aviso',
   )
 
+  const draftInput = receiptInput({ reference: 'RECEPCION-EDITABLE' })
+  const draftId = await rpc(db, 'record_inventory_receipt', draftInput)
+  const editInput = {
+    ...draftInput,
+    requestId: crypto.randomUUID(),
+    receiptId: draftId,
+    expectedRevision: 0,
+    lines: [{ ...draftInput.lines[0], quantity: 9, location: 'store' }],
+  }
+  const beforeEdit = await snapshot()
+  eq(await rpc(db, 'edit_inventory_receipt', editInput), draftId)
+  eq(await rpc(db, 'edit_inventory_receipt', editInput), draftId)
+  const editedDraft = (await page()).receipts.find(
+    (receipt) => receipt.id === draftId,
+  )
+  eq(
+    [editedDraft.revision, editedDraft.units, editedDraft.lines[0].location],
+    [1, 9, 'store'],
+  )
+  eq(
+    await snapshot(),
+    beforeEdit,
+    'editar una recepción pendiente no altera inventario ni contabilidad',
+  )
+  await unchanged(
+    'post_inventory_receipt',
+    postInput(draftId, draftInput),
+    /recepción cambió/i,
+  )
+  await unchanged(
+    'edit_inventory_receipt',
+    { ...editInput, requestId: crypto.randomUUID() },
+    /recepción cambió/i,
+  )
+  await as(admin)
+  await unchanged(
+    'edit_inventory_receipt',
+    { ...editInput, requestId: crypto.randomUUID(), expectedRevision: 1 },
+    /permission|insufficient/i,
+  )
+  await rpc(
+    db,
+    'post_inventory_receipt',
+    postInput(draftId, editInput, {
+      expectedRevision: 1,
+      purchase: purchase(draftInput, { lines: editInput.lines }),
+    }),
+  )
+  eq(
+    (await page({ status: 'posted' })).receipts.find(
+      (receipt) => receipt.id === draftId,
+    ).units,
+    9,
+  )
+
   // El cierre no se reabre al recibir/cancelar; los guardias de compra siguen vigentes.
   await as(admin)
   await owner(`insert into public.ledger_accounts(code,name,parent,bucket,nature)
