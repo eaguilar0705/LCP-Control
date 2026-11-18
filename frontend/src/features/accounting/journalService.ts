@@ -116,12 +116,11 @@ export async function journalRpc<T>(
     )
   return data as T
 }
-export async function readLedger(from: string, to: string) {
-  const args = { p_from: from, p_to: to }
-  const [data, automaticEntries] = await Promise.all([
-    journalRpc<LedgerReport>('ledger_report', args),
-    journalRpc<AutomaticJournalRecord[]>('sales_journal_entries', args),
-  ])
+export async function readLedgerBalances(from: string, to: string) {
+  const data = await journalRpc<LedgerReport>('ledger_report', {
+    p_from: from,
+    p_to: to,
+  })
   if (
     !Array.isArray(data.accounts) ||
     !Array.isArray(data.entries) ||
@@ -133,7 +132,24 @@ export async function readLedger(from: string, to: string) {
     data.missingSales < 0 ||
     data.accounts.some(
       (a) => ![a.opening, a.debit, a.credit, a.closing].every(Number.isFinite),
-    ) ||
+    )
+  )
+    throw new AppError(
+      'unexpected',
+      'No se recibieron los saldos contables completos. Vuelve a consultar el período.',
+    )
+  return data
+}
+
+export async function readLedger(from: string, to: string) {
+  const [data, automaticEntries] = await Promise.all([
+    readLedgerBalances(from, to),
+    journalRpc<AutomaticJournalRecord[]>('sales_journal_entries', {
+      p_from: from,
+      p_to: to,
+    }),
+  ])
+  if (
     !Array.isArray(automaticEntries) ||
     automaticEntries.some(
       (entry) =>

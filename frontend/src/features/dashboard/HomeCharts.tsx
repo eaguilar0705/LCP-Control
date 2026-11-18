@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
 import { Card, EmptyState, ErrorState, LoadingState } from '../../components/ui'
@@ -7,104 +7,165 @@ import { useServices } from '../../services/useServices'
 import { useQuery } from '../../lib/useQuery'
 import { useAccess } from '../../app/AccessContext'
 import { formatCurrency, formatDate } from '../../lib/format'
-import { presetRange } from '../reports/model'
-import { reportView } from '../reports/digest'
+import { accountingExchangeRate } from '../../lib/exchangeRates'
+import { readLedgerBalances } from '../accounting/journalService'
+import { periodSalesNio } from '../accounting/journalModel'
+import { localDay } from '../reports/model'
+import { reportView, type ReportData } from '../reports/digest'
 
-const compact = new Intl.NumberFormat('es-NI', {
-  notation: 'compact',
-  maximumFractionDigits: 1,
-})
 const shortDay = new Intl.DateTimeFormat('es-NI', {
   day: 'numeric',
   month: 'short',
   timeZone: 'America/Managua',
 })
 
-/**
- * Resumen de los últimos 30 días en la portada. Es la misma lectura que hace la
- * pantalla de Reportes, recortada a lo que cabe de un vistazo; quien necesite el
- * detalle o el periodo completo entra ahí.
- */
 export function HomeCharts() {
-  const { reportService } = useServices()
-  const { base } = useAccess()
-  const range = useMemo(() => presetRange('30d'), [])
-  const load = useCallback(
-    () => reportService.getSource(range),
-    [reportService, range],
+  const { reportService, settingsService } = useServices()
+  const { base, demo } = useAccess()
+  const to = localDay(new Date())
+  const from = to.slice(0, 7) + '-01'
+  const loadReport = useCallback(
+    () => reportService.getSource({ from, to }),
+    [reportService, from, to],
   )
-  const { data, loading, error, retry } = useQuery(load)
+  const loadSales = useCallback(async () => {
+    const [ledger, rate] = await Promise.all([
+      demo ? null : readLedgerBalances(from, to),
+      settingsService.getExchangeRate(),
+    ])
+    return {
+      to,
+      total: ledger && periodSalesNio(ledger),
+      rate: accountingExchangeRate(rate),
+    }
+  }, [demo, from, to, settingsService])
 
-  if (loading)
-    return (
-      <Card className="report-card">
+  const report = useQuery(loadReport)
+  const sales = useQuery(loadSales)
+  const { refresh: refreshSales } = sales
+  const { refresh: refreshReport } = report
+  useEffect(() => {
+    function update() {
+      if (document.visibilityState === 'visible') {
+        refreshSales()
+        refreshReport()
+      }
+    }
+    window.addEventListener('focus', update)
+    window.addEventListener('online', update)
+    document.addEventListener('visibilitychange', update)
+    const timer = window.setInterval(update, 60000)
+    return () => {
+      window.removeEventListener('focus', update)
+      window.removeEventListener('online', update)
+      document.removeEventListener('visibilitychange', update)
+      window.clearInterval(timer)
+    }
+  }, [refreshSales, refreshReport])
+
+  const data =
+    report.data?.range.to === to && report.data.range.from === from
+      ? report.data
+      : null
+  const balances = sales.data?.to === to ? sales.data : null
+  const total = demo ? data?.ledger?.revenueNio : balances?.total
+  const count =
+    data && !data.truncated
+      ? data.sales.USD.current.count + data.sales.NIO.current.count
+      : null
+  return (
+    <div className="home-charts">
+      <Card className="report-card home-chart-wide">
+        <div className="section-heading">
+          <h2>Ventas del mes</h2>
+          <Link
+            to={demo ? base + '/reports' : base + '/accounting?section=income'}
+          >
+            {demo ? 'Ver reportes' : 'Estado de resultados'}{' '}
+            <ArrowRight size={15} />
+          </Link>
+        </div>
+        <p className="muted report-note">
+          {formatDate(from)} al {formatDate(to)}
+        </p>
+        {sales.error ? (
+          <ErrorState message={sales.error} retry={sales.retry} />
+        ) : !balances || (demo && report.loading) ? (
+          <LoadingState />
+        ) : total == null ? (
+          <p role="status" className="muted">
+            {demo
+              ? 'Sin ventas contables disponibles.'
+              : 'Ventas pendientes de confirmar. Revisa la apertura y el detalle de ventas en Contabilidad.'}
+          </p>
+        ) : (
+          <>
+            <p className="report-figure">{formatCurrency(total, 'NIO')}</p>
+            <p className="report-note">
+              {balances.rate
+                ? formatCurrency(total / balances.rate, 'USD') +
+                  ' equivalentes · C$' +
+                  balances.rate +
+                  ' por US$1'
+                : 'Configura la tasa contable en Negocio para ver el equivalente en dólares.'}
+            </p>
+          </>
+        )}
+        {count != null && (
+          <p className="muted report-note">
+            {count} {count === 1 ? 'factura' : 'facturas'}
+          </p>
+        )}
+        {data && count != null && count > 0 && <InvoiceTrend data={data} />}
+      </Card>
+      {report.error ? (
+        <Card>
+          <ErrorState message={report.error} retry={report.retry} />
+        </Card>
+      ) : data ? (
+        <InventoryCharts data={data} />
+      ) : (
         <LoadingState />
-      </Card>
-    )
-  if (error || !data)
-    return (
-      <Card className="report-card">
-        <ErrorState message={error ?? 'Sin datos.'} retry={retry} />
-      </Card>
-    )
+      )}
+    </div>
+  )
+}
 
-  // El resumen trae el mes en curso y el anterior, ya sumados por moneda.
+function InvoiceTrend({ data }: { data: ReportData }) {
   const view = reportView(data)
-  // La moneda con más facturas manda en la portada; el resto se ve en Reportes.
+  const dollars = view.revenueByDay('USD')
+  return (
+    <>
+      <h3>Facturas por día</h3>
+      <TrendChart
+        label="Facturas por día en ambas monedas"
+        format={String}
+        points={view.revenueByDay('NIO').map((point, index) => ({
+          label: shortDay.format(new Date(point.day + 'T12:00:00Z')),
+          value: point.count + dollars[index].count,
+          detail: formatDate(point.day),
+        }))}
+      />
+    </>
+  )
+}
+
+function InventoryCharts({ data }: { data: ReportData }) {
+  const { base } = useAccess()
+  const view = reportView(data)
   const currency =
     view.currencies
       .map((code) => ({ code, count: view.summary(code).count }))
       .sort((a, b) => b.count - a.count)[0]?.code ?? 'NIO'
-  const totals = view.summary(currency)
-  const variation = view.variation(currency)
-  const daily = view.revenueByDay(currency)
   const products = view.topProducts(currency, 5)
   const health = view.inventoryHealth('emprendedor', currency)
   const money = (value: number) => formatCurrency(value, currency)
 
   return (
-    <div className="home-charts">
-      <Card className="report-card home-chart-wide">
-        <div className="section-heading">
-          <h2>Ingresos de los últimos 30 días</h2>
-          <Link to={`${base}/reports`}>
-            Ver reportes <ArrowRight size={15} />
-          </Link>
-        </div>
-        {view.currencies.length ? (
-          <>
-            <p className="report-figure">{money(totals.revenue)}</p>
-            <p className="muted report-note">
-              {variation !== null && (
-                <span className={variation >= 0 ? 'delta-up' : 'delta-down'}>
-                  {variation >= 0 ? '▲' : '▼'}{' '}
-                  {Math.abs(Math.round(variation * 100))}% frente a los 30 días
-                  anteriores
-                </span>
-              )}
-              {variation !== null && ' · '}
-              {totals.count} facturas · ticket promedio {money(totals.average)}
-            </p>
-            <TrendChart
-              label={`Ingresos diarios en ${currency}`}
-              format={(value) =>
-                `${currency === 'NIO' ? 'C$' : '$'}${compact.format(value)}`
-              }
-              points={daily.map((point) => ({
-                label: shortDay.format(new Date(`${point.day}T12:00:00Z`)),
-                value: point.revenue,
-                detail: `${formatDate(point.day)} · ${point.count} factura(s)`,
-              }))}
-            />
-          </>
-        ) : (
-          <EmptyState title="Todavía no hay ventas" />
-        )}
-      </Card>
-
+    <>
       <Card className="report-card">
         <div className="section-heading">
-          <h2>Más vendidos del mes</h2>
+          <h2>Más vendidos del mes en {currency}</h2>
         </div>
         {products.length ? (
           <RankedBars
@@ -152,6 +213,6 @@ export function HomeCharts() {
           />
         )}
       </Card>
-    </div>
+    </>
   )
 }

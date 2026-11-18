@@ -280,6 +280,32 @@ export function journalTotals(
   return { debit, credit, debitNio, creditNio, roundingNio, valid }
 }
 
+function hasSalesData(data: LedgerReport) {
+  return (
+    data.startOn != null && data.startOn <= data.to && data.missingSales === 0
+  )
+}
+
+function salesAccountTotal(data: LedgerReport, period: boolean) {
+  return round(
+    data.accounts
+      .filter(
+        (a) =>
+          a.postable &&
+          a.bucket === 'revenue' &&
+          (a.code === '4110' || a.code.startsWith('4110-')),
+      )
+      .reduce(
+        (total, a) => total + (period ? a.credit - a.debit : -a.closing),
+        0,
+      ),
+  )
+}
+
+export function periodSalesNio(data: LedgerReport) {
+  return hasSalesData(data) ? salesAccountTotal(data, true) : null
+}
+
 export function journalModel(
   data: LedgerReport,
   businessName: string,
@@ -306,8 +332,7 @@ export function journalModel(
     )
   // Consultar desde antes de la apertura sólo limita el alcance del libro.
   // Ese aviso no invalida los saldos y movimientos registrados desde su inicio.
-  const available =
-    data.startOn !== null && data.startOn <= data.to && data.missingSales === 0
+  const available = hasSalesData(data)
   const complete = available && data.missingCosts === 0 && !pendingPurchases
   if (available && data.missingCosts)
     warnings.push(
@@ -329,18 +354,7 @@ export function journalModel(
     )
   // Otros ingresos (4190) no pertenecen al margen comercial de las ventas.
   const grossProfit = (period: boolean) =>
-    round(
-      -accounts
-        .filter(
-          (a) =>
-            a.bucket === 'revenue' &&
-            (a.code === '4110' || a.code.startsWith('4110-')),
-        )
-        .reduce(
-          (total, a) => total + (period ? a.debit - a.credit : a.closing),
-          0,
-        ) - sum('cost', period),
-    )
+    round(salesAccountTotal(data, period) - sum('cost', period))
   const known = (value: number, needsCost = false) =>
     (needsCost ? complete : available) ? round(value) : null
   // El servidor suma los importes disponibles y omite los NULL. No presentar
