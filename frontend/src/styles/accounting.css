@@ -246,6 +246,21 @@
 .accounting-table td.num small {
   text-align: right;
 }
+.account-movements-filters > * {
+  min-width: 0;
+}
+.account-movements-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+  column-gap: 20px;
+}
+.account-movements-table {
+  min-width: 760px;
+}
+.account-movements-table .num,
+.account-movements-table time {
+  white-space: nowrap;
+}
 /* Con anchos declarados la tabla deja de medirse por su contenido, así que
    varias tablas seguidas comparten la misma rejilla. El ancho mínimo mantiene
    las columnas legibles y deja que el contenedor haga scroll en pantallas

@@ -6,6 +6,107 @@ import type {
   LedgerReport,
 } from './journalModel'
 
+export const accountMovementPageSize = 50
+
+interface LedgerAccountOption {
+  code: string
+  display_code?: string | null
+  displayCode?: string
+  name: string
+  active: boolean
+  postable: boolean
+}
+
+interface AccountMovement {
+  id: string
+  day: string
+  source: string
+  description: string
+  reference: string
+  debit: number | null
+  credit: number | null
+  balance: number | null
+}
+
+export interface AccountMovementPage {
+  account: string
+  from: string | null
+  to: string
+  offset: number
+  total: number
+  revision: string
+  opening: number | null
+  debit: number | null
+  credit: number | null
+  closing: number | null
+  rows: AccountMovement[]
+}
+
+export async function readLedgerAccountOptions() {
+  const accounts = await journalRpc<LedgerAccountOption[]>(
+    'ledger_accounts_list',
+    {},
+  )
+  if (
+    !Array.isArray(accounts) ||
+    accounts.some(
+      (account) =>
+        !account ||
+        typeof account.code !== 'string' ||
+        typeof account.name !== 'string' ||
+        typeof account.active !== 'boolean' ||
+        typeof account.postable !== 'boolean',
+    )
+  )
+    throw new AppError(
+      'unexpected',
+      'No se recibió la lista completa de cuentas. Vuelve a consultar.',
+    )
+
+  return accounts.filter((account) => account.postable)
+}
+
+export async function readAccountMovements(
+  account: string,
+  from: string | null,
+  to: string,
+  offset: number,
+): Promise<AccountMovementPage> {
+  const page = await journalRpc<AccountMovementPage>(
+    'ledger_account_movements',
+    { p_account: account, p_from: from, p_to: to, p_offset: offset },
+  )
+  const validAmount = (amount: number | null) =>
+    amount === null || Number.isFinite(amount)
+  if (
+    page.account !== account ||
+    page.from !== from ||
+    page.to !== to ||
+    page.offset !== offset ||
+    typeof page.revision !== 'string' ||
+    !Number.isSafeInteger(page.total) ||
+    page.total < 0 ||
+    ![page.opening, page.debit, page.credit, page.closing].every(validAmount) ||
+    !Array.isArray(page.rows) ||
+    page.rows.length !==
+      Math.max(0, Math.min(accountMovementPageSize, page.total - offset)) ||
+    page.rows.some(
+      (row) =>
+        !row ||
+        ![row.id, row.day, row.source, row.description, row.reference].every(
+          (value) => typeof value === 'string',
+        ) ||
+        ![row.debit, row.credit, row.balance].every(validAmount),
+    )
+  )
+    throw new AppError(
+      'unexpected',
+      'No se recibieron todos los movimientos de la cuenta. Vuelve a consultar.',
+    )
+
+  return page
+}
+
 export interface JournalPage {
   entries: (JournalRecord | AutomaticJournalRecord)[]
   total: number

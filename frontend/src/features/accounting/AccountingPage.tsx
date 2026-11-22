@@ -13,11 +13,13 @@ import type { Currency } from '../../lib/domain'
 import { validStatementRate } from './statementCurrency'
 import { useServices } from '../../services/useServices'
 import { useQuery } from '../../lib/useQuery'
+import { refreshQueries } from '../../lib/queryRefresh'
 import { accountingExchangeRate } from '../../lib/exchangeRates'
 import { errorMessage } from '../../lib/errors'
 import { adjustRange, localDay, requestedReportDay } from '../reports/model'
 import { accountingViews } from './accountingModel'
 import { AccountingTables, AccountCatalog } from './AccountingTables'
+import { AccountMovements } from './AccountMovements'
 import { readLedger } from './journalService'
 import { journalModel } from './journalModel'
 import { JournalWorkspace } from './JournalWorkspace'
@@ -32,6 +34,7 @@ import '../../styles/business-day.css'
 
 const views = {
   journal: 'Comprobantes',
+  movements: 'Movimientos por cuenta',
   credits: 'Cobros y pagos',
   receipts: 'Recepciones pendientes',
   ...accountingViews,
@@ -73,7 +76,9 @@ export function AccountingPage() {
       if (range.from !== next.from || range.to !== next.to) setRange(next)
     }
   }
+  const needsLedger = view !== 'movements'
   const load = useCallback(async () => {
+    if (!needsLedger) return null
     const [ledger, business, rate] = await Promise.all([
       readLedger(range.from, range.to),
       salesService.getBusiness(),
@@ -84,7 +89,7 @@ export function AccountingPage() {
       name: business?.name ?? 'La Casa del Perfume',
       exchangeRate: accountingExchangeRate(rate),
     }
-  }, [range, salesService, settingsService])
+  }, [range, salesService, settingsService, needsLedger])
   const { data, error, loading, retry, refresh } = useQuery(load)
   const model = useMemo(
     () => (data ? journalModel(data.ledger, data.name) : null),
@@ -118,7 +123,7 @@ export function AccountingPage() {
     <>
       <div className="page-heading">
         <h1>Contabilidad</h1>
-        <InventoryValuation onChanged={refresh} />
+        <InventoryValuation onChanged={needsLedger ? refresh : refreshQueries} />
       </div>
       <nav
         className="accounting-tabs accounting-tabs-standalone"
@@ -135,7 +140,7 @@ export function AccountingPage() {
           </button>
         ))}
       </nav>
-      {view !== 'receipts' && (
+      {view !== 'receipts' && view !== 'movements' && (
         <Card className="report-filters">
           <div className="filter-grid">
             <Input
@@ -205,7 +210,9 @@ export function AccountingPage() {
           )}
         </Card>
       )}
-      {view === 'receipts' ? (
+      {view === 'movements' ? (
+        <AccountMovements />
+      ) : view === 'receipts' ? (
         <InventoryReceiptsPanel onChanged={refresh} />
       ) : error ? (
         <ErrorState message={error} retry={retry} />
