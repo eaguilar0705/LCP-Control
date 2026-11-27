@@ -102,6 +102,7 @@ const receiptInput = (changes = {}) => ({
 const purchase = (input, changes = {}) => {
   const rest = { ...input }
   delete rest.requestId
+  delete rest.freightPayment
   return { ...rest, account: 'credito', ...changes }
 }
 const postInput = (id, input, changes = {}) => ({
@@ -450,6 +451,8 @@ try {
       account: 'credito',
       bankLedgerAccount: null,
       corrected: false,
+      freightVoucher: null,
+      receiptVoucher: null,
     },
     'el historial presenta el costo y la contrapartida aprobados',
   )
@@ -716,6 +719,8 @@ try {
     account: 'banco',
     bankLedgerAccount: '1120-002',
     corrected: false,
+    freightVoucher: null,
+    receiptVoucher: null,
   })
   eq(
     [
@@ -800,11 +805,25 @@ try {
   await as(admin)
   await owner(`insert into public.ledger_accounts(code,name,parent,bucket,nature)
     values ('1160','Anticipo para gastos','1100','asset','debit'),
-    ('1160-001','Pedido en tránsito','1160','asset','debit')
+    ('1160-001','Pedido en tránsito','1160','asset','debit'),
+    ('1160-002','Flete de mercadería','1160','asset','debit')
     on conflict(code) do nothing`)
-  const advanceReceipt = receiptInput({ reference: 'PEDIDO-PAGADO' })
+  const advanceReceipt = receiptInput({
+    reference: 'PEDIDO-PAGADO',
+    shippingAmount: 666,
+    freightPayment: { account: '1120-001', reference: 'TRANSFERENCIA-FLETE' },
+    lines: [
+      {
+        productId: product,
+        location: 'warehouse',
+        quantity: 10,
+        unitPrice: 717.8,
+      },
+    ],
+  })
   const advanceId = await rpc(db, 'record_inventory_receipt', advanceReceipt)
   const advance = postInput(advanceId, advanceReceipt, {
+    freightPayment: advanceReceipt.freightPayment,
     advanceAccount: '1160-001',
     purchase: purchase(advanceReceipt, { account: 'pending' }),
   })
@@ -829,20 +848,46 @@ try {
         account(beforeAdvance, code).closing
       ).toFixed(2),
     )
-  eq(delta('1130'), 1150)
-  eq(delta('1160-001'), -1150)
-  for (const code of ['1110-001', '1120-001', '2111']) eq(delta(code), 0)
+  eq(delta('1130'), 7844)
+  eq(delta('1160-002'), 0)
+  eq(delta('1120-001'), -666)
+  eq(delta('1160-001'), -7178)
+  for (const code of ['1110-001', '2111']) eq(delta(code), 0)
   eq(await rpc(db, 'post_inventory_receipt', advance), advanceShipment)
   eq(await ledger(), afterAdvance)
   const historyRow = (
     await one('select public.purchase_history(null,null) r')
   ).r.find((r) => r.id === advanceShipment)
-  assert.ok(historyRow.advance_entry_id)
+  assert.ok(historyRow.advance_entry_id && historyRow.freight_entry_id)
+  const voucherLines = async (id) =>
+    (
+      await owner(
+        'select jsonb_agg(jsonb_build_array(account,debit_nio,credit_nio) order by line_no) lines from public.journal_lines where entry_id=$1',
+        [id],
+      )
+    ).lines
+  eq(await voucherLines(historyRow.freight_entry_id), [
+    ['1160-002', 666, 0],
+    ['1120-001', 0, 666],
+  ])
+  eq(await voucherLines(historyRow.advance_entry_id), [
+    ['1130', 7844, 0],
+    ['1160-001', 0, 7178],
+    ['1160-002', 0, 666],
+  ])
+  eq(
+    await owner(
+      'select quantity,landed_unit_cost_nio::float8 cost from public.purchase_shipment_lines where shipment_id=$1',
+      [advanceShipment],
+    ),
+    { quantity: 10, cost: 784.4 },
+  )
   const cancelAdvance = {
     shipmentId: advanceShipment,
     requestId: crypto.randomUUID(),
     reason: 'Entrada duplicada',
     advanceEntryId: historyRow.advance_entry_id,
+    freightTreatment: 'void',
     paymentTreatment: 'recording_error',
   }
   await unchanged('correct_purchase', cancelAdvance, /SuperAdmin/i)
@@ -868,6 +913,64 @@ try {
       .posting.corrected,
     true,
   )
+  // Un pago real en dólares queda en el banco y en el activo de fletes si solo se anula la entrada.
+  await as(admin)
+  const dollarReceipt = {
+    ...advanceReceipt,
+    requestId: crypto.randomUUID(),
+    freightPayment: {
+      account: '1120-002',
+      reference: 'FLETE-USD',
+      exchangeRate: 37,
+    },
+  }
+  const dollarId = await rpc(db, 'record_inventory_receipt', dollarReceipt)
+  const dollarPost = {
+    ...advance,
+    requestId: crypto.randomUUID(),
+    receiptId: dollarId,
+    freightPayment: dollarReceipt.freightPayment,
+  }
+  await unchanged(
+    'post_inventory_receipt',
+    {
+      ...dollarPost,
+      freightPayment: { ...dollarReceipt.freightPayment, exchangeRate: 36.99 },
+    },
+    /coincidir/i,
+  )
+  const dollarShipment = await rpc(db, 'post_inventory_receipt', dollarPost)
+  const dollarRow = (
+    await one('select public.purchase_history(null,null) r')
+  ).r.find((r) => r.id === dollarShipment)
+  eq(
+    await owner(
+      "select credit::float8 amount, credit_nio::float8 nio from public.journal_lines where entry_id=$1 and account='1120-002'",
+      [dollarRow.freight_entry_id],
+    ),
+    { amount: 18, nio: 666 },
+  )
+  await as(outsider)
+  const keep = {
+    ...cancelAdvance,
+    shipmentId: dollarShipment,
+    requestId: crypto.randomUUID(),
+    advanceEntryId: dollarRow.advance_entry_id,
+    freightTreatment: 'keep',
+  }
+  await rpc(db, 'correct_purchase', keep)
+  const afterKeep = await ledger()
+  eq(
+    account(afterKeep, '1160-002').closing -
+      account(beforeAdvance, '1160-002').closing,
+    666,
+  )
+  eq(
+    account(afterKeep, '1120-002').closing -
+      account(beforeAdvance, '1120-002').closing,
+    -666,
+  )
+  eq(await inventoryState(), beforeStock)
   await as(admin)
   const day = (await one("select public.get_business_day('2026-11-06') r")).r
   await rpc(db, 'close_business_day', {

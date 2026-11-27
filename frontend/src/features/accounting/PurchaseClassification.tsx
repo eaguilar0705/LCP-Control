@@ -1,3 +1,4 @@
+import { useSearchParams } from 'react-router-dom'
 import { useCallback, useState } from 'react'
 import {
   Button,
@@ -49,7 +50,10 @@ export function PurchaseClassification({
   onChanged: () => void
 }) {
   const { role } = useAccess()
-  const [status, setStatus] = useState('pending')
+  const [params] = useSearchParams()
+  const [status, setStatus] = useState(() =>
+    params.get('show') === 'all' ? 'all' : 'pending',
+  )
   const [cursor, setCursor] = useState<Receipt>()
   const [previous, setPrevious] = useState<(Receipt | undefined)[]>([])
   const load = useCallback(

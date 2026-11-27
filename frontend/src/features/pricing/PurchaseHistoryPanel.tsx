@@ -379,6 +379,9 @@ function CancelPurchase({
     }),
   )
   const [reason, setReason] = useState('')
+  const [freightTreatment, setFreightTreatment] = useState<
+    '' | 'keep' | 'void'
+  >('')
   const [refund, setRefund] = useState(false)
   const [paymentTreatment, setPaymentTreatment] =
     useState<PurchasePaymentTreatment>('recording_error')
@@ -388,6 +391,10 @@ function CancelPurchase({
   async function submit(event: FormEvent) {
     event.preventDefault()
     if (busy) return
+    if (!uncertain && purchase.freight_entry_id && !freightTreatment) {
+      setFailure('Indica qué ocurrió con el pago del flete.')
+      return
+    }
     if (
       !uncertain &&
       (reason.trim().length < 3 || (purchase.refund_nio > 0 && !refund))
@@ -402,6 +409,8 @@ function CancelPurchase({
       else
         await operation.execute({
           shipmentId: purchase.id,
+          ...(purchase.freight_entry_id &&
+            freightTreatment && { freightTreatment }),
           ...(purchase.advance_entry_id && {
             advanceEntryId: purchase.advance_entry_id,
           }),
@@ -435,7 +444,24 @@ function CancelPurchase({
             recuperará el costo anterior. La anulación queda en la jornada de
             hoy.
           </p>
-          {purchase.advance_entry_id && (
+          {purchase.freight_entry_id && (
+            <Select
+              label="Pago del flete al anular"
+              value={freightTreatment}
+              onChange={(event) =>
+                setFreightTreatment(
+                  event.target.value as typeof freightTreatment,
+                )
+              }
+            >
+              <option value="">Seleccionar</option>
+              <option value="keep">El flete se pagó. Conservar el pago.</option>
+              <option value="void">
+                El pago fue un error de registro. Anularlo también.
+              </option>
+            </Select>
+          )}
+          {purchase.advance_entry_id && !purchase.freight_entry_id && (
             <p>
               Se anulará también la aplicación del anticipo por esta compra,
               incluida la parte del envío.

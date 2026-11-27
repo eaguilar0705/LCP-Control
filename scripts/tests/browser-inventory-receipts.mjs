@@ -176,6 +176,14 @@ try {
       await dialog
         .getByLabel('Envío de todo el pedido (C$)', { exact: true })
         .fill('40')
+      if (width === 390) {
+        await dialog
+          .getByLabel('Método de pago del flete')
+          .selectOption('1120-001')
+        await dialog
+          .getByLabel('Referencia del pago del flete (opcional)')
+          .fill('FLETE-BAC')
+      }
       await dialog
         .getByLabel('Factura o referencia', { exact: true })
         .fill(reference)
@@ -218,7 +226,8 @@ try {
       await fixture.db
         .exec(`insert into public.ledger_accounts(code,name,parent,bucket,nature)
         values ('1160','Anticipo para gastos','1100','asset','debit'),
-        ('1160-001','Pedido en tránsito','1160','asset','debit')
+        ('1160-001','Pedido en tránsito','1160','asset','debit'),
+        ('1160-002','Flete de mercadería','1160','asset','debit')
         on conflict(code) do nothing`)
       await fixture.db.query(
         'update public.inventory_balances set quantity=0 where product_id=$1',
@@ -309,6 +318,18 @@ try {
         name: 'Revisar recepción',
         exact: true,
       })
+      if (applyAdvance) {
+        equal(
+          await dialog.getByLabel('Método de pago del flete').inputValue(),
+          '1120-001',
+        )
+        equal(
+          await dialog
+            .getByLabel('Referencia del pago del flete (opcional)')
+            .inputValue(),
+          'FLETE-BAC',
+        )
+      }
       equal(
         await dialog.getByLabel('Unidades', { exact: true }).isDisabled(),
         true,
@@ -345,6 +366,9 @@ try {
       await dialog
         .getByLabel('Envío de todo el pedido (C$)', { exact: true })
         .fill('80')
+      await dialog
+        .getByLabel('Método de pago del flete')
+        .selectOption(applyAdvance ? '1120-001' : 'included')
       await healthy('revisión contable ' + width)
       await page.screenshot({
         path: `${output}/revision-${width}.png`,
@@ -396,7 +420,7 @@ try {
           movements: before.movements + 1,
           inventoryDebit: applyAdvance ? 0 : 960,
           supplierCredit: applyAdvance ? 0 : 960,
-          advanceCredit: applyAdvance ? 960 : 0,
+          advanceCredit: applyAdvance ? 880 : 0,
         },
         'la revisión crea una sola compra con el costo y el envío revisados',
       )

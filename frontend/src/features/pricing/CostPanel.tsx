@@ -1,3 +1,5 @@
+import { FreightPaymentFields } from '../inventory/FreightPaymentFields'
+import type { FreightPayment } from '@lcp/contracts/inventoryReceipts'
 import { useState, type FormEvent } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { ProductSelect } from '../../components/ProductSelect'
@@ -97,6 +99,7 @@ export function PurchaseDialog({
         correctionReason?: string
         refundConfirmed?: boolean
         paymentTreatment?: PurchasePaymentTreatment
+        freightPayment?: FreightPayment
         advanceAccount?: string
       },
       unknown
@@ -105,6 +108,7 @@ export function PurchaseDialog({
         correctionReason,
         refundConfirmed,
         paymentTreatment,
+        freightPayment,
         advanceAccount,
         requestId,
         ...purchase
@@ -124,6 +128,7 @@ export function PurchaseDialog({
                 receiptId: reviewingReceipt.id,
                 expectedRevision: reviewingReceipt.revision,
                 purchase,
+                ...(freightPayment && { freightPayment }),
                 ...(advanceAccount ? { advanceAccount } : {}),
               })
             : accountingService.recordShipment({ ...purchase, requestId }),
@@ -154,6 +159,9 @@ export function PurchaseDialog({
   )
   const [payment, setPayment] = useState<ShipmentPayment | 'advance' | ''>(
     correcting?.account ?? (reviewingReceipt ? '' : 'pending'),
+  )
+  const [freightPayment, setFreightPayment] = useState(
+    reviewingReceipt?.freightPayment ?? { account: '', reference: '' },
   )
   const [advanceAccount, setAdvanceAccount] = useState('')
   const [currency, setCurrency] = useState<Currency>(
@@ -287,6 +295,10 @@ export function PurchaseDialog({
     const submitToday = localDay(new Date())
     setToday(submitToday)
     if (!preview.ready || !incurredOn || incurredOn > submitToday) return
+    if (reviewingReceipt && typed(shipping) > 0 && !freightPayment.account) {
+      setFailure('Selecciona cómo se pagó el flete.')
+      return
+    }
     if (!payment || (reviewingReceipt && payment === 'pending')) {
       setFailure(
         'Selecciona cómo se pagó la compra o si quedó a crédito del proveedor.',
@@ -342,6 +354,7 @@ export function PurchaseDialog({
         currency,
         exchangeRate: rate,
         shippingAmount: round2(typed(shipping)),
+        ...(reviewingReceipt && typed(shipping) > 0 && { freightPayment }),
         account: payment === 'advance' ? 'pending' : payment,
         ...(payment === 'advance' ? { advanceAccount } : {}),
         ...(payment === 'banco' ? { bankLedgerAccount: bank } : {}),
@@ -537,6 +550,7 @@ export function PurchaseDialog({
               label="Moneda de la compra"
               value={currency}
               onChange={(event) => {
+                setFreightPayment({ account: '', reference: '' })
                 setCurrency(event.target.value as Currency)
                 setBank('')
               }}
@@ -586,6 +600,16 @@ export function PurchaseDialog({
               value={shipping}
               onChange={(event) => setShipping(event.target.value)}
             />
+            {reviewingReceipt && typed(shipping) > 0 && (
+              <FreightPaymentFields
+                reviewing
+                shipping={typed(shipping)}
+                rate={inventoryRate}
+                currency={currency}
+                value={freightPayment}
+                onChange={setFreightPayment}
+              />
+            )}
           </div>
           {payment === 'pending' && (
             <p className="accounting-note">

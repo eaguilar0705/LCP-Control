@@ -1,10 +1,16 @@
 import type { ShipmentInput, ShipmentLineInput } from './accounting'
 
+export interface FreightPayment {
+  exchangeRate?: number
+  account: string
+  reference: string
+}
+
 /** Received goods remain outside saleable stock and the ledger until review. */
 export type InventoryReceiptInput = Omit<
   ShipmentInput,
   'account' | 'bankLedgerAccount'
->
+> & { freightPayment?: FreightPayment | null }
 
 export interface InventoryReceiptRecord extends Omit<
   InventoryReceiptInput,
@@ -26,6 +32,8 @@ export interface InventoryReceiptRecord extends Omit<
     incurredOn: string
     currency: ShipmentInput['currency']
     exchangeRate: number
+    freightVoucher?: number | null
+    receiptVoucher?: number | null
     goodsAmount: number
     shippingAmount: number
     account: ShipmentInput['account']
@@ -48,6 +56,7 @@ export interface PostInventoryReceiptInput {
   requestId: string
   receiptId: string
   expectedRevision: number
+  freightPayment?: FreightPayment
   advanceAccount?: string
   purchase: Omit<ShipmentInput, 'requestId'>
 }

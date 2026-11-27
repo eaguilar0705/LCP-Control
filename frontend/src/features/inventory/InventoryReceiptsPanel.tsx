@@ -1,4 +1,6 @@
 import { useCallback, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
+import { localDay } from '../reports/model'
 import { PackagePlus, RefreshCw } from 'lucide-react'
 import {
   Button,
@@ -239,6 +241,28 @@ function ReceiptWorkspace({
                           ' · Compra original anulada; consulta el historial de Compras.'}
                       </p>
                     )}
+                    {receipt.posting?.freightVoucher && (
+                      <p>
+                        Comprobantes en Contabilidad · Pago del flete CP-
+                        {String(receipt.posting.freightVoucher).padStart(
+                          6,
+                          '0',
+                        )}
+                        {receipt.posting.receiptVoucher &&
+                          ` · Recepción CP-${String(receipt.posting.receiptVoucher).padStart(6, '0')}`}
+                        {role !== 'warehouse' && receipt.reviewedAt && (
+                          <>
+                            {' '}
+                            ·{' '}
+                            <Link
+                              to={`/accounting?section=journal&show=all&day=${localDay(receipt.reviewedAt)}`}
+                            >
+                              Ver en Contabilidad
+                            </Link>
+                          </>
+                        )}
+                      </p>
+                    )}
                     <p className="muted">
                       El costo y pago vigentes se consultan en Inventario →
                       Compras.
@@ -420,6 +444,7 @@ function ReviewReceipt({
           account.active &&
           account.postable &&
           account.bucket === 'asset' &&
+          account.code !== '1160-002' &&
           (account.code === '1160' || account.parent === '1160'),
       ),
     }

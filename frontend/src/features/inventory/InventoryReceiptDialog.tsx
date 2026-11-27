@@ -29,6 +29,7 @@ import {
   type InventoryReceiptInput,
   type InventoryReceiptRecord,
 } from './inventoryReceipts'
+import { FreightPaymentFields } from './FreightPaymentFields'
 import './inventory-receipts.css'
 
 const blankLine = (): PurchaseLineDraft => ({
@@ -93,6 +94,9 @@ export function InventoryReceiptDialog({
       : null,
   )
   const rateValue = rateText ?? String(inventoryExchangeRate(catalogRate) ?? '')
+  const [freightPayment, setFreightPayment] = useState(
+    editingReceipt?.freightPayment ?? { account: '', reference: '' },
+  )
   const [shipping, setShipping] = useState(
     String(editingReceipt?.shippingAmount ?? 0),
   )
@@ -212,6 +216,8 @@ export function InventoryReceiptDialog({
           currency,
           exchangeRate: rate!,
           shippingAmount: typed(shipping),
+          ...(typed(shipping) > 0 &&
+            freightPayment.account && { freightPayment }),
           lines: lines.map((line) => ({
             productId: line.productId,
             location: line.location,
@@ -282,6 +288,7 @@ export function InventoryReceiptDialog({
               label="Moneda de la compra"
               value={currency}
               onChange={(event) => {
+                setFreightPayment({ account: '', reference: '' })
                 setCurrency(event.target.value as Currency)
                 if (!rateText && catalogRate)
                   setRateText(String(inventoryExchangeRate(catalogRate) ?? ''))
@@ -310,6 +317,15 @@ export function InventoryReceiptDialog({
               value={shipping}
               onChange={(event) => setShipping(event.target.value)}
             />
+            {typed(shipping) > 0 && (
+              <FreightPaymentFields
+                shipping={typed(shipping)}
+                rate={inventoryExchangeRate(catalogRate)}
+                currency={currency}
+                value={freightPayment}
+                onChange={setFreightPayment}
+              />
+            )}
           </div>
           <div className="pricing-purchase-lines">
             {lines.map((line, index) => (
