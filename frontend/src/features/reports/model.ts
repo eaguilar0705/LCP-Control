@@ -97,7 +97,8 @@ export function requestedReportDay(
 }
 
 export function presetRange(preset: Preset, today = localDay(new Date())) {
-  const spans: Record<Preset, number> = {
+  if (preset === 'month') return { from: today.slice(0, 7) + '-01', to: today }
+  const spans = {
     today: 0,
     '7d': 6,
     '30d': 29,
@@ -106,9 +107,10 @@ export function presetRange(preset: Preset, today = localDay(new Date())) {
   }
   return { from: addDays(today, -spans[preset]), to: today }
 }
-export type Preset = 'today' | '7d' | '30d' | '90d' | '365d'
+export type Preset = 'today' | 'month' | '7d' | '30d' | '90d' | '365d'
 export const presetLabels: Record<Preset, string> = {
   today: 'Hoy',
+  month: 'Este mes',
   '7d': 'Últimos 7 días',
   '30d': 'Últimos 30 días',
   '90d': 'Últimos 90 días',

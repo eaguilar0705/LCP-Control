@@ -10,8 +10,8 @@ import { formatCurrency, formatDate } from '../../lib/format'
 import { accountingExchangeRate } from '../../lib/exchangeRates'
 import { readLedgerBalances } from '../accounting/journalService'
 import { periodSalesNio } from '../accounting/journalModel'
-import { localDay } from '../reports/model'
-import { reportView, type ReportData } from '../reports/digest'
+import { presetRange } from '../reports/model'
+import { reportView, totalUnitsSold, type ReportData } from '../reports/digest'
 
 const shortDay = new Intl.DateTimeFormat('es-NI', {
   day: 'numeric',
@@ -22,8 +22,7 @@ const shortDay = new Intl.DateTimeFormat('es-NI', {
 export function HomeCharts() {
   const { reportService, settingsService } = useServices()
   const { base, demo } = useAccess()
-  const to = localDay(new Date())
-  const from = to.slice(0, 7) + '-01'
+  const { from, to } = presetRange('month')
   const loadReport = useCallback(
     () => reportService.getSource({ from, to }),
     [reportService, from, to],
@@ -69,8 +68,9 @@ export function HomeCharts() {
       : null
   const balances = sales.data?.to === to ? sales.data : null
   const total = demo ? data?.ledger?.revenueNio : balances?.total
+  const units = data && totalUnitsSold(data, demo)
   const count =
-    data && !data.truncated
+    data && (data.computedIn === 'database' || !data.truncated)
       ? data.sales.USD.current.count + data.sales.NIO.current.count
       : null
   return (
@@ -110,6 +110,13 @@ export function HomeCharts() {
                 : 'Configura la tasa contable en Negocio para ver el equivalente en dólares.'}
             </p>
           </>
+        )}
+        {units != null && (
+          <p className="report-note">
+            <strong>
+              {units} {units === 1 ? 'perfume vendido' : 'perfumes vendidos'}
+            </strong>
+          </p>
         )}
         {count != null && (
           <p className="muted report-note">

@@ -40,7 +40,12 @@ import {
   type Preset,
   type ReportRange,
 } from './model'
-import { reportView, type ReportData, type ReportView } from './digest'
+import {
+  reportView,
+  totalUnitsSold,
+  type ReportData,
+  type ReportView,
+} from './digest'
 
 const compact = new Intl.NumberFormat('es-NI', {
   notation: 'compact',
@@ -72,8 +77,8 @@ function Reports() {
   const { reportService, salesService } = useServices()
   const { demo } = useAccess()
   // `null`: fechas elegidas a mano, ningún botón de periodo queda marcado.
-  const [preset, setPreset] = useState<Preset | null>('30d')
-  const [range, setRange] = useState<ReportRange>(() => presetRange('30d'))
+  const [preset, setPreset] = useState<Preset | null>('month')
+  const [range, setRange] = useState<ReportRange>(() => presetRange('month'))
   const [tier, setTier] = useState<PriceTier>('emprendedor')
   const [exporting, setExporting] = useState('')
   const [failure, setFailure] = useState('')
@@ -82,7 +87,11 @@ function Reports() {
     () => reportService.getSource(range),
     [reportService, range],
   )
-  const { data, loading, error, retry } = useQuery(load)
+  const { data: loaded, loading, error, retry } = useQuery(load)
+  const data =
+    loaded?.range.from === range.from && loaded.range.to === range.to
+      ? loaded
+      : null
   const { data: business } = useQuery(salesService.getBusiness)
 
   function choosePreset(next: Preset) {
@@ -201,14 +210,12 @@ function Reports() {
         </p>
       )}
 
-      {loading ? (
+      {loading || (!error && !data) ? (
         <LoadingState />
       ) : error || !data ? (
         <ErrorState message={error ?? 'Sin datos.'} retry={retry} />
       ) : (
         <>
-          {/* El periodo es el del resumen recibido, no el del filtro: mientras
-              llega el nuevo, lo mostrado sigue siendo coherente consigo mismo. */}
           {data.computedIn === 'browser' && !demo && (
             <p className="page-feedback" role="status">
               Actualización de reportes pendiente.
@@ -254,6 +261,8 @@ function Stat({
 }
 
 function ReportBody({ report, tier }: { report: ReportData; tier: PriceTier }) {
+  const { demo } = useAccess()
+  const units = totalUnitsSold(report, demo)
   const view = useMemo(() => reportView(report), [report])
   const { currencies, first } = view
   const health = useMemo(
@@ -275,6 +284,14 @@ function ReportBody({ report, tier }: { report: ReportData; tier: PriceTier }) {
         <p className="page-feedback" role="status">
           Resultados parciales. Reduce el período.
         </p>
+      )}
+
+      {units != null && (
+        <Stat
+          title="Perfumes vendidos en total"
+          value={whole.format(units)}
+          detail={`${whole.format(report.sales.NIO.current.units)} en facturas en córdobas · ${whole.format(report.sales.USD.current.units)} en dólares`}
+        />
       )}
 
       {currencies.length === 0 ? (

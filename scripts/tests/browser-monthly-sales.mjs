@@ -13,8 +13,8 @@ try {
       openingNio: 1000,
       openingUsd: 0,
     })
-    async function sell(currency, shippingAmount) {
-      await rpc(fixture.db, 'create_document', {
+    async function sell(currency, shippingAmount, quantity = 1) {
+      return rpc(fixture.db, 'create_document', {
         requestId: crypto.randomUUID(),
         kind: 'invoice',
         currency,
@@ -26,7 +26,7 @@ try {
         shippingMethod: 'moto',
         shippingAmount,
         items: [
-          { productId: 'aaaaaaaa-aaaa-4aaa-8aaa-000000000001', quantity: 1 },
+          { productId: 'aaaaaaaa-aaaa-4aaa-8aaa-000000000001', quantity },
         ],
       })
     }
@@ -64,6 +64,40 @@ try {
     assert.match(await salesRow.innerText(), /732\.00/)
     await page.goBack()
     await card.getByText(/^NIO\s*732\.00$/).waitFor()
+    const sale = await sell('USD', 2, 3)
+    const { rows } = await fixture.db.query(
+      'select public.invoice_return_detail($1) as detail',
+      [sale.id],
+    )
+    await rpc(fixture.db, 'record_sales_return', {
+      requestId: crypto.randomUUID(),
+      documentId: sale.id,
+      reason: 'Devolución de una unidad',
+      refundMethod: 'cash',
+      items: [
+        { itemId: rows[0].detail.items[0].id, quantity: 1, restock: true },
+      ],
+    })
+    await page.evaluate(() => globalThis.dispatchEvent(new Event('focus')))
+    await card.getByText('4 perfumes vendidos', { exact: true }).waitFor()
+    await page
+      .getByRole('link', { name: 'Reportes', exact: true })
+      .first()
+      .click()
+    assert.equal(
+      await page
+        .getByRole('button', { name: 'Este mes', exact: true })
+        .getAttribute('aria-pressed'),
+      'true',
+    )
+    const summary = page
+      .locator('.stat-card')
+      .filter({ hasText: 'Perfumes vendidos en total' })
+    await summary.getByText('4', { exact: true }).waitFor()
+    await summary
+      .getByText('1 en facturas en córdobas · 3 en dólares')
+      .waitFor()
+    await page.goBack()
     const nextMonth = new Date(fixture.today + 'T12:00:00Z')
     nextMonth.setUTCDate(1)
     nextMonth.setUTCMonth(nextMonth.getUTCMonth() + 1)
@@ -71,6 +105,7 @@ try {
     await page.evaluate(() => globalThis.dispatchEvent(new Event('focus')))
     await card.getByText(/^NIO\s*0\.00$/).waitFor()
     await card.getByText('0 facturas', { exact: true }).waitFor()
+    await card.getByText('0 perfumes vendidos', { exact: true }).waitFor()
     console.log(
       'Ventas del mes concilia ambas monedas, excluye envíos y se actualiza al volver a Inicio.',
     )

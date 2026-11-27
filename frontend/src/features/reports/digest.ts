@@ -341,6 +341,13 @@ function ordered<K extends string>(
   })
 }
 
+/** El resumen de la base ya descuenta las unidades devueltas en cada moneda. */
+export function totalUnitsSold(report: ReportData, demo: boolean) {
+  if (report.computedIn !== 'database' && (!demo || report.truncated))
+    return null
+  return report.sales.NIO.current.units + report.sales.USD.current.units
+}
+
 /**
  * Las mismas preguntas que antes se hacían a la lista de facturas, ahora
  * contestadas con el resumen. Las pantallas y las exportaciones leen de aquí.
