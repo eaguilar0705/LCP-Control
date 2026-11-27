@@ -814,6 +814,12 @@ try {
     /cuenta activa de anticipos/i,
   )
   const beforeAdvance = await ledger()
+  const inventoryState = () =>
+    owner(`select
+    (select jsonb_agg(jsonb_build_array(product_id,location,quantity) order by product_id,location) from public.inventory_balances) balances,
+    (select jsonb_agg(jsonb_build_array(product_id,average_cost_nio) order by product_id) from public.product_costs) costs,
+    (select jsonb_agg(jsonb_build_array(product_id,quantity,value_nio) order by product_id) from private.inventory_value_balances) valuation`)
+  const beforeStock = await inventoryState()
   const advanceShipment = await rpc(db, 'post_inventory_receipt', advance)
   const afterAdvance = await ledger()
   const delta = (code) =>
@@ -828,6 +834,41 @@ try {
   for (const code of ['1110-001', '1120-001', '2111']) eq(delta(code), 0)
   eq(await rpc(db, 'post_inventory_receipt', advance), advanceShipment)
   eq(await ledger(), afterAdvance)
+  const historyRow = (
+    await one('select public.purchase_history(null,null) r')
+  ).r.find((r) => r.id === advanceShipment)
+  assert.ok(historyRow.advance_entry_id)
+  const cancelAdvance = {
+    shipmentId: advanceShipment,
+    requestId: crypto.randomUUID(),
+    reason: 'Entrada duplicada',
+    advanceEntryId: historyRow.advance_entry_id,
+    paymentTreatment: 'recording_error',
+  }
+  await unchanged('correct_purchase', cancelAdvance, /SuperAdmin/i)
+  await as(outsider)
+  await unchanged(
+    'correct_purchase',
+    { ...cancelAdvance, advanceEntryId: crypto.randomUUID() },
+    /clasificación/i,
+  )
+  const cancelledAdvance = await rpc(db, 'correct_purchase', cancelAdvance)
+  eq(await rpc(db, 'correct_purchase', cancelAdvance), cancelledAdvance)
+  eq(
+    await inventoryState(),
+    beforeStock,
+    'la anulación recupera las cantidades, costos y valores originales',
+  )
+  const reverted = await ledger()
+  for (const code of ['1130', '1160-001', '1110-001', '1120-001', '2111']) {
+    eq(account(reverted, code).closing, account(beforeAdvance, code).closing)
+  }
+  eq(
+    (await page({ status: 'posted' })).receipts.find((r) => r.id === advanceId)
+      .posting.corrected,
+    true,
+  )
+  await as(admin)
   const day = (await one("select public.get_business_day('2026-11-06') r")).r
   await rpc(db, 'close_business_day', {
     requestId: crypto.randomUUID(),

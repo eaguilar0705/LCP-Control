@@ -24,6 +24,7 @@ export const purchaseConfirmation = (treatment: PurchasePaymentTreatment) =>
 export interface PurchaseHistoryRecord {
   revision?: number
   classification_entry_id?: string | null
+  advance_entry_id?: string | null
   id: string
   request_id: string
   incurred_on: string
@@ -70,6 +71,7 @@ export interface PurchaseHistoryRecord {
 export interface PurchaseCorrectionInput {
   requestId: string
   shipmentId: string
+  advanceEntryId?: string
   reason: string
   refundConfirmed: boolean
   paymentTreatment?: PurchasePaymentTreatment

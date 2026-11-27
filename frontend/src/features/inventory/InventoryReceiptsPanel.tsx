@@ -185,7 +185,9 @@ function ReceiptWorkspace({
                     </small>
                   </div>
                   <span className="record-badge">
-                    {statusLabels[receipt.status]}
+                    {receipt.posting?.corrected
+                      ? 'Compra anulada'
+                      : statusLabels[receipt.status]}
                   </span>
                 </div>
                 {receipt.status === 'posted' && (
@@ -234,23 +236,27 @@ function ReceiptWorkspace({
                         {receipt.posting.currency === 'USD' &&
                           ` · tasa C$ ${receipt.posting.exchangeRate}`}
                         {receipt.posting.corrected &&
-                          ' · Compra corregida; consulta el historial de Compras.'}
+                          ' · Compra original anulada; consulta el historial de Compras.'}
                       </p>
                     )}
                     <p className="muted">
                       El costo y pago vigentes se consultan en Inventario →
                       Compras.
                     </p>
-                    {role === 'superadmin' && receipt.shipmentId && (
-                      <Button
-                        variant="secondary"
-                        onClick={() =>
-                          setEditingShipmentId(receipt.shipmentId ?? undefined)
-                        }
-                      >
-                        Editar recepción
-                      </Button>
-                    )}
+                    {role === 'superadmin' &&
+                      receipt.shipmentId &&
+                      !receipt.posting?.corrected && (
+                        <Button
+                          variant="secondary"
+                          onClick={() =>
+                            setEditingShipmentId(
+                              receipt.shipmentId ?? undefined,
+                            )
+                          }
+                        >
+                          Editar recepción
+                        </Button>
+                      )}
                   </div>
                 )}
                 {receipt.cancelReason && (

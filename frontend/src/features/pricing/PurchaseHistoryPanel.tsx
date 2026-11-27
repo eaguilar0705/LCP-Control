@@ -13,6 +13,7 @@ import { useCanVoid } from '../accounting/financeAccess'
 import { useAccess } from '../../app/AccessContext'
 import { useServices } from '../../services/useServices'
 import { useQuery } from '../../lib/useQuery'
+import { refreshQueries } from '../../lib/queryRefresh'
 import { can } from '../../lib/permissions'
 import { errorMessage } from '../../lib/errors'
 import { inventoryExchangeRate } from '../../lib/exchangeRates'
@@ -85,6 +86,7 @@ function PurchaseHistory({
     setAction(undefined)
     setSelected(undefined)
     setMessage(text)
+    refreshQueries()
     retry()
     onChanged()
   }
@@ -300,14 +302,17 @@ function PurchaseHistory({
                           <p role="note">{row.correction_problem}</p>
                         ) : canVoid &&
                           !row.revision &&
-                          !row.classification_entry_id ? (
+                          (!row.classification_entry_id ||
+                            row.advance_entry_id) ? (
                           <div className="form-actions">
-                            <Button
-                              variant="secondary"
-                              onClick={() => setAction('replace')}
-                            >
-                              Corregir compra
-                            </Button>
+                            {!row.classification_entry_id && (
+                              <Button
+                                variant="secondary"
+                                onClick={() => setAction('replace')}
+                              >
+                                Corregir compra
+                              </Button>
+                            )}
                             <Button
                               variant="secondary"
                               onClick={() => setAction('cancel')}
@@ -397,6 +402,9 @@ function CancelPurchase({
       else
         await operation.execute({
           shipmentId: purchase.id,
+          ...(purchase.advance_entry_id && {
+            advanceEntryId: purchase.advance_entry_id,
+          }),
           reason: reason.trim(),
           refundConfirmed: refund,
           paymentTreatment,
@@ -427,6 +435,12 @@ function CancelPurchase({
             recuperará el costo anterior. La anulación queda en la jornada de
             hoy.
           </p>
+          {purchase.advance_entry_id && (
+            <p>
+              Se anulará también la aplicación del anticipo por esta compra,
+              incluida la parte del envío.
+            </p>
+          )}
           <Input
             label="Motivo de la anulación"
             required
